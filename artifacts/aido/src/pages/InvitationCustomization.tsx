@@ -27,15 +27,11 @@ import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { qrPngDataUrl } from "@/lib/localQr";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
   Calendar,
   Loader2,
-  Sparkles,
-  ChevronDown,
-  ChevronUp,
   RefreshCw,
   Save,
   Undo2,
@@ -245,7 +241,7 @@ export default function InvitationCustomizationPage({
       ? parseInt(params.profileId)
       : activeWorkspace?.profileId);
   const [previewTab, setPreviewTab] = useState<PreviewTab>("saveTheDate");
-  const [designMode, setDesignMode] = useState<"ai" | "custom">("ai");
+  const designMode = "custom" as const;
   const [deliveryMode, setDeliveryMode] = useState<InvitationDeliveryMode>("digital");
   const [printSize, setPrintSize] = useState<PrintInvitationSize>("5x7");
   const [printSide, setPrintSide] = useState<PrintInvitationSide>("front");
@@ -287,12 +283,6 @@ export default function InvitationCustomizationPage({
   const [rsvpByDate, setRsvpByDate] = useState<string>("");
   const [rsvpAskHotel, setRsvpAskHotel] = useState(false);
   const [rsvpHotelBlockId, setRsvpHotelBlockId] = useState<string>("all");
-  const [showStdAiPanel, setShowStdAiPanel] = useState(false);
-  const [stdAiDetails, setStdAiDetails] = useState("");
-  const [stdGenerating, setStdGenerating] = useState(false);
-  const [showDigAiPanel, setShowDigAiPanel] = useState(false);
-  const [digAiDetails, setDigAiDetails] = useState("");
-  const [digGenerating, setDigGenerating] = useState(false);
   const [savingMessage, setSavingMessage] = useState(false);
 
   // ── Misc ──────────────────────────────────────────────────────────────────
@@ -322,7 +312,6 @@ export default function InvitationCustomizationPage({
     digitalInvitationPhotoZoom,
     digitalInvitationPhotoEffect,
     backgroundImageUrl,
-    designMode,
     customDesign,
     rsvpByDate,
     rsvpAskHotel,
@@ -428,7 +417,6 @@ export default function InvitationCustomizationPage({
     digitalInvitationPhotoZoom,
     digitalInvitationPhotoEffect,
     backgroundImageUrl,
-    designMode,
     customDesign,
     rsvpByDate,
     rsvpAskHotel,
@@ -450,30 +438,19 @@ export default function InvitationCustomizationPage({
       if (!v.profileId) return;
       if (v.saveTheDatePhotoUrl?.startsWith("blob:")) return;
       if (v.digitalInvitationPhotoUrl?.startsWith("blob:")) return;
-      const isCustom = v.designMode === "custom";
-      const finalCustomColors = isCustom
-        ? {
-            ...(v.customColors ?? {}),
-            accent: v.customDesign.saveTheDate.accentColor,
-            primary: v.customDesign.saveTheDate.accentColor,
-            saveTheDateAccent: v.customDesign.saveTheDate.accentColor,
-            digitalInvitationAccent: v.customDesign.rsvpInvitation.accentColor,
-            saveTheDatePhotoEffect: v.saveTheDatePhotoEffect,
-            digitalInvitationPhotoEffect: v.digitalInvitationPhotoEffect,
-            saveTheDatePhotoZoom: v.saveTheDatePhotoZoom,
-            digitalInvitationPhotoZoom: v.digitalInvitationPhotoZoom,
-            rsvpAskHotel: v.rsvpAskHotel,
-            rsvpHotelBlockId: v.rsvpHotelBlockId === "all" ? null : Number(v.rsvpHotelBlockId),
-          }
-        : {
-            ...(v.customColors ?? {}),
-            saveTheDatePhotoEffect: v.saveTheDatePhotoEffect,
-            digitalInvitationPhotoEffect: v.digitalInvitationPhotoEffect,
-            saveTheDatePhotoZoom: v.saveTheDatePhotoZoom,
-            digitalInvitationPhotoZoom: v.digitalInvitationPhotoZoom,
-            rsvpAskHotel: v.rsvpAskHotel,
-            rsvpHotelBlockId: v.rsvpHotelBlockId === "all" ? null : Number(v.rsvpHotelBlockId),
-          };
+      const finalCustomColors = {
+        ...(v.customColors ?? {}),
+        accent: v.customDesign.saveTheDate.accentColor,
+        primary: v.customDesign.saveTheDate.accentColor,
+        saveTheDateAccent: v.customDesign.saveTheDate.accentColor,
+        digitalInvitationAccent: v.customDesign.rsvpInvitation.accentColor,
+        saveTheDatePhotoEffect: v.saveTheDatePhotoEffect,
+        digitalInvitationPhotoEffect: v.digitalInvitationPhotoEffect,
+        saveTheDatePhotoZoom: v.saveTheDatePhotoZoom,
+        digitalInvitationPhotoZoom: v.digitalInvitationPhotoZoom,
+        rsvpAskHotel: v.rsvpAskHotel,
+        rsvpHotelBlockId: v.rsvpHotelBlockId === "all" ? null : Number(v.rsvpHotelBlockId),
+      };
       const body = JSON.stringify({
         profileId: v.profileId,
         primaryColor: v.primaryColor,
@@ -485,15 +462,15 @@ export default function InvitationCustomizationPage({
         saveTheDatePhotoPosition: v.saveTheDatePhotoPosition,
         digitalInvitationPhotoPosition: v.digitalInvitationPhotoPosition,
         backgroundImageUrl: v.backgroundImageUrl,
-        useGeneratedInvitation: !isCustom,
-        saveTheDateBackground: isCustom ? v.customDesign.saveTheDate.backgroundColor : null,
-        digitalInvitationBackground: isCustom ? v.customDesign.rsvpInvitation.backgroundColor : null,
-        saveTheDateFont: isCustom ? v.customDesign.saveTheDate.fontFamily : null,
-        digitalInvitationFont: isCustom ? v.customDesign.rsvpInvitation.fontFamily : null,
-        saveTheDateFontColor: isCustom ? v.customDesign.saveTheDate.fontColor : null,
-        digitalInvitationFontColor: isCustom ? v.customDesign.rsvpInvitation.fontColor : null,
-        saveTheDateFontSize: isCustom ? v.customDesign.saveTheDate.fontSize : null,
-        digitalInvitationFontSize: isCustom ? v.customDesign.rsvpInvitation.fontSize : null,
+        useGeneratedInvitation: false,
+        saveTheDateBackground: v.customDesign.saveTheDate.backgroundColor,
+        digitalInvitationBackground: v.customDesign.rsvpInvitation.backgroundColor,
+        saveTheDateFont: v.customDesign.saveTheDate.fontFamily,
+        digitalInvitationFont: v.customDesign.rsvpInvitation.fontFamily,
+        saveTheDateFontColor: v.customDesign.saveTheDate.fontColor,
+        digitalInvitationFontColor: v.customDesign.rsvpInvitation.fontColor,
+        saveTheDateFontSize: v.customDesign.saveTheDate.fontSize,
+        digitalInvitationFontSize: v.customDesign.rsvpInvitation.fontSize,
         rsvpByDate: v.rsvpByDate || null,
       });
 
@@ -638,11 +615,7 @@ export default function InvitationCustomizationPage({
           : "all",
       );
 
-      // Restore the per-invitation design mode + custom design fields from
-      // the saved record so the toggle and panel reflect what was last saved.
-      if (customization.useGeneratedInvitation === false) {
-        if (customization.saveTheDateBackground || customization.digitalInvitationBackground) setDesignMode("custom");
-      }
+      // Restore the per-invitation custom design fields from the saved record.
       const fallbackAccent =
         customization.customColors?.accent ??
         customization.colorPalette?.accent ??
@@ -904,44 +877,6 @@ export default function InvitationCustomizationPage({
     }
   };
 
-  const generateStdMessage = async () => {
-    setStdGenerating(true);
-    try {
-      const r = await authedFetch("/api/profile/generate-invitation-message", {
-        method: "POST",
-        body: JSON.stringify({ details: stdAiDetails }),
-      });
-      if (!r.ok) throw new Error("Failed");
-      const data = await r.json();
-      setSaveTheDateMessage((data.message || "").trim());
-      setStdAiDetails("");
-      setShowStdAiPanel(false);
-    } catch {
-      toast({ title: "Failed to generate message", variant: "destructive" });
-    } finally {
-      setStdGenerating(false);
-    }
-  };
-
-  const generateDigMessage = async () => {
-    setDigGenerating(true);
-    try {
-      const r = await authedFetch("/api/profile/generate-invitation-message", {
-        method: "POST",
-        body: JSON.stringify({ details: digAiDetails }),
-      });
-      if (!r.ok) throw new Error("Failed");
-      const data = await r.json();
-      setInvitationMessage((data.message || "").trim());
-      setDigAiDetails("");
-      setShowDigAiPanel(false);
-    } catch {
-      toast({ title: "Failed to generate message", variant: "destructive" });
-    } finally {
-      setDigGenerating(false);
-    }
-  };
-
   // ── Reset colors to brand defaults ───────────────────────────────────────
   const BRAND_PALETTE: ColorPalette = AIDO_INVITATION_PALETTE;
   const handleResetToDefault = useCallback(() => {
@@ -959,33 +894,20 @@ export default function InvitationCustomizationPage({
     customDesignOverride?: CustomDesignState,
   ) => {
     const d = customDesignOverride ?? customDesign;
-    const stdCustom = designMode === "custom";
-    const digCustom = designMode === "custom";
-    const eitherCustom = designMode === "custom";
     // Also store per-invitation accents inside customColors JSONB as a backup
     // so the send modal can show independent accents even when the dedicated
     // DB columns are null (e.g. before migration runs on first deploy).
-    const enhancedCustomColors = eitherCustom
-      ? {
-          ...(customColors ?? {}),
-          saveTheDateAccent: d.saveTheDate.accentColor,
-          digitalInvitationAccent: d.rsvpInvitation.accentColor,
-          saveTheDatePhotoEffect,
-          digitalInvitationPhotoEffect,
-          saveTheDatePhotoZoom,
-          digitalInvitationPhotoZoom,
-          rsvpAskHotel,
-          rsvpHotelBlockId: rsvpHotelBlockId === "all" ? null : Number(rsvpHotelBlockId),
-        }
-      : {
-          ...(customColors ?? {}),
-          saveTheDatePhotoEffect,
-          digitalInvitationPhotoEffect,
-          saveTheDatePhotoZoom,
-          digitalInvitationPhotoZoom,
-          rsvpAskHotel,
-          rsvpHotelBlockId: rsvpHotelBlockId === "all" ? null : Number(rsvpHotelBlockId),
-        };
+    const enhancedCustomColors = {
+      ...(customColors ?? {}),
+      saveTheDateAccent: d.saveTheDate.accentColor,
+      digitalInvitationAccent: d.rsvpInvitation.accentColor,
+      saveTheDatePhotoEffect,
+      digitalInvitationPhotoEffect,
+      saveTheDatePhotoZoom,
+      digitalInvitationPhotoZoom,
+      rsvpAskHotel,
+      rsvpHotelBlockId: rsvpHotelBlockId === "all" ? null : Number(rsvpHotelBlockId),
+    };
     return {
       profileId,
       primaryColor,
@@ -997,19 +919,19 @@ export default function InvitationCustomizationPage({
       saveTheDatePhotoPosition,
       digitalInvitationPhotoPosition,
       backgroundImageUrl,
-      useGeneratedInvitation: !eitherCustom,
-      saveTheDateBackground: stdCustom ? d.saveTheDate.backgroundColor : null,
-      digitalInvitationBackground: digCustom ? d.rsvpInvitation.backgroundColor : null,
-      saveTheDateFont: stdCustom ? d.saveTheDate.fontFamily : null,
-      digitalInvitationFont: digCustom ? d.rsvpInvitation.fontFamily : null,
-      saveTheDateFontColor: stdCustom ? d.saveTheDate.fontColor : null,
-      digitalInvitationFontColor: digCustom ? d.rsvpInvitation.fontColor : null,
-      saveTheDateFontSize: stdCustom ? d.saveTheDate.fontSize : null,
-      digitalInvitationFontSize: digCustom ? d.rsvpInvitation.fontSize : null,
+      useGeneratedInvitation: false,
+      saveTheDateBackground: d.saveTheDate.backgroundColor,
+      digitalInvitationBackground: d.rsvpInvitation.backgroundColor,
+      saveTheDateFont: d.saveTheDate.fontFamily,
+      digitalInvitationFont: d.rsvpInvitation.fontFamily,
+      saveTheDateFontColor: d.saveTheDate.fontColor,
+      digitalInvitationFontColor: d.rsvpInvitation.fontColor,
+      saveTheDateFontSize: d.saveTheDate.fontSize,
+      digitalInvitationFontSize: d.rsvpInvitation.fontSize,
       // Per-invitation accent colors — independent of each other and of the
       // legacy shared customColors.accent.
-      saveTheDateAccentColor: stdCustom ? d.saveTheDate.accentColor : null,
-      digitalInvitationAccentColor: digCustom ? d.rsvpInvitation.accentColor : null,
+      saveTheDateAccentColor: d.saveTheDate.accentColor,
+      digitalInvitationAccentColor: d.rsvpInvitation.accentColor,
       selectedLayout: "classic",
       saveTheDateLayout: "classic",
       digitalInvitationLayout: "classic",
@@ -1020,7 +942,6 @@ export default function InvitationCustomizationPage({
 
   // ── Load Google Font when a custom font is selected ──────────────────────
   useEffect(() => {
-    if (designMode !== "custom") return;
     const fonts = new Set([
       customDesign.saveTheDate.fontFamily,
       customDesign.rsvpInvitation.fontFamily,
@@ -1035,7 +956,7 @@ export default function InvitationCustomizationPage({
       link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap`;
       document.head.appendChild(link);
     });
-  }, [designMode, customDesign.saveTheDate.fontFamily, customDesign.rsvpInvitation.fontFamily]);
+  }, [customDesign.saveTheDate.fontFamily, customDesign.rsvpInvitation.fontFamily]);
 
   // ── Auto-save (debounced 1s, skip initial load) ───────────────────────────
   useEffect(() => {
@@ -1085,7 +1006,6 @@ export default function InvitationCustomizationPage({
     saveTheDatePhotoEffect,
     digitalInvitationPhotoEffect,
     backgroundImageUrl,
-    designMode,
     customDesign,
     rsvpByDate,
     rsvpAskHotel,
@@ -1565,29 +1485,6 @@ export default function InvitationCustomizationPage({
         </div>
       </div>
 
-      <Tabs
-        value={designMode}
-        onValueChange={(v) => {
-          setDesignMode(v as "ai" | "custom");
-          setPreviewRefreshNonce((current) => current + 1);
-        }}
-      >
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger
-            value="ai"
-            className="data-[state=active]:bg-[#8D294D] data-[state=active]:text-white"
-          >
-            AI Generated
-          </TabsTrigger>
-          <TabsTrigger
-            value="custom"
-            className="data-[state=active]:bg-[#8D294D] data-[state=active]:text-white"
-          >
-            Custom Design
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Left Panel */}
         <div className="lg:col-span-1 space-y-4 lg:max-h-[90vh] lg:overflow-y-auto">
@@ -1692,79 +1589,9 @@ export default function InvitationCustomizationPage({
           {/* Message */}
           <Card>
             <CardContent className="p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">
-                  {isSTD ? "Save the Date Message" : "Invitation Message"}
-                </p>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 text-xs h-7 px-2.5 border-primary/30 text-primary hover:bg-primary/5"
-                  onClick={() =>
-                    isSTD
-                      ? setShowStdAiPanel((v) => !v)
-                      : setShowDigAiPanel((v) => !v)
-                  }
-                >
-                  <Sparkles className="h-3 w-3" />
-                  AI Generate
-                  {(isSTD ? showStdAiPanel : showDigAiPanel) ? (
-                    <ChevronUp className="h-3 w-3" />
-                  ) : (
-                    <ChevronDown className="h-3 w-3" />
-                  )}
-                </Button>
-              </div>
-
-              {isSTD && showStdAiPanel && (
-                <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2 animate-in fade-in slide-in-from-top-1 duration-150">
-                  <Textarea
-                    placeholder="e.g. We're having an intimate outdoor ceremony in the mountains…"
-                    value={stdAiDetails}
-                    onChange={(e) => setStdAiDetails(e.target.value)}
-                    rows={3}
-                    className="resize-none text-sm bg-background"
-                  />
-                  <Button
-                    size="sm"
-                    className="gap-2 w-full"
-                    onClick={generateStdMessage}
-                    disabled={stdGenerating || !stdAiDetails.trim()}
-                  >
-                    {stdGenerating ? (
-                      <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating…</>
-                    ) : (
-                      <><Sparkles className="h-3.5 w-3.5" /> Generate Message</>
-                    )}
-                  </Button>
-                </div>
-              )}
-
-              {!isSTD && showDigAiPanel && (
-                <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2 animate-in fade-in slide-in-from-top-1 duration-150">
-                  <Textarea
-                    placeholder="e.g. We're getting married in a garden at sunset…"
-                    value={digAiDetails}
-                    onChange={(e) => setDigAiDetails(e.target.value)}
-                    rows={3}
-                    className="resize-none text-sm bg-background"
-                  />
-                  <Button
-                    size="sm"
-                    className="gap-2 w-full"
-                    onClick={generateDigMessage}
-                    disabled={digGenerating || !digAiDetails.trim()}
-                  >
-                    {digGenerating ? (
-                      <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating…</>
-                    ) : (
-                      <><Sparkles className="h-3.5 w-3.5" /> Generate Message</>
-                    )}
-                  </Button>
-                </div>
-              )}
-
+              <p className="text-sm font-medium">
+                {isSTD ? "Save the Date Message" : "Invitation Message"}
+              </p>
               <Textarea
                 placeholder={
                   isSTD
@@ -1919,7 +1746,6 @@ export default function InvitationCustomizationPage({
           {(() => {
             const activeKey: InvitationDesignKey =
               previewTab === "saveTheDate" ? "saveTheDate" : "rsvpInvitation";
-            if (designMode !== "custom") return null;
             const fields = customDesign[activeKey];
             const updateField = (field: keyof typeof fields, value: string) => {
               updateCustomDesignField(activeKey, field, value);

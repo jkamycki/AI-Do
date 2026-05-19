@@ -55,6 +55,8 @@ const router = Router();
 
 // ---------- helpers ----------
 
+const DEFAULT_WEBSITE_HERO_IMAGE = "/images/default-wedding-couple.jpg";
+
 const SLUG_ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789";
 
 function randomSuffix(len = 5): string {
@@ -225,7 +227,7 @@ router.post("/website/create", requireAuth, async (req, res) => {
         profileId: profile.id,
         slug,
         customText,
-        heroImage: profile.invitationPhotoUrl ?? null,
+        heroImage: profile.invitationPhotoUrl ?? DEFAULT_WEBSITE_HERO_IMAGE,
       })
       .returning();
 

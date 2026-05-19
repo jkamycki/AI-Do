@@ -392,13 +392,31 @@ router.get("/help/support-tickets", requireAuth, async (req, res) => {
     if (!admin) return res.status(403).json({ error: "Access denied." });
 
     const tickets = await db
-      .select()
+      .select({
+        id: supportTickets.id,
+        ticketNumber: supportTickets.ticketNumber,
+        name: supportTickets.name,
+        email: supportTickets.email,
+        category: supportTickets.category,
+        subject: supportTickets.subject,
+        message: supportTickets.message,
+        status: supportTickets.status,
+        priority: supportTickets.priority,
+        userId: supportTickets.userId,
+        profileId: supportTickets.profileId,
+        createdAt: supportTickets.createdAt,
+        updatedAt: supportTickets.updatedAt,
+      })
       .from(supportTickets)
       .orderBy(desc(supportTickets.createdAt));
 
     res.json({
       tickets: tickets.map(t => ({
         ...t,
+        followUpNotes: null,
+        followUpEmail: null,
+        followUpSentAt: null,
+        followUpSentBy: null,
         createdAt: t.createdAt?.toISOString?.() ?? new Date().toISOString(),
         updatedAt: t.updatedAt?.toISOString?.() ?? t.createdAt?.toISOString?.() ?? new Date().toISOString(),
       })),

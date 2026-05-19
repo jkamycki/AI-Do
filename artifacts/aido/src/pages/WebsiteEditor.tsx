@@ -15,7 +15,7 @@ import {
   Loader2, Save, Globe, Eye, Copy, Check, Image as ImageIcon, X,
   Lock, Type, Palette, ToggleLeft, FileText, Heart, MapPin, Clock, Gift, HelpCircle,
   QrCode, Download, Link2, Plus, Users, Undo2, Sparkles, Settings, Trash2, Smile,
-  Move,
+  Laptop, Move, Smartphone,
 } from "lucide-react";
 import { WebsiteRenderer, type WebsiteRendererPayload, parseRegistryLinks, type RegistryLink } from "@/components/website/WebsiteRenderer";
 import { flushPendingEditableCommits, subscribeEditableDrag } from "@/components/website/EditableText";
@@ -112,6 +112,7 @@ export default function WebsiteEditor() {
   const [savingPassword, setSavingPassword] = useState(false);
   const [lastAutosaved, setLastAutosaved] = useState<Date | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
   const [previewSection, setPreviewSection] = useState<string>("home");
   const [editorSection, setEditorSection] = useState<string>("home");
   const [qrOpen, setQrOpen] = useState(false);
@@ -2589,9 +2590,44 @@ export default function WebsiteEditor() {
         onClick={() => { if (ctxMenu) setCtxMenu(null); }}
       >
         <div className="sticky top-0 z-10 px-4 py-2 bg-background/80 backdrop-blur border-b text-xs flex items-center justify-between gap-3 flex-wrap">
-          <span style={{ color: "#8D294D" }}>
-            {t("website_editor.live_preview_label", { defaultValue: "Live preview" })}
-          </span>
+          <div className="flex items-center gap-3">
+            <span style={{ color: "#8D294D" }}>
+              {t("website_editor.live_preview_label", { defaultValue: "Live preview" })}
+            </span>
+            <div
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-background p-0.5"
+              aria-label="Preview device"
+            >
+              <button
+                type="button"
+                onClick={() => setPreviewDevice("desktop")}
+                className={`inline-flex h-7 w-9 items-center justify-center rounded transition-colors ${
+                  previewDevice === "desktop"
+                    ? "bg-muted text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                title="Desktop view"
+                aria-label="Desktop view"
+                aria-pressed={previewDevice === "desktop"}
+              >
+                <Laptop className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewDevice("mobile")}
+                className={`inline-flex h-7 w-9 items-center justify-center rounded transition-colors ${
+                  previewDevice === "mobile"
+                    ? "bg-muted text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                title="Mobile view"
+                aria-label="Mobile view"
+                aria-pressed={previewDevice === "mobile"}
+              >
+                <Smartphone className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
           {record.published && (
             <button
               type="button"
@@ -2604,7 +2640,22 @@ export default function WebsiteEditor() {
             </button>
           )}
         </div>
-        <div ref={canvasRef} className="bg-white relative">
+        <div
+          className={
+            previewDevice === "mobile"
+              ? "min-h-full bg-muted/30 px-4 py-8 flex justify-center"
+              : "bg-white"
+          }
+        >
+          <div
+            ref={canvasRef}
+            className={
+              previewDevice === "mobile"
+                ? "relative w-[390px] max-w-full overflow-hidden rounded-[28px] bg-white shadow-2xl ring-1 ring-border"
+                : "bg-white relative"
+            }
+            style={previewDevice === "mobile" ? { minHeight: 844 } : undefined}
+          >
           <WebsiteRenderer
             data={livePreview!}
             editable
@@ -2630,6 +2681,7 @@ export default function WebsiteEditor() {
             })}
             onDeleteElement={handleDeleteElement}
           />
+          </div>
         </div>
       </main>
 

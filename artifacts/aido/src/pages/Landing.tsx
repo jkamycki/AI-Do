@@ -109,7 +109,7 @@ export default function Landing() {
           <HeroSparkles />
           <div className="relative z-10 mx-auto flex min-h-[calc(100vh-210px)] max-w-5xl flex-col items-center px-4 pb-8 pt-6 text-center sm:min-h-[calc(100vh-330px)] sm:px-8 sm:pb-8 sm:pt-8">
             <img
-              src="/logo.png"
+              src="/landing-logo-transparent.png"
               alt="A.I Do - AI Wedding Planner Assistant"
               className="h-32 w-auto object-contain drop-shadow-[0_22px_38px_rgba(141,41,77,0.16)] sm:h-40"
             />
@@ -204,7 +204,7 @@ export default function Landing() {
 
       <footer className="border-t border-[#E6A6B7]/35 bg-[#FFF7F2] px-8 py-8 text-center text-sm text-[#8D294D]/70">
         <div className="mx-auto flex max-w-3xl flex-col items-center gap-3">
-          <img src="/logo.png" alt="A.I Do" className="h-20 w-auto object-contain" />
+          <img src="/landing-logo-transparent.png" alt="A.I Do" className="h-20 w-auto object-contain" />
           <p>{t("landing.footer_brand", { defaultValue: "A.IDO - AI Wedding Planner Assistant" })}</p>
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs">
             <span>&copy; {new Date().getFullYear()} A.IDO. {t("landing.footer_rights", { defaultValue: "All rights reserved." })}</span>

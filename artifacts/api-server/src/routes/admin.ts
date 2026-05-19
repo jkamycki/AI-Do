@@ -963,8 +963,6 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
         };
       });
 
-    users.push(...deletedUsers);
-
     const filtered = search
       ? users.filter(u =>
           `${u.firstName} ${u.lastName} ${u.email} ${u.partner1Name} ${u.partner2Name} ${u.isDeleted ? "deleted account" : ""} ${u.sharedWith.map(s => `${s.displayName} ${s.email} ${s.workspaceName}`).join(" ")}`
@@ -972,11 +970,35 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
         )
       : users;
 
+    const filteredDeletedUsers = search
+      ? deletedUsers.filter(u =>
+          `${u.firstName} ${u.lastName} ${u.email} ${u.partner1Name} ${u.partner2Name} deleted account`
+            .toLowerCase().includes(search)
+        )
+      : deletedUsers;
+
     filtered.sort((a, b) =>
+      new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime()
+    );
+
+    filteredDeletedUsers.sort((a, b) =>
       new Date(b.deletedAt ?? b.joinedAt).getTime() - new Date(a.deletedAt ?? a.joinedAt).getTime()
     );
 
-    res.json({ users: filtered, total: filtered.length });
+    res.json({
+      users: filtered,
+      activeUsers: filtered,
+      deletedUsers: filteredDeletedUsers,
+      total: filtered.length + filteredDeletedUsers.length,
+      summary: {
+        signedUp: filtered.length + filteredDeletedUsers.length,
+        active: filtered.length,
+        onboarded: filtered.filter(u => u.onboarded).length,
+        createdProfile: filtered.filter(u => u.hasProfile).length,
+        sharedWorkspace: filtered.filter(u => u.hasSharedWorkspace).length,
+        deleted: filteredDeletedUsers.length,
+      },
+    });
   } catch (err) {
     req.log.error(err, "Admin users error");
     res.status(500).json({ error: "Internal server error" });

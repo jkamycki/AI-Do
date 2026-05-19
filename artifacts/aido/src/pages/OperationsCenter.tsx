@@ -138,6 +138,21 @@ type SignedUpUser = {
   }>;
 };
 
+type AdminUsersResponse = {
+  users: SignedUpUser[];
+  activeUsers?: SignedUpUser[];
+  deletedUsers?: SignedUpUser[];
+  total: number;
+  summary?: {
+    signedUp: number;
+    active: number;
+    onboarded: number;
+    createdProfile: number;
+    sharedWorkspace: number;
+    deleted: number;
+  };
+};
+
 function nameFromEmail(email: string | null): string {
   const local = (email ?? "").split("@")[0] ?? "";
   return local
@@ -347,7 +362,7 @@ export default function OperationsCenterPage() {
   });
   const testSessions = testSessionsData?.sessions ?? [];
 
-  const { data: signedUpUsersData, isLoading: isLoadingSignedUpUsers } = useQuery<{ users: SignedUpUser[]; total: number }>({
+  const { data: signedUpUsersData, isLoading: isLoadingSignedUpUsers } = useQuery<AdminUsersResponse>({
     queryKey: ["admin-signed-up-users", userSearch],
     queryFn: async () => {
       const params = userSearch.trim() ? `?search=${encodeURIComponent(userSearch.trim())}` : "";
@@ -360,7 +375,8 @@ export default function OperationsCenterPage() {
     refetchOnWindowFocus: true,
     staleTime: 0,
   });
-  const signedUpUsers = signedUpUsersData?.users ?? [];
+  const signedUpUsers = signedUpUsersData?.activeUsers ?? signedUpUsersData?.users?.filter(user => !user.isDeleted) ?? [];
+  const deletedSignedUpUsers = signedUpUsersData?.deletedUsers ?? signedUpUsersData?.users?.filter(user => user.isDeleted) ?? [];
 
   const deleteUserMutation = useMutation({
     mutationFn: async (user: SignedUpUser) => {
@@ -932,13 +948,14 @@ export default function OperationsCenterPage() {
             </div>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-5">
+          <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
             {[
-              { label: "Signed up", value: signedUpUsersData?.total ?? 0 },
-              { label: "Onboarded", value: signedUpUsers.filter(user => user.onboarded).length },
-              { label: "Created profile", value: signedUpUsers.filter(user => user.hasProfile).length },
-              { label: "Shared workspace", value: signedUpUsers.filter(user => user.hasSharedWorkspace).length },
-              { label: "Deleted", value: signedUpUsers.filter(user => user.isDeleted).length },
+              { label: "Signed up", value: signedUpUsersData?.summary?.signedUp ?? signedUpUsersData?.total ?? 0 },
+              { label: "Active users", value: signedUpUsersData?.summary?.active ?? signedUpUsers.length },
+              { label: "Onboarded", value: signedUpUsersData?.summary?.onboarded ?? signedUpUsers.filter(user => user.onboarded).length },
+              { label: "Created profile", value: signedUpUsersData?.summary?.createdProfile ?? signedUpUsers.filter(user => user.hasProfile).length },
+              { label: "Shared workspace", value: signedUpUsersData?.summary?.sharedWorkspace ?? signedUpUsers.filter(user => user.hasSharedWorkspace).length },
+              { label: "Deleted", value: signedUpUsersData?.summary?.deleted ?? deletedSignedUpUsers.length },
             ].map(stat => (
               <Card key={stat.label}>
                 <CardContent className="py-4">
@@ -953,7 +970,7 @@ export default function OperationsCenterPage() {
             <div className="space-y-3">
               {[1, 2, 3].map(i => <Skeleton key={i} className="h-28 rounded-lg" />)}
             </div>
-          ) : signedUpUsers.length === 0 ? (
+          ) : signedUpUsers.length === 0 && deletedSignedUpUsers.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <Users className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
@@ -961,8 +978,19 @@ export default function OperationsCenterPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-3">
-              {signedUpUsers.map(user => {
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-[#7A5062]">Active Users</h3>
+                  <Badge variant="outline">{signedUpUsers.length}</Badge>
+                </div>
+                {signedUpUsers.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-8 text-center text-sm font-medium text-[#4A3941]">
+                      No active users match this search.
+                    </CardContent>
+                  </Card>
+                ) : signedUpUsers.map(user => {
                 const displayName = getSignedUpUserDisplayName(user);
                 const workspaceName = [user.partner1Name, user.partner2Name].filter(Boolean).join(" & ");
                 return (
@@ -1049,6 +1077,61 @@ export default function OperationsCenterPage() {
                   </Card>
                 );
               })}
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-red-700">Deleted Users</h3>
+                  <Badge className="bg-red-100 text-red-800">{deletedSignedUpUsers.length}</Badge>
+                </div>
+                {deletedSignedUpUsers.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-8 text-center text-sm font-medium text-[#4A3941]">
+                      No deleted users match this search.
+                    </CardContent>
+                  </Card>
+                ) : deletedSignedUpUsers.map(user => {
+                  const displayName = getSignedUpUserDisplayName(user);
+                  const workspaceName = [user.partner1Name, user.partner2Name].filter(Boolean).join(" & ");
+                  return (
+                    <Card key={user.id} className="border-red-200 bg-red-50/30">
+                      <CardContent className="py-4">
+                        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="font-semibold text-[#24171D]">{displayName}</h3>
+                              <Badge className="bg-red-100 text-red-800">Deleted account</Badge>
+                              {user.onboarded && <Badge className="bg-emerald-100 text-emerald-800">Was onboarded</Badge>}
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm font-medium text-[#4A3941]">
+                              <span className="inline-flex items-center gap-1.5">
+                                <Mail className="h-3.5 w-3.5" />
+                                {user.email || "No email"}
+                              </span>
+                              <span className="inline-flex items-center gap-1.5">
+                                <Clock className="h-3.5 w-3.5" />
+                                {user.deletedAt ? `Deleted ${new Date(user.deletedAt).toLocaleString()}` : "Deleted date unknown"}
+                              </span>
+                            </div>
+                            <p className="mt-2 text-sm text-[#7A5062]">
+                              {[workspaceName || null, user.venue, user.weddingDate ? `Wedding: ${user.weddingDate}` : null].filter(Boolean).join(" | ") || "No archived wedding workspace details"}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-red-200 bg-white px-4 py-3 text-xs font-medium text-[#4A3941] md:w-56">
+                            <p><span className="font-semibold text-[#24171D]">Events archived:</span> {user.eventCount}</p>
+                            <p className="mt-1"><span className="font-semibold text-[#24171D]">Profile:</span> {user.hasProfile ? "Archived" : "No"}</p>
+                            <p className="mt-1 text-red-700"><span className="font-semibold">Deleted:</span> {user.deletedAt ? new Date(user.deletedAt).toLocaleString() : "Unknown"}</p>
+                            <Button size="sm" variant="outline" className="mt-3 w-full" disabled>
+                              <Trash2 className="mr-2 h-3.5 w-3.5" />
+                              Already deleted
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
