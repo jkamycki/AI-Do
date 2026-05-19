@@ -792,11 +792,12 @@ export default function MoodBoard() {
       };
 
       // ── Header ─────────────────────────────────────────────────────────────
-      // A.IDO logo — pinned to the very top-right corner of the page
-      const LOGO_W = 90;
-      const LOGO_H = 100;
+      // A.IDO logo — centered with clear space before the title and summary.
+      const LOGO_W = 62;
+      const LOGO_H = 68;
       if (logoDataUrl) {
-        doc.addImage(logoDataUrl, "PNG", PAGE_W - 10 - LOGO_W, 10, LOGO_W, LOGO_H);
+        doc.addImage(logoDataUrl, "PNG", PAGE_W / 2 - LOGO_W / 2, 18, LOGO_W, LOGO_H);
+        y = 108;
       }
 
       // Couple names (large, centered)
@@ -811,25 +812,25 @@ export default function MoodBoard() {
 
       // Subtitle
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
+      doc.setFontSize(9.5);
       doc.setTextColor(MT_R, MT_G, MT_B);
       doc.text("Wedding Mood Board", PAGE_W / 2, y, { align: "center" });
-      y += 18;
+      y += 16;
 
       // Gold divider
       doc.setDrawColor(GD_R, GD_G, GD_B);
-      doc.setLineWidth(0.8);
-      doc.line(PAGE_W / 2 - 50, y, PAGE_W / 2 + 50, y);
-      y += 24;
+      doc.setLineWidth(0.6);
+      doc.line(PAGE_W / 2 - 38, y, PAGE_W / 2 + 38, y);
+      y += 22;
 
       // ── AI Summary ─────────────────────────────────────────────────────────
       if (board.aiSummary) {
         doc.setFont("helvetica", "italic");
-        doc.setFontSize(10.5);
+        doc.setFontSize(9.5);
         doc.setTextColor(MT_R, MT_G, MT_B);
-        const lines = doc.splitTextToSize(`"${board.aiSummary}"`, CW);
+        const lines = doc.splitTextToSize(`"${board.aiSummary}"`, CW - 56);
         doc.text(lines, PAGE_W / 2, y, { align: "center" });
-        y += (lines.length as number) * 14 + 24;
+        y += (lines.length as number) * 12 + 24;
       }
 
       // ── Images grid ────────────────────────────────────────────────────────
