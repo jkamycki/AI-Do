@@ -216,22 +216,25 @@ function NextPaymentDisplay({
   const daysUntil = daysUntilDate(date);
   const isOverdue = daysUntil < 0;
   const tone = toneClass ?? "text-red-700 dark:text-red-300";
-  const dueLabel = isOverdue
-    ? `${t("vendors.payment_overdue_banner", { n: Math.abs(daysUntil), defaultValue: `Payment overdue by ${Math.abs(daysUntil)} day(s)` })} - ${formatDate(date)}`
+  const dueStatus = isOverdue
+    ? t("vendors.payment_overdue_banner", { n: Math.abs(daysUntil), defaultValue: `Payment overdue by ${Math.abs(daysUntil)} day(s)` })
     : daysUntil === 0
-      ? `${t("vendors.payment_due_today_banner", { defaultValue: "Payment due today" })} - ${formatDate(date)}`
-      : `${t("vendors.payment_due_in_banner", { n: daysUntil, defaultValue: `Payment in ${daysUntil} day(s)` })} - ${formatDate(date)}`;
+      ? t("vendors.payment_due_today_banner", { defaultValue: "Payment due today" })
+      : t("vendors.payment_due_in_banner", { n: daysUntil, defaultValue: `Payment in ${daysUntil} day(s)` });
   return (
-    <div className={`inline-flex max-w-[260px] flex-col gap-1 text-xs ${tone}`}>
-      <div className="flex items-center gap-1.5">
+    <div className={`inline-flex min-w-[150px] max-w-[220px] flex-col gap-1.5 text-xs ${tone}`}>
+      <div className="flex items-start gap-1.5">
         {isOverdue
-          ? <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
-          : <Bell className="h-3.5 w-3.5 flex-shrink-0" />}
-        <span className="font-semibold">{dueLabel}</span>
+          ? <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+          : <Bell className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />}
+        <span className="min-w-0 leading-tight">
+          <span className="block font-semibold">{dueStatus}</span>
+          <span className="block text-[11px] font-medium opacity-85">{formatDate(date)}</span>
+        </span>
       </div>
       {(amount > 0 || onMarkPaid) && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {amount > 0 && <span className="tabular-nums font-medium">{formatMoney(amount)}</span>}
+        <div className="flex flex-wrap items-center gap-1.5 pl-5">
+          {amount > 0 && <span className="tabular-nums font-semibold">{formatMoney(amount)}</span>}
           {onMarkPaid && (
             <Button
               size="sm"
