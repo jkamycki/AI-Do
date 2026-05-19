@@ -133,7 +133,7 @@ const getLaunchPlanRecipientEmails = (email: string) =>
 const getLaunchPlanPriorityClass = (priority: LaunchPlanItem["priority"]) => {
   if (priority === "high") return "border-red-300 bg-red-50 text-red-700 focus:border-red-500";
   if (priority === "low") return "border-emerald-300 bg-emerald-50 text-emerald-700 focus:border-emerald-500";
-  return "border-amber-300 bg-amber-50 text-amber-700 focus:border-amber-500";
+  return "border-yellow-300 bg-yellow-50 text-yellow-700 focus:border-yellow-500";
 };
 
 const buildLaunchPlanTaskEmail = (item: LaunchPlanItem) => {
@@ -434,6 +434,8 @@ function LaunchPlanSection() {
   const { toast } = useToast();
   const [prompt, setPrompt] = useState("");
   const [hasLoaded, setHasLoaded] = useState(false);
+  const itemsRef = React.useRef<LaunchPlanItem[]>([]);
+  const hasLoadedRef = React.useRef(false);
   const [emailRecipients, setEmailRecipients] = useState<Record<string, string>>({});
   const [items, setItems] = useState<LaunchPlanItem[]>(() => {
     if (typeof window === "undefined") return fallbackLaunchPlanItems;
@@ -478,11 +480,45 @@ function LaunchPlanSection() {
     },
   });
 
+  const saveItems = async (nextItems: LaunchPlanItem[]) => {
+    const r = await authFetch("/api/admin/launch-plan", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: nextItems }),
+    });
+    if (!r.ok) throw new Error("Failed to save launch plan");
+  };
+
+  React.useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  React.useEffect(() => {
+    hasLoadedRef.current = hasLoaded;
+  }, [hasLoaded]);
+
   React.useEffect(() => {
     if (!hasLoaded) return;
     const timeout = window.setTimeout(() => saveMutation.mutate(items), 700);
     return () => window.clearTimeout(timeout);
   }, [hasLoaded, items]);
+
+  React.useEffect(() => {
+    const flushPendingItems = () => {
+      if (!hasLoadedRef.current) return;
+      void saveItems(itemsRef.current);
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") flushPendingItems();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", flushPendingItems);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", flushPendingItems);
+      flushPendingItems();
+    };
+  }, []);
 
   const generateMutation = useMutation({
     mutationFn: async () => {

@@ -188,6 +188,12 @@ const LAUNCH_PLAN_ASSIGNEE_EMAILS = LAUNCH_PLAN_ASSIGNEES.map(assignee => assign
 const getLaunchPlanAssigneeName = (email: string) =>
   LAUNCH_PLAN_ASSIGNEES.find(assignee => assignee.email === email)?.name ?? "Unassigned";
 
+const getLaunchPlanPriorityClass = (priority: LaunchPlanItem["priority"]) => {
+  if (priority === "high") return "border-red-300 bg-red-50 text-red-700 focus:border-red-500";
+  if (priority === "low") return "border-emerald-300 bg-emerald-50 text-emerald-700 focus:border-emerald-500";
+  return "border-yellow-300 bg-yellow-50 text-yellow-700 focus:border-yellow-500";
+};
+
 const buildLaunchPlanTaskEmail = (item: LaunchPlanItem) => {
   const assigneeName = getLaunchPlanAssigneeName(item.assigneeEmail);
   const priority = item.priority.charAt(0).toUpperCase() + item.priority.slice(1);
@@ -289,6 +295,8 @@ export default function OperationsCenterPage() {
   const [userToDelete, setUserToDelete] = useState<SignedUpUser | null>(null);
   const [launchPlanPrompt, setLaunchPlanPrompt] = useState("");
   const [hasLoadedLaunchPlan, setHasLoadedLaunchPlan] = useState(false);
+  const launchPlanItemsRef = useRef<LaunchPlanItem[]>([]);
+  const hasLoadedLaunchPlanRef = useRef(false);
   const [launchPlanEmailRecipients, setLaunchPlanEmailRecipients] = useState<Record<string, string>>({});
   const [launchPlanItems, setLaunchPlanItems] = useState<LaunchPlanItem[]>(() => {
     if (typeof window === "undefined") return fallbackLaunchPlanItems;
@@ -457,10 +465,12 @@ export default function OperationsCenterPage() {
   }));
 
   const updateLaunchPlanItem = (id: string, patch: Partial<LaunchPlanItem>) => {
+    setHasLoadedLaunchPlan(true);
     setLaunchPlanItems(items => items.map(item => item.id === id ? { ...item, ...patch } : item));
   };
 
   const addLaunchPlanItem = () => {
+    setHasLoadedLaunchPlan(true);
     setLaunchPlanItems(items => [
       ...items,
       {
@@ -490,6 +500,22 @@ export default function OperationsCenterPage() {
     },
   });
 
+  const saveLaunchPlanItems = async (items: LaunchPlanItem[]) => {
+    const r = await authedFetch("/api/admin/launch-plan", {
+      method: "PUT",
+      body: JSON.stringify({ items }),
+    });
+    if (!r.ok) throw new Error("Failed to save launch plan");
+  };
+
+  useEffect(() => {
+    launchPlanItemsRef.current = launchPlanItems;
+  }, [launchPlanItems]);
+
+  useEffect(() => {
+    hasLoadedLaunchPlanRef.current = hasLoadedLaunchPlan;
+  }, [hasLoadedLaunchPlan]);
+
   useEffect(() => {
     if (!hasLoadedLaunchPlan) return;
     const timeout = window.setTimeout(() => {
@@ -497,6 +523,23 @@ export default function OperationsCenterPage() {
     }, 700);
     return () => window.clearTimeout(timeout);
   }, [hasLoadedLaunchPlan, launchPlanItems]);
+
+  useEffect(() => {
+    const flushPendingLaunchPlan = () => {
+      if (!hasLoadedLaunchPlanRef.current) return;
+      void saveLaunchPlanItems(launchPlanItemsRef.current);
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") flushPendingLaunchPlan();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", flushPendingLaunchPlan);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", flushPendingLaunchPlan);
+      flushPendingLaunchPlan();
+    };
+  }, []);
 
   const generateLaunchPlanMutation = useMutation({
     mutationFn: async () => {
@@ -673,7 +716,7 @@ export default function OperationsCenterPage() {
   const getPriorityColor = (priority: string) => {
     const colors: Record<string, string> = {
       urgent: "bg-red-100 text-red-800",
-      high: "bg-orange-100 text-orange-800",
+      high: "bg-red-100 text-red-800",
       medium: "bg-yellow-100 text-yellow-800",
       low: "bg-green-100 text-green-800",
     };
@@ -737,7 +780,7 @@ export default function OperationsCenterPage() {
                     assigneeEmail: assigneeEmail === "unassigned" ? "" : assigneeEmail,
                   })}
                 >
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger className={`mt-1 ${getLaunchPlanPriorityClass(item.priority)}`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
