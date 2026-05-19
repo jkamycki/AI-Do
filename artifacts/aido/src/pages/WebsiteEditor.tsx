@@ -316,12 +316,19 @@ export default function WebsiteEditor() {
     setCreating(true);
     try {
       const r = await authFetch("/api/website/create", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
-      if (!r.ok) throw new Error("Failed to create");
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({} as { error?: string }));
+        throw new Error(err.error || `Failed to create website (${r.status})`);
+      }
       const body = (await r.json()) as WebsiteRecord;
       setRecord(body);
       toast({ title: "Wedding website created!" });
-    } catch {
-      toast({ title: "Failed to create website", variant: "destructive" });
+    } catch (err) {
+      toast({
+        title: "Failed to create website",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setCreating(false);
     }

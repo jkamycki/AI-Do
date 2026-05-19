@@ -102,6 +102,11 @@ function autoGenerateText(profile: WeddingProfile): WebsiteCustomText {
   };
 }
 
+function defaultHeroImageFor(profile: WeddingProfile): string {
+  const profilePhoto = (profile.invitationPhotoUrl ?? "").trim();
+  return profilePhoto || DEFAULT_WEBSITE_HERO_IMAGE;
+}
+
 function serialize(w: typeof weddingWebsites.$inferSelect) {
   return {
     id: w.id,
@@ -216,7 +221,17 @@ router.post("/website/create", requireAuth, async (req, res) => {
       .from(weddingWebsites)
       .where(eq(weddingWebsites.profileId, profile.id))
       .limit(1);
-    if (existing) return res.json(serialize(existing));
+    if (existing) {
+      if (!existing.heroImage?.trim()) {
+        const [updated] = await db
+          .update(weddingWebsites)
+          .set({ heroImage: defaultHeroImageFor(profile), lastUpdated: new Date() })
+          .where(and(eq(weddingWebsites.id, existing.id), eq(weddingWebsites.profileId, profile.id)))
+          .returning();
+        return res.json(serialize(updated ?? existing));
+      }
+      return res.json(serialize(existing));
+    }
 
     const slug = await generateUniqueSlug(profile);
     const customText = autoGenerateText(profile);
@@ -227,7 +242,7 @@ router.post("/website/create", requireAuth, async (req, res) => {
         profileId: profile.id,
         slug,
         customText,
-        heroImage: profile.invitationPhotoUrl ?? DEFAULT_WEBSITE_HERO_IMAGE,
+        heroImage: defaultHeroImageFor(profile),
       })
       .returning();
 
