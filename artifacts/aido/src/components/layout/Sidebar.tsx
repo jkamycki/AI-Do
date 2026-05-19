@@ -440,7 +440,7 @@ export function Sidebar() {
         onChange={handlePicChange}
       />
 
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-background dark:bg-card border-b border-primary/10 dark:border-primary/20 z-50 flex items-center px-3">
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-card border-b border-primary/10 dark:border-primary/20 z-50 flex items-center px-3">
         <Button
           variant="ghost"
           size="icon"
