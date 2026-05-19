@@ -22,6 +22,7 @@ import {
 import { Heart, CheckCircle2, XCircle, AlertCircle, Loader2, User, Download, MapPin } from "lucide-react";
 import { AnimatedInvitationShell } from "@/components/InvitationCustomization/AnimatedInvitationShell";
 import { photoEffectToFilter } from "@/components/InvitationCustomization/AiPreviewComponents";
+import { DEFAULT_RSVP_MEAL_OPTIONS, normalizeMealOptions, type MealOption } from "@/lib/mealOptions";
 
 const schema = z.object({
   attendance: z.enum(["attending", "declined"], { required_error: "Please select Accept or Decline." }),
@@ -46,13 +47,6 @@ const schema = z.object({
 );
 
 type FormData = z.infer<typeof schema>;
-
-const MEAL_OPTIONS = [
-  { value: "chicken", label: "Chicken" },
-  { value: "steak", label: "Steak" },
-  { value: "fish", label: "Fish" },
-  { value: "none", label: "None / No preference" },
-];
 
 interface RsvpInfo {
   guestName: string;
@@ -93,6 +87,7 @@ interface RsvpInfo {
   fontColor: string | null;
   askHotelOnRsvp?: boolean;
   preferredHotelBlockId?: number | null;
+  mealOptions?: MealOption[];
   hotelOptions?: Array<{
     id: number;
     hotelName: string;
@@ -208,6 +203,7 @@ export default function Rsvp() {
   const selectedHotelRoomCount = form.watch("bookedHotelRoomCount");
   const selectedHotel = info?.hotelOptions?.find((hotel) => String(hotel.id) === selectedHotelBlockId) ?? null;
   const showHotelQuestion = !!info?.askHotelOnRsvp && (info.hotelOptions?.length ?? 0) > 0;
+  const mealOptions = normalizeMealOptions(info?.mealOptions ?? DEFAULT_RSVP_MEAL_OPTIONS);
 
   useEffect(() => {
     if (!showHotelQuestion || !info?.preferredHotelBlockId) return;
@@ -307,7 +303,7 @@ export default function Rsvp() {
       })()
     : null;
 
-  const mealLabel = (val?: string) => MEAL_OPTIONS.find(o => o.value === val)?.label ?? val ?? "—";
+  const mealLabel = (val?: string) => mealOptions.find(o => o.value === val)?.label ?? val ?? "—";
 
   const venueCityStateZip = [
     info?.venueCity,
@@ -852,7 +848,7 @@ export default function Rsvp() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {MEAL_OPTIONS.map(o => (
+                              {mealOptions.map(o => (
                                 <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                               ))}
                             </SelectContent>
@@ -957,7 +953,7 @@ export default function Rsvp() {
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                    {MEAL_OPTIONS.map(o => (
+                                    {mealOptions.map(o => (
                                       <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                                     ))}
                                   </SelectContent>

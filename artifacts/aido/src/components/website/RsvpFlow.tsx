@@ -3,6 +3,7 @@ import { apiFetch, authFetch } from "@/lib/authFetch";
 import { Loader2, Search, Check, X, Heart } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { WebsiteRendererPayload } from "./WebsiteRenderer";
+import { DEFAULT_RSVP_MEAL_OPTIONS, normalizeMealOptions } from "@/lib/mealOptions";
 
 interface GuestMatch {
   id: number;
@@ -88,6 +89,7 @@ export function RsvpFlow({
     ? data.customText._rsvpHotelBlockId
     : "";
   const allHotelOptions = data.hotelOptions ?? [];
+  const mealOptions = normalizeMealOptions(data.mealOptions ?? DEFAULT_RSVP_MEAL_OPTIONS);
   const hotelOptions = preferredHotelId
     ? [...allHotelOptions].sort((a, b) => (String(a.id) === preferredHotelId ? -1 : String(b.id) === preferredHotelId ? 1 : 0))
     : allHotelOptions;
@@ -515,10 +517,9 @@ export function RsvpFlow({
                       style={inputBase}
                     >
                       <option value="">{t("rsvp.meal_select_placeholder", { defaultValue: "-- choose a meal --" })}</option>
-                      <option value="Chicken">{t("rsvp.meal_chicken", { defaultValue: "Chicken" })}</option>
-                      <option value="Fish">{t("rsvp.meal_fish", { defaultValue: "Fish" })}</option>
-                      <option value="Beef/Steak">{t("rsvp.meal_beef", { defaultValue: "Beef/Steak" })}</option>
-                      <option value="Vegetarian">{t("rsvp.meal_vegetarian", { defaultValue: "Vegetarian" })}</option>
+                      {mealOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -556,10 +557,9 @@ export function RsvpFlow({
                           style={inputBase}
                         >
                           <option value="">{t("rsvp.meal_select_placeholder", { defaultValue: "-- choose a meal --" })}</option>
-                          <option value="Chicken">{t("rsvp.meal_chicken", { defaultValue: "Chicken" })}</option>
-                          <option value="Fish">{t("rsvp.meal_fish", { defaultValue: "Fish" })}</option>
-                          <option value="Beef/Steak">{t("rsvp.meal_beef", { defaultValue: "Beef/Steak" })}</option>
-                          <option value="Vegetarian">{t("rsvp.meal_vegetarian", { defaultValue: "Vegetarian" })}</option>
+                          {mealOptions.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
                         </select>
                       </div>
                     </>
@@ -752,10 +752,9 @@ export function RsvpFlow({
                       style={inputBase}
                     >
                       <option value="">{t("rsvp.meal_select_placeholder", { defaultValue: "-- choose a meal --" })}</option>
-                      <option value="Chicken">{t("rsvp.meal_chicken", { defaultValue: "Chicken" })}</option>
-                      <option value="Fish">{t("rsvp.meal_fish", { defaultValue: "Fish" })}</option>
-                      <option value="Beef/Steak">{t("rsvp.meal_beef", { defaultValue: "Beef/Steak" })}</option>
-                      <option value="Vegetarian">{t("rsvp.meal_vegetarian", { defaultValue: "Vegetarian" })}</option>
+                      {mealOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -793,10 +792,9 @@ export function RsvpFlow({
                           style={inputBase}
                         >
                           <option value="">{t("rsvp.meal_select_placeholder", { defaultValue: "-- choose a meal --" })}</option>
-                          <option value="Chicken">{t("rsvp.meal_chicken", { defaultValue: "Chicken" })}</option>
-                          <option value="Fish">{t("rsvp.meal_fish", { defaultValue: "Fish" })}</option>
-                          <option value="Beef/Steak">{t("rsvp.meal_beef", { defaultValue: "Beef/Steak" })}</option>
-                          <option value="Vegetarian">{t("rsvp.meal_vegetarian", { defaultValue: "Vegetarian" })}</option>
+                          {mealOptions.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
                         </select>
                       </div>
                     </>

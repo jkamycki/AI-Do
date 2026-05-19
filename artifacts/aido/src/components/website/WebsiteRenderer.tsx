@@ -121,6 +121,7 @@ export interface WebsiteRendererPayload {
     state?: string | null;
     zip?: string | null;
   }>;
+  mealOptions?: Array<{ value: string; label: string }>;
   galleryImages: Array<{ url: string; caption?: string; order: number }>;
   heroImages?: Array<{ url: string; order: number }>;
   heroImage: string | null;

@@ -13,6 +13,7 @@ export interface ColorPalette {
   digitalInvitationPhotoZoom?: number;
   rsvpAskHotel?: boolean;
   rsvpHotelBlockId?: number | null;
+  rsvpMealOptions?: Array<{ value: string; label: string }>;
 }
 
 export interface ElementOverride {

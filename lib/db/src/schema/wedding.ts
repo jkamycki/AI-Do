@@ -616,6 +616,7 @@ export const invitationCustomizations = pgTable("invitation_customizations", {
     digitalInvitationPhotoZoom?: number;
     rsvpAskHotel?: boolean;
     rsvpHotelBlockId?: number | null;
+    rsvpMealOptions?: Array<{ value: string; label: string }>;
   } | null>(),
   selectedPalette: text("selected_palette"), // 'romantic', 'modern', 'luxury', 'minimalist', 'seasonal'
   backgroundColor: text("background_color"),

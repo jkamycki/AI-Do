@@ -26,6 +26,7 @@ import {
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { qrPngDataUrl } from "@/lib/localQr";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -40,6 +41,8 @@ import {
   Printer,
   FileDown,
   Send,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import type {
@@ -48,6 +51,12 @@ import type {
   PreviewTab,
   WeddingProfileData,
 } from "@/types/invitations";
+import {
+  DEFAULT_RSVP_MEAL_OPTIONS,
+  normalizeMealOptions,
+  optionValueFromLabel,
+  type MealOption,
+} from "@/lib/mealOptions";
 
 interface RouteParams {
   [key: string]: string | undefined;
@@ -283,6 +292,8 @@ export default function InvitationCustomizationPage({
   const [rsvpByDate, setRsvpByDate] = useState<string>("");
   const [rsvpAskHotel, setRsvpAskHotel] = useState(false);
   const [rsvpHotelBlockId, setRsvpHotelBlockId] = useState<string>("all");
+  const [rsvpMealOptions, setRsvpMealOptions] = useState<MealOption[]>(DEFAULT_RSVP_MEAL_OPTIONS);
+  const [newMealOption, setNewMealOption] = useState("");
   const [savingMessage, setSavingMessage] = useState(false);
 
   // ── Misc ──────────────────────────────────────────────────────────────────
@@ -316,6 +327,7 @@ export default function InvitationCustomizationPage({
     rsvpByDate,
     rsvpAskHotel,
     rsvpHotelBlockId,
+    rsvpMealOptions,
   });
   const saveTheDateBlobUrlRef = useRef<string | null>(null);
   const digitalInvitationBlobUrlRef = useRef<string | null>(null);
@@ -421,6 +433,7 @@ export default function InvitationCustomizationPage({
     rsvpByDate,
     rsvpAskHotel,
     rsvpHotelBlockId,
+    rsvpMealOptions,
   };
 
   useEffect(() => {
@@ -450,6 +463,7 @@ export default function InvitationCustomizationPage({
         digitalInvitationPhotoZoom: v.digitalInvitationPhotoZoom,
         rsvpAskHotel: v.rsvpAskHotel,
         rsvpHotelBlockId: v.rsvpHotelBlockId === "all" ? null : Number(v.rsvpHotelBlockId),
+        rsvpMealOptions: normalizeMealOptions(v.rsvpMealOptions),
       };
       const body = JSON.stringify({
         profileId: v.profileId,
@@ -614,6 +628,7 @@ export default function InvitationCustomizationPage({
           ? String(customization.customColors.rsvpHotelBlockId)
           : "all",
       );
+      setRsvpMealOptions(normalizeMealOptions(customization.customColors?.rsvpMealOptions));
 
       // Restore the per-invitation custom design fields from the saved record.
       const fallbackAccent =
@@ -907,6 +922,7 @@ export default function InvitationCustomizationPage({
       digitalInvitationPhotoZoom,
       rsvpAskHotel,
       rsvpHotelBlockId: rsvpHotelBlockId === "all" ? null : Number(rsvpHotelBlockId),
+      rsvpMealOptions: normalizeMealOptions(rsvpMealOptions),
     };
     return {
       profileId,
@@ -1010,6 +1026,7 @@ export default function InvitationCustomizationPage({
     rsvpByDate,
     rsvpAskHotel,
     rsvpHotelBlockId,
+    rsvpMealOptions,
   ]);
 
   // Flush any pending position changes to the DB when navigating away so the
@@ -1030,6 +1047,7 @@ export default function InvitationCustomizationPage({
           digitalInvitationPhotoEffect: v.digitalInvitationPhotoEffect,
           rsvpAskHotel: v.rsvpAskHotel,
           rsvpHotelBlockId: v.rsvpHotelBlockId === "all" ? null : Number(v.rsvpHotelBlockId),
+          rsvpMealOptions: normalizeMealOptions(v.rsvpMealOptions),
         },
       };
       authFetch("/api/invitation-customizations", {
@@ -1738,6 +1756,99 @@ export default function InvitationCustomizationPage({
                     </p>
                   )}
                 </div>
+
+                <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
+                  <div>
+                    <p className="text-sm font-medium">Meal choices</p>
+                    <p className="text-xs text-muted-foreground">
+                      These options appear in the RSVP form for guests and plus-ones.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    {rsvpMealOptions.map((option, index) => (
+                      <div key={option.value} className="flex items-center gap-2">
+                        <Input
+                          value={option.label}
+                          onChange={(event) => {
+                            const label = event.target.value;
+                            setRsvpMealOptions((options) =>
+                              options.map((item, itemIndex) =>
+                                itemIndex === index ? { ...item, label } : item,
+                              ),
+                            );
+                          }}
+                          className="h-9 text-sm"
+                          aria-label={`Meal choice ${index + 1}`}
+                        />
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="h-9 w-9 shrink-0"
+                          onClick={() =>
+                            setRsvpMealOptions((options) =>
+                              options.length > 1 ? options.filter((_, itemIndex) => itemIndex !== index) : options,
+                            )
+                          }
+                          disabled={rsvpMealOptions.length <= 1}
+                          aria-label={`Remove ${option.label || "meal choice"}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={newMealOption}
+                      onChange={(event) => setNewMealOption(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key !== "Enter") return;
+                        event.preventDefault();
+                        const label = newMealOption.trim();
+                        if (!label) return;
+                        setRsvpMealOptions((options) => [
+                          ...options,
+                          { value: optionValueFromLabel(label, options), label },
+                        ]);
+                        setNewMealOption("");
+                      }}
+                      placeholder="Add meal choice"
+                      className="h-9 text-sm"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-9 gap-2 shrink-0"
+                      onClick={() => {
+                        const label = newMealOption.trim();
+                        if (!label) return;
+                        setRsvpMealOptions((options) => [
+                          ...options,
+                          { value: optionValueFromLabel(label, options), label },
+                        ]);
+                        setNewMealOption("");
+                      }}
+                      disabled={!newMealOption.trim() || rsvpMealOptions.length >= 12}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add
+                    </Button>
+                  </div>
+
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 px-2 text-xs"
+                    onClick={() => setRsvpMealOptions(DEFAULT_RSVP_MEAL_OPTIONS)}
+                  >
+                    Reset meal choices
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -2033,6 +2144,7 @@ export default function InvitationCustomizationPage({
                         hotelOptions={hotelBlocks}
                         selectedHotelBlockId={rsvpHotelBlockId}
                         askHotel={rsvpAskHotel}
+                        mealOptions={normalizeMealOptions(rsvpMealOptions)}
                         scale={flowScale}
                       />
                     </div>

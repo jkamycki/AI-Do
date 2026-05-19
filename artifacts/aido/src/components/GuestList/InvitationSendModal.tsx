@@ -21,6 +21,7 @@ import type { TextOverrides, ColorPalette } from "@/types/invitations";
 import { SaveTheDatePreview } from "@/components/InvitationCustomization/SaveTheDatePreview";
 import { AiSaveDatePreview, AiDigitalInvitationPreview, type CustomColors } from "@/components/InvitationCustomization/AiPreviewComponents";
 import { evaluateCustomDesignCompleteness } from "@/lib/customDesignValidation";
+import { DEFAULT_RSVP_MEAL_OPTIONS, normalizeMealOptions } from "@/lib/mealOptions";
 
 interface Customization {
   useGeneratedInvitation: boolean;
@@ -105,13 +106,6 @@ function formatWeddingDate(dateStr: string | null | undefined, opts?: Intl.DateT
 
 const cormorant = "'Cormorant Garamond', 'Playfair Display', Georgia, serif";
 const jakarta = "'Plus Jakarta Sans', system-ui, sans-serif";
-
-const MEAL_OPTIONS = [
-  { value: "chicken", label: "Chicken" },
-  { value: "steak", label: "Steak" },
-  { value: "fish", label: "Fish" },
-  { value: "none", label: "None / No preference" },
-];
 
 const rsvpSchema = z.object({
   attendance: z.enum(["attending", "declined"], { required_error: "Please select Accept or Decline." }),
@@ -297,7 +291,7 @@ function RsvpSimulation({ guest, profile }: { guest: Guest; profile: Profile }) 
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {MEAL_OPTIONS.map(o => (
+                            {mealOptions.map(o => (
                               <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                             ))}
                           </SelectContent>
@@ -380,7 +374,7 @@ function RsvpSimulation({ guest, profile }: { guest: Guest; profile: Profile }) 
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                    {MEAL_OPTIONS.map(o => (
+                                    {mealOptions.map(o => (
                                       <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                                     ))}
                                   </SelectContent>
@@ -693,6 +687,7 @@ export function InvitationSendModal({
     typeof window !== "undefined" && websiteRecord?.slug && websiteRecord?.published
       ? `${window.location.origin}/w/${websiteRecord.slug}#rsvp`
       : null;
+  const mealOptions = normalizeMealOptions(customization?.customColors?.rsvpMealOptions ?? DEFAULT_RSVP_MEAL_OPTIONS);
 
   const completeness = evaluateCustomDesignCompleteness({
     customization: customization

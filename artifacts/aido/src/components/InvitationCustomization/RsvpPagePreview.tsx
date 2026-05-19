@@ -3,6 +3,7 @@ import { CheckCircle2, XCircle, Heart, MapPin, Download } from "lucide-react";
 import { AuthMediaImage } from "@/components/AuthMediaImage";
 import type { ColorPalette } from "@/types/invitations";
 import type { PhotoPosition } from "@/components/InvitationCustomization/AiPreviewComponents";
+import { DEFAULT_RSVP_MEAL_OPTIONS, type MealOption } from "@/lib/mealOptions";
 
 interface RsvpPagePreviewProps {
   colors: ColorPalette;
@@ -41,6 +42,7 @@ interface RsvpPagePreviewProps {
   }>;
   selectedHotelBlockId?: string;
   askHotel?: boolean;
+  mealOptions?: MealOption[];
 }
 
 function isLightColor(hex: string): boolean {
@@ -131,6 +133,7 @@ export function RsvpPagePreview({
   hotelOptions = [],
   selectedHotelBlockId = "all",
   askHotel = false,
+  mealOptions = DEFAULT_RSVP_MEAL_OPTIONS,
 }: RsvpPagePreviewProps) {
   const [attendance, setAttendance] = useState<"attending" | "declined">("attending");
   const [mealChoice, setMealChoice] = useState("");
@@ -481,10 +484,9 @@ export function RsvpPagePreview({
                       <p style={{ fontFamily: bodyFont, fontSize: 9 * sc, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: textFaint, marginBottom: 6 }}>Meal Preference</p>
                       <select value={mealChoice} onChange={(event) => setMealChoice(event.target.value)} style={controlStyle}>
                         <option value="">Select an option...</option>
-                        <option value="chicken">Chicken</option>
-                        <option value="fish">Fish</option>
-                        <option value="vegetarian">Vegetarian</option>
-                        <option value="kids">Kids meal</option>
+                        {mealOptions.map((option) => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
                       </select>
                     </div>
 
@@ -596,7 +598,7 @@ export function RsvpPagePreview({
             padding: "10px 14px", marginBottom: 10,
           }}>
             <p style={{ fontFamily: bodyFont, fontSize: 9 * sc, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: textFaint, marginBottom: 4 }}>Meal Preference</p>
-            <p style={{ fontFamily: bodyFont, fontSize: 11 * sc, color: textMuted }}>Select an option…</p>
+            <p style={{ fontFamily: bodyFont, fontSize: 11 * sc, color: textMuted }}>{mealOptions[0]?.label || "Select an option..."}</p>
           </div>
 
           {sortedHotelOptions.length > 0 && (

@@ -193,6 +193,7 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
     heroImage: row.heroImage,
     portalParty,
     hotelOptions,
+    mealOptions: normalizeMealOptions(invitationColors.rsvpMealOptions),
     couple: {
       partner1Name: profile.partner1Name,
       partner2Name: profile.partner2Name,
@@ -527,6 +528,31 @@ router.post("/website/public/:slug/unlock", websiteUnlockLimiter, async (req, re
 // (GET requests) or falls back to the request body (POST requests). This
 // keeps passwords out of query strings, URLs, and server logs.
 import type { Request as ExpressRequest } from "express";
+
+const DEFAULT_RSVP_MEAL_OPTIONS = [
+  { value: "chicken", label: "Chicken" },
+  { value: "steak", label: "Steak" },
+  { value: "fish", label: "Fish" },
+  { value: "none", label: "None / No preference" },
+];
+
+function normalizeMealOptions(value: unknown): Array<{ value: string; label: string }> {
+  if (!Array.isArray(value)) return DEFAULT_RSVP_MEAL_OPTIONS;
+  const seen = new Set<string>();
+  const options = value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const raw = item as { value?: unknown; label?: unknown };
+      const optionValue = typeof raw.value === "string" ? raw.value.trim() : "";
+      const label = typeof raw.label === "string" ? raw.label.trim() : "";
+      if (!optionValue || !label || seen.has(optionValue)) return null;
+      seen.add(optionValue);
+      return { value: optionValue, label };
+    })
+    .filter((item): item is { value: string; label: string } => !!item)
+    .slice(0, 12);
+  return options.length ? options : DEFAULT_RSVP_MEAL_OPTIONS;
+}
 
 async function resolvePublishedSite(slug: string, req: ExpressRequest) {
   const [row] = await db

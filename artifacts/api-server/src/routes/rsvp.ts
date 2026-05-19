@@ -22,6 +22,31 @@ const DEFAULT_COLORS = {
   neutral: "#F2E2C6",
 };
 
+const DEFAULT_RSVP_MEAL_OPTIONS = [
+  { value: "chicken", label: "Chicken" },
+  { value: "steak", label: "Steak" },
+  { value: "fish", label: "Fish" },
+  { value: "none", label: "None / No preference" },
+];
+
+function normalizeMealOptions(value: unknown): Array<{ value: string; label: string }> {
+  if (!Array.isArray(value)) return DEFAULT_RSVP_MEAL_OPTIONS;
+  const seen = new Set<string>();
+  const options = value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const raw = item as { value?: unknown; label?: unknown };
+      const optionValue = typeof raw.value === "string" ? raw.value.trim() : "";
+      const label = typeof raw.label === "string" ? raw.label.trim() : "";
+      if (!optionValue || !label || seen.has(optionValue)) return null;
+      seen.add(optionValue);
+      return { value: optionValue, label };
+    })
+    .filter((item): item is { value: string; label: string } => !!item)
+    .slice(0, 12);
+  return options.length ? options : DEFAULT_RSVP_MEAL_OPTIONS;
+}
+
 // Allow only known/safe font families in email HTML to avoid injection.
 const ALLOWED_FONTS = new Set([
   "Georgia", "Playfair Display", "Cormorant Garamond", "Great Vibes",
@@ -1580,6 +1605,7 @@ router.get("/rsvp/:token", async (req, res) => {
       askHotelOnRsvp: rsvpAskHotel,
       preferredHotelBlockId,
       hotelOptions: sortedHotelRows,
+      mealOptions: normalizeMealOptions((c?.customColors as Record<string, unknown> | null)?.rsvpMealOptions),
     });
   } catch (err) {
     req.log.error(err, "Failed to get RSVP info");
