@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CheckSquare, Wand2, ClipboardList, Pencil, Trash2, Plus, Check, X, RotateCcw, StickyNote } from "lucide-react";
+import { CheckSquare, Wand2, ClipboardList, Pencil, Trash2, Plus, Check, X, RotateCcw, StickyNote, Download, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Progress } from "@/components/ui/progress";
 
@@ -51,6 +51,7 @@ export default function Checklist() {
   const [noteEditingId, setNoteEditingId] = useState<number | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [planningFocus, setPlanningFocus] = useState("");
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getGetChecklistQueryKey() });
@@ -233,6 +234,47 @@ export default function Checklist() {
     addItem.mutate({ task: newTask.trim(), description: newDescription.trim(), month: addingToMonth });
   }
 
+  const handleDownloadPdf = async () => {
+    if (!checklist?.items?.length) return;
+    setIsDownloadingPdf(true);
+    try {
+      const coupleName = profile ? `${profile.partner2Name} & ${profile.partner1Name}` : undefined;
+      const response = await authFetch(`${API}/api/pdf/checklist`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: checklist.items.map(item => ({
+            month: item.month,
+            task: item.task,
+            description: item.description,
+            isCompleted: item.isCompleted,
+            resolveNote: item.resolveNote,
+          })),
+          coupleName,
+          weddingDate: profile?.weddingDate,
+          venue: profile?.venue,
+          completedCount: completedItems,
+          totalCount: totalItems,
+        }),
+      });
+      if (!response.ok) throw new Error("PDF failed");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "aido-checklist.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: t("checklist.pdf_downloaded", { defaultValue: "Checklist PDF downloaded" }) });
+    } catch {
+      toast({ variant: "destructive", title: t("checklist.pdf_failed_title", { defaultValue: "Download failed" }) });
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
   if (isLoadingChecklist || isLoadingProfile) {
     return (
       <div className="space-y-8 max-w-4xl mx-auto">
@@ -290,6 +332,22 @@ export default function Checklist() {
               </span>
             )}
           </Button>
+          {hasChecklist && (
+            <Button
+              onClick={handleDownloadPdf}
+              disabled={isDownloadingPdf}
+              variant="outline"
+              size="lg"
+              data-testid="btn-download-checklist-pdf"
+            >
+              <span className="flex items-center gap-2">
+                {isDownloadingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                {isDownloadingPdf
+                  ? t("checklist.exporting_pdf", { defaultValue: "Exporting..." })
+                  : t("checklist.download_pdf", { defaultValue: "Download PDF" })}
+              </span>
+            </Button>
+          )}
           {hasChecklist && (
             <Button
               onClick={() => {
