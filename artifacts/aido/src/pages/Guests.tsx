@@ -1335,17 +1335,13 @@ function GuestCollectorCard() {
     });
   };
 
-  const collectorShareMessage = collectorUrl
-    ? `Hi! ${coupleNames} are collecting contact details for their wedding invitations. Please fill out this quick form when you have a moment:\n\n${collectorUrl}\n\nThank you!`
-    : "";
-
   const smsSeparator =
     typeof navigator !== "undefined" &&
     /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent)
       ? "&"
       : "?";
   const smsShareHref = collectorUrl
-    ? `sms:${smsSeparator}body=${encodeURIComponent(collectorShareMessage)}`
+    ? `sms:${smsSeparator}body=${encodeURIComponent(collectorUrl)}`
     : undefined;
 
   return (
