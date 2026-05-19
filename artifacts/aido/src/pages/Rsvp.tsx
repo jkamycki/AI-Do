@@ -420,29 +420,46 @@ export default function Rsvp() {
               {accepted && weddingDateStr && (
                 <p style={{ fontFamily: jakarta, color: MUTED, fontSize: "0.75rem", marginTop: "0.75rem" }}>{weddingDateStr}{info.venue ? ` · ${info.venue}` : ""}</p>
               )}
+            </div>
+            <div style={{ borderTop: `1px solid ${CARD_BDR}`, paddingTop: "1.25rem" }}>
+              <img
+                src="/logo.png"
+                alt="A.IDO"
+                style={{ height: 34, width: "auto", objectFit: "contain", margin: "0 auto 0.75rem" }}
+              />
               {info.websiteUrl && (
-                <a
-                  href={info.websiteUrl}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginTop: "1.25rem",
-                    padding: "0.75rem 1rem",
-                    borderRadius: 8,
-                    background: GOLD,
-                    color: isLightHex(GOLD) ? "#1a1a1a" : "#ffffff",
-                    fontFamily: jakarta,
-                    fontSize: "0.75rem",
-                    fontWeight: 800,
-                    letterSpacing: "0.12em",
-                    textTransform: "uppercase",
-                    textDecoration: "none",
-                  }}
-                >
-                  View Wedding Website
-                </a>
+                <>
+                  <p style={{ fontFamily: jakarta, color: MUTED, fontSize: "0.75rem", lineHeight: 1.5, marginBottom: "0.85rem" }}>
+                    Visit the wedding website for details, directions, travel notes, and updates.
+                  </p>
+                  <a
+                    href={info.websiteUrl}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "0.75rem 1rem",
+                      borderRadius: 8,
+                      background: GOLD,
+                      color: isLightHex(GOLD) ? "#1a1a1a" : "#ffffff",
+                      fontFamily: jakarta,
+                      fontSize: "0.75rem",
+                      fontWeight: 800,
+                      letterSpacing: "0.12em",
+                      textTransform: "uppercase",
+                      textDecoration: "none",
+                    }}
+                  >
+                    View Wedding Website
+                  </a>
+                </>
               )}
+              <p style={{ fontFamily: jakarta, color: MUTED, fontSize: "0.68rem", lineHeight: 1.5, marginTop: info.websiteUrl ? "1rem" : "0.5rem" }}>
+                Planning your own wedding?{" "}
+                <a href="https://aidowedding.net" style={{ color: GOLD, textDecoration: "none", fontWeight: 700 }}>
+                  Try A.IDO free
+                </a>
+              </p>
             </div>
           </div>
         </div>
@@ -1155,10 +1172,6 @@ export default function Rsvp() {
         Planning your own wedding?{" "}
         <a href="https://aidowedding.net" style={{ color: GOLD, textDecoration: "none", fontWeight: 600 }}>
           Try A.IDO free
-        </a>
-        {" "}|{" "}
-        <a href="/help/updates-improvements" style={{ color: GOLD, textDecoration: "none", fontWeight: 600 }}>
-          Updates & Improvements
         </a>
       </p>
 
