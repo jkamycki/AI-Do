@@ -87,6 +87,27 @@ export const uploadUrlLimiter = rateLimit({
 // Resets at midnight UTC. Stored in-memory (resets on server restart, which
 // is acceptable for a beta where restarts are occasional).
 
+// Public forms can be reached without a signed-in session. Keep the limits
+// generous enough for real guests and support users, but low enough to stop
+// spam loops and email abuse.
+export const publicFormLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 12,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+  message: { error: "Too many submissions. Please wait a few minutes and try again." },
+});
+
+export const publicRsvpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 40,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+  message: { error: "Too many RSVP attempts. Please wait a few minutes and try again." },
+});
+
 const DAILY_SUPPORT_LIMIT = 120;
 const DAILY_ARIA_LIMIT = 60;
 

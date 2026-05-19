@@ -1,4 +1,4 @@
-const ACL_POLICY_METADATA_KEY = "aclpolicy";
+export const ACL_POLICY_METADATA_KEY = "aclpolicy";
 
 export interface StorageFile {
   name: string;

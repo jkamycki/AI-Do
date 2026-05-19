@@ -2,10 +2,16 @@ import { Router } from "express";
 import { db, guests, weddingProfiles } from "@workspace/db";
 import { eq, and, or, ilike } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
+import { publicRsvpLimiter } from "../middlewares/rateLimiter";
 import { hasMinRole, resolveCallerRole, resolveProfile } from "../lib/workspaceAccess";
 import crypto from "crypto";
 
 const router = Router();
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function cleanTextField(value: unknown, max: number): string {
+  return typeof value === "string" ? value.trim().slice(0, max) : "";
+}
 
 function escapeHtml(value: string): string {
   return value
@@ -231,7 +237,7 @@ router.get("/guest-collect/:token", async (req, res) => {
   }
 });
 
-router.post("/guest-collect/:token", async (req, res) => {
+router.post("/guest-collect/:token", publicRsvpLimiter, async (req, res) => {
   try {
     const profiles = await db
       .select()
@@ -244,14 +250,23 @@ router.post("/guest-collect/:token", async (req, res) => {
     }
 
     const { name, email, phone, address, mealChoice, dietaryNotes, plusOne, plusOneFirstName, plusOneLastName } = req.body;
+    const trimmedName = cleanTextField(name, 120);
+    const trimmedEmail = cleanTextField(email, 254).toLowerCase() || null;
+    const cleanPhone = cleanTextField(phone, 40) || null;
+    const cleanAddress = cleanTextField(address, 500) || null;
+    const cleanMeal = cleanTextField(mealChoice, 80) || null;
+    const cleanDietary = cleanMeal === "other" ? cleanTextField(dietaryNotes, 500) || null : null;
+    const cleanPlusOneFirstName = cleanTextField(plusOneFirstName, 80);
+    const cleanPlusOneLastName = cleanTextField(plusOneLastName, 80);
 
-    if (!name || typeof name !== "string" || name.trim().length === 0) {
+    if (!trimmedName) {
       return res.status(400).json({ error: "Your name is required." });
+    }
+    if (trimmedEmail && !EMAIL_RE.test(trimmedEmail)) {
+      return res.status(400).json({ error: "Enter a valid email address." });
     }
 
     const profileId = profiles[0].id;
-    const trimmedName = name.trim();
-    const trimmedEmail = email?.trim() || null;
 
     const dupConditions = [ilike(guests.name, trimmedName)];
     if (trimmedEmail) dupConditions.push(ilike(guests.email, trimmedEmail));
@@ -265,13 +280,8 @@ router.post("/guest-collect/:token", async (req, res) => {
       return res.status(409).json({ error: "It looks like your info is already in the system — no need to submit again!" });
     }
 
-    const cleanMeal = typeof mealChoice === "string" && mealChoice.trim() ? mealChoice.trim() : null;
-    const cleanDietary = cleanMeal === "other" && typeof dietaryNotes === "string" && dietaryNotes.trim()
-      ? dietaryNotes.trim().slice(0, 500)
-      : null;
-
     const plusOneName = plusOne
-      ? [plusOneFirstName?.trim(), plusOneLastName?.trim()].filter(Boolean).join(" ") || null
+      ? [cleanPlusOneFirstName, cleanPlusOneLastName].filter(Boolean).join(" ") || null
       : null;
 
     const [created] = await db
@@ -280,8 +290,8 @@ router.post("/guest-collect/:token", async (req, res) => {
         profileId,
         name: trimmedName,
         email: trimmedEmail,
-        phone: phone?.trim() || null,
-        address: address?.trim() || null,
+        phone: cleanPhone,
+        address: cleanAddress,
         rsvpStatus: "pending",
         mealChoice: cleanMeal,
         dietaryNotes: cleanDietary,

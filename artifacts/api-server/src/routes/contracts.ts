@@ -761,7 +761,10 @@ ${analysisRaw.slice(0, 12000)}`;
 
     if (selectedVendor) {
       try {
-        const storedUrl = await storage.uploadObjectEntityFile(buffer, displayName, mimetype);
+        const storedUrl = await storage.uploadObjectEntityFile(buffer, displayName, mimetype, {
+          owner: scope.userId,
+          visibility: "private",
+        });
         const contractFile = {
           name: displayName,
           url: storedUrl,
@@ -789,7 +792,10 @@ ${analysisRaw.slice(0, 12000)}`;
     if (syncToDocumentLibrary) {
       try {
         const documentFileName = cleanDocumentFileName(displayName);
-        const fileUrl = await storage.uploadObjectEntityFile(buffer, documentFileName, mimetype);
+        const fileUrl = await storage.uploadObjectEntityFile(buffer, documentFileName, mimetype, {
+          owner: scope.userId,
+          visibility: "private",
+        });
         await db.insert(documents).values({
           profileId: scope.profileId,
           userId: scope.userId,

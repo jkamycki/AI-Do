@@ -418,7 +418,10 @@ router.post("/documents/upload", requireAuth, upload.single("file"), async (req,
     suggestedVendorId: matchingVendor?.id ?? analysis.fields.suggestedVendorId ?? null,
     suggestedVendorName: matchingVendor?.name ?? analysis.fields.suggestedVendorName ?? analysis.fields.vendorName ?? null,
   };
-  const fileUrl = await storage.uploadObjectEntityFile(req.file.buffer, originalName, req.file.mimetype);
+  const fileUrl = await storage.uploadObjectEntityFile(req.file.buffer, originalName, req.file.mimetype, {
+    owner: profile.userId,
+    visibility: "private",
+  });
 
   const inserted = await db
     .insert(documents)

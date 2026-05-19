@@ -196,7 +196,7 @@ export function RsvpFlow({
     try {
       const url = previewMode
         ? `/api/website/preview/guests/${m.id}`
-        : `/api/website/public/${encodeURIComponent(slug)}/guests/${m.id}`;
+        : `/api/website/public/${encodeURIComponent(slug)}/guests/${m.id}?name=${encodeURIComponent(m.name)}`;
       const r = previewMode ? await authFetch(url) : await apiFetch(url, { headers: passwordHeader });
       if (!r.ok) {
         setError("Couldn't load your details. Please try again.");
@@ -230,6 +230,7 @@ export function RsvpFlow({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           guestId: guest.id,
+          guestName: guest.name,
           attendance,
           mealChoice: mealChoice || undefined,
           plusOne: attendance === "attending" ? plusOne : false,

@@ -10,6 +10,7 @@ import { Readable, PassThrough } from "stream";
 import { randomUUID } from "crypto";
 import {
   type StorageFile,
+  ACL_POLICY_METADATA_KEY,
   ObjectAclPolicy,
   ObjectPermission,
   canAccessObject,
@@ -209,6 +210,7 @@ export class ObjectStorageService {
     buffer: Buffer,
     fileName: string,
     contentType: string,
+    aclPolicy?: ObjectAclPolicy,
   ): Promise<string> {
     const prefix = getPrivatePrefix();
     const objectId = randomUUID();
@@ -221,6 +223,7 @@ export class ObjectStorageService {
         Key: key,
         Body: buffer,
         ContentType: contentType,
+        Metadata: aclPolicy ? { [ACL_POLICY_METADATA_KEY]: JSON.stringify(aclPolicy) } : undefined,
       }),
     );
 

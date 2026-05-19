@@ -6,10 +6,16 @@ import { randomUUID } from "crypto";
 import { clerkClient } from "@clerk/express";
 import { sendEmail, FROM_EMAIL } from "../lib/resend";
 import { getSupportInboxAddresses, buildSupportThreadAddress, ensureContactThreadToken } from "../lib/supportInbox";
+import { publicFormLimiter } from "../middlewares/rateLimiter";
 
 const OWNER_EMAILS = [process.env.ADMIN_EMAIL ?? "kamyckijoseph@gmail.com"];
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const router = Router();
+
+function cleanTextField(value: unknown, max: number): string {
+  return typeof value === "string" ? value.trim().slice(0, max) : "";
+}
 
 const FEEDBACK_CATEGORY_LABELS: Record<string, string> = {
   bug: "Bug Report",
@@ -135,7 +141,7 @@ router.post("/help/feedback", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/help/suggestion", async (req, res) => {
+router.post("/help/suggestion", publicFormLimiter, async (req, res) => {
   try {
     const { name, email, message, source } = req.body as {
       name?: string;
@@ -143,19 +149,26 @@ router.post("/help/suggestion", async (req, res) => {
       message?: string;
       source?: string;
     };
+    const cleanName = cleanTextField(name, 120);
+    const cleanEmail = cleanTextField(email, 254).toLowerCase();
+    const cleanMessage = cleanTextField(message, 4000);
+    const cleanSource = cleanTextField(source, 120) || "Updates & Improvements suggestion";
 
-    if (!name?.trim() || !email?.trim() || !message?.trim()) {
+    if (!cleanName || !cleanEmail || !cleanMessage) {
       return res.status(400).json({ error: "Name, email, and suggestion are required." });
+    }
+    if (!EMAIL_RE.test(cleanEmail)) {
+      return res.status(400).json({ error: "Enter a valid email address." });
     }
 
     const [saved] = await db
       .insert(contactMessages)
       .values({
         userId: null,
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        subject: source?.trim() || "Updates & Improvements suggestion",
-        message: message.trim(),
+        name: cleanName,
+        email: cleanEmail,
+        subject: cleanSource,
+        message: cleanMessage,
         isRead: false,
         isResolved: false,
       })
@@ -356,7 +369,7 @@ router.patch("/help/messages/feedback/:id/resolve", requireAuth, async (req, res
   }
 });
 
-router.post("/help/support-ticket", async (req, res) => {
+router.post("/help/support-ticket", publicFormLimiter, async (req, res) => {
   try {
     const { name, email, category, subject, message } = req.body as {
       name: string;
@@ -365,9 +378,17 @@ router.post("/help/support-ticket", async (req, res) => {
       subject: string;
       message: string;
     };
+    const cleanName = cleanTextField(name, 120);
+    const cleanEmail = cleanTextField(email, 254).toLowerCase();
+    const cleanCategory = cleanTextField(category, 80);
+    const cleanSubject = cleanTextField(subject, 160);
+    const cleanMessage = cleanTextField(message, 8000);
 
-    if (!name?.trim() || !email?.trim() || !category?.trim() || !subject?.trim() || !message?.trim()) {
+    if (!cleanName || !cleanEmail || !cleanCategory || !cleanSubject || !cleanMessage) {
       return res.status(400).json({ error: "All fields are required." });
+    }
+    if (!EMAIL_RE.test(cleanEmail)) {
+      return res.status(400).json({ error: "Enter a valid email address." });
     }
 
     const ticketNumber = `TKT-${Date.now()}-${randomUUID().slice(0, 8).toUpperCase()}`;
@@ -377,11 +398,11 @@ router.post("/help/support-ticket", async (req, res) => {
       .insert(supportTickets)
       .values({
         ticketNumber,
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        category: category.trim(),
-        subject: subject.trim(),
-        message: message.trim(),
+        name: cleanName,
+        email: cleanEmail,
+        category: cleanCategory,
+        subject: cleanSubject,
+        message: cleanMessage,
         status: "open",
         priority: "medium",
         userId,
@@ -393,10 +414,10 @@ router.post("/help/support-ticket", async (req, res) => {
     // thread from the same admin interface.
     await db.insert(contactMessages).values({
       userId,
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      subject: `[${ticketNumber}] ${subject.trim()}`,
-      message: message.trim(),
+      name: cleanName,
+      email: cleanEmail,
+      subject: `[${ticketNumber}] ${cleanSubject}`,
+      message: cleanMessage,
       isRead: false,
       isResolved: false,
     });
@@ -405,35 +426,35 @@ router.post("/help/support-ticket", async (req, res) => {
     sendEmail({
       to: OWNER_EMAILS[0],
       from: FROM_EMAIL,
-      replyTo: email.trim().toLowerCase(),
-      subject: `[${ticketNumber}] New Support Ticket: ${subject.trim().slice(0, 80)}`,
+      replyTo: cleanEmail,
+      subject: `[${ticketNumber}] New Support Ticket: ${cleanSubject.slice(0, 80)}`,
       text: [
         `New support ticket submitted via A.IDO`,
         ``,
         `Ticket: ${ticketNumber}`,
-        `From:   ${name.trim()} <${email.trim()}>`,
-        `Category: ${category.trim()}`,
-        `Subject: ${subject.trim()}`,
+        `From:   ${cleanName} <${cleanEmail}>`,
+        `Category: ${cleanCategory}`,
+        `Subject: ${cleanSubject}`,
         ``,
         `--- Conversation ---`,
-        message.trim(),
+        cleanMessage,
       ].join("\n"),
     }).catch(() => {});
 
     // Confirm receipt to the user
     sendEmail({
-      to: email.trim().toLowerCase(),
+      to: cleanEmail,
       replyTo: OWNER_EMAILS[0],
       subject: `We received your support request [${ticketNumber}]`,
       text: [
-        `Hi ${name.trim()},`,
+        `Hi ${cleanName},`,
         ``,
         `Thanks for reaching out to A.IDO support. We've received your message and will get back to you as soon as possible.`,
         ``,
         `Your ticket number is: ${ticketNumber}`,
         ``,
         `--- Your conversation ---`,
-        message.trim(),
+        cleanMessage,
         ``,
         `— The A.IDO Team`,
       ].join("\n"),

@@ -6,6 +6,7 @@ import { db, weddingWebsites, weddingProfiles, guests, websiteRsvps, weddingPart
 import type { WeddingProfile, WebsiteSectionsEnabled, WebsiteCustomText, WebsiteGalleryImage, WebsiteHeroImage, WebsiteTextStyles, WebsiteTextPositions } from "@workspace/db";
 import { and, eq, ilike, desc, not } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
+import { publicRsvpLimiter } from "../middlewares/rateLimiter";
 import { hasMinRole, resolveCallerRole, resolveProfile } from "../lib/workspaceAccess";
 
 const scryptAsync = promisify(scrypt);
@@ -536,6 +537,10 @@ const DEFAULT_RSVP_MEAL_OPTIONS = [
   { value: "none", label: "None / No preference" },
 ];
 
+function normalizeGuestLookupName(value: unknown): string {
+  return typeof value === "string" ? value.trim().toLowerCase().replace(/\s+/g, " ") : "";
+}
+
 function normalizeMealOptions(value: unknown): Array<{ value: string; label: string }> {
   if (!Array.isArray(value)) return DEFAULT_RSVP_MEAL_OPTIONS;
   const seen = new Set<string>();
@@ -648,7 +653,7 @@ router.get("/website/public/:slug/guests/search", guestSearchLimiter, async (req
 
 // GET /api/website/public/:slug/guests/:guestId — fetch the single guest's
 // current RSVP details so the form can pre-fill (for guests editing their reply).
-router.get("/website/public/:slug/guests/:guestId", async (req, res) => {
+router.get("/website/public/:slug/guests/:guestId", guestSearchLimiter, async (req, res) => {
   try {
     const slug = String(req.params.slug ?? "").toLowerCase();
     const guestId = parseInt(String(req.params.guestId), 10);
@@ -663,6 +668,9 @@ router.get("/website/public/:slug/guests/:guestId", async (req, res) => {
       .where(and(eq(guests.id, guestId), eq(guests.profileId, r.site.profileId)))
       .limit(1);
     if (!guest) return res.status(404).json({ error: "Guest not found" });
+    if (normalizeGuestLookupName(req.query.name) !== normalizeGuestLookupName(guest.name)) {
+      return res.status(403).json({ error: "Please select your name from the guest search again." });
+    }
 
     res.json({
       id: guest.id,
@@ -754,7 +762,7 @@ router.get("/website/preview/guests/:guestId", requireAuth, async (req, res) => 
 // but wants to RSVP anyway. Create a new guest record marked as self-added so
 // the couple can manually verify them in the portal, and record the RSVP in
 // the same shape as the existing flow above.
-router.post("/website/public/:slug/rsvp/self-add", async (req, res) => {
+router.post("/website/public/:slug/rsvp/self-add", publicRsvpLimiter, async (req, res) => {
   try {
     const slug = String(req.params.slug ?? "").toLowerCase();
     const r = await resolvePublishedSite(slug, req);
@@ -856,7 +864,7 @@ router.post("/website/public/:slug/rsvp/self-add", async (req, res) => {
 // POST /api/website/public/:slug/rsvp — submit/update RSVP for a guest.
 // Same write semantics as POST /rsvp/:token but identifies the guest by
 // guestId (returned from the search endpoint) instead of a token.
-router.post("/website/public/:slug/rsvp", async (req, res) => {
+router.post("/website/public/:slug/rsvp", publicRsvpLimiter, async (req, res) => {
   try {
     const slug = String(req.params.slug ?? "").toLowerCase();
     const r = await resolvePublishedSite(slug, req);
@@ -864,6 +872,7 @@ router.post("/website/public/:slug/rsvp", async (req, res) => {
 
     const {
       guestId,
+      guestName,
       attendance,
       mealChoice,
       plusOne,
@@ -876,6 +885,7 @@ router.post("/website/public/:slug/rsvp", async (req, res) => {
       message,
     } = (req.body ?? {}) as {
       guestId?: number;
+      guestName?: string;
       attendance?: string;
       mealChoice?: string;
       plusOne?: boolean;
@@ -899,6 +909,9 @@ router.post("/website/public/:slug/rsvp", async (req, res) => {
       .where(and(eq(guests.id, guestId), eq(guests.profileId, r.site.profileId)))
       .limit(1);
     if (!guest) return res.status(404).json({ error: "Guest not found on this guest list." });
+    if (normalizeGuestLookupName(guestName) !== normalizeGuestLookupName(guest.name)) {
+      return res.status(403).json({ error: "Please select your name from the guest search again." });
+    }
 
     const normalizeMeal = (val: unknown): string | null => {
       if (typeof val !== "string") return null;
@@ -955,7 +968,7 @@ router.post("/website/public/:slug/rsvp", async (req, res) => {
 // ---------- POST /api/website/rsvp/:slug ----------
 // Public — no auth required. Guests submit their RSVP.
 
-router.post("/website/rsvp/:slug", async (req, res) => {
+router.post("/website/rsvp/:slug", publicRsvpLimiter, async (req, res) => {
   try {
     const slug = String(req.params.slug ?? "").toLowerCase();
     if (!slug) return res.status(400).json({ error: "Slug required" });
@@ -976,6 +989,10 @@ router.post("/website/rsvp/:slug", async (req, res) => {
     };
 
     if (!name?.trim()) return res.status(400).json({ error: "Name is required" });
+    const cleanEmail = typeof email === "string" ? email.trim().slice(0, 200).toLowerCase() : "";
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return res.status(400).json({ error: "Email address looks invalid." });
+    }
     const att = attending === "no" ? "no" : attending === "maybe" ? "maybe" : "yes";
 
     const [created] = await db
@@ -983,7 +1000,7 @@ router.post("/website/rsvp/:slug", async (req, res) => {
       .values({
         websiteId: row.id,
         name: name.trim().slice(0, 120),
-        email: email?.trim().slice(0, 200) || null,
+        email: cleanEmail || null,
         attending: att,
         plusOneCount: Math.max(0, Math.min(10, Number(plusOneCount) || 0)),
         dietaryRestrictions: dietaryRestrictions?.trim().slice(0, 500) || null,
