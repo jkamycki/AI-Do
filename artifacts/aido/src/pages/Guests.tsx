@@ -1335,6 +1335,19 @@ function GuestCollectorCard() {
     });
   };
 
+  const collectorShareMessage = collectorUrl
+    ? `Hi! ${coupleNames} are collecting contact details for their wedding invitations. Please fill out this quick form when you have a moment:\n\n${collectorUrl}\n\nThank you!`
+    : "";
+
+  const smsSeparator =
+    typeof navigator !== "undefined" &&
+    /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent)
+      ? "&"
+      : "?";
+  const smsShareHref = collectorUrl
+    ? `sms:${smsSeparator}body=${encodeURIComponent(collectorShareMessage)}`
+    : undefined;
+
   return (
     <Card className="border-primary/20 bg-primary/5 shadow-sm">
       <CardHeader className="pb-3">
@@ -1424,6 +1437,19 @@ function GuestCollectorCard() {
 
             {/* Share buttons */}
             <div className="flex flex-wrap gap-2">
+              {smsShareHref && (
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="sm:hidden border-primary/20 bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
+                >
+                  <a href={smsShareHref}>
+                    <MessageSquare className="h-3.5 w-3.5" /> Text guest
+                  </a>
+                </Button>
+              )}
+
               <Button
                 variant="outline"
                 size="sm"
