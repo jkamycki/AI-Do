@@ -100,7 +100,8 @@ const PRESET_TAGS = [
 
 // ─── Auth headers helper ──────────────────────────────────────────────────────
 
-const _API = import.meta.env.VITE_API_URL ?? "";
+const _API = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+const STORAGE_BASE_PATH = `${_API}/api/storage`;
 function applyApiBase(url: string): string {
   return url.startsWith("/") && _API ? `${_API}${url}` : url;
 }
@@ -236,11 +237,12 @@ function SortableImageCard({
         <span>Remove</span>
       </button>
 
-      {!image.analysis && tags.length === 0 && (
+      {!image.analysis && (
         <button
           onClick={onAnalyze}
           disabled={analyzing}
-          className="absolute bottom-2 left-2 right-2 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg bg-primary/85 text-primary-foreground text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-60 z-10"
+          className="absolute left-2 right-2 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg bg-primary/90 text-primary-foreground text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-60 z-20 shadow-lg"
+          style={{ bottom: tags.length > 0 ? 42 : 8 }}
           title="Analyze with AI"
         >
           {analyzing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
@@ -313,6 +315,7 @@ export default function MoodBoard() {
 
   // ─── Upload hook ──────────────────────────────────────────────────────────
   const { uploadFile, isUploading } = useUpload({
+    basePath: STORAGE_BASE_PATH,
     getToken,
     onError: (err: Error) => {
       const msg = err?.message ?? "";
@@ -353,24 +356,36 @@ export default function MoodBoard() {
   };
 
   // ─── Save helper (debounced) ──────────────────────────────────────────────
-  const save = useCallback(async (data: MoodBoardData) => {
+  const saveNow = useCallback(async (data: MoodBoardData) => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    setSavePending(true);
+    try {
+      const response = await authFetch("/api/mood-board", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error("Failed to save mood board");
+      qc.invalidateQueries({ queryKey: ["mood-board", activeWorkspace?.profileId ?? "default"] });
+    } catch {
+      toast({ title: "Mood board could not be saved", variant: "destructive" });
+    } finally {
+      setSavePending(false);
+    }
+  }, [activeWorkspace?.profileId, qc, toast]);
+
+  const save = useCallback((data: MoodBoardData) => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     setSavePending(true);
-    saveTimerRef.current = setTimeout(async () => {
-      try {
-        await authFetch("/api/mood-board", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(data),
-        });
-        qc.invalidateQueries({ queryKey: ["mood-board", activeWorkspace?.profileId ?? "default"] });
-      } finally {
-        setSavePending(false);
-      }
+    saveTimerRef.current = setTimeout(() => {
+      void saveNow(data);
     }, 1000);
-  }, [activeWorkspace?.profileId, qc]);
+  }, [saveNow]);
 
   const update = useCallback((patch: Partial<MoodBoardData>) => {
     setLocalBoard(prev => {
@@ -409,11 +424,11 @@ export default function MoodBoard() {
         name: file.name,
       };
       const next = { ...current, images: [...current.images, newImage] };
-      save(next);
+      void saveNow(next);
       return next;
     });
     toast({ title: "Image added to your mood board" });
-  }, [uploadFile, board, save, toast]);
+  }, [uploadFile, board, saveNow, toast]);
 
   const advanceQueue = useCallback(() => {
     setCropQueue(prev => prev.slice(1));
