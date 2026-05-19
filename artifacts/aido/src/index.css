@@ -407,13 +407,6 @@
       linear-gradient(145deg, #170812 0%, #24101e 52%, #10070e 100%);
   }
 
-  :root:not(.dark) .portal-shell {
-    --background: 36 100% 97%;
-    --muted: 37 58% 91%;
-    --border: 35 42% 84%;
-    --input: 35 42% 84%;
-  }
-
   h1,
   h2,
   h3,
