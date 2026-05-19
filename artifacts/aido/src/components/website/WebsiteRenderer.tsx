@@ -716,7 +716,7 @@ function EditableIcon({
           onMouseDown={(e) => e.stopPropagation()}
         >
           <div className="flex items-center gap-2 mb-2">
-            <label className="text-[11px] uppercase tracking-wide opacity-70">
+            <label className="text-[11px] font-semibold uppercase tracking-wide">
               Colour
             </label>
             <input
@@ -727,7 +727,7 @@ function EditableIcon({
             />
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-[11px] uppercase tracking-wide opacity-70">
+            <label className="text-[11px] font-semibold uppercase tracking-wide">
               Size
             </label>
             <input
@@ -738,7 +738,7 @@ function EditableIcon({
               onChange={(e) => ctx.onTextChange(sizeKey, e.target.value)}
               className="flex-1"
             />
-            <span className="text-[11px] tabular-nums w-8 text-right opacity-70">
+            <span className="text-[11px] font-medium tabular-nums w-8 text-right">
               {size}px
             </span>
           </div>
@@ -748,14 +748,14 @@ function EditableIcon({
               ctx.onTextChange(colorKey, "");
               ctx.onTextChange(sizeKey, "");
             }}
-            className="mt-2 text-[11px] underline opacity-60 hover:opacity-100"
+            className="mt-2 text-[11px] font-medium underline opacity-90 hover:opacity-100"
           >
             Reset
           </button>
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="mt-2 ml-3 text-[11px] underline opacity-60 hover:opacity-100"
+            className="mt-2 ml-3 text-[11px] font-medium underline opacity-90 hover:opacity-100"
           >
             Done
           </button>
@@ -825,7 +825,7 @@ function CountdownTimer({
             onStyleChange={
               ctx.onStyleChange ? (s) => ctx.onStyleChange!(key, s) : undefined
             }
-            className="text-[10px] sm:text-xs uppercase tracking-widest mt-2 opacity-70"
+            className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest mt-2"
           />
         </div>
       ))}
@@ -1127,7 +1127,7 @@ function RsvpSection({
       />
       {(ctx.editable || data.customText.rsvp_deadline) && (
         <p
-          className="text-center text-sm mb-8 opacity-70"
+          className="text-center text-sm font-medium mb-8"
           style={{ color: labelColor }}
         >
           Please RSVP by{" "}
@@ -1169,21 +1169,21 @@ function RsvpSection({
             }
             defaultValue="We'll send you more details closer to the day."
             onCommit={() => {}}
-            className="text-sm text-center max-w-sm"
-            style={{ color: labelColor, opacity: 0.75 }}
+            className="text-sm font-medium text-center max-w-sm"
+            style={{ color: labelColor }}
           />
         </div>
       ) : (
         <form onSubmit={submit} className="max-w-lg mx-auto space-y-4">
           {ctx.editable && (
-            <p className="rounded-md border px-3 py-2 text-center text-xs opacity-70" style={{ color: labelColor, borderColor: `${data.colorPalette.primary}33` }}>
+            <p className="rounded-md border px-3 py-2 text-center text-xs font-medium" style={{ color: labelColor, borderColor: `${data.colorPalette.primary}33` }}>
               Editor preview only. Guests can use this form on the published site.
             </p>
           )}
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label
-                className="block text-xs font-medium mb-1.5 opacity-70"
+                className="block text-xs font-semibold mb-1.5"
                 style={{ color: labelColor }}
               >
                 Name *
@@ -1198,7 +1198,7 @@ function RsvpSection({
             </div>
             <div>
               <label
-                className="block text-xs font-medium mb-1.5 opacity-70"
+                className="block text-xs font-semibold mb-1.5"
                 style={{ color: labelColor }}
               >
                 Email
@@ -1215,7 +1215,7 @@ function RsvpSection({
 
           <div>
             <label
-              className="block text-xs font-medium mb-2 opacity-70"
+              className="block text-xs font-semibold mb-2"
               style={{ color: labelColor }}
             >
               Will you attend?
@@ -1251,7 +1251,7 @@ function RsvpSection({
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <label
-                  className="block text-xs font-medium mb-1.5 opacity-70"
+                  className="block text-xs font-semibold mb-1.5"
                   style={{ color: labelColor }}
                 >
                   Additional guests
@@ -1270,7 +1270,7 @@ function RsvpSection({
               </div>
               <div>
                 <label
-                  className="block text-xs font-medium mb-1.5 opacity-70"
+                  className="block text-xs font-semibold mb-1.5"
                   style={{ color: labelColor }}
                 >
                   Dietary restrictions
@@ -1288,7 +1288,7 @@ function RsvpSection({
           {attending !== "no" && showHotelQuestion && (
             <div className="rounded-lg border p-4 space-y-3" style={{ borderColor: `${data.colorPalette.primary}44`, background: `${data.colorPalette.primary}0d` }}>
               <div>
-                <label className="block text-xs font-medium mb-1.5 opacity-70" style={{ color: labelColor }}>
+                <label className="block text-xs font-semibold mb-1.5" style={{ color: labelColor }}>
                   Will you need a hotel room?
                 </label>
                 <select
@@ -1309,7 +1309,7 @@ function RsvpSection({
 
               {effectiveHotelNeeded && (
                 <div className="space-y-2">
-                  <label className="block text-xs font-medium mb-1.5 opacity-70" style={{ color: labelColor }}>
+                  <label className="block text-xs font-semibold mb-1.5" style={{ color: labelColor }}>
                     Hotel block
                   </label>
                   <select
@@ -1326,7 +1326,7 @@ function RsvpSection({
                     ))}
                   </select>
 
-                  <label className="block text-xs font-medium mb-1.5 opacity-70" style={{ color: labelColor }}>
+                  <label className="block text-xs font-semibold mb-1.5" style={{ color: labelColor }}>
                     How many rooms?
                   </label>
                   <select
@@ -1343,7 +1343,7 @@ function RsvpSection({
                     <div className="rounded-lg border p-3 text-sm" style={{ color: labelColor, borderColor: `${data.colorPalette.primary}33`, background: `${data.colorPalette.background}cc` }}>
                       <p className="font-semibold">{selectedHotel.hotelName || "Hotel block"}</p>
                       {websiteHotelAddressLine(selectedHotel) && (
-                        <p className="mt-1 text-xs opacity-75">{websiteHotelAddressLine(selectedHotel)}</p>
+                        <p className="mt-1 text-xs font-medium">{websiteHotelAddressLine(selectedHotel)}</p>
                       )}
                       {selectedHotel.groupName && (
                         <p className="mt-2 text-xs opacity-85"><span className="font-semibold">Wedding block:</span> {selectedHotel.groupName}</p>
@@ -1369,7 +1369,7 @@ function RsvpSection({
 
           <div>
             <label
-              className="block text-xs font-medium mb-1.5 opacity-70"
+              className="block text-xs font-semibold mb-1.5"
               style={{ color: labelColor }}
             >
               Message to the couple (optional)
@@ -2409,7 +2409,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                         ? (s) => ctx.onStyleChange!("_travelVenueLabel", s)
                         : undefined
                     }
-                    className="text-[11px] uppercase tracking-wider opacity-70"
+                    className="text-[11px] font-semibold uppercase tracking-wider"
                     style={{ color: labelColor }}
                   />
                   <div
@@ -2420,7 +2420,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   </div>
                   {data.couple.location && (
                     <div
-                      className="text-sm opacity-75"
+                      className="text-sm font-medium"
                       style={{ color: labelColor }}
                     >
                       {data.couple.location}
@@ -2463,7 +2463,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                         ? (s) => ctx.onStyleChange!("_travelHotelLabel", s)
                         : undefined
                     }
-                    className="text-[11px] uppercase tracking-wider opacity-70"
+                    className="text-[11px] font-semibold uppercase tracking-wider"
                     style={{ color: labelColor }}
                   />
                   <EditableText
@@ -2484,7 +2484,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                       ctx.editable ? "Address (street, city, state)" : ""
                     }
                     onCommit={(v) => ctx.onTextChange("_hotelAddress", v)}
-                    className="text-sm opacity-75"
+                    className="text-sm font-medium"
                     style={{ color: labelColor }}
                     {...withBaseColor(tsp(ctx, "_hotelAddress"), labelColor)}
                   />
@@ -3274,7 +3274,7 @@ function WeddingParty({
         value={data.customText.weddingParty_subtitle ?? ""}
         defaultValue="Meet our family & friends standing with us"
         onCommit={(v) => ctx.onTextChange("weddingParty_subtitle", v)}
-        className="block text-center text-base sm:text-lg max-w-2xl mx-auto mb-12 opacity-80"
+        className="block text-center text-base sm:text-lg font-medium max-w-2xl mx-auto mb-12"
         style={{
           color: labelColor,
           fontFamily: elementFontStack(
@@ -3288,7 +3288,7 @@ function WeddingParty({
       />
       {members.length === 0 ? (
         <p
-          className="text-center text-sm opacity-60"
+          className="text-center text-sm font-medium"
           style={{ color: labelColor }}
         >
           No wedding party members yet — add some from the sidebar.
@@ -3320,7 +3320,7 @@ function WeddingParty({
                 </h3>
                 {brideSide.length === 0 ? (
                   <p
-                    className="text-center text-xs opacity-50"
+                    className="text-center text-xs font-medium"
                     style={{ color: labelColor }}
                   >
                     {ctx.editable
@@ -3363,7 +3363,7 @@ function WeddingParty({
                 </h3>
                 {groomSide.length === 0 ? (
                   <p
-                    className="text-center text-xs opacity-50"
+                    className="text-center text-xs font-medium"
                     style={{ color: labelColor }}
                   >
                     {ctx.editable
@@ -3452,7 +3452,7 @@ function Footer({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           value={data.customText._footerText ?? ""}
           defaultValue={dateStr}
           onCommit={(v) => ctx.onTextChange("_footerText", v)}
-          className="text-sm opacity-80 whitespace-pre-line"
+          className="text-sm font-medium whitespace-pre-line"
           {...tsp(ctx, "_footerText")}
         />
       </footer>
@@ -3471,7 +3471,7 @@ function BrandingFooter() {
         rel="noopener"
         className="inline-flex items-center gap-2.5 text-sm hover:text-white transition-colors group"
       >
-        <span className="opacity-70">Built with</span>
+        <span className="font-medium">Built with</span>
         <img src="/logo.png" alt="A.IDO" className="h-10 w-auto object-contain" />
         <span
           className="font-semibold tracking-wide text-base"
@@ -3479,7 +3479,7 @@ function BrandingFooter() {
         >
           A.IDO
         </span>
-        <span className="opacity-50 group-hover:opacity-80 transition-opacity">
+        <span className="font-medium opacity-90 group-hover:opacity-100 transition-opacity">
           — Plan your wedding too →
         </span>
       </a>
@@ -3520,7 +3520,7 @@ function BrandingFooter() {
           Data Handling
         </a>
       </nav>
-      <p className="text-[11px] opacity-60 max-w-2xl mx-auto leading-relaxed">
+      <p className="text-[11px] opacity-85 max-w-2xl mx-auto leading-relaxed">
         © {year} A.IDO. All rights reserved. A.IDO is the platform that hosts
         this wedding website. Photos, names, schedules, and other content shown
         here are provided by the wedding couple and are their sole
@@ -3668,7 +3668,7 @@ function TopNav({
   const active = pageMode ? currentSection : scrollActive;
 
   const renderItem = (it: { id: string; label: string }) => {
-    const className = `relative pb-1 font-semibold transition-colors hover:opacity-80 ${active === it.id ? "" : "opacity-70"}`;
+    const className = `relative pb-1 font-semibold transition-colors hover:opacity-100 ${active === it.id ? "" : "opacity-90"}`;
     const style = {
       color: data.customText._navLinkColor || data.colorPalette.text,
       borderBottom:
