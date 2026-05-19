@@ -16,6 +16,21 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#x27;");
 }
 
+function buildRequestOrigin(req: import("express").Request): string {
+  const proto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0]?.trim() || req.protocol;
+  const rawHost = (req.headers["x-forwarded-host"] as string)?.split(",")[0]?.trim() || req.get("host") || "";
+  const safeProto = proto === "https" ? "https" : "http";
+  const fallbackHost = (process.env.APP_ORIGIN ?? "aidowedding.net").replace(/^https?:\/\//, "").replace(/\/$/, "");
+  const safeHost = /^[a-zA-Z0-9.\-:]+$/.test(rawHost) ? rawHost : fallbackHost;
+  return `${safeProto}://${safeHost}`;
+}
+
+function buildFrontendOrigin(req: import("express").Request): string {
+  const fromEnv = (process.env.FRONTEND_URL ?? process.env.PUBLIC_APP_URL)?.trim();
+  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  return buildRequestOrigin(req);
+}
+
 router.post("/guest-collect/generate", requireAuth, async (req, res) => {
   try {
     const callerRole = await resolveCallerRole(req);
@@ -66,6 +81,73 @@ router.post("/guest-collect/regenerate", requireAuth, async (req, res) => {
 });
 
 router.get("/guest-collect/:token/preview", async (req, res) => {
+  try {
+    const profiles = await db
+      .select()
+      .from(weddingProfiles)
+      .where(eq(weddingProfiles.guestCollectionToken, req.params.token))
+      .limit(1);
+
+    if (!profiles.length) {
+      return res.status(404).send("<h1>Link not found</h1>");
+    }
+
+    const p = profiles[0];
+    const name1 = p.partner1Name ?? "Partner 1";
+    const name2 = p.partner2Name ?? "Partner 2";
+    const title = `${name1} & ${name2} - Contact Info Request`;
+    const description = `${name1} & ${name2} are collecting mailing addresses for their wedding invitations. Tap to share your contact info.`;
+
+    const frontendOrigin = buildFrontendOrigin(req);
+    const formUrl = `${frontendOrigin}/collect/${req.params.token}`;
+    const previewUrl = `${frontendOrigin}/api/guest-collect/${req.params.token}/preview`;
+    const imageUrl = `${frontendOrigin}/opengraph.jpg`;
+
+    const safeTitle = escapeHtml(title);
+    const safeDescription = escapeHtml(description);
+    const safeFormUrl = escapeHtml(formUrl);
+    const safePreviewUrl = escapeHtml(previewUrl);
+    const safeImageUrl = escapeHtml(imageUrl);
+    const safeImageAlt = escapeHtml(`A.IDO guest contact collector for ${name1} and ${name2}`);
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${safeTitle}</title>
+  <link rel="canonical" href="${safePreviewUrl}" />
+  <meta name="description" content="${safeDescription}" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="${safePreviewUrl}" />
+  <meta property="og:title" content="${safeTitle}" />
+  <meta property="og:description" content="${safeDescription}" />
+  <meta property="og:site_name" content="A.IDO - AI Wedding Planning OS" />
+  <meta property="og:image" content="${safeImageUrl}" />
+  <meta property="og:image:secure_url" content="${safeImageUrl}" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:image:alt" content="${safeImageAlt}" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="${safeTitle}" />
+  <meta name="twitter:description" content="${safeDescription}" />
+  <meta name="twitter:image" content="${safeImageUrl}" />
+  <meta name="twitter:image:alt" content="${safeImageAlt}" />
+  <meta http-equiv="refresh" content="0;url=${safeFormUrl}" />
+</head>
+<body>
+  <script>window.location.replace(${JSON.stringify(formUrl)});</script>
+  <p>Redirecting... <a href="${safeFormUrl}">Click here if you are not redirected</a></p>
+</body>
+</html>`);
+  } catch (err) {
+    req.log.error(err, "Failed to render guest collector link preview");
+    res.status(500).send("Error");
+  }
+});
+
+router.get("/guest-collect/:token/preview-legacy", async (req, res) => {
   try {
     const profiles = await db
       .select()
