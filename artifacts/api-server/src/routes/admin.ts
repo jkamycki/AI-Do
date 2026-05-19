@@ -985,13 +985,23 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
       new Date(b.deletedAt ?? b.joinedAt).getTime() - new Date(a.deletedAt ?? a.joinedAt).getTime()
     );
 
+    const uniqueUserCountByEmail = (items: Array<{ id: string; email: string | null }>) => {
+      const identities = new Set<string>();
+      for (const item of items) {
+        const email = item.email?.trim().toLowerCase();
+        identities.add(email || `id:${item.id}`);
+      }
+      return identities.size;
+    };
+    const uniqueSignedUpCount = uniqueUserCountByEmail([...filtered, ...filteredDeletedUsers]);
+
     res.json({
       users: filtered,
       activeUsers: filtered,
       deletedUsers: filteredDeletedUsers,
       total: filtered.length + filteredDeletedUsers.length,
       summary: {
-        signedUp: filtered.length + filteredDeletedUsers.length,
+        signedUp: uniqueSignedUpCount,
         active: filtered.length,
         onboarded: filtered.filter(u => u.onboarded).length,
         createdProfile: filtered.filter(u => u.hasProfile).length,
