@@ -47,6 +47,8 @@ const pageStyle = {
 const inputClass =
   "h-11 rounded-xl border-[#E6C7D0] bg-white/90 text-[#3B1C2B] placeholder:text-[#9A7B88] shadow-sm focus-visible:border-[#8D294D] focus-visible:ring-[#8D294D]/20";
 
+const AIDO_MARKETING_URL = "https://aidowedding.net?theme=light";
+
 function Logo({ className }: { className?: string }) {
   return (
     <img
@@ -160,9 +162,14 @@ export default function GuestCollect() {
             </div>
           </CardContent>
         </Card>
-        <p className="mt-6 text-xs text-[#6F3E54]">
+        <a
+          href={AIDO_MARKETING_URL}
+          className="mt-6 text-xs text-[#6F3E54] underline-offset-4 hover:underline"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           Powered by <span className="font-semibold text-[#8D294D]">A.IDO</span> - AI Wedding Planning OS
-        </p>
+        </a>
       </div>
     );
   }
@@ -338,9 +345,14 @@ export default function GuestCollect() {
             </CardContent>
           </Card>
 
-          <p className="pb-6 text-center text-xs text-[#6F3E54]">
+          <a
+            href={AIDO_MARKETING_URL}
+            className="block pb-6 text-center text-xs text-[#6F3E54] underline-offset-4 hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             Powered by <span className="font-semibold text-[#8D294D]">A.IDO</span> - AI Wedding Planning OS
-          </p>
+          </a>
         </div>
       </div>
     </div>
