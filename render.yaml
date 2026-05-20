@@ -5,8 +5,8 @@ services:
     region: oregon
     plan: free
     rootDir: .
-    buildCommand: pnpm install --filter '@workspace/api-server...' --frozen-lockfile=false --prod=false && pnpm --filter @workspace/api-server run build
-    startCommand: pnpm --filter @workspace/api-server run start
+    buildCommand: corepack enable && corepack prepare pnpm@10.26.1 --activate && pnpm install --filter '@workspace/api-server...' --frozen-lockfile=false --prod=false && pnpm --filter @workspace/api-server run build
+    startCommand: node --enable-source-maps artifacts/api-server/dist/index.mjs
     healthCheckPath: /api/healthz
     envVars:
       - key: NODE_ENV
@@ -15,3 +15,13 @@ services:
         value: 10000
       - key: FRONTEND_URL
         value: https://ai-do-aido-orlizb7tn-kamyckijoseph-6037s-projects.vercel.app
+      - key: PUBLIC_APP_URL
+        value: https://aidowedding.net
+      - key: DATABASE_URL
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: VITE_CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: INVITATION_SHARE_SECRET
+        sync: false
