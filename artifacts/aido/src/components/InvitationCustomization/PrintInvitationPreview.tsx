@@ -158,8 +158,8 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
               {hasPhoto && (
                 <div
                   style={{
-                    height: isSaveTheDate ? "34%" : "30%",
-                    margin: "18px 0 16px",
+                    height: isSaveTheDate ? "40%" : "36%",
+                    margin: "16px 0 14px",
                     backgroundImage: `url("${photoUrl}")`,
                     backgroundSize: photoBackgroundSize,
                     backgroundRepeat: "no-repeat",
@@ -229,8 +229,8 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
             {hasPhoto && (
               <div
                 style={{
-                  height: isSaveTheDate ? "43%" : "42%",
-                  marginBottom: isSaveTheDate ? 26 : 20,
+                  height: isSaveTheDate ? "49%" : "48%",
+                  marginBottom: isSaveTheDate ? 22 : 18,
                   backgroundImage: `url("${photoUrl}")`,
                   backgroundSize: photoBackgroundSize,
                   backgroundRepeat: "no-repeat",

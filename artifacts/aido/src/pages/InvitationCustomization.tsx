@@ -1168,7 +1168,7 @@ export default function InvitationCustomizationPage({
             const photoX = 48;
             const photoY = y;
             const photoWidth = pageWidth - 96;
-            const photoHeight = isSaveTheDate ? pageHeight * 0.28 : pageHeight * 0.25;
+            const photoHeight = isSaveTheDate ? pageHeight * 0.34 : pageHeight * 0.31;
             const coveredPhoto = await coverImageDataUrl(
               photoDataUrl,
               photoWidth * 3,
@@ -1205,7 +1205,7 @@ export default function InvitationCustomizationPage({
           const photoX = 48;
           const photoY = 48;
           const photoWidth = pageWidth - 96;
-          const photoHeight = isSaveTheDate ? pageHeight * 0.31 : pageHeight * 0.34;
+          const photoHeight = isSaveTheDate ? pageHeight * 0.38 : pageHeight * 0.4;
           const coveredPhoto = await coverImageDataUrl(
             photoDataUrl,
             photoWidth * 3,
@@ -1215,7 +1215,7 @@ export default function InvitationCustomizationPage({
           doc.addImage(coveredPhoto, "JPEG", photoX, photoY, photoWidth, photoHeight);
           doc.setDrawColor(...accent);
           doc.rect(photoX, photoY, photoWidth, photoHeight);
-          y = photoY + photoHeight + (isSaveTheDate ? 34 : 24);
+          y = photoY + photoHeight + (isSaveTheDate ? 26 : 20);
         } else {
           y = pageHeight * 0.2;
         }
