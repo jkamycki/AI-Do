@@ -327,10 +327,14 @@ function ActiveAccountNotice({
   email,
   context,
   onContinue,
+  onSwitch,
+  switching = false,
 }: {
   email: string;
   context: "sign-in" | "sign-up";
   onContinue: () => void;
+  onSwitch: () => void;
+  switching?: boolean;
 }) {
   const accountLabel = email || "this account";
   return (
@@ -345,26 +349,48 @@ function ActiveAccountNotice({
       }}
     >
       <p style={{ color: "#6F3E54", fontSize: "0.82rem", lineHeight: 1.45, margin: 0 }}>
-        You are currently signed in as <strong>{accountLabel}</strong>. Continue with this account, or use Google below to choose a different account first.
+        You are currently signed in as <strong>{accountLabel}</strong>. Do you want to continue with this account, or switch to another one?
       </p>
-      <button
-        type="button"
-        onClick={onContinue}
-        style={{
-          width: "100%",
-          border: "1px solid rgba(141,41,77,0.32)",
-          borderRadius: "0.55rem",
-          background: "rgba(141,41,77,0.12)",
-          color: "#8D294D",
-          cursor: "pointer",
-          fontSize: "0.84rem",
-          fontWeight: 700,
-          marginTop: "0.65rem",
-          padding: "0.6rem 0.75rem",
-        }}
-      >
-        {context === "sign-up" ? "Continue to dashboard" : `Continue as ${accountLabel}`}
-      </button>
+      <div style={{ display: "grid", gap: "0.55rem", marginTop: "0.65rem" }}>
+        <button
+          type="button"
+          onClick={onContinue}
+          disabled={switching}
+          style={{
+            width: "100%",
+            border: "1px solid rgba(141,41,77,0.32)",
+            borderRadius: "0.55rem",
+            background: "rgba(141,41,77,0.12)",
+            color: "#8D294D",
+            cursor: switching ? "wait" : "pointer",
+            fontSize: "0.84rem",
+            fontWeight: 700,
+            padding: "0.6rem 0.75rem",
+            opacity: switching ? 0.75 : 1,
+          }}
+        >
+          {context === "sign-up" ? "Continue to dashboard" : `Continue as ${accountLabel}`}
+        </button>
+        <button
+          type="button"
+          onClick={onSwitch}
+          disabled={switching}
+          style={{
+            width: "100%",
+            border: "1px solid rgba(177,108,142,0.36)",
+            borderRadius: "0.55rem",
+            background: "#FFFFFF",
+            color: "#6F3E54",
+            cursor: switching ? "wait" : "pointer",
+            fontSize: "0.84rem",
+            fontWeight: 700,
+            padding: "0.6rem 0.75rem",
+            opacity: switching ? 0.75 : 1,
+          }}
+        >
+          {switching ? "Switching..." : "Switch to another account"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -383,6 +409,7 @@ function CustomSignInForm() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [oauthLoading, setOauthLoading] = useState<"oauth_google" | null>(null);
+  const [switchingAccount, setSwitchingAccount] = useState(false);
   const activeEmail =
     user?.primaryEmailAddress?.emailAddress ??
     user?.emailAddresses?.[0]?.emailAddress ??
@@ -511,6 +538,21 @@ function CustomSignInForm() {
     return clerk.client?.signIn ?? null;
   }
 
+  async function handleSwitchAccount() {
+    setError(null);
+    setInfo(null);
+    setSwitchingAccount(true);
+    try {
+      setEmail("");
+      setLoginCode("");
+      setMode("code_request");
+      await clerk.signOut({ redirectUrl: `${basePath}/sign-in` });
+    } catch (err) {
+      setSwitchingAccount(false);
+      setError(extractError(err, "Could not switch accounts. Please try again."));
+    }
+  }
+
   async function handleGoogle() {
     setError(null);
     setOauthLoading("oauth_google");
@@ -610,6 +652,8 @@ function CustomSignInForm() {
           email={activeEmail}
           context="sign-in"
           onContinue={() => setLocation("/dashboard", { replace: true })}
+          onSwitch={handleSwitchAccount}
+          switching={switchingAccount}
         />
       )}
 
@@ -820,6 +864,7 @@ function CustomSignUpForm() {
   const [code, setCode] = useState("");
   const [resendInfo, setResendInfo] = useState<string | null>(null);
   const [oauthLoading, setOauthLoading] = useState<"oauth_google" | "oauth_apple" | null>(null);
+  const [switchingAccount, setSwitchingAccount] = useState(false);
   const activeEmail =
     user?.primaryEmailAddress?.emailAddress ??
     user?.emailAddresses?.[0]?.emailAddress ??
@@ -990,6 +1035,21 @@ function CustomSignUpForm() {
         (err as Error)?.message ||
         "Could not resend code.";
       setError(msg);
+    }
+  }
+
+  async function handleSwitchAccount() {
+    setError(null);
+    setResendInfo(null);
+    setSwitchingAccount(true);
+    try {
+      setEmail("");
+      setCode("");
+      setStep("form");
+      await clerk.signOut({ redirectUrl: `${basePath}/sign-up` });
+    } catch (err) {
+      setSwitchingAccount(false);
+      setError((err as Error)?.message || "Could not switch accounts. Please try again.");
     }
   }
 
@@ -1198,6 +1258,8 @@ function CustomSignUpForm() {
           email={activeEmail}
           context="sign-up"
           onContinue={() => setLocation("/dashboard", { replace: true })}
+          onSwitch={handleSwitchAccount}
+          switching={switchingAccount}
         />
       )}
 
