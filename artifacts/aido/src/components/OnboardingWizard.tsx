@@ -156,15 +156,15 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                 </div>
                 <FormField control={form.control} name="partner2Name" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Bride's Name</FormLabel>
-                    <FormControl><Input placeholder="e.g. Sophia" {...field} /></FormControl>
+                    <FormLabel>{t("profile.bride_name", { defaultValue: "Bride's Full Name" })}</FormLabel>
+                    <FormControl><Input placeholder="e.g. Sophia Anderson" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="partner1Name" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Groom's Name</FormLabel>
-                    <FormControl><Input placeholder="e.g. James" {...field} /></FormControl>
+                    <FormLabel>{t("profile.groom_name", { defaultValue: "Groom's Full Name" })}</FormLabel>
+                    <FormControl><Input placeholder="e.g. James Carter" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />

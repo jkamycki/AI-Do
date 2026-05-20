@@ -388,7 +388,7 @@ export default function Profile() {
                     <FormItem>
                       <FormLabel>{t("profile.bride_name")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Sophia" {...field} data-testid="input-partner2" className="bg-background" />
+                        <Input placeholder="Sophia Anderson" {...field} data-testid="input-partner2" className="bg-background" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -401,7 +401,7 @@ export default function Profile() {
                     <FormItem>
                       <FormLabel>{t("profile.groom_name")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="James" {...field} data-testid="input-partner1" className="bg-background" />
+                        <Input placeholder="James Carter" {...field} data-testid="input-partner1" className="bg-background" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
