@@ -3282,58 +3282,25 @@ export default function Guests({
                 </Button>
               </div>
             </div>
-            <div className="rounded-lg border border-primary/10 bg-white/55 p-3 dark:bg-card/60">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs font-semibold text-primary">
-                  Selected guests
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge
-                    variant="secondary"
-                    className="border-primary/10 bg-primary/10 text-primary"
-                  >
-                    {selectedGuests.length} selected
-                  </Badge>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs text-primary hover:bg-primary/10"
-                    onClick={() => setSelectedGuestIds(new Set(allGuests.map((guest) => guest.id)))}
-                  >
-                    Select all
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                    onClick={() => setSelectedGuestIds(new Set())}
-                  >
-                    Deselect all
-                  </Button>
-                </div>
-              </div>
-              {selectedGuests.length > 0 ? (
-                <div className="mt-2 flex max-h-24 flex-wrap gap-1.5 overflow-y-auto pr-1">
-                  {selectedGuests.map((guest) => (
-                    <button
-                      key={guest.id}
-                      type="button"
-                      onClick={() => toggleGuestSelected(guest.id, false)}
-                      className="inline-flex items-center gap-1 rounded-full border border-primary/15 bg-primary/10 px-2 py-1 text-xs font-medium text-primary hover:bg-primary/15"
-                      title={`Deselect ${guest.name}`}
-                    >
-                      <span>{guest.name}</span>
-                      <XIcon className="h-3 w-3 opacity-70" />
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  No guests selected. Select guests from the list before sending.
-                </p>
-              )}
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-primary hover:bg-primary/10"
+                onClick={() => setSelectedGuestIds(new Set(allGuests.map((guest) => guest.id)))}
+              >
+                Select all
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                onClick={() => setSelectedGuestIds(new Set())}
+              >
+                Deselect all
+              </Button>
             </div>
           </div>
         </div>
@@ -3648,15 +3615,57 @@ export default function Guests({
               <CardTitle className="text-sm font-semibold text-primary">
                 Guest list
               </CardTitle>
-              <Badge
-                variant="secondary"
-                className="w-fit border-primary/15 bg-primary/10 px-3 py-1 text-primary"
-              >
-                {filtered.length === 1
-                  ? t("guests.guest_count", { count: filtered.length })
-                  : t("guests.guests_count", { count: filtered.length })}
-                {rsvpFilter !== "all" || search ? ` ${t("guests.filtered")}` : ""}
-              </Badge>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex w-fit items-center rounded-full border border-primary/15 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/15"
+                    title="View selected guests"
+                  >
+                    {filtered.length === 1
+                      ? t("guests.guest_count", { count: filtered.length })
+                      : t("guests.guests_count", { count: filtered.length })}
+                    {rsvpFilter !== "all" || search ? ` ${t("guests.filtered")}` : ""}
+                  </button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="font-serif text-2xl text-primary">
+                      Selected Guests
+                    </DialogTitle>
+                    <DialogDescription>
+                      {selectedGuests.length} guest{selectedGuests.length !== 1 ? "s" : ""} currently selected.
+                    </DialogDescription>
+                  </DialogHeader>
+                  {selectedGuests.length > 0 ? (
+                    <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
+                      {selectedGuests.map((guest) => (
+                        <div
+                          key={guest.id}
+                          className="flex items-center justify-between gap-3 rounded-lg border border-primary/15 bg-[#FFF8F1] px-3 py-2 text-sm"
+                        >
+                          <span className="min-w-0 flex-1 truncate font-medium text-foreground">
+                            {guest.name}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 shrink-0 px-2 text-xs text-primary hover:bg-primary/10"
+                            onClick={() => toggleGuestSelected(guest.id, false)}
+                          >
+                            Deselect
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="rounded-lg border border-primary/10 bg-[#FFF8F1] p-4 text-sm text-muted-foreground">
+                      No guests selected. Select guests from the list before sending.
+                    </p>
+                  )}
+                </DialogContent>
+              </Dialog>
             </div>
           </CardHeader>
           <CardContent className="p-0">
