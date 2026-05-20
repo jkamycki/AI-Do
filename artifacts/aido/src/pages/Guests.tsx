@@ -3970,15 +3970,15 @@ export default function Guests({
             <div className="hidden sm:block">
                 <Table wrapperClassName="overflow-visible" className="w-full table-fixed text-xs lg:text-sm">
                 <colgroup>
-                  <col className="w-[8%]" />
-                  <col className="w-[15%]" />
-                  <col className="w-[14%]" />
-                  <col className="w-[10%]" />
-                  <col className="w-[9%]" />
-                  <col className="w-[8%]" />
-                  <col className="w-[10%]" />
-                  <col className="w-[13%]" />
                   <col className="w-[7%]" />
+                  <col className="w-[16%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[9%]" />
+                  <col className="w-[9%]" />
+                  <col className="w-[7%]" />
+                  <col className="w-[10%]" />
+                  <col className="w-[10%]" />
+                  <col className="w-[12%]" />
                   <col className="w-[6%]" />
                 </colgroup>
                 <TableHeader className="bg-muted/10">
@@ -4367,11 +4367,14 @@ export default function Guests({
                             </SelectContent>
                           </Select>
                         </TableCell>
-                        <TableCell className="hidden lg:table-cell align-top text-xs lg:text-sm break-words">
+                        <TableCell className="hidden lg:table-cell align-top text-xs lg:text-sm">
                           {g.plusOne ? (
-                            <span className="font-bold text-primary">
-                              ♥ {g.plusOneName || t("guests.plus_one_yes")}
-                            </span>
+                            <div className="inline-flex max-w-full items-start gap-1.5 rounded-full bg-primary/5 px-2 py-1 font-bold leading-snug text-primary">
+                              <span className="shrink-0 leading-snug">♥</span>
+                              <span className="min-w-0 whitespace-normal break-normal hyphens-none [overflow-wrap:normal]">
+                                {g.plusOneName || t("guests.plus_one_yes")}
+                              </span>
+                            </div>
                           ) : (
                             <span className="text-muted-foreground">
                               {t("guests.plus_one_no")}
