@@ -113,6 +113,7 @@ import { useTranslation } from "react-i18next";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { COUNTRIES } from "@/lib/countries";
 import { getAddressFormat } from "@/lib/addressFormat";
+import { publicAppOrigin } from "@/lib/publicUrls";
 
 const RSVP_OPTIONS = [
   {
@@ -1288,7 +1289,7 @@ function GuestCollectorCard() {
   const { data: profile } = useGetProfile();
 
   const collectorUrl = token
-    ? `${window.location.origin}/api/guest-collect/${token}/preview`
+    ? `${publicAppOrigin()}/api/guest-collect/${token}/preview`
     : null;
 
   const coupleNames = profile
@@ -1353,7 +1354,7 @@ function GuestCollectorCard() {
       ? "&"
       : "?";
   const smsShareMessage = collectorUrl
-    ? `${coupleNames} are collecting mailing addresses for their wedding invitations.\n\nPlease share your contact info here:\n${collectorUrl}`
+    ? `${collectorUrl}\n\n${coupleNames} are collecting mailing addresses for their wedding invitations. Please share your contact info here.`
     : "";
   const smsShareHref = collectorUrl
     ? `sms:${smsSeparator}body=${encodeURIComponent(smsShareMessage)}`

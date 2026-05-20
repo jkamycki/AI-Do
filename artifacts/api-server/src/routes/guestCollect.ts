@@ -35,7 +35,8 @@ function buildRequestOrigin(req: import("express").Request): string {
 function buildFrontendOrigin(req: import("express").Request): string {
   const fromEnv = (process.env.FRONTEND_URL ?? process.env.PUBLIC_APP_URL)?.trim();
   if (fromEnv) return fromEnv.replace(/\/$/, "");
-  return buildRequestOrigin(req);
+  const requestOrigin = buildRequestOrigin(req);
+  return requestOrigin.replace("://api.", "://");
 }
 
 router.post("/guest-collect/generate", requireAuth, async (req, res) => {
@@ -164,7 +165,7 @@ router.get("/guest-collect/:token/preview", async (req, res) => {
     const frontendOrigin = buildFrontendOrigin(req);
     const formUrl = `${frontendOrigin}/collect/${req.params.token}`;
     const previewUrl = `${frontendOrigin}/api/guest-collect/${req.params.token}/preview`;
-    const imageUrl = `${frontendOrigin}/opengraph.jpg?v=guest-collector`;
+    const imageUrl = `${frontendOrigin}/opengraph.jpg`;
 
     const safeTitle = escapeHtml(title);
     const safeDescription = escapeHtml(description);
@@ -180,9 +181,12 @@ router.get("/guest-collect/:token/preview", async (req, res) => {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="refresh" content="0; url=${safeFormUrl}" />
   <title>${safeTitle}</title>
   <link rel="canonical" href="${safePreviewUrl}" />
   <meta name="description" content="${safeDescription}" />
+  <meta name="theme-color" content="#FFF7F2" />
+  <meta property="og:locale" content="en_US" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="${safePreviewUrl}" />
   <meta property="og:title" content="${safeTitle}" />
