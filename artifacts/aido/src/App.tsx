@@ -30,6 +30,7 @@ import SeatingChart from "@/pages/SeatingChart";
 import InviteAccept from "@/pages/InviteAccept";
 import GuestCollect from "@/pages/GuestCollect";
 import Rsvp from "@/pages/Rsvp";
+import SharedRsvp from "@/pages/SharedRsvp";
 import SaveTheDate from "@/pages/SaveTheDate";
 import PublicWebsite from "@/pages/PublicWebsite";
 import WebsiteEditor from "@/pages/WebsiteEditor";
@@ -1692,6 +1693,7 @@ function Router() {
       <Route path="/invite/save-the-date/:token">{(params) => <Redirect to={`/save-the-date/${params.token}`} />}</Route>
       <Route path="/invite/:token" component={InviteAccept} />
       <Route path="/collect/:token" component={GuestCollect} />
+      <Route path="/rsvp/shared/:slug" component={SharedRsvp} />
       <Route path="/rsvp/:token" component={Rsvp} />
       <Route path="/save-the-date/shared/:slug" component={SaveTheDate} />
       <Route path="/save-the-date/:token" component={SaveTheDate} />

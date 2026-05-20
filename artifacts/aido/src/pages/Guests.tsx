@@ -2016,7 +2016,7 @@ export default function Guests({
       const url =
         mode === "saveTheDate"
           ? `${origin}/save-the-date/shared/${encodeURIComponent(weddingWebsite.slug)}`
-          : `${origin}/w/${encodeURIComponent(weddingWebsite.slug)}/rsvp`;
+          : `${origin}/rsvp/shared/${encodeURIComponent(weddingWebsite.slug)}`;
       setBulkLinks([{ guestId: 0, name: "Shared guest link", url }]);
     } catch (err) {
       toast({
