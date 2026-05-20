@@ -220,7 +220,7 @@ function CardShell({
       {hasPhoto && (
         <div
           style={{
-            padding: "0 20px 10px",
+            padding: "0 20px 12px",
             backgroundColor: bg, backgroundImage: dotPat, backgroundSize: "22px 22px",
             cursor: onPhotoPositionChange ? "grab" : undefined,
             touchAction: onPhotoPositionChange ? "none" : undefined,
@@ -231,20 +231,44 @@ function CardShell({
           onPointerUp={handleUp}
           onPointerCancel={handleUp}
         >
-          <AuthMediaImage
-            src={photoUrl!}
-            alt="Wedding photo"
-            draggable={false}
+          <div
             style={{
-              width: "100%", height: 200, objectFit: "cover", borderRadius: 8,
-              display: "block", boxShadow: "0 6px 30px rgba(0,0,0,0.5)",
-              objectPosition: `${photoPosition.x}% ${photoPosition.y}%`,
-              transform: `scale(${zoom})`,
-              transformOrigin: `${photoPosition.x}% ${photoPosition.y}%`,
-              filter: photoEffectToFilter(photoEffect),
-              pointerEvents: "none", userSelect: "none",
+              position: "relative",
+              height: 230,
+              overflow: "hidden",
+              borderRadius: 8,
+              boxShadow: "0 6px 24px rgba(59,28,43,0.22)",
+              backgroundColor: `${accent}12`,
             }}
-          />
+          >
+            <AuthMediaImage
+              src={photoUrl!}
+              alt="Wedding photo"
+              draggable={false}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+                objectPosition: `${photoPosition.x}% ${photoPosition.y}%`,
+                transform: `scale(${zoom})`,
+                transformOrigin: `${photoPosition.x}% ${photoPosition.y}%`,
+                filter: photoEffectToFilter(photoEffect),
+                pointerEvents: "none",
+                userSelect: "none",
+              }}
+            />
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                inset: 0,
+                background:
+                  "linear-gradient(180deg, rgba(59,28,43,0.02) 0%, rgba(59,28,43,0.08) 72%, rgba(59,28,43,0.18) 100%)",
+                pointerEvents: "none",
+              }}
+            />
+          </div>
         </div>
       )}
 
