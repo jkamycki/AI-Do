@@ -1207,7 +1207,7 @@ export default function InvitationCustomizationPage({
             const photoX = 48;
             const photoY = y;
             const photoWidth = pageWidth - 96;
-            const photoHeight = isSaveTheDate ? pageHeight * 0.34 : pageHeight * 0.31;
+            const photoHeight = isSaveTheDate ? pageHeight * 0.39 : pageHeight * 0.37;
             const coveredPhoto = await coverImageDataUrl(
               photoDataUrl,
               photoWidth * 3,
@@ -1244,7 +1244,7 @@ export default function InvitationCustomizationPage({
           const photoX = 48;
           const photoY = 48;
           const photoWidth = pageWidth - 96;
-          const photoHeight = isSaveTheDate ? pageHeight * 0.38 : pageHeight * 0.4;
+          const photoHeight = isSaveTheDate ? pageHeight * 0.45 : pageHeight * 0.43;
           const coveredPhoto = await coverImageDataUrl(
             photoDataUrl,
             photoWidth * 3,

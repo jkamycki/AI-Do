@@ -133,6 +133,12 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
     const qrUrl = websiteUrl || "";
     const dotPattern = `radial-gradient(${accent}22 1px, transparent 1px)`;
     const aiPrint = design.designMode === "ai";
+    const aiPhotoFrameHeight = size === "5x7"
+      ? (isSaveTheDate ? 282 : 268)
+      : (isSaveTheDate ? 232 : 220);
+    const classicPhotoFrameHeight = size === "5x7"
+      ? (isSaveTheDate ? 322 : 304)
+      : (isSaveTheDate ? 262 : 246);
     const timeLines = [
       design.fields.ceremonyTime && `Ceremony ${formatTime(design.fields.ceremonyTime)}`,
       design.fields.receptionTime && `Reception ${formatTime(design.fields.receptionTime)}`,
@@ -188,8 +194,9 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
               {hasPhoto && (
                 <div
                   style={{
-                    height: isSaveTheDate ? "40%" : "36%",
-                    margin: "16px 0 14px",
+                    height: aiPhotoFrameHeight,
+                    flexShrink: 0,
+                    margin: size === "5x7" ? "16px 0 14px" : "12px 0",
                     backgroundImage: `url("${photoUrl}")`,
                     backgroundSize: photoBackgroundSize,
                     backgroundRepeat: "no-repeat",
@@ -259,7 +266,8 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
             {hasPhoto && (
               <div
                 style={{
-                  height: isSaveTheDate ? "49%" : "48%",
+                  height: classicPhotoFrameHeight,
+                  flexShrink: 0,
                   marginBottom: isSaveTheDate ? 22 : 18,
                   backgroundImage: `url("${photoUrl}")`,
                   backgroundSize: photoBackgroundSize,
