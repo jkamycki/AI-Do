@@ -270,6 +270,10 @@ export default function Terms() {
               counts) is stored in your workspace and visible to collaborators
               with access. Shared save-the-date, RSVP, and guest-collector links
               may generate link previews in email, SMS, or messaging apps. You
+              should treat guest-collector links as non-expiring shared links
+              unless you remove or disable the related public access feature.
+              Anyone with the link may submit contact information through it.
+              You
               are responsible for compliance with applicable privacy laws when
               collecting guest data.
             </p>

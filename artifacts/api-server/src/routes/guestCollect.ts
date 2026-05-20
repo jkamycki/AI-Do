@@ -88,6 +88,10 @@ router.post("/guest-collect/regenerate", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "No wedding profile found." });
     }
 
+    if (profile.guestCollectionToken) {
+      return res.json({ token: profile.guestCollectionToken });
+    }
+
     const token = crypto.randomUUID();
     await db
       .update(weddingProfiles)
@@ -299,7 +303,7 @@ router.get("/guest-collect/:token", async (req, res) => {
       .limit(1);
 
     if (!profiles.length) {
-      return res.status(404).json({ error: "Invalid or expired link." });
+      return res.status(404).json({ error: "Invalid link." });
     }
 
     const p = profiles[0];
@@ -325,7 +329,7 @@ router.post("/guest-collect/:token", publicRsvpLimiter, async (req, res) => {
       .limit(1);
 
     if (!profiles.length) {
-      return res.status(404).json({ error: "Invalid or expired link." });
+      return res.status(404).json({ error: "Invalid link." });
     }
 
     const { name, email, phone, address, mealChoice, dietaryNotes, plusOne, plusOneFirstName, plusOneLastName } = req.body;

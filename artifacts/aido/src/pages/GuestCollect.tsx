@@ -131,8 +131,8 @@ export default function GuestCollect() {
         <Card className="w-full max-w-md border-[#E6C7D0] bg-[#FFFDFB]/95 text-center shadow-xl">
           <CardContent className="space-y-4 px-7 pb-8 pt-10">
             <AlertCircle className="mx-auto h-12 w-12 text-[#8D294D]" />
-            <h2 className="text-xl font-semibold text-[#3B1C2B]">This link is no longer valid</h2>
-            <p className="text-sm text-[#6F3E54]">The couple may have regenerated or disabled their link.</p>
+            <h2 className="text-xl font-semibold text-[#3B1C2B]">This link could not be found</h2>
+            <p className="text-sm text-[#6F3E54]">Please check that the full guest collector link was copied correctly.</p>
           </CardContent>
         </Card>
       </div>

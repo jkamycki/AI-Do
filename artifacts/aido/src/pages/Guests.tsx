@@ -1327,7 +1327,7 @@ function GuestCollectorCard() {
       const res = await authFetch("/api/guest-collect/regenerate", {
         method: "POST",
       });
-      if (!res.ok) throw new Error("Failed to regenerate link");
+      if (!res.ok) throw new Error("Failed to refresh link");
       return res.json() as Promise<{ token: string }>;
     },
     onSuccess: (data) => {
@@ -1476,7 +1476,7 @@ function GuestCollectorCard() {
                   <AlertDialogFooter>
                     <AlertDialogCancel>{t("guests.cancel")}</AlertDialogCancel>
                     <AlertDialogAction
-                      className="bg-red-600 hover:bg-red-700"
+                      className="bg-primary hover:bg-primary/90"
                       onClick={() => regenerate.mutate()}
                     >
                       {t("guests.yes_regenerate")}
