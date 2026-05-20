@@ -10,6 +10,8 @@ export interface AddressSuggestion {
   zip: string;
 }
 
+const STREET_FALLBACK_RE = /\b(st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|ln|lane|ct|court|pl|place|pkwy|parkway|way|terrace|ter|circle|cir|hwy|highway)\b/i;
+
 interface Props {
   value: string;
   onChange: (value: string) => void;
@@ -19,17 +21,48 @@ interface Props {
   id?: string;
 }
 
+function normalizePart(value: string | undefined) {
+  return (value ?? "").trim().replace(/\s+/g, " ");
+}
+
+function deriveStreetLine(result: Record<string, unknown>, road: string, houseNumber: string) {
+  const display = typeof result.display_name === "string" ? result.display_name : "";
+  const parts = display.split(",").map(normalizePart).filter(Boolean);
+  const normalizedRoad = road.toLowerCase();
+  const roadIndex = road
+    ? parts.findIndex((part) => part.toLowerCase() === normalizedRoad || part.toLowerCase().includes(normalizedRoad))
+    : -1;
+
+  if (houseNumber && road) return `${houseNumber} ${road}`;
+
+  if (road && roadIndex > -1) {
+    const roadPart = parts[roadIndex];
+    const previous = parts[roadIndex - 1] ?? "";
+    if (/^\d+[A-Za-z0-9-]*$/.test(previous)) return `${previous} ${road}`;
+    if (/\d/.test(roadPart)) return roadPart;
+  }
+
+  if (road) {
+    const addressLikePart = parts.find((part) => /\d/.test(part) && part.toLowerCase().includes(normalizedRoad));
+    if (addressLikePart) return addressLikePart;
+    return road;
+  }
+
+  return parts.find((part) => /\d/.test(part) && STREET_FALLBACK_RE.test(part)) ?? "";
+}
+
 function parseResult(result: Record<string, unknown>): AddressSuggestion | null {
   const a = (result.address ?? {}) as Record<string, string>;
-  const road = a.road ?? "";
-  if (!road) return null;
+  const display = typeof result.display_name === "string" ? result.display_name : "";
+  const road = normalizePart(a.road ?? a.pedestrian ?? a.residential ?? a.footway ?? a.path ?? "");
   const houseNumber = a.house_number ?? "";
-  const street = houseNumber ? `${houseNumber} ${road}` : road;
+  const street = deriveStreetLine(result, road, houseNumber);
+  if (!street) return null;
   const city = a.city ?? a.town ?? a.village ?? a.municipality ?? a.county ?? "";
   const isoLevel4 = a["ISO3166-2-lvl4"] ?? "";
   const state = isoLevel4 ? isoLevel4.replace(/^[A-Z]+-/, "") : a.state ?? "";
   const zip = a.postcode ?? "";
-  return { display: result.display_name as string, street, city, state, zip };
+  return { display, street, city, state, zip };
 }
 
 export function AddressAutocomplete({ value, onChange, onSelect, placeholder, className, id }: Props) {
