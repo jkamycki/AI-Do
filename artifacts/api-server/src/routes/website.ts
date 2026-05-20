@@ -58,30 +58,62 @@ const router = Router();
 // ---------- helpers ----------
 
 const DEFAULT_WEBSITE_HERO_IMAGE = "/images/default-wedding-couple.jpg";
-const INVITATION_SHARE_SECRET = process.env.INVITATION_SHARE_SECRET || process.env.SESSION_SECRET || process.env.JWT_SECRET || "aido-local-invitation-share-secret";
+const DEFAULT_PUBLIC_ORIGIN = "https://aidowedding.net";
+const DEFAULT_API_ORIGIN = "https://api.aidowedding.net";
+const INVITATION_SHARE_SECRET = process.env.INVITATION_SHARE_SECRET || process.env.SESSION_SECRET || process.env.JWT_SECRET || process.env.CLERK_SECRET_KEY || "";
+const LOCAL_INVITATION_SHARE_SECRET = "aido-local-invitation-share-secret";
 
-function buildOrigin(req: import("express").Request): string {
+function sanitizeOrigin(raw: string | undefined, fallback: string): string {
+  const value = raw?.trim().replace(/\/+$/, "");
+  if (!value) return fallback;
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return fallback;
+    if (!/^[a-zA-Z0-9.\-]+(?::\d+)?$/.test(parsed.host)) return fallback;
+    return parsed.origin;
+  } catch {
+    return fallback;
+  }
+}
+
+function requestOrigin(req: import("express").Request, fallback: string): string {
+  if (process.env.NODE_ENV === "production") return fallback;
   const proto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0]?.trim() || req.protocol;
   const host = (req.headers["x-forwarded-host"] as string)?.split(",")[0]?.trim() || req.get("host") || "";
-  return `${proto}://${host}`;
+  return sanitizeOrigin(`${proto}://${host}`, fallback);
+}
+
+function buildOrigin(req: import("express").Request): string {
+  const fromEnv = process.env.API_PUBLIC_URL || process.env.PUBLIC_API_URL || process.env.API_URL;
+  if (fromEnv) return sanitizeOrigin(fromEnv, DEFAULT_API_ORIGIN);
+  return requestOrigin(req, DEFAULT_API_ORIGIN);
 }
 
 function buildFrontendOrigin(req: import("express").Request): string {
-  const fromEnv = process.env.FRONTEND_URL?.trim();
-  if (fromEnv) return fromEnv.replace(/\/$/, "");
-  return buildOrigin(req);
+  const fromEnv = process.env.FRONTEND_URL || process.env.PUBLIC_APP_URL || process.env.APP_ORIGIN;
+  if (fromEnv) return sanitizeOrigin(fromEnv, DEFAULT_PUBLIC_ORIGIN);
+  const origin = buildOrigin(req).replace("://api.", "://");
+  return sanitizeOrigin(origin, DEFAULT_PUBLIC_ORIGIN);
+}
+
+function invitationShareSecret(): string {
+  if (INVITATION_SHARE_SECRET) return INVITATION_SHARE_SECRET;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Invitation share secret is not configured.");
+  }
+  return LOCAL_INVITATION_SHARE_SECRET;
 }
 
 function signInvitationShare(profileId: number): string {
   const payload = Buffer.from(String(profileId), "utf8").toString("base64url");
-  const sig = createHmac("sha256", INVITATION_SHARE_SECRET).update(payload).digest("base64url").slice(0, 32);
+  const sig = createHmac("sha256", invitationShareSecret()).update(payload).digest("base64url").slice(0, 32);
   return `${payload}.${sig}`;
 }
 
 function verifyInvitationShare(token: string): number | null {
   const [payload, sig] = String(token || "").split(".");
   if (!payload || !sig) return null;
-  const expected = createHmac("sha256", INVITATION_SHARE_SECRET).update(payload).digest("base64url").slice(0, 32);
+  const expected = createHmac("sha256", invitationShareSecret()).update(payload).digest("base64url").slice(0, 32);
   try {
     if (!timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
   } catch {
@@ -755,7 +787,12 @@ router.post("/invitation-shares/:token/rsvp/self-add", publicRsvpLimiter, async 
     };
     const isAttending = attendance === "attending";
     const wantsPlusOne = isAttending && plusOne === true;
-    const hotelUpdate = await normalizeHotelRsvp(profile.id, attendance, hotelNeeded, bookedHotelBlockId, bookedHotelRoomCount);
+    let hotelUpdate: Pick<typeof guests.$inferInsert, "needsHotel" | "bookedHotelBlockId" | "bookedHotelRoomCount">;
+    try {
+      hotelUpdate = await normalizeHotelRsvp(profile.id, attendance, hotelNeeded, bookedHotelBlockId, bookedHotelRoomCount);
+    } catch (err) {
+      return res.status(400).json({ error: err instanceof Error ? err.message : "Invalid hotel block selection." });
+    }
     const [created] = await db.insert(guests).values({
       profileId: profile.id,
       name: cleanName,
@@ -776,7 +813,7 @@ router.post("/invitation-shares/:token/rsvp/self-add", publicRsvpLimiter, async 
     res.json({ success: true, status: attendance, guestId: created.id });
   } catch (err) {
     req.log.error(err, "invitationShareSelfAdd failed");
-    res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -845,7 +882,7 @@ router.post("/invitation-shares/:token/rsvp", publicRsvpLimiter, async (req, res
     res.json({ success: true, status: attendance });
   } catch (err) {
     req.log.error(err, "invitationShareRsvpSubmit failed");
-    res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

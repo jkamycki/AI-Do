@@ -9,6 +9,20 @@ import { sendMaintenanceIfActive } from "../lib/maintenance";
 
 const router = Router();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const DEFAULT_PUBLIC_ORIGIN = "https://aidowedding.net";
+
+function sanitizeOrigin(raw: string | undefined, fallback = DEFAULT_PUBLIC_ORIGIN): string {
+  const value = raw?.trim().replace(/\/+$/, "");
+  if (!value) return fallback;
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return fallback;
+    if (!/^[a-zA-Z0-9.\-]+(?::\d+)?$/.test(parsed.host)) return fallback;
+    return parsed.origin;
+  } catch {
+    return fallback;
+  }
+}
 
 function cleanTextField(value: unknown, max: number): string {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -24,19 +38,18 @@ function escapeHtml(value: string): string {
 }
 
 function buildRequestOrigin(req: import("express").Request): string {
+  if (process.env.NODE_ENV === "production") return DEFAULT_PUBLIC_ORIGIN;
   const proto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0]?.trim() || req.protocol;
   const rawHost = (req.headers["x-forwarded-host"] as string)?.split(",")[0]?.trim() || req.get("host") || "";
   const safeProto = proto === "https" ? "https" : "http";
-  const fallbackHost = (process.env.APP_ORIGIN ?? "aidowedding.net").replace(/^https?:\/\//, "").replace(/\/$/, "");
-  const safeHost = /^[a-zA-Z0-9.\-:]+$/.test(rawHost) ? rawHost : fallbackHost;
-  return `${safeProto}://${safeHost}`;
+  return sanitizeOrigin(`${safeProto}://${rawHost}`);
 }
 
 function buildFrontendOrigin(req: import("express").Request): string {
-  const fromEnv = (process.env.FRONTEND_URL ?? process.env.PUBLIC_APP_URL)?.trim();
-  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  const fromEnv = process.env.FRONTEND_URL ?? process.env.PUBLIC_APP_URL ?? process.env.APP_ORIGIN;
+  if (fromEnv) return sanitizeOrigin(fromEnv);
   const requestOrigin = buildRequestOrigin(req);
-  return requestOrigin.replace("://api.", "://");
+  return sanitizeOrigin(requestOrigin.replace("://api.", "://"));
 }
 
 router.post("/guest-collect/generate", requireAuth, async (req, res) => {
@@ -240,12 +253,7 @@ router.get("/guest-collect/:token/preview-legacy", async (req, res) => {
     const title = `${name1} & ${name2} — Contact Info Request`;
     const description = `${name1} & ${name2} are collecting mailing addresses for their wedding invitations. Tap to share your contact info.`;
 
-    const proto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0]?.trim() || req.protocol;
-    const rawHost = (req.headers["x-forwarded-host"] as string)?.split(",")[0]?.trim() || req.get("host") || "";
-    // Only allow safe host values (alphanumeric, dots, hyphens, colons for port)
-    const safeProto = proto === "https" ? "https" : "http";
-    const safeHost = /^[a-zA-Z0-9.\-:]+$/.test(rawHost) ? rawHost : (process.env.APP_ORIGIN ?? "aidowedding.net");
-    const origin = `${safeProto}://${safeHost}`;
+    const origin = buildFrontendOrigin(req);
     const formUrl = `${origin}/collect/${req.params.token}`;
 
     const safeTitle = escapeHtml(title);

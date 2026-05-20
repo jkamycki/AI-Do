@@ -14,12 +14,23 @@ import crypto from "crypto";
 const objectStorageService = new ObjectStorageService();
 
 const router = Router();
-const INVITATION_SHARE_SECRET = process.env.INVITATION_SHARE_SECRET || process.env.SESSION_SECRET || process.env.JWT_SECRET || "aido-local-invitation-share-secret";
+const DEFAULT_PUBLIC_ORIGIN = "https://aidowedding.net";
+const DEFAULT_API_ORIGIN = "https://api.aidowedding.net";
+const INVITATION_SHARE_SECRET = process.env.INVITATION_SHARE_SECRET || process.env.SESSION_SECRET || process.env.JWT_SECRET || process.env.CLERK_SECRET_KEY || "";
+const LOCAL_INVITATION_SHARE_SECRET = "aido-local-invitation-share-secret";
+
+function invitationShareSecret(): string {
+  if (INVITATION_SHARE_SECRET) return INVITATION_SHARE_SECRET;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Invitation share secret is not configured.");
+  }
+  return LOCAL_INVITATION_SHARE_SECRET;
+}
 
 function verifyInvitationShare(token: string): number | null {
   const [payload, sig] = String(token || "").split(".");
   if (!payload || !sig) return null;
-  const expected = crypto.createHmac("sha256", INVITATION_SHARE_SECRET).update(payload).digest("base64url").slice(0, 32);
+  const expected = crypto.createHmac("sha256", invitationShareSecret()).update(payload).digest("base64url").slice(0, 32);
   try {
     if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
   } catch {
@@ -180,19 +191,36 @@ function buildHotelRsvpEmailText(hotels: Array<{
   ].filter(Boolean).join(" ");
 }
 
+function sanitizeOrigin(raw: string | undefined, fallback: string): string {
+  const value = raw?.trim().replace(/\/+$/, "");
+  if (!value) return fallback;
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return fallback;
+    if (!/^[a-zA-Z0-9.\-]+(?::\d+)?$/.test(parsed.host)) return fallback;
+    return parsed.origin;
+  } catch {
+    return fallback;
+  }
+}
+
 function buildOrigin(req: import("express").Request): string {
+  const fromEnv = process.env.API_PUBLIC_URL || process.env.PUBLIC_API_URL || process.env.API_URL;
+  if (fromEnv) return sanitizeOrigin(fromEnv, DEFAULT_API_ORIGIN);
+  if (process.env.NODE_ENV === "production") return DEFAULT_API_ORIGIN;
   const proto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0]?.trim() || req.protocol;
   const host = (req.headers["x-forwarded-host"] as string)?.split(",")[0]?.trim() || req.get("host") || "";
-  return `${proto}://${host}`;
+  return sanitizeOrigin(`${proto}://${host}`, DEFAULT_API_ORIGIN);
 }
 
 // User-facing RSVP links must point to the frontend site, not the API server.
 // In production FRONTEND_URL is set to the Vercel deployment; in dev we fall
 // back to the request's own origin.
 function buildFrontendOrigin(req: import("express").Request): string {
-  const fromEnv = process.env.FRONTEND_URL?.trim();
-  if (fromEnv) return fromEnv.replace(/\/$/, "");
-  return buildOrigin(req);
+  const fromEnv = process.env.FRONTEND_URL || process.env.PUBLIC_APP_URL || process.env.APP_ORIGIN;
+  if (fromEnv) return sanitizeOrigin(fromEnv, DEFAULT_PUBLIC_ORIGIN);
+  const origin = buildOrigin(req).replace("://api.", "://");
+  return sanitizeOrigin(origin, DEFAULT_PUBLIC_ORIGIN);
 }
 
 async function buildGuestRsvpUrl(req: import("express").Request, profileId: number, token: string): Promise<string> {
@@ -1486,11 +1514,12 @@ router.get("/preview/rsvp/:token", async (req, res) => {
     const title = escapeHtml(`${couple} are inviting you to their wedding, please RSVP`);
     const description = escapeHtml([`${guestName}, you're invited to celebrate the wedding of ${couple}`, dateStr, location].filter(Boolean).join(" · "));
     const imageUrl = escapeHtml(`${apiOrigin}/api/rsvp/${token}/photo`);
-    const destinationUrl = escapeHtml(`${frontendOrigin}/rsvp/${token}`);
+    const destinationUrl = `${frontendOrigin}/rsvp/${token}`;
+    const safeDestinationUrl = escapeHtml(destinationUrl);
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=300");
-    res.send(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${title}</title><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:image" content="${imageUrl}"><meta property="og:url" content="${destinationUrl}"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${imageUrl}"><meta http-equiv="refresh" content="0; url=${destinationUrl}"></head><body><script>window.location.replace("${destinationUrl}")</script><p>Redirecting to your invitation…</p></body></html>`);
+    res.send(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${title}</title><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:image" content="${imageUrl}"><meta property="og:url" content="${safeDestinationUrl}"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${imageUrl}"><meta http-equiv="refresh" content="0; url=${safeDestinationUrl}"></head><body><script>window.location.replace(${JSON.stringify(destinationUrl)})</script><p>Redirecting to your invitation…</p></body></html>`);
   } catch (err) {
     req.log.error(err, "Failed to serve RSVP preview");
     res.status(500).end();
@@ -1524,11 +1553,12 @@ router.get("/preview/save-the-date/:token", async (req, res) => {
     const title = escapeHtml(`Save the Date — ${couple}`);
     const description = escapeHtml([`${guestName}, save the date for the wedding of ${couple}`, dateStr, location].filter(Boolean).join(" · "));
     const imageUrl = escapeHtml(`${apiOrigin}/api/save-the-date/${token}/photo`);
-    const destinationUrl = escapeHtml(`${frontendOrigin}/save-the-date/${token}`);
+    const destinationUrl = `${frontendOrigin}/save-the-date/${token}`;
+    const safeDestinationUrl = escapeHtml(destinationUrl);
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=300");
-    res.send(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${title}</title><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:image" content="${imageUrl}"><meta property="og:url" content="${destinationUrl}"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${imageUrl}"><meta http-equiv="refresh" content="0; url=${destinationUrl}"></head><body><script>window.location.replace("${destinationUrl}")</script><p>Redirecting to your Save the Date…</p></body></html>`);
+    res.send(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${title}</title><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:image" content="${imageUrl}"><meta property="og:url" content="${safeDestinationUrl}"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${imageUrl}"><meta http-equiv="refresh" content="0; url=${safeDestinationUrl}"></head><body><script>window.location.replace(${JSON.stringify(destinationUrl)})</script><p>Redirecting to your Save the Date…</p></body></html>`);
   } catch (err) {
     req.log.error(err, "Failed to serve save-the-date preview");
     res.status(500).end();
