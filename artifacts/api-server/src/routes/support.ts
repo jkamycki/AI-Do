@@ -68,11 +68,14 @@ const SUPPORT_BOT_PROMPT = `You are a friendly and helpful customer support assi
 - Be empathetic and understanding — customers may be frustrated
 - Ask clarifying questions to understand their issue fully
 - Provide clear, step-by-step solutions when possible
+- Keep the first reply lightweight: 1 short paragraph plus up to 3 bullets.
+- Default to 60-120 words. Never exceed 180 words unless the user explicitly asks for detail.
 - When a user reports a problem, start with 1-3 short troubleshooting steps or one clarifying question. Do not overwhelm them with a long checklist.
+- Do not include more than 3 troubleshooting steps in one message. After those steps, ask whether that fixed it.
 - If the troubleshooting does not fix it, or the issue needs admin/backend access, offer to file a ticket and ask for their full name and best email to reach them.
 - Be honest if you need to escalate to the human support team
 - Acknowledge their concern and thank them for their patience
-- Keep responses concise and scannable with bullet points when helpful
+- Keep responses concise and scannable with bullet points when helpful. Avoid headers unless the answer truly needs them.
 - Use a warm, professional tone
 
 ## When to suggest escalation:
@@ -113,7 +116,9 @@ const ARIA_SYSTEM_PROMPT = `You are Aria, an expert AI wedding planning assistan
 - Warm, confident, and encouraging — like a knowledgeable friend, not a corporate chatbot
 - Be specific and practical — give real numbers, real questions to ask, real scripts when helpful
 - Use markdown (bullet points, bold, headers) — it renders in the chat
-- Keep responses focused and scannable; under 350 words unless a detailed breakdown is genuinely needed
+- Keep responses focused and scannable. Default to 60-120 words and never exceed 180 words unless the user explicitly asks for a detailed breakdown.
+- For support/problem reports, use at most 3 bullets or one clarifying question. Then stop and ask if that helped.
+- Avoid long intro/outro paragraphs, long checklists, and multi-section answers unless requested.
 - If the user's question is vague, ask one clarifying question before diving in
 - Celebrate wins and acknowledge stress — planning a wedding is emotional, not just logistical
 - For "how do I use the portal" questions, give direct in-app click paths using the actual page names (e.g., "Go to Budget → Add Item"), then list 1-3 short steps.
@@ -309,7 +314,7 @@ router.post("/support/bot", supportBotLimiter, aiLimiter, async (req, res) => {
 
     const callWithTimeout = () => openai.chat.completions.create({
       model: getModel(),
-      max_completion_tokens: 1024,
+      max_completion_tokens: 450,
       messages: convo as unknown as Parameters<typeof openai.chat.completions.create>[0]["messages"],
       stream: true as const,
     }, {
@@ -345,7 +350,7 @@ router.post("/support/bot", supportBotLimiter, aiLimiter, async (req, res) => {
       }
     };
 
-    const MAX_CONTINUATIONS = 3;
+    const MAX_CONTINUATIONS = 0;
     let continuations = 0;
     while (true) {
       const stream = await callWithRetry();
@@ -473,7 +478,7 @@ router.post("/support/chat", requireAuth, aiLimiter, async (req, res) => {
 
     const callWithTimeout = () => openai.chat.completions.create({
       model: getModel(),
-      max_completion_tokens: 2048,
+      max_completion_tokens: 700,
       messages: convo as unknown as Parameters<typeof openai.chat.completions.create>[0]["messages"],
       tools: [SUPPORT_TICKET_TOOL] as unknown as Parameters<typeof openai.chat.completions.create>[0]["tools"],
       stream: true as const,
