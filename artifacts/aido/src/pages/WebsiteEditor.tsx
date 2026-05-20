@@ -105,13 +105,32 @@ function formatProfileTime(time: string | null | undefined): string {
   return minute === "00" ? `${hour12} ${period}` : `${hour12}:${minute} ${period}`;
 }
 
-function editableTextFieldValue(value: string | undefined): string {
-  return isEditableHiddenMarker(value) ? "" : value ?? "";
-}
-
 const LEGACY_PENDING_SAVE_KEY = "aido_website_pending_save_v1";
 const PENDING_SAVE_KEY_PREFIX = "aido_website_pending_save_v2";
 const WEBSITE_TRANSLATION_CACHE_PREFIX = "aido_website_translation_v1";
+
+function safeWebsiteCustomText(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const out: Record<string, string> = {};
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof raw === "string") {
+      out[key] = raw;
+    } else if (typeof raw === "number" || typeof raw === "boolean") {
+      out[key] = String(raw);
+    } else if (raw && key === WEBSITE_DEVICE_OVERRIDES_KEY) {
+      try {
+        out[key] = JSON.stringify(raw);
+      } catch {
+        // Ignore malformed legacy values.
+      }
+    }
+  }
+  return out;
+}
+
+function editableTextFieldValue(value: unknown): string {
+  return typeof value === "string" && isEditableHiddenMarker(value) ? "" : typeof value === "string" ? value : "";
+}
 
 const WEBSITE_TRANSLATABLE_DEFAULTS: Record<string, string> = {
   _navHome: "Home",
@@ -177,7 +196,7 @@ const WEBSITE_TRANSLATION_BLOCKED_KEYS = new Set([
   "_heroZooms",
 ]);
 
-function websiteTranslationSignature(customText: Record<string, string>): string {
+function websiteTranslationSignature(customText: unknown): string {
   const raw = JSON.stringify(collectWebsiteTranslationText(customText));
   let hash = 0;
   for (let index = 0; index < raw.length; index += 1) {
@@ -200,7 +219,8 @@ function websiteTranslationCacheKey({
   return `${WEBSITE_TRANSLATION_CACHE_PREFIX}:${userId}:${websiteId}:${languageCode}:${signature}`;
 }
 
-function isLikelyReadableWebsiteCopy(key: string, value: string): boolean {
+function isLikelyReadableWebsiteCopy(key: string, value: unknown): boolean {
+  if (typeof value !== "string") return false;
   if (!value.trim() || isEditableHiddenMarker(value)) return false;
   if (WEBSITE_TRANSLATION_BLOCKED_KEYS.has(key)) return false;
   if (WEBSITE_TRANSLATABLE_DEFAULTS[key] || WEBSITE_TRANSLATABLE_KEYS.has(key) || key.startsWith("_custom_")) return true;
@@ -208,22 +228,23 @@ function isLikelyReadableWebsiteCopy(key: string, value: string): boolean {
   return /[A-Za-z]/.test(value);
 }
 
-function collectWebsiteTranslationText(customText: Record<string, string> = {}): Record<string, string> {
+function collectWebsiteTranslationText(customText: unknown): Record<string, string> {
+  const safeCustomText = safeWebsiteCustomText(customText);
   const out: Record<string, string> = {};
   for (const [key, fallback] of Object.entries(WEBSITE_TRANSLATABLE_DEFAULTS)) {
-    const value = customText[key];
+    const value = safeCustomText[key];
     if (value && isEditableHiddenMarker(value)) continue;
     out[key] = value?.trim() || fallback;
   }
-  for (const [key, value] of Object.entries(customText)) {
+  for (const [key, value] of Object.entries(safeCustomText)) {
     if (!isLikelyReadableWebsiteCopy(key, value)) continue;
     out[key] = value;
   }
   return out;
 }
 
-function stripDeviceOverridesFromText(customText: Record<string, string> | undefined): Record<string, string> {
-  const { [WEBSITE_DEVICE_OVERRIDES_KEY]: _marker, ...rest } = customText ?? {};
+function stripDeviceOverridesFromText(customText: unknown): Record<string, string> {
+  const { [WEBSITE_DEVICE_OVERRIDES_KEY]: _marker, ...rest } = safeWebsiteCustomText(customText);
   void _marker;
   return rest;
 }
@@ -746,7 +767,7 @@ export default function WebsiteEditor() {
   // Must be declared above any early return so the hook count stays stable.
   const livePreview = useMemo<WebsiteRendererPayload | null>(() => {
     if (!record) return null;
-    const previewCustomText = { ...record.customText };
+    const previewCustomText = safeWebsiteCustomText(record.customText);
     if (hotelBlocks.length > 0) {
       previewCustomText._rsvpAskHotel = "true";
       if (invitationHotelSettings?.rsvpHotelBlockId && invitationHotelSettings.rsvpHotelBlockId !== "all") {

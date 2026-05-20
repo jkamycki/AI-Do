@@ -3725,8 +3725,10 @@ function TopNav({
   const couple = `${data.couple.partner2Name} & ${data.couple.partner1Name}`;
   const [scrollActive, setScrollActive] = useState<string>("home");
   const isMobileRender = renderDevice === "mobile";
-  const navLabel = (key: string, fallback: string) =>
-    data.customText[key]?.trim() || fallback;
+  const navLabel = (key: string, fallback: string) => {
+    const value = data.customText?.[key];
+    return typeof value === "string" ? value.trim() || fallback : fallback;
+  };
 
   // Build the ordered list of nav items only for sections that are enabled.
   const items: Array<{ id: string; label: string }> = [
