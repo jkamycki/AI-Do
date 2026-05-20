@@ -1883,7 +1883,7 @@ class AppErrorBoundary extends Component<
   }
   render() {
     if (this.state.hasError) {
-      const isStale = /Failed to fetch dynamically imported module|Loading chunk \d+ failed|Importing a module script failed|ChunkLoadError/i.test(this.state.message);
+      const isStale = false;
       return (
         <div className="flex min-h-screen items-center justify-center bg-[#FFF7F2] bg-[radial-gradient(circle_at_18%_4%,rgba(141,41,77,0.10),transparent_52%)] p-8 text-center text-[#2D1B22]">
           <div className="w-full max-w-xl rounded-[20px] border border-[#8D294D]/20 bg-white/85 px-7 py-9 shadow-[0_20px_60px_rgba(91,15,42,0.12)]">
