@@ -1436,38 +1436,6 @@ function GuestCollectorCard() {
                 </Button>
               )}
 
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-primary/20 hover:bg-primary/10 text-primary gap-2"
-                onClick={() => {
-                  const subject = encodeURIComponent(
-                    previewTitle,
-                  );
-                  const body = encodeURIComponent(
-                    [
-                      "Hi!",
-                      "",
-                      `${coupleNames} are collecting mailing addresses and contact info for their wedding invitations.`,
-                      "",
-                      "Preview:",
-                      "------------------------------",
-                      previewTitle,
-                      previewHost,
-                      "------------------------------",
-                      "",
-                      `Please share your details here:`,
-                      collectorUrl,
-                      "",
-                      "Thank you!",
-                    ].join("\n"),
-                  );
-                  window.location.href = `mailto:?subject=${subject}&body=${body}`;
-                }}
-              >
-                <Mail className="h-3.5 w-3.5" /> {t("guests.email_link")}
-              </Button>
-
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
