@@ -3,9 +3,9 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "build": "pnpm --dir artifacts/api-server run build && cd artifacts/aido && pnpm run build && cd ../.. && mkdir -p dist && cp -r artifacts/aido/dist/* dist/",
+    "build": "node scripts/build-app.mjs",
     "dev": "cd artifacts/aido && pnpm run dev",
-    "render:build": "pnpm --dir artifacts/api-server run build",
+    "render:build": "node scripts/build-api.mjs",
     "render:start": "node scripts/start-render-api.mjs",
     "start": "node scripts/start-render-api.mjs",
     "typecheck": "tsc -p artifacts/aido/tsconfig.json --noEmit"
