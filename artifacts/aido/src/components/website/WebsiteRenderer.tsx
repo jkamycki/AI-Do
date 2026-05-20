@@ -64,6 +64,7 @@ export function sectionFromUrlSegment(seg: string | undefined): string {
 
 export interface WebsiteRendererPayload {
   slug?: string;
+  publicWebsiteUrl?: string | null;
   theme: string;
   layoutStyle: string;
   font: string;

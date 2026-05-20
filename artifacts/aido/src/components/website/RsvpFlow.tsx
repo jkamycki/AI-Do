@@ -951,9 +951,9 @@ export function RsvpFlow({
                     ? t("rsvp.confirmation_declined_named", { name: replyName, defaultValue: "Thank you for letting us know, {{name}}. You'll be missed." })
                     : t("rsvp.confirmation_declined", { defaultValue: "Thank you for letting us know. You'll be missed." }))}
               </p>
-              {slug && !previewMode && !sharedToken && (
+              {!previewMode && (data.publicWebsiteUrl || (!sharedToken && slug)) && (
                 <a
-                  href={`/w/${encodeURIComponent(slug)}`}
+                  href={data.publicWebsiteUrl ?? `/w/${encodeURIComponent(slug)}`}
                   className="mb-4 inline-flex w-full items-center justify-center rounded-lg px-4 py-3 text-sm font-semibold transition-opacity hover:opacity-90"
                   style={{ background: accent, color: "#fff" }}
                 >

@@ -242,7 +242,7 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
   };
 }
 
-async function buildInvitationSharePayload(profileId: number) {
+async function buildInvitationSharePayload(profileId: number, frontendOrigin: string) {
   const [profile] = await db
     .select()
     .from(weddingProfiles)
@@ -272,6 +272,11 @@ async function buildInvitationSharePayload(profileId: number) {
     .from(invitationCustomizations)
     .where(eq(invitationCustomizations.profileId, profile.id))
     .limit(1);
+  const [publishedWebsite] = await db
+    .select({ slug: weddingWebsites.slug, published: weddingWebsites.published })
+    .from(weddingWebsites)
+    .where(eq(weddingWebsites.profileId, profile.id))
+    .limit(1);
   const invitationColors = (invitationCustomization?.customColors ?? {}) as Record<string, unknown>;
   const customText: Record<string, string> = {
     rsvp_title: "RSVP",
@@ -285,6 +290,9 @@ async function buildInvitationSharePayload(profileId: number) {
 
   return {
     slug: signInvitationShare(profile.id),
+    publicWebsiteUrl: publishedWebsite?.published && publishedWebsite.slug
+      ? `${frontendOrigin.replace(/\/$/, "")}/w/${publishedWebsite.slug}`
+      : null,
     theme: "classic",
     layoutStyle: "standard",
     font: "Playfair Display",
@@ -586,7 +594,7 @@ router.get("/invitation-shares/:token", async (req, res) => {
   try {
     const profile = await resolveInvitationShare(String(req.params.token ?? ""));
     if (!profile) return res.status(404).json({ error: "Not found" });
-    const payload = await buildInvitationSharePayload(profile.id);
+    const payload = await buildInvitationSharePayload(profile.id, buildFrontendOrigin(req));
     if (!payload) return res.status(404).json({ error: "Not found" });
     res.json(payload);
   } catch (err) {
