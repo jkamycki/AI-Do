@@ -64,44 +64,34 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const server = app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
+runMigrations()
+  .then(() => {
+    const server = app.listen(port, (err) => {
+      if (err) {
+        logger.error({ err }, "Error listening on port");
+        process.exit(1);
+      }
 
-  logger.info(
-    {
-      port,
-      databaseConfigured: Boolean(process.env["DATABASE_URL"]),
-      clerkSecretConfigured: Boolean(process.env["CLERK_SECRET_KEY"]),
-      frontendUrlConfigured: Boolean(process.env["FRONTEND_URL"]),
-      publicAppUrlConfigured: Boolean(process.env["PUBLIC_APP_URL"]),
-    },
-    "Server listening",
-  );
+      logger.info({ port }, "Server listening");
 
-  if (process.env["CLERK_DISABLE_BREACHED_PASSWORD_CHECK"] === "true") {
-    void disableClerkBreachedPasswordCheck();
-  }
-  scheduleBackups();
+      if (process.env["CLERK_DISABLE_BREACHED_PASSWORD_CHECK"] === "true") {
+        void disableClerkBreachedPasswordCheck();
+      }
+      scheduleBackups();
 
-  // SSE connections stay open for the duration of an AI response.
-  // Render (and most proxies) close idle TCP connections after ~75s by
-  // default, which cuts off long AI streams before the model finishes.
-  // Setting these above the longest expected AI response (90s client
-  // timeout in the frontend) ensures the socket stays alive.
-  server.keepAliveTimeout = 120_000;
-  server.headersTimeout = 125_000;
-
-  void runMigrations()
-    .then(() => {
-      logger.info("Startup migrations completed");
-    })
-    .catch((migrationErr) => {
-      logger.error({ err: migrationErr }, "Startup migrations failed");
+      // SSE connections stay open for the duration of an AI response.
+      // Render (and most proxies) close idle TCP connections after ~75s by
+      // default, which cuts off long AI streams before the model finishes.
+      // Setting these above the longest expected AI response (90s client
+      // timeout in the frontend) ensures the socket stays alive.
+      server.keepAliveTimeout = 120_000;
+      server.headersTimeout = 125_000;
     });
-});
+  })
+  .catch((err) => {
+    logger.error({ err }, "Migration failed — refusing to start");
+    process.exit(1);
+  });
 
 async function disableClerkBreachedPasswordCheck(): Promise<void> {
   const secretKey = process.env["CLERK_SECRET_KEY"];
