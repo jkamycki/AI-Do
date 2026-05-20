@@ -1587,7 +1587,7 @@ router.get("/rsvp/:token", async (req, res) => {
       photoZoom: photoZoomFromCustomColors(c?.customColors, "digitalInvitationPhotoZoom"),
       photoObjectPosition: (() => {
         const pos = c?.digitalInvitationPhotoPosition as { x?: number; y?: number } | null;
-        return pos ? `${pos.x ?? 50}% ${pos.y ?? 50}%` : "50% 50%";
+        return pos ? `${pos.x ?? 50}% ${pos.y ?? 58}%` : "50% 58%";
       })(),
       invitationMessage: profile?.invitationMessage ?? null,
       websiteUrl,

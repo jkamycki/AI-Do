@@ -30,6 +30,7 @@ export interface PhotoPosition { x: number; y: number }
 export const MIN_PHOTO_ZOOM = 1;
 export const MAX_PHOTO_ZOOM = 2.5;
 export const DEFAULT_PHOTO_ZOOM = 1;
+export const DEFAULT_PHOTO_POSITION: PhotoPosition = { x: 50, y: 58 };
 
 export type PhotoEffect = "none" | "bw" | "sepia" | "vintage" | "soft" | "warm" | "dramatic" | "noir";
 
@@ -148,7 +149,7 @@ function CardShell({
   topContent,
   children,
   photoUrl,
-  photoPosition = { x: 50, y: 50 },
+  photoPosition = DEFAULT_PHOTO_POSITION,
   photoZoom = DEFAULT_PHOTO_ZOOM,
   onPhotoPositionChange,
   customColors,
@@ -409,7 +410,7 @@ export function AiSaveDatePreview({
 function FullPhotoSaveDatePreview({
   profile,
   photoUrl,
-  photoPosition = { x: 50, y: 50 },
+  photoPosition = DEFAULT_PHOTO_POSITION,
   photoZoom = DEFAULT_PHOTO_ZOOM,
   onPhotoPositionChange,
   customColors,
@@ -783,7 +784,7 @@ export function AiDigitalInvitationPreview({
 function FullPhotoRsvpPreview({
   profile,
   photoUrl,
-  photoPosition = { x: 50, y: 50 },
+  photoPosition = DEFAULT_PHOTO_POSITION,
   photoZoom = DEFAULT_PHOTO_ZOOM,
   onPhotoPositionChange,
   customColors,

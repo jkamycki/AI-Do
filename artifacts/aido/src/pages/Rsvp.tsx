@@ -278,7 +278,7 @@ export default function Rsvp() {
   const PAGE_BG = "#FFF7F2";
   const PAGE_BG_PATTERN: string | undefined = undefined;
   const photoZoom = Math.max(1, Math.min(2.5, Number(info?.photoZoom ?? 1) || 1));
-  const photoObjectPosition = info?.photoObjectPosition ?? "50% 50%";
+  const photoObjectPosition = info?.photoObjectPosition ?? "50% 58%";
 
   const couple = [info?.partner2Name, info?.partner1Name].filter(Boolean).join(" & ") || "The Couple";
   const groomFirst = String(info?.partner1Name || "").trim().split(/\s+/)[0] || "Partner";

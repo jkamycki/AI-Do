@@ -8,6 +8,7 @@ import { PhotoUploadSection } from "@/components/InvitationCustomization/PhotoUp
 import {
   AiSaveDatePreview,
   AiDigitalInvitationPreview,
+  DEFAULT_PHOTO_POSITION,
 } from "@/components/InvitationCustomization/AiPreviewComponents";
 import { AnimatedInvitationShell } from "@/components/InvitationCustomization/AnimatedInvitationShell";
 import {
@@ -276,11 +277,11 @@ export default function InvitationCustomizationPage({
 
   // ── Photos ────────────────────────────────────────────────────────────────
   const [saveTheDatePhotoUrl, setSaveTheDatePhotoUrl] = useState<string | null>(null);
-  const [saveTheDatePhotoPosition, setSaveTheDatePhotoPosition] = useState({ x: 50, y: 50 });
+  const [saveTheDatePhotoPosition, setSaveTheDatePhotoPosition] = useState(DEFAULT_PHOTO_POSITION);
   const [saveTheDatePhotoZoom, setSaveTheDatePhotoZoom] = useState(1);
   const [saveTheDatePhotoEffect, setSaveTheDatePhotoEffect] = useState("none");
   const [digitalInvitationPhotoUrl, setDigitalInvitationPhotoUrl] = useState<string | null>(null);
-  const [digitalInvitationPhotoPosition, setDigitalInvitationPhotoPosition] = useState({ x: 50, y: 50 });
+  const [digitalInvitationPhotoPosition, setDigitalInvitationPhotoPosition] = useState(DEFAULT_PHOTO_POSITION);
   const [digitalInvitationPhotoZoom, setDigitalInvitationPhotoZoom] = useState(1);
   const [digitalInvitationPhotoEffect, setDigitalInvitationPhotoEffect] = useState("none");
 
@@ -755,13 +756,13 @@ export default function InvitationCustomizationPage({
           saveTheDateBlobUrlRef.current = null;
         }
         latestValuesRef.current.saveTheDatePhotoUrl = data.url;
-        latestValuesRef.current.saveTheDatePhotoPosition = { x: 50, y: 50 };
+        latestValuesRef.current.saveTheDatePhotoPosition = DEFAULT_PHOTO_POSITION;
         latestValuesRef.current.saveTheDatePhotoZoom = 1;
         setSaveTheDatePhotoUrl(data.url);
-        setSaveTheDatePhotoPosition({ x: 50, y: 50 });
+        setSaveTheDatePhotoPosition(DEFAULT_PHOTO_POSITION);
         setSaveTheDatePhotoZoom(1);
         setCustomizationCache((old) =>
-          old ? { ...old, saveTheDatePhotoUrl: data.url, saveTheDatePhotoPosition: { x: 50, y: 50 } } : old,
+          old ? { ...old, saveTheDatePhotoUrl: data.url, saveTheDatePhotoPosition: DEFAULT_PHOTO_POSITION } : old,
         );
       } else {
         if (digitalInvitationBlobUrlRef.current) {
@@ -769,13 +770,13 @@ export default function InvitationCustomizationPage({
           digitalInvitationBlobUrlRef.current = null;
         }
         latestValuesRef.current.digitalInvitationPhotoUrl = data.url;
-        latestValuesRef.current.digitalInvitationPhotoPosition = { x: 50, y: 50 };
+        latestValuesRef.current.digitalInvitationPhotoPosition = DEFAULT_PHOTO_POSITION;
         latestValuesRef.current.digitalInvitationPhotoZoom = 1;
         setDigitalInvitationPhotoUrl(data.url);
-        setDigitalInvitationPhotoPosition({ x: 50, y: 50 });
+        setDigitalInvitationPhotoPosition(DEFAULT_PHOTO_POSITION);
         setDigitalInvitationPhotoZoom(1);
         setCustomizationCache((old) =>
-          old ? { ...old, digitalInvitationPhotoUrl: data.url, digitalInvitationPhotoPosition: { x: 50, y: 50 } } : old,
+          old ? { ...old, digitalInvitationPhotoUrl: data.url, digitalInvitationPhotoPosition: DEFAULT_PHOTO_POSITION } : old,
         );
       }
 
@@ -819,7 +820,7 @@ export default function InvitationCustomizationPage({
       saveTheDateBlobUrlRef.current = null;
     }
     if (!file) { setSaveTheDatePhotoUrl(null); return; }
-    setSaveTheDatePhotoPosition({ x: 50, y: 50 });
+    setSaveTheDatePhotoPosition(DEFAULT_PHOTO_POSITION);
     const localUrl = URL.createObjectURL(file);
     saveTheDateBlobUrlRef.current = localUrl;
     setSaveTheDatePhotoUrl(localUrl);
@@ -832,7 +833,7 @@ export default function InvitationCustomizationPage({
       digitalInvitationBlobUrlRef.current = null;
     }
     if (!file) { setDigitalInvitationPhotoUrl(null); return; }
-    setDigitalInvitationPhotoPosition({ x: 50, y: 50 });
+    setDigitalInvitationPhotoPosition(DEFAULT_PHOTO_POSITION);
     const localUrl = URL.createObjectURL(file);
     digitalInvitationBlobUrlRef.current = localUrl;
     setDigitalInvitationPhotoUrl(localUrl);
