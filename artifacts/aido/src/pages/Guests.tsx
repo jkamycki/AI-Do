@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { useForm } from "react-hook-form";
-import ExcelJS from "exceljs";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -1069,6 +1068,17 @@ const GUEST_IMPORT_CATEGORY_OPTIONS = GROUP_OPTIONS
   .filter((option) => option.value !== "none" && option.value !== "Other")
   .map((option) => option.value);
 
+type ImportCell = { value: unknown };
+type ImportRow = {
+  getCell: (column: number) => ImportCell;
+  eachCell: (callback: (cell: ImportCell, columnNumber: number) => void) => void;
+};
+
+async function createExcelWorkbook() {
+  const { default: ExcelJS } = await import("exceljs");
+  return new ExcelJS.Workbook();
+}
+
 function normalizeImportHeader(value: unknown) {
   return String(value ?? "")
     .trim()
@@ -1095,7 +1105,7 @@ function parseImportBoolean(value: unknown) {
 }
 
 function getImportCell(
-  row: ExcelJS.Row,
+  row: ImportRow,
   headerMap: Map<string, number>,
   aliases: string[],
 ) {
@@ -1114,7 +1124,7 @@ function getImportCell(
   return "";
 }
 
-function importRowHasAnyValue(row: ExcelJS.Row) {
+function importRowHasAnyValue(row: ImportRow) {
   let hasAnyValue = false;
   row.eachCell((cell) => {
     if (String(cell.value ?? "").trim().length > 0) {
@@ -1125,7 +1135,7 @@ function importRowHasAnyValue(row: ExcelJS.Row) {
 }
 
 async function downloadGuestImportTemplate() {
-  const workbook = new ExcelJS.Workbook();
+  const workbook = await createExcelWorkbook();
   const sheet = workbook.addWorksheet("Guest Import");
   const instructions = workbook.addWorksheet("Instructions");
   const example = workbook.addWorksheet("Example");
@@ -1196,7 +1206,7 @@ async function downloadGuestImportTemplate() {
 }
 
 async function parseGuestImportWorkbook(file: File) {
-  const workbook = new ExcelJS.Workbook();
+  const workbook = await createExcelWorkbook();
   await workbook.xlsx.load(await file.arrayBuffer());
   const sheet = workbook.worksheets[0];
   if (!sheet) throw new Error("No worksheet found in this Excel file.");

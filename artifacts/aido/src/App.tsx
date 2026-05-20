@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, Component } from "react";
-import type { ReactNode } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, Component } from "react";
+import type { ComponentType, LazyExoticComponent, ReactNode } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
 import { ClerkProvider, useClerk, useAuth, useUser, useSignIn, useSignUp, Show, AuthenticateWithRedirectCallback } from "@clerk/react";
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -14,43 +14,44 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useGetProfile, getGetProfileQueryKey } from "@workspace/api-client-react";
 import { useTracking } from "@/hooks/useTracking";
 import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
-import Landing from "@/pages/Landing";
-import Dashboard from "@/pages/Dashboard";
-import Profile from "@/pages/Profile";
-import Timeline from "@/pages/Timeline";
-import Budget from "@/pages/Budget";
-import Checklist from "@/pages/Checklist";
-import Vendors from "@/pages/Vendors";
-import DayOf from "@/pages/DayOf";
-import Admin from "@/pages/Admin";
-import Settings from "@/pages/Settings";
-import Help from "@/pages/Help";
-import OperationsCenter from "@/pages/OperationsCenter";
-import SeatingChart from "@/pages/SeatingChart";
-import InviteAccept from "@/pages/InviteAccept";
-import GuestCollect from "@/pages/GuestCollect";
-import Rsvp from "@/pages/Rsvp";
-import SharedRsvp from "@/pages/SharedRsvp";
-import SaveTheDate from "@/pages/SaveTheDate";
-import PublicWebsite from "@/pages/PublicWebsite";
-import WebsiteEditor from "@/pages/WebsiteEditor";
-import WeddingParty from "@/pages/WeddingParty";
-import SharedWorkspace from "@/pages/SharedWorkspace";
-import GuestListAndInvitations from "@/pages/GuestListAndInvitations";
-import Hotels from "@/pages/Hotels";
-import Contracts from "@/pages/Contracts";
-import DocumentLibrary from "@/pages/DocumentLibrary";
-import MoodBoard from "@/pages/MoodBoard";
-import Aria from "@/pages/Aria";
-import Terms from "@/pages/Terms";
-import Privacy from "@/pages/Privacy";
-import BetaDisclaimer from "@/pages/BetaDisclaimer";
-import Security from "@/pages/Security";
-import DataHandling from "@/pages/DataHandling";
-import UpdatesImprovements from "@/pages/UpdatesImprovements";
-import NotFound from "@/pages/not-found";
-import VideoTemplate from "@/components/video/VideoTemplate";
 import { MaintenanceNotice } from "@/components/MaintenanceNotice";
+
+const Landing = lazy(() => import("@/pages/Landing"));
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const Profile = lazy(() => import("@/pages/Profile"));
+const Timeline = lazy(() => import("@/pages/Timeline"));
+const Budget = lazy(() => import("@/pages/Budget"));
+const Checklist = lazy(() => import("@/pages/Checklist"));
+const Vendors = lazy(() => import("@/pages/Vendors"));
+const DayOf = lazy(() => import("@/pages/DayOf"));
+const Admin = lazy(() => import("@/pages/Admin"));
+const Settings = lazy(() => import("@/pages/Settings"));
+const Help = lazy(() => import("@/pages/Help"));
+const OperationsCenter = lazy(() => import("@/pages/OperationsCenter"));
+const SeatingChart = lazy(() => import("@/pages/SeatingChart"));
+const InviteAccept = lazy(() => import("@/pages/InviteAccept"));
+const GuestCollect = lazy(() => import("@/pages/GuestCollect"));
+const Rsvp = lazy(() => import("@/pages/Rsvp"));
+const SharedRsvp = lazy(() => import("@/pages/SharedRsvp"));
+const SaveTheDate = lazy(() => import("@/pages/SaveTheDate"));
+const PublicWebsite = lazy(() => import("@/pages/PublicWebsite"));
+const WebsiteEditor = lazy(() => import("@/pages/WebsiteEditor"));
+const WeddingParty = lazy(() => import("@/pages/WeddingParty"));
+const SharedWorkspace = lazy(() => import("@/pages/SharedWorkspace"));
+const GuestListAndInvitations = lazy(() => import("@/pages/GuestListAndInvitations"));
+const Hotels = lazy(() => import("@/pages/Hotels"));
+const Contracts = lazy(() => import("@/pages/Contracts"));
+const DocumentLibrary = lazy(() => import("@/pages/DocumentLibrary"));
+const MoodBoard = lazy(() => import("@/pages/MoodBoard"));
+const Aria = lazy(() => import("@/pages/Aria"));
+const Terms = lazy(() => import("@/pages/Terms"));
+const Privacy = lazy(() => import("@/pages/Privacy"));
+const BetaDisclaimer = lazy(() => import("@/pages/BetaDisclaimer"));
+const Security = lazy(() => import("@/pages/Security"));
+const DataHandling = lazy(() => import("@/pages/DataHandling"));
+const UpdatesImprovements = lazy(() => import("@/pages/UpdatesImprovements"));
+const NotFound = lazy(() => import("@/pages/not-found"));
+const VideoTemplate = lazy(() => import("@/components/video/VideoTemplate"));
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
@@ -1312,12 +1313,22 @@ type PortalMaintenanceSection =
   | "portal-day-of"
   | "portal-website-editor";
 
+type LazyRouteComponent = ComponentType | LazyExoticComponent<ComponentType>;
+
+function RouteLoading() {
+  return (
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+      Loading...
+    </div>
+  );
+}
+
 function ProtectedRoute({
   component: Component,
   fullWidth = false,
   maintenanceSection,
 }: {
-  component: React.ComponentType;
+  component: LazyRouteComponent;
   fullWidth?: boolean;
   maintenanceSection?: PortalMaintenanceSection;
 }) {
@@ -1349,11 +1360,7 @@ function ProtectedRoute({
   });
 
   if (!isLoaded) {
-    return (
-      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
-        Loading...
-      </div>
-    );
+    return <RouteLoading />;
   }
 
   if (!isSignedIn) {
@@ -1365,11 +1372,7 @@ function ProtectedRoute({
   }
 
   if (maintenanceSection && (isLoadingAdminCheck || isLoadingMaintenance)) {
-    return (
-      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
-        Loading...
-      </div>
-    );
+    return <RouteLoading />;
   }
 
   if (maintenanceSection && maintenance?.active && adminCheck?.isAdmin !== true) {
@@ -1749,52 +1752,54 @@ function ClerkQueryClientCacheInvalidator() {
 
 function Router() {
   return (
-    <Switch>
-      <Route path="/" component={HomeRedirect} />
-      <Route path="/sign-in/*?" component={SignInPage} />
-      <Route path="/sign-up/*?" component={SignUpPage} />
-      <Route path="/sso-callback" component={SsoCallbackPage} />
-      <Route path="/invite/rsvp/:token">{(params) => <Redirect to={`/rsvp/${params.token}`} />}</Route>
-      <Route path="/invite/save-the-date/:token">{(params) => <Redirect to={`/save-the-date/${params.token}`} />}</Route>
-      <Route path="/invite/:token" component={InviteAccept} />
-      <Route path="/collect/:token" component={GuestCollect} />
-      <Route path="/rsvp/shared/:slug" component={SharedRsvp} />
-      <Route path="/rsvp/:token" component={Rsvp} />
-      <Route path="/save-the-date/shared-invite/:slug" component={SaveTheDate} />
-      <Route path="/save-the-date/shared/:slug" component={SaveTheDate} />
-      <Route path="/save-the-date/:token" component={SaveTheDate} />
-      <Route path="/w/:slug" component={PublicWebsite} />
-      <Route path="/w/:slug/:section" component={PublicWebsite} />
-      <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} maintenanceSection="portal-dashboard" />} />
-      <Route path="/profile" component={() => <ProtectedRoute component={Profile} maintenanceSection="portal-profile" />} />
-      <Route path="/timeline" component={() => <ProtectedRoute component={Timeline} maintenanceSection="portal-timeline" />} />
-      <Route path="/budget" component={() => <ProtectedRoute component={Budget} maintenanceSection="portal-budget" />} />
-      <Route path="/checklist" component={() => <ProtectedRoute component={Checklist} maintenanceSection="portal-checklist" />} />
-      <Route path="/vendors" component={() => <ProtectedRoute component={Vendors} maintenanceSection="portal-vendors" />} />
-      <Route path="/day-of" component={() => <ProtectedRoute component={DayOf} maintenanceSection="portal-day-of" />} />
-      <Route path="/admin" component={() => <ProtectedRoute component={Admin} />} />
-      <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
-      <Route path="/help/updates-improvements" component={UpdatesImprovements} />
-      <Route path="/help" component={() => <ProtectedRoute component={Help} />} />
-      <Route path="/operations-center" component={() => <ProtectedRoute component={OperationsCenter} />} />
-      <Route path="/seating-chart" component={() => <ProtectedRoute component={SeatingChart} maintenanceSection="portal-seating-chart" />} />
-      <Route path="/guests/:profileId?" component={() => <ProtectedRoute component={GuestListAndInvitations} maintenanceSection="portal-guests" />} />
-      <Route path="/wedding-party" component={() => <ProtectedRoute component={WeddingParty} maintenanceSection="portal-wedding-party" />} />
-      <Route path="/hotels" component={() => <ProtectedRoute component={Hotels} maintenanceSection="portal-hotels" />} />
-      <Route path="/contracts" component={() => <ProtectedRoute component={Contracts} />} />
-      <Route path="/documents" component={() => <ProtectedRoute component={DocumentLibrary} maintenanceSection="portal-documents" />} />
-      <Route path="/mood-board" component={() => <ProtectedRoute component={MoodBoard} maintenanceSection="portal-mood-board" />} />
-      <Route path="/aria" component={() => <ProtectedRoute component={Aria} maintenanceSection="portal-aria" />} />
-      <Route path="/website-editor" component={() => <ProtectedRoute component={WebsiteEditor} fullWidth maintenanceSection="portal-website-editor" />} />
-      <Route path="/workspace/:profileId" component={() => <ProtectedRoute component={SharedWorkspace} fullWidth />} />
-      <Route path="/terms" component={Terms} />
-      <Route path="/privacy" component={Privacy} />
-      <Route path="/beta" component={BetaDisclaimer} />
-      <Route path="/security" component={Security} />
-      <Route path="/data-handling" component={DataHandling} />
-      <Route path="/promo" component={VideoTemplate} />
-      <Route component={NotFound} />
-    </Switch>
+    <Suspense fallback={<RouteLoading />}>
+      <Switch>
+        <Route path="/" component={HomeRedirect} />
+        <Route path="/sign-in/*?" component={SignInPage} />
+        <Route path="/sign-up/*?" component={SignUpPage} />
+        <Route path="/sso-callback" component={SsoCallbackPage} />
+        <Route path="/invite/rsvp/:token">{(params) => <Redirect to={`/rsvp/${params.token}`} />}</Route>
+        <Route path="/invite/save-the-date/:token">{(params) => <Redirect to={`/save-the-date/${params.token}`} />}</Route>
+        <Route path="/invite/:token" component={InviteAccept} />
+        <Route path="/collect/:token" component={GuestCollect} />
+        <Route path="/rsvp/shared/:slug" component={SharedRsvp} />
+        <Route path="/rsvp/:token" component={Rsvp} />
+        <Route path="/save-the-date/shared-invite/:slug" component={SaveTheDate} />
+        <Route path="/save-the-date/shared/:slug" component={SaveTheDate} />
+        <Route path="/save-the-date/:token" component={SaveTheDate} />
+        <Route path="/w/:slug" component={PublicWebsite} />
+        <Route path="/w/:slug/:section" component={PublicWebsite} />
+        <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} maintenanceSection="portal-dashboard" />} />
+        <Route path="/profile" component={() => <ProtectedRoute component={Profile} maintenanceSection="portal-profile" />} />
+        <Route path="/timeline" component={() => <ProtectedRoute component={Timeline} maintenanceSection="portal-timeline" />} />
+        <Route path="/budget" component={() => <ProtectedRoute component={Budget} maintenanceSection="portal-budget" />} />
+        <Route path="/checklist" component={() => <ProtectedRoute component={Checklist} maintenanceSection="portal-checklist" />} />
+        <Route path="/vendors" component={() => <ProtectedRoute component={Vendors} maintenanceSection="portal-vendors" />} />
+        <Route path="/day-of" component={() => <ProtectedRoute component={DayOf} maintenanceSection="portal-day-of" />} />
+        <Route path="/admin" component={() => <ProtectedRoute component={Admin} />} />
+        <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
+        <Route path="/help/updates-improvements" component={UpdatesImprovements} />
+        <Route path="/help" component={() => <ProtectedRoute component={Help} />} />
+        <Route path="/operations-center" component={() => <ProtectedRoute component={OperationsCenter} />} />
+        <Route path="/seating-chart" component={() => <ProtectedRoute component={SeatingChart} maintenanceSection="portal-seating-chart" />} />
+        <Route path="/guests/:profileId?" component={() => <ProtectedRoute component={GuestListAndInvitations} maintenanceSection="portal-guests" />} />
+        <Route path="/wedding-party" component={() => <ProtectedRoute component={WeddingParty} maintenanceSection="portal-wedding-party" />} />
+        <Route path="/hotels" component={() => <ProtectedRoute component={Hotels} maintenanceSection="portal-hotels" />} />
+        <Route path="/contracts" component={() => <ProtectedRoute component={Contracts} />} />
+        <Route path="/documents" component={() => <ProtectedRoute component={DocumentLibrary} maintenanceSection="portal-documents" />} />
+        <Route path="/mood-board" component={() => <ProtectedRoute component={MoodBoard} maintenanceSection="portal-mood-board" />} />
+        <Route path="/aria" component={() => <ProtectedRoute component={Aria} maintenanceSection="portal-aria" />} />
+        <Route path="/website-editor" component={() => <ProtectedRoute component={WebsiteEditor} fullWidth maintenanceSection="portal-website-editor" />} />
+        <Route path="/workspace/:profileId" component={() => <ProtectedRoute component={SharedWorkspace} fullWidth />} />
+        <Route path="/terms" component={Terms} />
+        <Route path="/privacy" component={Privacy} />
+        <Route path="/beta" component={BetaDisclaimer} />
+        <Route path="/security" component={Security} />
+        <Route path="/data-handling" component={DataHandling} />
+        <Route path="/promo" component={VideoTemplate} />
+        <Route component={NotFound} />
+      </Switch>
+    </Suspense>
   );
 }
 
