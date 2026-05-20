@@ -3177,10 +3177,7 @@ export default function Guests({
       {allGuests.length > 0 && (
         <div className="rounded-xl border border-primary/15 bg-[#FFF8F1]/85 p-3 shadow-sm dark:border-primary/25 dark:bg-card/80">
           <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-primary/80">
-                Bulk email
-              </p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
               <Badge
                 variant="secondary"
                 className="w-fit border-primary/15 bg-primary/10 px-3 py-1 text-primary"
