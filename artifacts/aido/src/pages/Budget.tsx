@@ -31,7 +31,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ToastAction } from "@/components/ui/toast";
-import { DollarSign, Plus, Trash2, Pencil, ArrowUpRight, Sparkles, Lock, Paperclip, X, AlertTriangle, Bell, CheckCircle2 } from "lucide-react";
+import { DollarSign, Plus, Trash2, Pencil, ArrowUpRight, Sparkles, Paperclip, X, AlertTriangle, Bell, CheckCircle2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 const MANUAL_CATEGORIES = [
@@ -82,6 +82,16 @@ interface ManualExpenseFormState {
   receiptName: string | null;
 }
 
+interface VendorBudgetFormState {
+  name: string;
+  category: string;
+  totalCost: string;
+  depositAmount: string;
+  nextPaymentDue: string;
+  nextPaymentAmount: string;
+  paidInFull: boolean;
+}
+
 const emptyManualForm = (): ManualExpenseFormState => ({
   name: "",
   category: "Other",
@@ -93,6 +103,16 @@ const emptyManualForm = (): ManualExpenseFormState => ({
   notes: "",
   receiptUrl: null,
   receiptName: null,
+});
+
+const emptyVendorBudgetForm = (): VendorBudgetFormState => ({
+  name: "",
+  category: "Other",
+  totalCost: "",
+  depositAmount: "",
+  nextPaymentDue: "",
+  nextPaymentAmount: "",
+  paidInFull: false,
 });
 
 function formatMoney(n: number) {
@@ -135,6 +155,7 @@ const VENDOR_CATEGORY_BADGE_STYLES: Record<string, string> = {
   "Wedding Planner": "border-transparent bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300",
   "Other": "border-transparent bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300",
 };
+const VENDOR_CATEGORIES = Object.keys(VENDOR_CATEGORY_BADGE_STYLES);
 const MANUAL_CATEGORY_BADGE_STYLES: Record<string, string> = {
   "Attire": "border-transparent bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300",
   "Rings": "border-transparent bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300",
@@ -318,6 +339,9 @@ export default function Budget() {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<ManualExpenseFormState>(emptyManualForm());
+  const [editingVendor, setEditingVendor] = useState<VendorRow | null>(null);
+  const [vendorForm, setVendorForm] = useState<VendorBudgetFormState>(emptyVendorBudgetForm());
+  const [isSavingVendorBudget, setIsSavingVendorBudget] = useState(false);
 
   const upload = useUpload({
     getToken,
@@ -446,6 +470,18 @@ export default function Budget() {
     });
     setEditingId(m.id);
     setIsAdding(true);
+  };
+  const openVendorBudgetEdit = (vendor: VendorRow) => {
+    setEditingVendor(vendor);
+    setVendorForm({
+      name: vendor.name,
+      category: normalizeCategoryLabel(vendor.category),
+      totalCost: vendor.totalCost > 0 ? String(vendor.totalCost) : "",
+      depositAmount: vendor.depositAmount > 0 ? String(vendor.depositAmount) : "",
+      nextPaymentDue: vendor.nextPaymentDue ?? "",
+      nextPaymentAmount: vendor.nextPaymentAmount != null ? String(vendor.nextPaymentAmount) : "",
+      paidInFull: vendor.totalCost > 0 && vendor.totalPaid >= vendor.totalCost,
+    });
   };
 
   const handleReceiptFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -731,6 +767,106 @@ export default function Budget() {
     }
   };
 
+  const submitVendorBudgetForm = async () => {
+    if (!editingVendor) return;
+    const name = vendorForm.name.trim();
+    const category = vendorForm.category.trim();
+    const totalCost = Math.max(0, Number(vendorForm.totalCost || 0));
+    const depositAmount = Math.max(0, Number(vendorForm.depositAmount || 0));
+    const nextPaymentDue = vendorForm.paidInFull ? "" : vendorForm.nextPaymentDue.trim();
+    const nextPaymentAmount = Math.max(0, Number(vendorForm.nextPaymentAmount || 0));
+
+    if (!name || !category) {
+      toast({
+        variant: "destructive",
+        title: t("budget.vendor_required_fields", { defaultValue: "Vendor name and category are required." }),
+      });
+      return;
+    }
+    if (!Number.isFinite(totalCost) || !Number.isFinite(depositAmount) || !Number.isFinite(nextPaymentAmount)) {
+      toast({
+        variant: "destructive",
+        title: t("budget.vendor_invalid_money", { defaultValue: "Please enter valid dollar amounts." }),
+      });
+      return;
+    }
+
+    setIsSavingVendorBudget(true);
+    try {
+      const vendorResponse = await authFetch(`/api/vendors/${editingVendor.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          category,
+          totalCost,
+          depositAmount,
+          nextPaymentDue: nextPaymentDue || null,
+        }),
+      });
+      if (!vendorResponse.ok) throw new Error("Vendor update failed");
+
+      if (vendorForm.paidInFull) {
+        const paidResponse = await authFetch(`/api/vendors/${editingVendor.id}/payments/mark-paid-in-full`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        if (!paidResponse.ok) throw new Error("Paid in full failed");
+        const result = await paidResponse.json().catch(() => null) as {
+          undo?: { markedPaymentIds?: number[]; createdPaymentId?: number | null; previousNextPaymentDue?: string | null };
+        } | null;
+        showVendorUndoToast(
+          t("budget.toast_vendor_updated_paid", { defaultValue: "Vendor updated and marked paid in full" }),
+          () => undoVendorPaidInFull(editingVendor.id, result?.undo ?? {}),
+        );
+      } else if (nextPaymentDue) {
+        if (editingVendor.nextPaymentId) {
+          const paymentResponse = await authFetch(`/api/vendors/${editingVendor.id}/payments/${editingVendor.nextPaymentId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              dueDate: nextPaymentDue,
+              amount: nextPaymentAmount || editingVendor.nextPaymentAmount || Math.max(0, totalCost - editingVendor.totalPaid),
+            }),
+          });
+          if (!paymentResponse.ok) throw new Error("Payment update failed");
+        } else if (nextPaymentAmount > 0) {
+          const paymentResponse = await authFetch(`/api/vendors/${editingVendor.id}/payments`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              label: "Payment",
+              dueDate: nextPaymentDue,
+              amount: nextPaymentAmount,
+              isPaid: false,
+            }),
+          });
+          if (!paymentResponse.ok) throw new Error("Payment create failed");
+        }
+        toast({ title: t("budget.toast_vendor_budget_updated", { defaultValue: "Vendor budget details updated" }) });
+      } else {
+        if (editingVendor.nextPaymentId) {
+          const paymentResponse = await authFetch(`/api/vendors/${editingVendor.id}/payments/${editingVendor.nextPaymentId}`, {
+            method: "DELETE",
+          });
+          if (!paymentResponse.ok) throw new Error("Payment delete failed");
+        }
+        toast({ title: t("budget.toast_vendor_budget_updated", { defaultValue: "Vendor budget details updated" }) });
+      }
+
+      setEditingVendor(null);
+      setVendorForm(emptyVendorBudgetForm());
+      await refreshBudgetPaymentViews(editingVendor.id);
+    } catch {
+      toast({
+        variant: "destructive",
+        title: t("budget.toast_vendor_budget_failed", { defaultValue: "Couldn't update vendor budget details. Please try again." }),
+      });
+    } finally {
+      setIsSavingVendorBudget(false);
+    }
+  };
+
   if (isLoadingBudget) {
     return (
       <div className="space-y-8 max-w-6xl mx-auto">
@@ -819,11 +955,13 @@ export default function Budget() {
                 {t("budget.vendor_synced_title")}
               </CardTitle>
               <CardDescription>
-                {t("budget.vendor_synced_desc")}
+                {t("budget.vendor_synced_editable_desc", {
+                  defaultValue: "Synced with your Vendor List. Edit payment details here, or open the vendor for contacts, files, and notes.",
+                })}
               </CardDescription>
             </div>
-            <Badge variant="secondary" className="gap-1 shrink-0">
-              <Lock className="h-3 w-3" /> {t("budget.read_only")}
+            <Badge variant="secondary" className="gap-1 shrink-0 bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
+              <Sparkles className="h-3 w-3" /> {t("budget.synced_badge", { defaultValue: "Synced" })}
             </Badge>
           </div>
         </CardHeader>
@@ -849,7 +987,7 @@ export default function Budget() {
                     <TableHead className="text-right font-bold">{t("budget.col_remaining")}</TableHead>
                     <TableHead className="font-bold">{t("budget.col_next_payment")}</TableHead>
                     <TableHead className="min-w-[180px] font-bold">{t("budget.col_progress")}</TableHead>
-                    <TableHead className="text-right font-bold">{t("budget.col_view")}</TableHead>
+                    <TableHead className="text-right font-bold">{t("budget.col_actions", { defaultValue: "Actions" })}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -904,14 +1042,25 @@ export default function Budget() {
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setLocation(`/vendors?vendorId=${v.id}`)}
-                            className="gap-1"
-                          >
-                            {t("budget.col_view")} <ArrowUpRight className="h-3 w-3" />
-                          </Button>
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openVendorBudgetEdit(v)}
+                              className="gap-1"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              {t("common.edit", { defaultValue: "Edit" })}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setLocation(`/vendors?vendorId=${v.id}`)}
+                              className="gap-1"
+                            >
+                              {t("budget.col_view")} <ArrowUpRight className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -922,6 +1071,144 @@ export default function Budget() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!editingVendor} onOpenChange={(open) => { if (!open) { setEditingVendor(null); setVendorForm(emptyVendorBudgetForm()); } }}>
+        <DialogContent className="sm:max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl text-primary">
+              {t("budget.edit_vendor_budget_title", { defaultValue: "Edit Vendor Budget Details" })}
+            </DialogTitle>
+            <DialogDescription>
+              {t("budget.edit_vendor_budget_desc", {
+                defaultValue: "These fields sync with the Vendor List so you only enter vendor payment details once.",
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+              {t("budget.vendor_sync_note", {
+                defaultValue: "Use Budget for money updates. Use Vendor List for contact info, files, contracts, and notes.",
+              })}
+            </div>
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_180px]">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">{t("budget.vendor_name_label", { defaultValue: "Vendor name" })}</label>
+                <Input
+                  value={vendorForm.name}
+                  onChange={(e) => setVendorForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder={t("budget.vendor_name_placeholder", { defaultValue: "Vendor name" })}
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">{t("budget.col_category")}</label>
+                <Select value={vendorForm.category} onValueChange={(v) => setVendorForm((f) => ({ ...f, category: v }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {VENDOR_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${categoryBadgeClass(cat)}`}>
+                          {displayCategoryLabel(cat)}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">{t("budget.col_total_cost")}</label>
+                <MoneyInput
+                  value={vendorForm.totalCost}
+                  onChange={(v) => setVendorForm((f) => ({ ...f, totalCost: v }))}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">{t("budget.deposit_label", { defaultValue: "Deposit" })}</label>
+                <MoneyInput
+                  value={vendorForm.depositAmount}
+                  onChange={(v) => setVendorForm((f) => ({ ...f, depositAmount: v }))}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            {(vendorForm.paidInFull || !vendorForm.nextPaymentDue) && (
+              <div className="rounded-lg border border-emerald-500/25 bg-emerald-50/70 p-3">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <Checkbox
+                    checked={vendorForm.paidInFull}
+                    onCheckedChange={(checked) => setVendorForm((f) => {
+                      const paidInFull = checked === true;
+                      return {
+                        ...f,
+                        paidInFull,
+                        nextPaymentDue: paidInFull ? "" : f.nextPaymentDue,
+                        nextPaymentAmount: paidInFull ? "" : f.nextPaymentAmount,
+                      };
+                    })}
+                    className="mt-0.5"
+                  />
+                  <span className="space-y-0.5">
+                    <span className="block text-sm font-semibold text-emerald-900">
+                      {t("budget.paid_in_full_question", { defaultValue: "Paid in full?" })}
+                    </span>
+                    <span className="block text-xs text-emerald-800/80">
+                      {t("budget.vendor_paid_in_full_hint", { defaultValue: "If yes, this marks the vendor fully paid and skips the next payment date." })}
+                    </span>
+                  </span>
+                </label>
+              </div>
+            )}
+            {!vendorForm.paidInFull && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">{t("budget.next_payment_date_label", { defaultValue: "Next payment date" })}</label>
+                  <Input
+                    type="date"
+                    value={vendorForm.nextPaymentDue}
+                    onChange={(e) => setVendorForm((f) => ({ ...f, nextPaymentDue: e.target.value }))}
+                    className="[color-scheme:light]"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">{t("budget.next_payment_amount_label", { defaultValue: "Next payment amount" })}</label>
+                  <MoneyInput
+                    value={vendorForm.nextPaymentAmount}
+                    onChange={(v) => setVendorForm((f) => ({ ...f, nextPaymentAmount: v }))}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditingVendor(null);
+                setVendorForm(emptyVendorBudgetForm());
+              }}
+            >
+              {t("common.cancel")}
+            </Button>
+            {editingVendor && (
+              <Button variant="ghost" onClick={() => setLocation(`/vendors?vendorId=${editingVendor.id}`)} className="gap-1">
+                {t("budget.open_vendor_profile", { defaultValue: "Open vendor profile" })}
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            <Button onClick={submitVendorBudgetForm} disabled={isSavingVendorBudget}>
+              {isSavingVendorBudget
+                ? t("common.saving", { defaultValue: "Saving..." })
+                : t("budget.save_vendor_budget", { defaultValue: "Save synced details" })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Manual Expenses ──────────────────────────────────────── */}
       <Card>
