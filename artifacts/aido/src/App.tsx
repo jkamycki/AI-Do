@@ -349,7 +349,7 @@ function ActiveAccountNotice({
       }}
     >
       <p style={{ color: "#6F3E54", fontSize: "0.82rem", lineHeight: 1.45, margin: 0 }}>
-        You are currently signed in as <strong>{accountLabel}</strong>. Do you want to continue with this account, or switch to another one?
+        Choose which A.IDO account you want to use. You are currently signed in as <strong>{accountLabel}</strong>.
       </p>
       <div style={{ display: "grid", gap: "0.55rem", marginTop: "0.65rem" }}>
         <button
@@ -450,7 +450,7 @@ function CustomSignInForm() {
     try {
       if (isLoaded && isSignedIn) {
         if (matchesActiveEmail(email)) {
-          setLocation("/dashboard", { replace: true });
+          setInfo(`You are already signed in as ${activeEmail}. Continue with that account, or switch to another one first.`);
           return;
         }
         await clerk.signOut();
@@ -497,7 +497,7 @@ function CustomSignInForm() {
     e.preventDefault();
     setError(null);
     if (isSignedIn) {
-      setLocation("/dashboard", { replace: true });
+      setInfo(`You are already signed in as ${activeEmail || "this account"}. Continue with that account, or switch to another one first.`);
       return;
     }
     if (!loginCode.trim()) {
@@ -925,7 +925,7 @@ function CustomSignUpForm() {
     if (isLoaded && isSignedIn) {
       if (matchesActiveEmail(email)) {
         setSubmitting(false);
-        setError("You are already signed in with this email. Continue to your dashboard, or choose Google to pick another account first.");
+        setError("You are already signed in with this email. Continue with that account, or switch to another one first.");
         return;
       }
       try {
@@ -982,7 +982,7 @@ function CustomSignUpForm() {
     setError(null);
     setResendInfo(null);
     if (isSignedIn) {
-      setLocation("/dashboard", { replace: true });
+      setError("You are already signed in. Continue with that account, or switch to another one first.");
       return;
     }
     if (!code.trim()) {

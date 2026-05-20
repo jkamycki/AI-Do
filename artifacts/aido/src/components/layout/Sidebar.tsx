@@ -352,7 +352,7 @@ export function Sidebar() {
   }, [location]);
 
   const handleSignOut = () => {
-    signOut({ redirectUrl: "/" });
+    signOut({ redirectUrl: "/sign-in" });
   };
 
   const closeMenu = () => setIsOpen(false);

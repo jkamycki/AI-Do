@@ -396,7 +396,7 @@ export default function WebsiteEditor() {
 
   const upload = useUpload({
     getToken,
-    onError: (e) => toast({ title: "Upload failed", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Upload failed", description: e.message, variant: "destructive" }),
   });
 
   // ---- sidebar resize drag ----
