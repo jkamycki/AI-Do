@@ -36,6 +36,7 @@ const PHOTO_W = 340;
 const PHOTO_H = 220;
 
 const PREFIX = "std:";
+const BRAND_URL = "https://aidowedding.net?theme=light";
 
 export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewProps>(
   function SaveTheDatePreview(
@@ -254,6 +255,37 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
               editable={editable}
             />
           ))}
+
+          <div
+            style={{
+              position: "absolute",
+              left: 48,
+              right: 48,
+              bottom: 22,
+              paddingTop: 10,
+              borderTop: `1px solid ${colors.primary}33`,
+              textAlign: "center",
+              color: colors.accent,
+              fontFamily: font || "Cormorant Garamond",
+              fontSize: 11,
+              lineHeight: 1.35,
+            }}
+          >
+            <img
+              src="/logo.png"
+              alt="A.IDO"
+              style={{ display: "block", height: 26, width: "auto", objectFit: "contain", margin: "0 auto 6px" }}
+            />
+            <div>
+              Planning your own wedding?{" "}
+              <a href={BRAND_URL} style={{ color: colors.primary, fontWeight: 700, textDecoration: "none" }}>
+                Try A.IDO
+              </a>
+            </div>
+            <a href={BRAND_URL} style={{ color: colors.accent, textDecoration: "underline" }}>
+              aidowedding.net
+            </a>
+          </div>
         </div>
       </div>
     );

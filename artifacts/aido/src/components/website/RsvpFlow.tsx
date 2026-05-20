@@ -989,6 +989,22 @@ export function RsvpFlow({
             </div>
           );
         })()}
+        <div className="mx-auto mt-12 max-w-md border-t pt-6 text-center" style={{ borderColor: `${accent}33` }}>
+          <img
+            src="/logo.png"
+            alt="A.IDO"
+            className="mx-auto mb-2 h-8 w-auto object-contain"
+          />
+          <p className="text-xs leading-relaxed" style={{ color: text }}>
+            Planning your own wedding?{" "}
+            <a href="https://aidowedding.net?theme=light" className="font-bold no-underline" style={{ color: accent }}>
+              Try A.IDO
+            </a>
+          </p>
+          <a href="https://aidowedding.net?theme=light" className="text-xs underline" style={{ color: text }}>
+            aidowedding.net
+          </a>
+        </div>
       </div>
     </section>
   );

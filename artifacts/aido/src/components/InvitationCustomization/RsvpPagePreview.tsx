@@ -654,6 +654,24 @@ export function RsvpPagePreview({
           </div>
           </div>
         </div>
+        <div style={{ margin: "0 16px 20px", paddingTop: 14, borderTop: `1px solid ${cardBorder}`, textAlign: "center" }}>
+          <img
+            src="/logo.png"
+            alt="A.IDO"
+            style={{ display: "block", height: 28, width: "auto", objectFit: "contain", margin: "0 auto 7px" }}
+          />
+          <p style={{ margin: 0, fontFamily: bodyFont, fontSize: 9.5 * sc, color: textMuted, lineHeight: 1.45 }}>
+            Planning your own wedding?{" "}
+            <a href="https://aidowedding.net?theme=light" style={{ color: accent, fontWeight: 800, textDecoration: "none" }}>
+              Try A.IDO
+            </a>
+          </p>
+          <p style={{ margin: "3px 0 0", fontFamily: bodyFont, fontSize: 9 * sc, color: textMuted, lineHeight: 1.35 }}>
+            <a href="https://aidowedding.net?theme=light" style={{ color: textMuted, textDecoration: "underline" }}>
+              aidowedding.net
+            </a>
+          </p>
+        </div>
       </div>
     </div>
   );
