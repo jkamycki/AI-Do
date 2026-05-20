@@ -1864,6 +1864,7 @@ export default function Guests({
   const selectedSaveTheDateEligible = saveTheDateEligible.filter((guest) => selectedGuestIds.has(guest.id));
   const selectedInvitationEligible = invitationEligible.filter((guest) => selectedGuestIds.has(guest.id));
   const selectedReminderEligible = reminderEligible.filter((guest) => selectedGuestIds.has(guest.id));
+  const selectedGuests = allGuests.filter((guest) => selectedGuestIds.has(guest.id));
   const toggleGuestSelected = (guestId: number, checked: boolean) => {
     setSelectedGuestIds((current) => {
       const next = new Set(current);
@@ -3027,6 +3028,53 @@ export default function Guests({
                   {selectedReminderEligible.length}
                 </Badge>
               </Button>
+            </div>
+            <div className="rounded-lg border border-primary/10 bg-white/55 p-3 dark:bg-card/60">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs font-semibold text-primary">
+                  Selected guests
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-primary hover:bg-primary/10"
+                    onClick={() => setSelectedGuestIds(new Set(allGuests.map((guest) => guest.id)))}
+                  >
+                    Select all
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                    onClick={() => setSelectedGuestIds(new Set())}
+                  >
+                    Deselect all
+                  </Button>
+                </div>
+              </div>
+              {selectedGuests.length > 0 ? (
+                <div className="mt-2 flex max-h-24 flex-wrap gap-1.5 overflow-y-auto pr-1">
+                  {selectedGuests.map((guest) => (
+                    <button
+                      key={guest.id}
+                      type="button"
+                      onClick={() => toggleGuestSelected(guest.id, false)}
+                      className="inline-flex items-center gap-1 rounded-full border border-primary/15 bg-primary/10 px-2 py-1 text-xs font-medium text-primary hover:bg-primary/15"
+                      title={`Deselect ${guest.name}`}
+                    >
+                      <span>{guest.name}</span>
+                      <XIcon className="h-3 w-3 opacity-70" />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  No guests selected. Select guests from the list before sending.
+                </p>
+              )}
             </div>
           </div>
         </div>
