@@ -26,6 +26,7 @@ import {
 } from "@/lib/invitationDesignModel";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { qrPngDataUrl } from "@/lib/localQr";
+import { publishedWebsiteUrl } from "@/lib/publicUrls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -1141,8 +1142,8 @@ export default function InvitationCustomizationPage({
     rsvpByDate,
   });
   const websiteUrl =
-    typeof window !== "undefined" && websiteRecord?.slug && websiteRecord?.published
-      ? `${window.location.origin}/w/${websiteRecord.slug}#rsvp`
+    websiteRecord?.slug && websiteRecord?.published
+      ? publishedWebsiteUrl(websiteRecord.slug, "rsvp")
       : null;
   const websiteLinkPendingMessage = !websiteUrl
     ? "Your wedding website link will be added here automatically once your website is published."
@@ -1371,7 +1372,7 @@ export default function InvitationCustomizationPage({
         if (includePrintQr && websiteUrl) {
           const qrDataUrl = await qrPngDataUrl(websiteUrl);
           if (qrDataUrl) {
-            const qrSize = 126;
+            const qrSize = 150;
             const qrX = pageWidth / 2 - qrSize / 2;
             doc.setFillColor(255, 255, 255);
             doc.rect(qrX - 8, y, qrSize + 16, qrSize + 16, "F");

@@ -22,6 +22,7 @@ import { SaveTheDatePreview } from "@/components/InvitationCustomization/SaveThe
 import { AiSaveDatePreview, AiDigitalInvitationPreview, type CustomColors } from "@/components/InvitationCustomization/AiPreviewComponents";
 import { evaluateCustomDesignCompleteness } from "@/lib/customDesignValidation";
 import { DEFAULT_RSVP_MEAL_OPTIONS, normalizeMealOptions } from "@/lib/mealOptions";
+import { publishedWebsiteUrl } from "@/lib/publicUrls";
 
 interface Customization {
   useGeneratedInvitation: boolean;
@@ -688,8 +689,8 @@ export function InvitationSendModal({
     ? { ...palette, primary: digAccent, secondary: digAccent, accent: digAccent }
     : palette;
   const websiteUrl =
-    typeof window !== "undefined" && websiteRecord?.slug && websiteRecord?.published
-      ? `${window.location.origin}/w/${websiteRecord.slug}#rsvp`
+    websiteRecord?.slug && websiteRecord?.published
+      ? publishedWebsiteUrl(websiteRecord.slug, "rsvp")
       : null;
   const mealOptions = normalizeMealOptions(customization?.customColors?.rsvpMealOptions ?? DEFAULT_RSVP_MEAL_OPTIONS);
 

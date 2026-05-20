@@ -61,8 +61,8 @@ function RealQrCode({ url, accent }: { url: string; accent: string }) {
     <div
       aria-label="RSVP QR code"
       style={{
-        width: 126,
-        height: 126,
+        width: 150,
+        height: 150,
         padding: 8,
         background: "#fff",
         border: `1px solid ${accent}55`,

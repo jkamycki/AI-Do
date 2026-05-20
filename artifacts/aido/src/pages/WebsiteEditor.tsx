@@ -33,6 +33,7 @@ import { EDITABLE_HIDDEN_MARKER, isEditableHiddenMarker } from "@/components/web
 import { HeroPhotoPositionDialog } from "@/components/HeroPhotoPositionDialog";
 import { ImageCropDialog, type CropQueueItem } from "@/components/ImageCropDialog";
 import { qrSvgDataUrl } from "@/lib/localQr";
+import { publicAppOrigin, publishedWebsiteUrl } from "@/lib/publicUrls";
 import {
   DEFAULT_RSVP_MEAL_OPTIONS,
   normalizeMealOptions,
@@ -1300,7 +1301,7 @@ export default function WebsiteEditor() {
 
   const publicUrl = useMemo(() => {
     if (!record) return "";
-    return `${window.location.origin}/w/${record.slug}`;
+    return publishedWebsiteUrl(record.slug);
   }, [record]);
 
   const copyLink = async () => {
@@ -3029,7 +3030,7 @@ export default function WebsiteEditor() {
               <Label htmlFor="publish-slug">Guest website URL</Label>
               <div className="flex items-center text-sm font-mono rounded-md border border-border bg-background overflow-hidden focus-within:ring-2 focus-within:ring-primary/30">
                 <span className="px-3 py-2 bg-muted text-muted-foreground border-r border-border whitespace-nowrap">
-                  {typeof window !== "undefined" ? window.location.origin.replace(/^https?:\/\//, "") : "aidowedding.net"}/w/
+                  {publicAppOrigin().replace(/^https?:\/\//, "")}/w/
                 </span>
                 <input
                   id="publish-slug"
