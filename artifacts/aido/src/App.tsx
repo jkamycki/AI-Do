@@ -1884,37 +1884,33 @@ class AppErrorBoundary extends Component<
   render() {
     if (this.state.hasError) {
       const isStale = /Failed to fetch dynamically imported module|Loading chunk \d+ failed|Importing a module script failed|ChunkLoadError/i.test(this.state.message);
-      const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/i.test(navigator.platform);
-      const shortcut = isMac ? "Cmd + Shift + R" : "Ctrl + Shift + R";
       return (
-        <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center gap-4 text-center p-8">
-          <h1 className="text-2xl font-semibold">
-            {isStale ? "This page needs to be refreshed" : "Something went wrong"}
-          </h1>
-          <p className="text-muted-foreground text-sm max-w-md">
-            {isStale
-              ? "We just shipped an update and your browser is still running the old version. A quick refresh will load the new files."
-              : "An unexpected error occurred. Please reload the page."}
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-          >
-            Reload page
-          </button>
-          <p className="text-xs text-muted-foreground">
-            Or press <kbd className="px-1.5 py-0.5 rounded border border-border bg-background/50 font-mono text-[11px]">{shortcut}</kbd> for a hard refresh.
-          </p>
-          <details open className="max-w-2xl text-left text-xs text-muted-foreground/80 bg-muted/20 rounded-lg p-3 mt-4">
-            <summary className="cursor-pointer font-medium">Error details</summary>
-            <p className="mt-2 font-mono text-destructive break-all">{this.state.message}</p>
-            {this.state.stack && (
-              <pre className="mt-2 whitespace-pre-wrap break-all max-h-48 overflow-auto">{this.state.stack}</pre>
-            )}
-            {this.state.componentStack && (
-              <pre className="mt-2 whitespace-pre-wrap break-all max-h-48 overflow-auto">{this.state.componentStack}</pre>
-            )}
-          </details>
+        <div className="flex min-h-screen items-center justify-center bg-[#FFF7F2] bg-[radial-gradient(circle_at_18%_4%,rgba(141,41,77,0.10),transparent_52%)] p-8 text-center text-[#2D1B22]">
+          <div className="w-full max-w-xl rounded-[20px] border border-[#8D294D]/20 bg-white/85 px-7 py-9 shadow-[0_20px_60px_rgba(91,15,42,0.12)]">
+            <p className="mb-3 text-xs font-extrabold uppercase tracking-[0.16em] text-[#8D294D]">A.IDO</p>
+            <h1 className="font-serif text-4xl font-semibold leading-none text-[#5B0F2A] sm:text-5xl">
+              {isStale ? "This page needs to be refreshed" : "We’re working on it"}
+            </h1>
+            <p className="mx-auto mt-5 max-w-md text-sm leading-7 text-[#6F3E54] sm:text-base">
+              {isStale
+                ? "We just shipped an update and your browser is still running the old version. A quick refresh will load the new files."
+                : "A.IDO is having trouble loading right now. Our team is aware of the issue and is working to get everything back up and running as quickly as possible."}
+            </p>
+            <p className="mt-3 text-sm font-bold text-[#8D294D]">Thank you for your patience.</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-[#8D294D] px-6 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-[#762140]"
+            >
+              Try again
+            </button>
+            <p className="mt-5 text-xs leading-6 text-[#7A5867]">
+              If this keeps happening, please contact support at{" "}
+              <a className="font-bold text-[#8D294D] underline-offset-4 hover:underline" href="mailto:support@aidowedding.net">
+                support@aidowedding.net
+              </a>
+              .
+            </p>
+          </div>
         </div>
       );
     }
