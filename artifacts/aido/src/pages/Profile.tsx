@@ -75,6 +75,13 @@ function normalizeVenueDiscovery(value?: VenueDiscoveryData | null): VenueDiscov
   };
 }
 
+function venueDiscoveryDraftForStorage(value?: VenueDiscoveryData | null): VenueDiscoveryData {
+  return {
+    ...normalizeVenueDiscovery(value),
+    screenshots: [],
+  };
+}
+
 function normalizeVenueStatus(value?: string | null): VenueStatus {
   return value === "not_yet" || value === "deciding" ? "not_yet" : "booked";
 }
@@ -109,9 +116,12 @@ function readVenueFlowDraft(key: string | null): VenueFlowDraft | null {
 function writeVenueFlowDraft(key: string | null, draft: VenueFlowDraft) {
   if (!key || typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(key, JSON.stringify(draft));
+    window.localStorage.setItem(key, JSON.stringify({
+      ...draft,
+      venueDiscovery: venueDiscoveryDraftForStorage(draft.venueDiscovery),
+    }));
   } catch {
-    // Large inspiration screenshots can exceed localStorage; the normal Save button still persists the full profile.
+    // Restricted browser storage should not block the profile form. The normal Save button still persists the full profile.
   }
 }
 
@@ -245,7 +255,7 @@ export default function Profile() {
         venueStatus: nextStatus,
         venueDiscovery: nextStatus === "booked"
           ? emptyVenueDiscoveryData
-          : normalizeVenueDiscovery(values.venueDiscovery as VenueDiscoveryData | undefined),
+          : venueDiscoveryDraftForStorage(values.venueDiscovery as VenueDiscoveryData | undefined),
         updatedAt: Date.now(),
       });
     });
@@ -270,7 +280,7 @@ export default function Profile() {
     form.setValue("venueDiscovery", currentDiscovery, { shouldDirty: true });
     writeVenueFlowDraft(venueDraftKey, {
       venueStatus: "not_yet",
-      venueDiscovery: currentDiscovery,
+      venueDiscovery: venueDiscoveryDraftForStorage(currentDiscovery),
       updatedAt: Date.now(),
     });
   }, [form, venueDraftKey]);
@@ -280,7 +290,7 @@ export default function Profile() {
     form.setValue("venueDiscovery", normalizedDiscovery, { shouldDirty: true });
     writeVenueFlowDraft(venueDraftKey, {
       venueStatus: "not_yet",
-      venueDiscovery: normalizedDiscovery,
+      venueDiscovery: venueDiscoveryDraftForStorage(normalizedDiscovery),
       updatedAt: Date.now(),
     });
   }, [form, venueDraftKey]);

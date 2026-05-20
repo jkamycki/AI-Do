@@ -266,9 +266,10 @@ export function VendorMessagesTab({ vendorId }: Props) {
   useEffect(() => {
     if (!vendorDraftStorageKey) return;
     const legacyKey = `aido_vendor_message_draft_v1_${vendorId}`;
-    const storedDraft = localStorage.getItem(vendorDraftStorageKey);
+    const storedDraft = sessionStorage.getItem(vendorDraftStorageKey) ?? localStorage.getItem(vendorDraftStorageKey);
     if (storedDraft?.trim()) {
       setDraft((current) => (current.trim() ? `${current}\n\n${storedDraft}` : storedDraft));
+      sessionStorage.removeItem(vendorDraftStorageKey);
       localStorage.removeItem(vendorDraftStorageKey);
       toast({ title: t("vendors.msg_draft_loaded", { defaultValue: "Draft loaded. Review it before sending." }) });
     }

@@ -213,7 +213,7 @@ function NegotiationPanel({ contractId, redFlagCount, vendorId }: { contractId: 
       toast({ title: t("contracts.profile_required", { defaultValue: "Profile required. Please try again once your profile finishes loading." }), variant: "destructive" });
       return;
     }
-    localStorage.setItem(`aido_vendor_message_draft_v2_${profile.id}_${vendorId}`, email);
+    sessionStorage.setItem(`aido_vendor_message_draft_v2_${profile.id}_${vendorId}`, email);
     toast({ title: t("contracts.draft_sent_to_vendor_messages", { defaultValue: "Opening vendor message draft" }) });
     setLocation(`/vendors?vendorId=${vendorId}&tab=messages`);
   }
