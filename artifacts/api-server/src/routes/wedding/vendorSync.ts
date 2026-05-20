@@ -753,7 +753,7 @@ router.post("/vendors/:id/payments/mark-next-paid", requireAuth, async (req, res
       })
       .returning();
     await syncNextPaymentDue(vendorId);
-    res.status(201).json(formatPayment(created));
+    res.status(201).json({ ...formatPayment(created), createdForMarkPaid: true });
   } catch (err) {
     req.log.error(err, "Failed to mark next vendor payment paid");
     res.status(500).json({ error: "Internal server error" });
@@ -785,6 +785,7 @@ router.post("/vendors/:id/payments/mark-paid-in-full", requireAuth, async (req, 
       .select()
       .from(vendorPayments)
       .where(eq(vendorPayments.vendorId, vendorId));
+    const previousNextPaymentDue = vendor.nextPaymentDue ? String(vendor.nextPaymentDue).slice(0, 10) : null;
     const now = new Date();
     const unpaidPaymentIds = payments.filter((p) => !p.isPaid).map((p) => p.id);
     if (unpaidPaymentIds.length > 0) {
@@ -819,7 +820,15 @@ router.post("/vendors/:id/payments/mark-paid-in-full", requireAuth, async (req, 
       .set({ nextPaymentDue: null, updatedAt: now })
       .where(and(eq(vendors.id, vendorId), eq(vendors.profileId, profile.id)));
     await syncNextPaymentDue(vendorId);
-    res.json({ success: true, payment: finalPayment ? formatPayment(finalPayment) : null });
+    res.json({
+      success: true,
+      payment: finalPayment ? formatPayment(finalPayment) : null,
+      undo: {
+        markedPaymentIds: unpaidPaymentIds,
+        createdPaymentId: finalPayment?.id ?? null,
+        previousNextPaymentDue,
+      },
+    });
   } catch (err) {
     req.log.error(err, "Failed to mark vendor paid in full");
     res.status(500).json({ error: "Internal server error" });

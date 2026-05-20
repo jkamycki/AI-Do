@@ -30,6 +30,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ToastAction } from "@/components/ui/toast";
 import { DollarSign, Plus, Trash2, Pencil, ArrowUpRight, Sparkles, Lock, Paperclip, X, AlertTriangle, Bell, CheckCircle2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -521,21 +522,64 @@ export default function Budget() {
     );
   };
 
+  const refreshBudgetPaymentViews = async (vendorId?: number) => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getListManualExpensesQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: ["vendor-financials"] }),
+      queryClient.invalidateQueries({ queryKey: getListVendorsQueryKey() }),
+      vendorId ? queryClient.invalidateQueries({ queryKey: getGetVendorQueryKey(vendorId) }) : Promise.resolve(),
+      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }),
+    ]);
+  };
+
+  const undoManualExpenseUpdate = async (expense: typeof manualExpenses[number]) => {
+    try {
+      const r = await authFetch(`/api/manual-expenses/${expense.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amountPaid: expense.amountPaid ?? 0,
+          nextPaymentDue: expense.nextPaymentDue ?? null,
+          nextPaymentAmount: expense.nextPaymentAmount ?? null,
+        }),
+      });
+      if (!r.ok) throw new Error("Undo failed");
+      toast({ title: t("budget.toast_payment_undone", { defaultValue: "Payment change undone" }) });
+      await refreshBudgetPaymentViews();
+    } catch {
+      toast({ variant: "destructive", title: t("budget.toast_undo_failed", { defaultValue: "Couldn't undo that payment change. Please edit the item manually." }) });
+    }
+  };
+
+  const showManualUndoToast = (expense: typeof manualExpenses[number], title: string) => {
+    toast({
+      title,
+      action: (
+        <ToastAction altText={t("common.undo", { defaultValue: "Undo" })} onClick={() => undoManualExpenseUpdate(expense)}>
+          {t("common.undo", { defaultValue: "Undo" })}
+        </ToastAction>
+      ),
+    });
+  };
+
   // One-click "Mark Paid" — hits the /mark-paid endpoint which atomically
   // adds nextPaymentAmount to amountPaid and clears both next-payment fields.
   // Generated client doesn't have a hook for this endpoint yet; calling
   // authFetch directly keeps the implementation self-contained.
-  const handleMarkPaid = async (id: number) => {
+  const handleMarkPaid = async (expenseOrId: typeof manualExpenses[number] | number) => {
+    const expense = typeof expenseOrId === "number"
+      ? manualExpenses.find((item) => item.id === expenseOrId)
+      : expenseOrId;
+    if (!expense) return;
     if (!confirm(t("budget.confirm_mark_paid", { defaultValue: "Mark this payment as paid? The amount will be added to the running paid total." }))) return;
     try {
-      const r = await authFetch(`/api/manual-expenses/${id}/mark-paid`, { method: "POST" });
+      const r = await authFetch(`/api/manual-expenses/${expense.id}/mark-paid`, { method: "POST" });
       if (!r.ok) {
         toast({ variant: "destructive", title: t("budget.toast_mark_paid_failed", { defaultValue: "Couldn't mark payment paid. Please try again." }) });
         return;
       }
-      toast({ title: t("budget.toast_payment_recorded", { defaultValue: "Payment recorded" }) });
-      queryClient.invalidateQueries({ queryKey: getListManualExpensesQueryKey() });
-      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+      showManualUndoToast(expense, t("budget.toast_payment_recorded", { defaultValue: "Payment recorded" }));
+      await refreshBudgetPaymentViews();
     } catch {
       toast({ variant: "destructive", title: t("budget.toast_mark_paid_failed", { defaultValue: "Couldn't mark payment paid. Please try again." }) });
     }
@@ -559,11 +603,42 @@ export default function Budget() {
         toast({ variant: "destructive", title: t("budget.toast_mark_paid_failed", { defaultValue: "Couldn't mark payment paid. Please try again." }) });
         return;
       }
-      toast({ title: t("budget.toast_paid_in_full", { defaultValue: "Marked paid in full" }) });
-      queryClient.invalidateQueries({ queryKey: getListManualExpensesQueryKey() });
-      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+      showManualUndoToast(expense, t("budget.toast_paid_in_full", { defaultValue: "Marked paid in full" }));
+      await refreshBudgetPaymentViews();
     } catch {
       toast({ variant: "destructive", title: t("budget.toast_mark_paid_failed", { defaultValue: "Couldn't mark payment paid. Please try again." }) });
+    }
+  };
+
+  const showVendorUndoToast = (title: string, undo: () => void) => {
+    toast({
+      title,
+      action: (
+        <ToastAction altText={t("common.undo", { defaultValue: "Undo" })} onClick={undo}>
+          {t("common.undo", { defaultValue: "Undo" })}
+        </ToastAction>
+      ),
+    });
+  };
+
+  const undoVendorNextPayment = async (
+    vendorId: number,
+    payment: { id?: number | null; createdForMarkPaid?: boolean | null },
+  ) => {
+    if (!payment.id) return;
+    try {
+      const r = payment.createdForMarkPaid
+        ? await authFetch(`/api/vendors/${vendorId}/payments/${payment.id}`, { method: "DELETE" })
+        : await authFetch(`/api/vendors/${vendorId}/payments/${payment.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ isPaid: false }),
+          });
+      if (!r.ok) throw new Error("Undo failed");
+      toast({ title: t("budget.toast_payment_undone", { defaultValue: "Payment change undone" }) });
+      await refreshBudgetPaymentViews(vendorId);
+    } catch {
+      toast({ variant: "destructive", title: t("budget.toast_undo_failed", { defaultValue: "Couldn't undo that payment change. Please edit the item manually." }) });
     }
   };
 
@@ -588,15 +663,47 @@ export default function Budget() {
         toast({ variant: "destructive", title: t("budget.toast_mark_paid_failed", { defaultValue: "Couldn't mark payment paid. Please try again." }) });
         return;
       }
-      toast({ title: t("budget.toast_payment_recorded", { defaultValue: "Payment recorded" }) });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["vendor-financials"] }),
-        queryClient.invalidateQueries({ queryKey: getListVendorsQueryKey() }),
-        queryClient.invalidateQueries({ queryKey: getGetVendorQueryKey(vendorId) }),
-        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }),
-      ]);
+      const result = await r.json().catch(() => null) as { id?: number; createdForMarkPaid?: boolean } | null;
+      showVendorUndoToast(
+        t("budget.toast_payment_recorded", { defaultValue: "Payment recorded" }),
+        () => undoVendorNextPayment(vendorId, {
+          id: result?.id ?? payment?.id ?? null,
+          createdForMarkPaid: result?.createdForMarkPaid ?? (!payment?.id && r.status === 201),
+        }),
+      );
+      await refreshBudgetPaymentViews(vendorId);
     } catch {
       toast({ variant: "destructive", title: t("budget.toast_mark_paid_failed", { defaultValue: "Couldn't mark payment paid. Please try again." }) });
+    }
+  };
+
+  const undoVendorPaidInFull = async (
+    vendorId: number,
+    undo: { markedPaymentIds?: number[]; createdPaymentId?: number | null; previousNextPaymentDue?: string | null },
+  ) => {
+    try {
+      const requests: Promise<Response>[] = [];
+      if (undo.createdPaymentId) {
+        requests.push(authFetch(`/api/vendors/${vendorId}/payments/${undo.createdPaymentId}`, { method: "DELETE" }));
+      }
+      for (const paymentId of undo.markedPaymentIds ?? []) {
+        requests.push(authFetch(`/api/vendors/${vendorId}/payments/${paymentId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isPaid: false }),
+        }));
+      }
+      requests.push(authFetch(`/api/vendors/${vendorId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nextPaymentDue: undo.previousNextPaymentDue ?? null }),
+      }));
+      const results = await Promise.all(requests);
+      if (results.some((r) => !r.ok)) throw new Error("Undo failed");
+      toast({ title: t("budget.toast_payment_undone", { defaultValue: "Payment change undone" }) });
+      await refreshBudgetPaymentViews(vendorId);
+    } catch {
+      toast({ variant: "destructive", title: t("budget.toast_undo_failed", { defaultValue: "Couldn't undo that payment change. Please edit the item manually." }) });
     }
   };
 
@@ -611,12 +718,14 @@ export default function Budget() {
         toast({ variant: "destructive", title: t("budget.toast_mark_paid_failed", { defaultValue: "Couldn't mark payment paid. Please try again." }) });
         return;
       }
-      toast({ title: t("budget.toast_paid_in_full", { defaultValue: "Marked paid in full" }) });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["vendor-financials"] }),
-        queryClient.invalidateQueries({ queryKey: getListVendorsQueryKey() }),
-        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }),
-      ]);
+      const result = await r.json().catch(() => null) as {
+        undo?: { markedPaymentIds?: number[]; createdPaymentId?: number | null; previousNextPaymentDue?: string | null };
+      } | null;
+      showVendorUndoToast(
+        t("budget.toast_paid_in_full", { defaultValue: "Marked paid in full" }),
+        () => undoVendorPaidInFull(vendorId, result?.undo ?? {}),
+      );
+      await refreshBudgetPaymentViews(vendorId);
     } catch {
       toast({ variant: "destructive", title: t("budget.toast_mark_paid_failed", { defaultValue: "Couldn't mark payment paid. Please try again." }) });
     }
@@ -1125,32 +1234,34 @@ export default function Budget() {
                 disabled={form.paidInFull}
               />
             </div>
-            <div className="rounded-lg border border-emerald-500/25 bg-emerald-50/70 p-3">
-              <label className="flex cursor-pointer items-start gap-3">
-                <Checkbox
-                  checked={form.paidInFull}
-                  onCheckedChange={(checked) => setForm((f) => {
-                    const paidInFull = checked === true;
-                    return {
-                      ...f,
-                      paidInFull,
-                      amountPaid: paidInFull ? f.cost : f.amountPaid,
-                      nextPaymentDue: paidInFull ? "" : f.nextPaymentDue,
-                      nextPaymentAmount: paidInFull ? "" : f.nextPaymentAmount,
-                    };
-                  })}
-                  className="mt-0.5"
-                />
-                <span className="space-y-0.5">
-                  <span className="block text-sm font-semibold text-emerald-900">
-                    {t("budget.paid_in_full_question", { defaultValue: "Paid in full?" })}
+            {(form.paidInFull || !form.nextPaymentDue) && (
+              <div className="rounded-lg border border-emerald-500/25 bg-emerald-50/70 p-3">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <Checkbox
+                    checked={form.paidInFull}
+                    onCheckedChange={(checked) => setForm((f) => {
+                      const paidInFull = checked === true;
+                      return {
+                        ...f,
+                        paidInFull,
+                        amountPaid: paidInFull ? f.cost : f.amountPaid,
+                        nextPaymentDue: paidInFull ? "" : f.nextPaymentDue,
+                        nextPaymentAmount: paidInFull ? "" : f.nextPaymentAmount,
+                      };
+                    })}
+                    className="mt-0.5"
+                  />
+                  <span className="space-y-0.5">
+                    <span className="block text-sm font-semibold text-emerald-900">
+                      {t("budget.paid_in_full_question", { defaultValue: "Paid in full?" })}
+                    </span>
+                    <span className="block text-xs text-emerald-800/80">
+                      {t("budget.paid_in_full_hint", { defaultValue: "If yes, this sets Paid to the full cost and skips the next payment date." })}
+                    </span>
                   </span>
-                  <span className="block text-xs text-emerald-800/80">
-                    {t("budget.paid_in_full_hint", { defaultValue: "If yes, this sets Paid to the full cost and skips the next payment date." })}
-                  </span>
-                </span>
-              </label>
-            </div>
+                </label>
+              </div>
+            )}
             {!form.paidInFull && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
