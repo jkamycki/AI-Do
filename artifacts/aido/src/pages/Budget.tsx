@@ -31,7 +31,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ToastAction } from "@/components/ui/toast";
-import { DollarSign, Plus, Trash2, Pencil, ArrowUpRight, Sparkles, Paperclip, X, AlertTriangle, Bell, CheckCircle2 } from "lucide-react";
+import { DollarSign, Plus, Trash2, Pencil, ArrowUpRight, Sparkles, Paperclip, X, AlertTriangle, Bell, CheckCircle2, FileDown, FileSpreadsheet } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 const MANUAL_CATEGORIES = [
@@ -136,6 +136,21 @@ function formatDate(d: string | null) {
   } catch {
     return d;
   }
+}
+
+function formatReportDate(d: string | null | undefined) {
+  return d ? formatDate(d) : "-";
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 const VENDOR_CATEGORY_BADGE_STYLES: Record<string, string> = {
@@ -342,6 +357,8 @@ export default function Budget() {
   const [editingVendor, setEditingVendor] = useState<VendorRow | null>(null);
   const [vendorForm, setVendorForm] = useState<VendorBudgetFormState>(emptyVendorBudgetForm());
   const [isSavingVendorBudget, setIsSavingVendorBudget] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
 
   const upload = useUpload({
     getToken,
@@ -425,6 +442,43 @@ export default function Budget() {
   }, [manualExpenses, vendorFinancials?.vendors]);
 
   // ── Handlers ──────────────────────────────────────────────────────
+  const reportRows = useMemo(() => {
+    const vendorRows = (vendorFinancials?.vendors ?? []).map((v) => {
+      const rowRemaining = Math.max(0, v.totalCost - v.totalPaid);
+      return {
+        source: "Vendor",
+        name: v.name,
+        category: displayCategoryLabel(v.category),
+        total: v.totalCost,
+        paid: v.totalPaid,
+        remaining: rowRemaining,
+        nextPaymentDate: v.nextPaymentDue,
+        nextPaymentAmount: v.nextPaymentAmount ?? (v.nextPaymentDue ? rowRemaining : 0),
+        status: rowRemaining <= 0 ? "Paid in full" : v.nextPaymentDue ? "Payment scheduled" : "Open balance",
+      };
+    });
+    const manualRows = manualExpenses.map((m) => {
+      const rowRemaining = Math.max(0, (m.cost ?? 0) - (m.amountPaid ?? 0));
+      return {
+        source: "Manual",
+        name: m.name,
+        category: displayCategoryLabel(m.category),
+        total: m.cost ?? 0,
+        paid: m.amountPaid ?? 0,
+        remaining: rowRemaining,
+        nextPaymentDate: m.nextPaymentDue ?? null,
+        nextPaymentAmount: m.nextPaymentAmount ?? 0,
+        status: rowRemaining <= 0 ? "Paid in full" : m.nextPaymentDue ? "Payment scheduled" : "Open balance",
+      };
+    });
+    return [...vendorRows, ...manualRows].sort((a, b) => {
+      if (a.source !== b.source) return a.source.localeCompare(b.source);
+      return a.name.localeCompare(b.name);
+    });
+  }, [manualExpenses, vendorFinancials?.vendors]);
+  const reportDate = new Date().toISOString().slice(0, 10);
+  const hasReportData = reportRows.length > 0 || totalBudget > 0 || combinedSpend > 0;
+
   const startEditBudget = () => {
     setBudgetDraft(String(totalBudget || ""));
     setEditingBudget(true);
@@ -867,6 +921,294 @@ export default function Budget() {
     }
   };
 
+  const handleExportBudgetPdf = async () => {
+    if (!hasReportData) return;
+    setIsExportingPdf(true);
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "letter" });
+      const margin = 36;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const burgundy = "#8D294D";
+      const ink = "#33202A";
+      const muted = "#7B5364";
+      const ivory = "#FBF5EA";
+      let y = margin;
+
+      const ensurePage = (needed = 28) => {
+        if (y + needed <= pageHeight - margin) return;
+        doc.addPage();
+        y = margin;
+      };
+      const money = (value: number) => `$${Math.round(value || 0).toLocaleString()}`;
+      const fit = (text: string, width: number) => {
+        const value = String(text ?? "");
+        if (doc.getTextWidth(value) <= width) return value;
+        let next = value;
+        while (next.length > 3 && doc.getTextWidth(`${next}...`) > width) next = next.slice(0, -1);
+        return `${next}...`;
+      };
+
+      doc.setFillColor(ivory);
+      doc.rect(0, 0, pageWidth, pageHeight, "F");
+      doc.setTextColor(burgundy);
+      doc.setFont("times", "bold");
+      doc.setFontSize(26);
+      doc.text("A.IDO Budget Financial Report", margin, y);
+      y += 24;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(muted);
+      doc.text(`Generated ${formatDate(reportDate)} | Budget & Payments`, margin, y);
+      y += 26;
+
+      const cards = [
+        ["Total Budget", money(totalBudget)],
+        ["Committed", money(combinedSpend)],
+        ["Paid", money(combinedPaid)],
+        ["Remaining To Pay", money(remainingToPay)],
+        [overBudget ? "Over Budget" : "Budget Remaining", money(Math.abs(remaining))],
+        ["Budget Used", `${usedPct.toFixed(0)}%`],
+      ];
+      const cardW = (pageWidth - margin * 2 - 20) / 3;
+      cards.forEach(([label, value], index) => {
+        const col = index % 3;
+        const row = Math.floor(index / 3);
+        const x = margin + col * (cardW + 10);
+        const cardY = y + row * 58;
+        doc.setFillColor("#FFF9F0");
+        doc.setDrawColor("#E8C9D4");
+        doc.roundedRect(x, cardY, cardW, 46, 6, 6, "FD");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(muted);
+        doc.text(label.toUpperCase(), x + 10, cardY + 15);
+        doc.setFont("times", "bold");
+        doc.setFontSize(16);
+        doc.setTextColor(ink);
+        doc.text(value, x + 10, cardY + 34);
+      });
+      y += 122;
+
+      doc.setFont("times", "bold");
+      doc.setFontSize(17);
+      doc.setTextColor(burgundy);
+      doc.text("Payment Detail", margin, y);
+      y += 16;
+
+      const columns = [
+        { label: "Source", width: 54, align: "left" as const },
+        { label: "Item", width: 158, align: "left" as const },
+        { label: "Category", width: 88, align: "left" as const },
+        { label: "Total", width: 64, align: "right" as const },
+        { label: "Paid", width: 64, align: "right" as const },
+        { label: "Remaining", width: 72, align: "right" as const },
+        { label: "Next Payment", width: 94, align: "left" as const },
+        { label: "Status", width: 104, align: "left" as const },
+      ];
+      const tableX = margin;
+      const drawHeader = () => {
+        ensurePage(36);
+        let x = tableX;
+        doc.setFillColor(burgundy);
+        doc.rect(tableX, y, columns.reduce((sum, col) => sum + col.width, 0), 22, "F");
+        doc.setTextColor("#FFFFFF");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        columns.forEach((col) => {
+          doc.text(col.label, x + 6, y + 14);
+          x += col.width;
+        });
+        y += 22;
+      };
+      drawHeader();
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      reportRows.forEach((row, index) => {
+        ensurePage(24);
+        if (y === margin) drawHeader();
+        const values = [
+          row.source,
+          row.name,
+          row.category,
+          money(row.total),
+          money(row.paid),
+          money(row.remaining),
+          row.nextPaymentDate ? `${formatReportDate(row.nextPaymentDate)} (${money(row.nextPaymentAmount)})` : "-",
+          row.status,
+        ];
+        const rowH = 22;
+        doc.setFillColor(index % 2 === 0 ? "#FFF9F0" : "#F8EFE5");
+        doc.rect(tableX, y, columns.reduce((sum, col) => sum + col.width, 0), rowH, "F");
+        doc.setTextColor(ink);
+        let x = tableX;
+        values.forEach((value, colIndex) => {
+          const col = columns[colIndex];
+          const text = fit(value, col.width - 10);
+          const textX = col.align === "right" ? x + col.width - 6 - doc.getTextWidth(text) : x + 6;
+          doc.text(text, textX, y + 14);
+          x += col.width;
+        });
+        y += rowH;
+      });
+
+      y += 22;
+      ensurePage(80);
+      doc.setFont("times", "bold");
+      doc.setFontSize(15);
+      doc.setTextColor(burgundy);
+      doc.text("Category Breakdown", margin, y);
+      y += 16;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(ink);
+      categoryBreakdown.slice(0, 12).forEach((item) => {
+        ensurePage(16);
+        doc.text(`${displayCategoryLabel(item.category)}: ${money(item.total)} committed, ${money(item.paid)} paid (${item.count} item${item.count === 1 ? "" : "s"})`, margin, y);
+        y += 14;
+      });
+
+      const pageCount = doc.getNumberOfPages();
+      for (let page = 1; page <= pageCount; page += 1) {
+        doc.setPage(page);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(muted);
+        doc.text("Powered by A.IDO - aidowedding.net", margin, pageHeight - 18);
+        doc.text(`Page ${page} of ${pageCount}`, pageWidth - margin - 55, pageHeight - 18);
+      }
+
+      doc.save(`aido-budget-financial-report-${reportDate}.pdf`);
+      toast({ title: t("budget.export_pdf_success", { defaultValue: "Budget PDF exported" }) });
+    } catch {
+      toast({ variant: "destructive", title: t("budget.export_pdf_failed", { defaultValue: "Couldn't export the budget PDF." }) });
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
+  const handleExportBudgetExcel = async () => {
+    if (!hasReportData) return;
+    setIsExportingExcel(true);
+    try {
+      const { default: ExcelJS } = await import("exceljs");
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = "A.IDO";
+      workbook.created = new Date();
+      const summary = workbook.addWorksheet("Summary");
+      const details = workbook.addWorksheet("Payment Detail");
+      const categories = workbook.addWorksheet("Categories");
+      const moneyFormat = "$#,##0";
+      const burgundy = "FF8D294D";
+      const ivory = "FFFFF9F0";
+      const pink = "FFF1D7DF";
+
+      summary.columns = [{ width: 28 }, { width: 18 }, { width: 24 }, { width: 18 }];
+      summary.mergeCells("A1:D1");
+      summary.getCell("A1").value = "A.IDO Budget Financial Report";
+      summary.getCell("A1").font = { bold: true, size: 18, color: { argb: burgundy } };
+      summary.getCell("A2").value = `Generated ${formatDate(reportDate)}`;
+      summary.getCell("A2").font = { italic: true, color: { argb: "FF7B5364" } };
+      summary.addRow([]);
+      summary.addRows([
+        ["Metric", "Value", "Metric", "Value"],
+        ["Total Budget", totalBudget, "Budget Used", usedPct / 100],
+        ["Committed Spend", combinedSpend, "Paid Out", combinedPaid],
+        ["Remaining To Pay", remainingToPay, overBudget ? "Over Budget" : "Budget Remaining", Math.abs(remaining)],
+        ["Vendor Spend", vendorCommitted, "Manual Spend", manualCommitted],
+        ["Vendor Paid", vendorPaid, "Manual Paid", manualPaid],
+      ]);
+      [4].forEach((rowNumber) => {
+        summary.getRow(rowNumber).font = { bold: true, color: { argb: "FFFFFFFF" } };
+        summary.getRow(rowNumber).fill = { type: "pattern", pattern: "solid", fgColor: { argb: burgundy } };
+      });
+      ["B", "D"].forEach((column) => {
+        for (let row = 5; row <= 9; row += 1) {
+          summary.getCell(`${column}${row}`).numFmt = row === 5 && column === "D" ? "0%" : moneyFormat;
+        }
+      });
+
+      details.addRow(["Source", "Item", "Category", "Total", "Paid", "Remaining", "Next Payment Date", "Next Payment Amount", "Status"]);
+      reportRows.forEach((row) => {
+        details.addRow([
+          row.source,
+          row.name,
+          row.category,
+          row.total,
+          row.paid,
+          row.remaining,
+          row.nextPaymentDate || "",
+          row.nextPaymentAmount || 0,
+          row.status,
+        ]);
+      });
+      details.columns = [
+        { width: 14 },
+        { width: 32 },
+        { width: 18 },
+        { width: 14 },
+        { width: 14 },
+        { width: 14 },
+        { width: 18 },
+        { width: 20 },
+        { width: 20 },
+      ];
+      details.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+      details.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: burgundy } };
+      details.views = [{ state: "frozen", ySplit: 1 }];
+      details.autoFilter = "A1:I1";
+      for (let row = 2; row <= reportRows.length + 1; row += 1) {
+        details.getRow(row).fill = { type: "pattern", pattern: "solid", fgColor: { argb: row % 2 === 0 ? ivory : pink } };
+        ["D", "E", "F", "H"].forEach((column) => {
+          details.getCell(`${column}${row}`).numFmt = moneyFormat;
+        });
+      }
+
+      categories.addRow(["Category", "Committed", "Paid", "Remaining", "Items"]);
+      categoryBreakdown.forEach((item) => {
+        categories.addRow([
+          displayCategoryLabel(item.category),
+          item.total,
+          item.paid,
+          Math.max(0, item.total - item.paid),
+          item.count,
+        ]);
+      });
+      categories.columns = [{ width: 22 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 10 }];
+      categories.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+      categories.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: burgundy } };
+      for (let row = 2; row <= categoryBreakdown.length + 1; row += 1) {
+        ["B", "C", "D"].forEach((column) => {
+          categories.getCell(`${column}${row}`).numFmt = moneyFormat;
+        });
+      }
+
+      for (const sheet of [summary, details, categories]) {
+        sheet.eachRow((row) => {
+          row.eachCell((cell) => {
+            cell.border = {
+              top: { style: "thin", color: { argb: "FFE8C9D4" } },
+              left: { style: "thin", color: { argb: "FFE8C9D4" } },
+              bottom: { style: "thin", color: { argb: "FFE8C9D4" } },
+              right: { style: "thin", color: { argb: "FFE8C9D4" } },
+            };
+            cell.alignment = { vertical: "middle", wrapText: true };
+          });
+        });
+      }
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      downloadBlob(new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `aido-budget-financial-report-${reportDate}.xlsx`);
+      toast({ title: t("budget.export_excel_success", { defaultValue: "Budget Excel report exported" }) });
+    } catch {
+      toast({ variant: "destructive", title: t("budget.export_excel_failed", { defaultValue: "Couldn't export the budget Excel report." }) });
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
+
   if (isLoadingBudget) {
     return (
       <div className="space-y-8 max-w-6xl mx-auto">
@@ -880,11 +1222,39 @@ export default function Budget() {
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-12">
       {/* ── Header & Total Budget ─────────────────────────────────── */}
-      <div className="space-y-2">
-        <h1 className="font-serif text-4xl text-primary">{t("budget.title")}</h1>
-        <p className="text-muted-foreground">
-          {t("budget.subtitle")}
-        </p>
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="space-y-2">
+          <h1 className="font-serif text-4xl text-primary">{t("budget.title")}</h1>
+          <p className="text-muted-foreground">
+            {t("budget.subtitle")}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={handleExportBudgetPdf}
+            disabled={!hasReportData || isExportingPdf}
+          >
+            <FileDown className="h-4 w-4" />
+            {isExportingPdf
+              ? t("budget.exporting_pdf", { defaultValue: "Exporting PDF..." })
+              : t("budget.export_pdf", { defaultValue: "Export PDF" })}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={handleExportBudgetExcel}
+            disabled={!hasReportData || isExportingExcel}
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            {isExportingExcel
+              ? t("budget.exporting_excel", { defaultValue: "Exporting Excel..." })
+              : t("budget.export_excel", { defaultValue: "Export Excel" })}
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/8 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
