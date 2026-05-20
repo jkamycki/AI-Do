@@ -3,8 +3,11 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "build": "cd artifacts/aido && pnpm run build && cd ../.. && mkdir -p dist && cp -r artifacts/aido/dist/* dist/",
+    "build": "pnpm --dir artifacts/api-server run build && cd artifacts/aido && pnpm run build && cd ../.. && mkdir -p dist && cp -r artifacts/aido/dist/* dist/",
     "dev": "cd artifacts/aido && pnpm run dev",
+    "render:build": "pnpm --dir artifacts/api-server run build",
+    "render:start": "node --enable-source-maps artifacts/api-server/dist/index.mjs",
+    "start": "node --enable-source-maps artifacts/api-server/dist/index.mjs",
     "typecheck": "tsc -p artifacts/aido/tsconfig.json --noEmit"
   },
   "private": true,

@@ -5,8 +5,8 @@ services:
     region: oregon
     plan: free
     rootDir: .
-    buildCommand: npm install -g pnpm@10.26.1 && pnpm install --frozen-lockfile=false --prod=false && pnpm --dir artifacts/api-server run build
-    startCommand: node --enable-source-maps artifacts/api-server/dist/index.mjs
+    buildCommand: npm install -g pnpm@10.26.1 && pnpm install --frozen-lockfile=false --prod=false && pnpm run render:build
+    startCommand: pnpm run render:start
     healthCheckPath: /api/healthz
     envVars:
       - key: NODE_ENV
