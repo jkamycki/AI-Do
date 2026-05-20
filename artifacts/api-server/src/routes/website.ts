@@ -225,6 +225,7 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
 
   return {
     slug: row.slug,
+    publicWebsiteUrl: row.published && row.slug ? `/w/${row.slug}` : null,
     theme: row.theme,
     layoutStyle: row.layoutStyle,
     font: row.font,
