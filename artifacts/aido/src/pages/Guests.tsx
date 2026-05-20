@@ -1939,6 +1939,8 @@ export default function Guests({
       : mode === "invitation"
         ? selectedInvitationEligible
         : selectedReminderEligible;
+  const hasGuestsForBulkSend = (mode: "saveTheDate" | "invitation" | "reminder") =>
+    getBulkLinkGuests(mode).length > 0;
   const getBulkLinksTitle = (mode: "saveTheDate" | "invitation" | "reminder") =>
     linkDialogKind === "guest"
       ? mode === "saveTheDate"
@@ -2003,8 +2005,7 @@ export default function Guests({
     window.matchMedia("(max-width: 639px)").matches;
   const handleBulkPrimaryAction = (mode: "saveTheDate" | "invitation" | "reminder") => {
     if (isMobileViewport()) {
-      const targetGuests = getBulkLinkGuests(mode);
-      if (!targetGuests.length) {
+      if (!hasGuestsForBulkSend(mode)) {
         toast({
           title: "No selected guests ready",
           description:
@@ -2028,20 +2029,6 @@ export default function Guests({
     mode: "saveTheDate" | "invitation" | "reminder",
     intent: "copy" | "text" = "copy",
   ) => {
-    const targetGuests = getBulkLinkGuests(mode);
-    if (!targetGuests.length) {
-      toast({
-        title: "No selected guests ready",
-        description:
-          mode === "saveTheDate"
-            ? "Select at least one guest who has not received a save-the-date yet."
-            : mode === "invitation"
-              ? "Select at least one guest who has not received an RSVP invitation yet."
-              : "Select at least one guest who still needs an RSVP reminder.",
-      });
-      return;
-    }
-
     setBulkShareIntent(intent);
     setLinkDialogKind("shared");
     setBulkLinksMode(mode);
@@ -3277,7 +3264,7 @@ export default function Guests({
                   variant="ghost"
                   size="sm"
                   className="mt-2 min-h-8 w-full justify-center gap-2 whitespace-normal px-2 py-1.5 text-center text-xs leading-tight text-primary hover:bg-primary/10"
-                  disabled={bulkLinksLoading || selectedSaveTheDateEligible.length === 0}
+                  disabled={bulkLinksLoading}
                   onClick={() => openBulkLinks("saveTheDate")}
                 >
                   <Link2 className="h-3.5 w-3.5 shrink-0" />
@@ -3310,7 +3297,7 @@ export default function Guests({
                   variant="ghost"
                   size="sm"
                   className="mt-2 min-h-8 w-full justify-center gap-2 whitespace-normal px-2 py-1.5 text-center text-xs leading-tight text-primary hover:bg-primary/10"
-                  disabled={bulkLinksLoading || selectedInvitationEligible.length === 0}
+                  disabled={bulkLinksLoading}
                   onClick={() => openBulkLinks("invitation")}
                 >
                   <Link2 className="h-3.5 w-3.5 shrink-0" />
@@ -3343,7 +3330,7 @@ export default function Guests({
                   variant="ghost"
                   size="sm"
                   className="mt-2 min-h-8 w-full justify-center gap-2 whitespace-normal px-2 py-1.5 text-center text-xs leading-tight text-primary hover:bg-primary/10"
-                  disabled={bulkLinksLoading || selectedReminderEligible.length === 0}
+                  disabled={bulkLinksLoading}
                   onClick={() => openBulkLinks("reminder")}
                 >
                   <Link2 className="h-3.5 w-3.5 shrink-0" />
