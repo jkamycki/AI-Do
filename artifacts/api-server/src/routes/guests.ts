@@ -111,7 +111,7 @@ router.post("/guests", requireAuth, async (req, res) => {
         tableAssignment: tableAssignment || null,
         needsHotel: !!needsHotel || bookedHotelBlockId != null,
         bookedHotelBlockId: bookedHotelBlockId != null ? Number(bookedHotelBlockId) : null,
-        bookedHotelRoomCount: bookedHotelBlockId != null ? Math.max(1, Math.min(2, Number(bookedHotelRoomCount) || 1)) : null,
+        bookedHotelRoomCount: needsHotel || bookedHotelBlockId != null ? Math.max(1, Math.min(2, Number(bookedHotelRoomCount) || 1)) : null,
         notes: notes || null,
         phone: phone || null,
         address: address || null,
@@ -195,8 +195,9 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
     if (bookedHotelBlockId !== undefined) {
       updateData.bookedHotelBlockId = bookedHotelBlockId ? Number(bookedHotelBlockId) : null;
       if (bookedHotelBlockId) updateData.needsHotel = true;
-      if (!bookedHotelBlockId) updateData.bookedHotelRoomCount = null;
-      else updateData.bookedHotelRoomCount = Math.max(1, Math.min(2, Number(bookedHotelRoomCount) || 1));
+      if (!bookedHotelBlockId) {
+        updateData.bookedHotelRoomCount = needsHotel ? Math.max(1, Math.min(2, Number(bookedHotelRoomCount) || 1)) : null;
+      } else updateData.bookedHotelRoomCount = Math.max(1, Math.min(2, Number(bookedHotelRoomCount) || 1));
     } else if (bookedHotelRoomCount !== undefined) {
       updateData.bookedHotelRoomCount = Math.max(1, Math.min(2, Number(bookedHotelRoomCount) || 1));
     }

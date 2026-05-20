@@ -25,6 +25,8 @@ interface GuestDetails {
   bookedHotelRoomCount?: number | null;
 }
 
+type HotelResponse = "no" | "yes" | "booked";
+
 function normalizedRsvpStatus(status: string | null | undefined) {
   return status === "attending" || status === "declined" ? status : "pending";
 }
@@ -82,6 +84,7 @@ export function RsvpFlow({
   const [plusOneName, setPlusOneName] = useState("");
   const [plusOneMeal, setPlusOneMeal] = useState("");
   const [hotelNeeded, setHotelNeeded] = useState(false);
+  const [hotelResponse, setHotelResponse] = useState<HotelResponse>("no");
   const [hotelBlockId, setHotelBlockId] = useState("");
   const [hotelRoomCount, setHotelRoomCount] = useState("1");
   // Self-add (guest not on the list) form
@@ -155,14 +158,32 @@ export function RsvpFlow({
     setPlusOneName(guest.plusOneName ?? "");
     setPlusOneMeal(guest.plusOneMealChoice ?? "");
     setHotelNeeded(!!guest.needsHotel);
+    setHotelResponse(guest.needsHotel ? "yes" : "no");
     setHotelBlockId(guest.bookedHotelBlockId ? String(guest.bookedHotelBlockId) : preferredHotelId);
     setHotelRoomCount(guest.bookedHotelRoomCount === 2 ? "2" : "1");
   }, [guest, preferredHotelId]);
 
   useEffect(() => {
-    if (!showHotelQuestion || !preferredHotelId || hotelBlockId) return;
+    if (hotelResponse !== "yes" || !showHotelQuestion || !preferredHotelId || hotelBlockId) return;
     setHotelBlockId(preferredHotelId);
-  }, [hotelBlockId, preferredHotelId, showHotelQuestion]);
+  }, [hotelBlockId, hotelResponse, preferredHotelId, showHotelQuestion]);
+
+  const handleHotelResponseChange = (value: HotelResponse) => {
+    const needsHotel = value !== "no";
+    setHotelResponse(value);
+    setHotelNeeded(needsHotel);
+    if (!needsHotel) {
+      setHotelBlockId("");
+      return;
+    }
+    if (value === "booked") {
+      setHotelBlockId("");
+      return;
+    }
+    if (value === "yes" && preferredHotelId && !hotelBlockId) {
+      setHotelBlockId(preferredHotelId);
+    }
+  };
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -595,24 +616,22 @@ export function RsvpFlow({
                           {t("rsvp.need_hotel_question", { defaultValue: "Will you need a hotel room?" })}
                         </label>
                         <select
-                          value={hotelNeeded ? "yes" : "no"}
-                          onChange={(e) => {
-                            const needsHotel = e.target.value === "yes";
-                            setHotelNeeded(needsHotel);
-                            if (!needsHotel) setHotelBlockId("");
-                            else if (preferredHotelId && !hotelBlockId) setHotelBlockId(preferredHotelId);
-                          }}
+                          value={hotelResponse}
+                          onChange={(e) => handleHotelResponseChange(e.target.value as HotelResponse)}
                           className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
                           style={inputBase}
                         >
                           <option value="no">{t("common.no", { defaultValue: "No" })}</option>
                           <option value="yes">{t("common.yes", { defaultValue: "Yes" })}</option>
+                          <option value="booked">{t("rsvp.hotel_already_booked", { defaultValue: "I've already booked" })}</option>
                         </select>
                       </div>
                       {hotelNeeded && (
                         <div className="space-y-2">
                           <label className="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: text }}>
-                            {t("rsvp.hotel_block", { defaultValue: "Hotel block" })}
+                            {hotelResponse === "booked"
+                              ? t("rsvp.hotel_block_booked", { defaultValue: "Which hotel did you book?" })
+                              : t("rsvp.hotel_block", { defaultValue: "Hotel block" })}
                           </label>
                           <select
                             value={hotelBlockId || ""}
@@ -620,7 +639,11 @@ export function RsvpFlow({
                             className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
                             style={inputBase}
                           >
-                            <option value="">{t("rsvp.hotel_decide_later", { defaultValue: "I will decide later" })}</option>
+                            <option value="">
+                              {hotelResponse === "booked"
+                                ? t("rsvp.hotel_not_listed", { defaultValue: "I booked outside this block / not listed" })
+                                : t("rsvp.hotel_decide_later", { defaultValue: "I will decide later" })}
+                            </option>
                             {hotelOptions.map((hotel) => (
                               <option key={hotel.id} value={hotel.id}>
                                 {hotel.hotelName || "Hotel block"}
@@ -628,7 +651,9 @@ export function RsvpFlow({
                             ))}
                           </select>
                           <label className="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: text }}>
-                            {t("rsvp.hotel_room_count", { defaultValue: "How many rooms?" })}
+                            {hotelResponse === "booked"
+                              ? t("rsvp.hotel_rooms_booked", { defaultValue: "How many rooms did you book?" })
+                              : t("rsvp.hotel_room_count", { defaultValue: "How many rooms?" })}
                           </label>
                           <select
                             value={hotelRoomCount}
@@ -830,24 +855,22 @@ export function RsvpFlow({
                           {t("rsvp.need_hotel_question", { defaultValue: "Will you need a hotel room?" })}
                         </label>
                         <select
-                          value={hotelNeeded ? "yes" : "no"}
-                          onChange={(e) => {
-                            const needsHotel = e.target.value === "yes";
-                            setHotelNeeded(needsHotel);
-                            if (!needsHotel) setHotelBlockId("");
-                            else if (preferredHotelId && !hotelBlockId) setHotelBlockId(preferredHotelId);
-                          }}
+                          value={hotelResponse}
+                          onChange={(e) => handleHotelResponseChange(e.target.value as HotelResponse)}
                           className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
                           style={inputBase}
                         >
                           <option value="no">{t("common.no", { defaultValue: "No" })}</option>
                           <option value="yes">{t("common.yes", { defaultValue: "Yes" })}</option>
+                          <option value="booked">{t("rsvp.hotel_already_booked", { defaultValue: "I've already booked" })}</option>
                         </select>
                       </div>
                       {hotelNeeded && (
                         <div className="space-y-2">
                           <label className="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: text }}>
-                            {t("rsvp.hotel_block", { defaultValue: "Hotel block" })}
+                            {hotelResponse === "booked"
+                              ? t("rsvp.hotel_block_booked", { defaultValue: "Which hotel did you book?" })
+                              : t("rsvp.hotel_block", { defaultValue: "Hotel block" })}
                           </label>
                           <select
                             value={hotelBlockId || ""}
@@ -855,7 +878,11 @@ export function RsvpFlow({
                             className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2 text-base"
                             style={inputBase}
                           >
-                            <option value="">{t("rsvp.hotel_decide_later", { defaultValue: "I will decide later" })}</option>
+                            <option value="">
+                              {hotelResponse === "booked"
+                                ? t("rsvp.hotel_not_listed", { defaultValue: "I booked outside this block / not listed" })
+                                : t("rsvp.hotel_decide_later", { defaultValue: "I will decide later" })}
+                            </option>
                             {hotelOptions.map((hotel) => (
                               <option key={hotel.id} value={hotel.id}>
                                 {hotel.hotelName || "Hotel block"}
@@ -863,7 +890,9 @@ export function RsvpFlow({
                             ))}
                           </select>
                           <label className="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: text }}>
-                            {t("rsvp.hotel_room_count", { defaultValue: "How many rooms?" })}
+                            {hotelResponse === "booked"
+                              ? t("rsvp.hotel_rooms_booked", { defaultValue: "How many rooms did you book?" })
+                              : t("rsvp.hotel_room_count", { defaultValue: "How many rooms?" })}
                           </label>
                           <select
                             value={hotelRoomCount}

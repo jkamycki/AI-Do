@@ -1100,6 +1100,8 @@ function websiteHotelCutoffDate(value: string | null | undefined) {
   return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
+type HotelResponse = "no" | "yes" | "booked";
+
 function RsvpSection({
   data,
   ctx,
@@ -1114,6 +1116,7 @@ function RsvpSection({
   const [dietary, setDietary] = useState("");
   const [message, setMessage] = useState("");
   const [hotelNeeded, setHotelNeeded] = useState(false);
+  const [hotelResponse, setHotelResponse] = useState<HotelResponse>("no");
   const [hotelBlockId, setHotelBlockId] = useState("");
   const [hotelRoomCount, setHotelRoomCount] = useState("1");
   const [submitting, setSubmitting] = useState(false);
@@ -1128,7 +1131,7 @@ function RsvpSection({
     : (data.hotelOptions ?? []);
   const showHotelQuestion = hotelOptions.length > 0;
   const effectiveHotelNeeded = ctx.editable && showHotelQuestion ? true : hotelNeeded;
-  const selectedHotelId = hotelBlockId || preferredHotelId || (ctx.editable ? String(hotelOptions[0]?.id ?? "") : "");
+  const selectedHotelId = hotelBlockId || (hotelResponse === "yes" ? preferredHotelId : "") || (ctx.editable ? String(hotelOptions[0]?.id ?? "") : "");
   const selectedHotel = hotelOptions.find((hotel) => String(hotel.id) === selectedHotelId) ?? null;
 
   async function submit(e: React.FormEvent) {
@@ -1154,6 +1157,9 @@ function RsvpSection({
             plusOneCount: plusOne,
             dietaryRestrictions: dietary.trim() || undefined,
             message: message.trim() || undefined,
+            hotelNeeded: attending === "yes" ? hotelNeeded : false,
+            bookedHotelBlockId: hotelNeeded && hotelBlockId ? Number(hotelBlockId) : null,
+            bookedHotelRoomCount: hotelNeeded ? Number(hotelRoomCount || "1") : null,
           }),
         },
       );
@@ -1183,6 +1189,23 @@ function RsvpSection({
     fontSize: "0.9rem",
     outline: "none",
     fontFamily: "inherit",
+  };
+
+  const handleHotelResponseChange = (value: HotelResponse) => {
+    const needsHotel = value !== "no";
+    setHotelResponse(value);
+    setHotelNeeded(needsHotel);
+    if (!needsHotel) {
+      setHotelBlockId("");
+      return;
+    }
+    if (value === "booked") {
+      setHotelBlockId("");
+      return;
+    }
+    if (value === "yes" && preferredHotelId && !hotelBlockId) {
+      setHotelBlockId(preferredHotelId);
+    }
   };
 
   return (
@@ -1372,24 +1395,20 @@ function RsvpSection({
                 </label>
                 <select
                   style={inputStyle}
-                  value={effectiveHotelNeeded ? "yes" : "no"}
-                  onChange={(e) => {
-                    const needsHotel = e.target.value === "yes";
-                    setHotelNeeded(needsHotel);
-                    if (!needsHotel) setHotelBlockId("");
-                    else if (preferredHotelId && !hotelBlockId) setHotelBlockId(preferredHotelId);
-                  }}
+                  value={ctx.editable && showHotelQuestion ? "yes" : hotelResponse}
+                  onChange={(e) => handleHotelResponseChange(e.target.value as HotelResponse)}
                   disabled={ctx.editable}
                 >
                   <option value="no">No</option>
                   <option value="yes">Yes</option>
+                  <option value="booked">I've already booked</option>
                 </select>
               </div>
 
               {effectiveHotelNeeded && (
                 <div className="space-y-2">
                   <label className="block text-xs font-semibold mb-1.5" style={{ color: labelColor }}>
-                    Hotel block
+                    {hotelResponse === "booked" ? "Which hotel did you book?" : "Hotel block"}
                   </label>
                   <select
                     style={inputStyle}
@@ -1397,7 +1416,9 @@ function RsvpSection({
                     onChange={(e) => setHotelBlockId(e.target.value)}
                     disabled={ctx.editable}
                   >
-                    <option value="">I will decide later</option>
+                    <option value="">
+                      {hotelResponse === "booked" ? "I booked outside this block / not listed" : "I will decide later"}
+                    </option>
                     {hotelOptions.map((hotel) => (
                       <option key={hotel.id} value={hotel.id}>
                         {hotel.hotelName || "Hotel block"}
@@ -1406,7 +1427,7 @@ function RsvpSection({
                   </select>
 
                   <label className="block text-xs font-semibold mb-1.5" style={{ color: labelColor }}>
-                    How many rooms?
+                    {hotelResponse === "booked" ? "How many rooms did you book?" : "How many rooms?"}
                   </label>
                   <select
                     style={inputStyle}

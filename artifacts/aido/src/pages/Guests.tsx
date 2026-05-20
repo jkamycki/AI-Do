@@ -579,7 +579,9 @@ function GuestForm({
                   }
                   if (value === "pending") {
                     form.setValue("needsHotel", true, { shouldDirty: true });
-                    form.setValue("bookedHotelRoomCount", null, { shouldDirty: true });
+                    if (!form.getValues("bookedHotelRoomCount")) {
+                      form.setValue("bookedHotelRoomCount", 1, { shouldDirty: true });
+                    }
                     field.onChange(null);
                     return;
                   }
@@ -610,7 +612,7 @@ function GuestForm({
           )}
         />
 
-        {bookedHotelBlockId && (
+        {needsHotel && (
           <FormField
             control={form.control}
             name="bookedHotelRoomCount"
@@ -1026,7 +1028,7 @@ function exportCSV(guestList: Guest[], hotels: HotelOption[] = []) {
     (g as any).bookedHotelBlockId
       ? hotelNames.get((g as any).bookedHotelBlockId) ?? "Booked"
       : (g as any).needsHotel ? "Pending" : "N/A",
-    (g as any).bookedHotelBlockId ? String((g as any).bookedHotelRoomCount || 1) : "",
+    (g as any).needsHotel ? String((g as any).bookedHotelRoomCount || 1) : "",
     (g as any).address ?? "",
     (g as any).aptUnit ?? "",
     (g as any).guestCity ?? "",
@@ -2251,7 +2253,7 @@ export default function Guests({
       raw === "na"
         ? { needsHotel: false, bookedHotelBlockId: null, bookedHotelRoomCount: null }
         : raw === "pending"
-          ? { needsHotel: true, bookedHotelBlockId: null, bookedHotelRoomCount: null }
+          ? { needsHotel: true, bookedHotelBlockId: null, bookedHotelRoomCount: (guest as any).bookedHotelRoomCount || 1 }
           : { needsHotel: true, bookedHotelBlockId: Number(raw), bookedHotelRoomCount: (guest as any).bookedHotelRoomCount || 1 };
 
     optimisticUpdate(guest.id, next as Partial<Guest>);
@@ -3794,7 +3796,7 @@ export default function Guests({
                           ))}
                         </SelectContent>
                       </Select>
-                      {(g as any).bookedHotelBlockId && (
+                      {(g as any).needsHotel && (
                         <div className="mt-2">
                           <p className="text-xs text-muted-foreground mb-1">Rooms</p>
                           <Select
@@ -4215,7 +4217,7 @@ export default function Guests({
                               ))}
                             </SelectContent>
                           </Select>
-                          {(g as any).bookedHotelBlockId && (
+                          {(g as any).needsHotel && (
                             <Select
                               value={String((g as any).bookedHotelRoomCount || 1)}
                               onValueChange={(value) => handleBookedHotelRoomCountChange(g, value)}

@@ -49,6 +49,7 @@ const schema = z.object({
 );
 
 type FormData = z.infer<typeof schema>;
+type HotelResponse = "no" | "yes" | "booked";
 
 interface RsvpInfo {
   guestName: string;
@@ -170,6 +171,7 @@ export default function Rsvp() {
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [pdfError, setPdfError] = useState(false);
   const [allowRsvpUpdate, setAllowRsvpUpdate] = useState(false);
+  const [hotelResponse, setHotelResponse] = useState<HotelResponse>("no");
   const cardRef = useRef<HTMLDivElement>(null);
   const maintenance = usePublicMaintenance("rsvp");
 
@@ -210,9 +212,26 @@ export default function Rsvp() {
   const mealOptions = normalizeMealOptions(info?.mealOptions ?? DEFAULT_RSVP_MEAL_OPTIONS);
 
   useEffect(() => {
-    if (!showHotelQuestion || !info?.preferredHotelBlockId) return;
+    if (hotelResponse !== "yes" || !showHotelQuestion || !info?.preferredHotelBlockId) return;
     form.setValue("bookedHotelBlockId", String(info.preferredHotelBlockId));
-  }, [form, info?.preferredHotelBlockId, showHotelQuestion]);
+  }, [form, hotelResponse, info?.preferredHotelBlockId, showHotelQuestion]);
+
+  const handleHotelResponseChange = (value: HotelResponse) => {
+    const needsHotel = value !== "no";
+    setHotelResponse(value);
+    form.setValue("hotelNeeded", needsHotel, { shouldDirty: true, shouldValidate: true });
+    if (!needsHotel) {
+      form.setValue("bookedHotelBlockId", "", { shouldDirty: true });
+      return;
+    }
+    if (value === "booked") {
+      form.setValue("bookedHotelBlockId", "", { shouldDirty: true });
+      return;
+    }
+    if (value === "yes" && info?.preferredHotelBlockId && !form.getValues("bookedHotelBlockId")) {
+      form.setValue("bookedHotelBlockId", String(info.preferredHotelBlockId), { shouldDirty: true });
+    }
+  };
 
   const submit = useMutation({
     mutationFn: async (data: FormData) => {
@@ -1112,14 +1131,10 @@ export default function Rsvp() {
                                 </p>
                               </div>
                               <Select
-                                value={field.value ? "yes" : "no"}
+                                value={hotelResponse}
                                 onValueChange={(value) => {
-                                  const needsHotel = value === "yes";
-                                  field.onChange(needsHotel);
-                                  if (!needsHotel) form.setValue("bookedHotelBlockId", "");
-                                  else if (info?.preferredHotelBlockId && !form.getValues("bookedHotelBlockId")) {
-                                    form.setValue("bookedHotelBlockId", String(info.preferredHotelBlockId));
-                                  }
+                                  field.onChange(value !== "no");
+                                  handleHotelResponseChange(value as HotelResponse);
                                 }}
                               >
                                 <FormControl>
@@ -1130,6 +1145,7 @@ export default function Rsvp() {
                                 <SelectContent>
                                   <SelectItem value="no">No</SelectItem>
                                   <SelectItem value="yes">Yes</SelectItem>
+                                  <SelectItem value="booked">I've already booked</SelectItem>
                                 </SelectContent>
                               </Select>
                             </FormItem>
@@ -1144,7 +1160,7 @@ export default function Rsvp() {
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel style={{ color: MUTED, fontFamily: jakarta }}>
-                                    Which hotel block will you book?
+                                    {hotelResponse === "booked" ? "Which hotel did you book?" : "Which hotel block will you book?"}
                                   </FormLabel>
                                   <Select
                                     value={field.value || "pending"}
@@ -1156,7 +1172,9 @@ export default function Rsvp() {
                                       </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                      <SelectItem value="pending">I will decide later</SelectItem>
+                                      <SelectItem value="pending">
+                                        {hotelResponse === "booked" ? "I booked outside this block / not listed" : "I will decide later"}
+                                      </SelectItem>
                                       {info.hotelOptions?.map((hotel) => (
                                         <SelectItem key={hotel.id} value={String(hotel.id)}>
                                           {hotel.hotelName || "Hotel block"}
@@ -1175,7 +1193,7 @@ export default function Rsvp() {
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel style={{ color: MUTED, fontFamily: jakarta }}>
-                                    How many rooms will you need?
+                                    {hotelResponse === "booked" ? "How many rooms did you book?" : "How many rooms will you need?"}
                                   </FormLabel>
                                   <Select value={field.value || "1"} onValueChange={field.onChange}>
                                     <FormControl>

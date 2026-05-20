@@ -45,6 +45,8 @@ interface RsvpPagePreviewProps {
   mealOptions?: MealOption[];
 }
 
+type HotelResponse = "no" | "yes" | "booked";
+
 function isLightColor(hex: string): boolean {
   const c = hex.replace("#", "");
   if (c.length !== 6) return false;
@@ -138,6 +140,7 @@ export function RsvpPagePreview({
   const [attendance, setAttendance] = useState<"attending" | "declined">("attending");
   const [mealChoice, setMealChoice] = useState("");
   const [hotelNeeded, setHotelNeeded] = useState(askHotel && hotelOptions.length > 0);
+  const [hotelResponse, setHotelResponse] = useState<HotelResponse>(askHotel && hotelOptions.length > 0 ? "yes" : "no");
   const [selectedHotelId, setSelectedHotelId] = useState(
     selectedHotelBlockId && selectedHotelBlockId !== "all"
       ? selectedHotelBlockId
@@ -193,10 +196,12 @@ export function RsvpPagePreview({
   useEffect(() => {
     if (!askHotel || hotelOptions.length === 0) {
       setHotelNeeded(false);
+      setHotelResponse("no");
       setSelectedHotelId("");
       return;
     }
     setHotelNeeded(true);
+    setHotelResponse((current) => (current === "no" ? "yes" : current));
     if (selectedHotelBlockId && selectedHotelBlockId !== "all") {
       setSelectedHotelId(selectedHotelBlockId);
       return;
@@ -493,13 +498,24 @@ export function RsvpPagePreview({
                     {sortedHotelOptions.length > 0 && (
                       <div style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 8, padding: "10px 14px", marginBottom: 10 }}>
                         <p style={{ fontFamily: bodyFont, fontSize: 9 * sc, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: textFaint, marginBottom: 6 }}>Hotel Room</p>
-                        <select value={hotelNeeded ? "yes" : "no"} onChange={(event) => setHotelNeeded(event.target.value === "yes")} style={{ ...controlStyle, marginBottom: 8 }}>
+                        <select
+                          value={hotelResponse}
+                          onChange={(event) => {
+                            const value = event.target.value as HotelResponse;
+                            setHotelResponse(value);
+                            setHotelNeeded(value !== "no");
+                          }}
+                          style={{ ...controlStyle, marginBottom: 8 }}
+                        >
                           <option value="yes">Yes, I need a hotel room</option>
+                          <option value="booked">I've already booked</option>
                           <option value="no">No, I do not need a hotel room</option>
                         </select>
                         {hotelNeeded && (
                           <div style={{ border: `1px solid ${cardBorder}`, borderRadius: 7, padding: "8px 10px", background: isLight ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.16)" }}>
-                            <p style={{ fontFamily: bodyFont, fontSize: 10 * sc, color: textMuted, marginBottom: 4 }}>Hotel block</p>
+                            <p style={{ fontFamily: bodyFont, fontSize: 10 * sc, color: textMuted, marginBottom: 4 }}>
+                              {hotelResponse === "booked" ? "Which hotel did you book?" : "Hotel block"}
+                            </p>
                             <select value={selectedHotelId || (selectedHotel ? String(selectedHotel.id) : "")} onChange={(event) => setSelectedHotelId(event.target.value)} style={{ ...controlStyle, marginBottom: 7 }}>
                               {sortedHotelOptions.map((hotel) => (
                                 <option key={hotel.id} value={String(hotel.id)}>{hotel.hotelName}</option>
@@ -607,7 +623,7 @@ export function RsvpPagePreview({
               padding: "10px 14px", marginBottom: 10,
             }}>
               <p style={{ fontFamily: bodyFont, fontSize: 9 * sc, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: textFaint, marginBottom: 4 }}>Hotel Room</p>
-              <p style={{ fontFamily: bodyFont, fontSize: 11 * sc, color: textColor, marginBottom: 6 }}>Yes, I need a hotel room</p>
+              <p style={{ fontFamily: bodyFont, fontSize: 11 * sc, color: textColor, marginBottom: 6 }}>Yes / I've already booked</p>
               <div style={{ border: `1px solid ${cardBorder}`, borderRadius: 7, padding: "8px 10px", background: isLight ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.16)" }}>
                 <p style={{ fontFamily: bodyFont, fontSize: 10 * sc, color: textMuted, marginBottom: 4 }}>Hotel block dropdown</p>
                 <p style={{ fontFamily: bodyFont, fontSize: 11 * sc, color: textColor, fontWeight: 700 }}>
