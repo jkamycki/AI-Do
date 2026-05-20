@@ -167,6 +167,7 @@ export default function Rsvp() {
   const [pendingData, setPendingData] = useState<FormData | null>(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [pdfError, setPdfError] = useState(false);
+  const [allowRsvpUpdate, setAllowRsvpUpdate] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const { data: info, isLoading, isError } = useQuery({
@@ -329,6 +330,10 @@ export default function Rsvp() {
     (info.ceremonyVenueName || info.ceremonyAddress || info.ceremonyCity)
   );
   const isFullPhotoLayout = false;
+  const existingRsvpStatus =
+    info?.currentStatus === "attending" || info?.currentStatus === "declined"
+      ? info.currentStatus
+      : null;
 
   const downloadInvitationPdf = async () => {
     if (!info || !cardRef.current) return;
@@ -458,6 +463,100 @@ export default function Rsvp() {
                 </a>
               </p>
             </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (existingRsvpStatus && !allowRsvpUpdate) {
+    const accepted = existingRsvpStatus === "attending";
+    return (
+      <div
+        className="min-h-screen flex flex-col items-center justify-center p-4"
+        style={{ background: BG, backgroundImage: DOT_PAT, backgroundSize: "22px 22px" }}
+      >
+        <div
+          className="max-w-md w-full text-center rounded-2xl overflow-hidden shadow-2xl"
+          style={{ border: `1px solid ${CARD_BDR}`, background: BG }}
+        >
+          <div className="h-1.5 w-full" style={{ background: GOLD }} />
+          <div className="px-8 py-10 space-y-5">
+            <div className="flex justify-center">
+              <div
+                className={`h-20 w-20 rounded-full flex items-center justify-center ring-1 ${
+                  accepted
+                    ? "bg-emerald-500/15 ring-emerald-500/30"
+                    : "bg-red-500/15 ring-red-500/30"
+                }`}
+              >
+                {accepted ? (
+                  <CheckCircle2 className="h-10 w-10 text-emerald-400" />
+                ) : (
+                  <XCircle className="h-10 w-10 text-red-400" />
+                )}
+              </div>
+            </div>
+            <div>
+              <h2
+                style={{
+                  fontFamily: cormorant,
+                  fontStyle: "italic",
+                  fontWeight: 400,
+                  fontSize: "2rem",
+                  color: WHITE,
+                  marginBottom: "0.5rem",
+                }}
+              >
+                You've already RSVPed
+              </h2>
+              <p
+                style={{
+                  fontFamily: jakarta,
+                  color: MUTED,
+                  fontSize: "0.875rem",
+                  lineHeight: 1.6,
+                }}
+              >
+                <span>Thanks, </span>
+                <span style={{ color: WHITE, fontWeight: 600 }}>{info.guestName}</span>
+                <span>. Your response is already saved as </span>
+                <span style={{ color: WHITE, fontWeight: 700 }}>
+                  {accepted ? "attending" : "not attending"}
+                </span>
+                <span> for </span>
+                <span style={{ color: WHITE, fontWeight: 600 }}>{couple}'s</span>
+                <span> wedding.</span>
+              </p>
+              {accepted && weddingDateStr && (
+                <p style={{ fontFamily: jakarta, color: MUTED, fontSize: "0.75rem", marginTop: "0.75rem" }}>
+                  {weddingDateStr}
+                  {info.venue ? ` · ${info.venue}` : ""}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setAllowRsvpUpdate(true)}
+              style={{
+                width: "100%",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: 8,
+                border: `1px solid ${GOLD}66`,
+                background: GOLD,
+                color: isLightHex(GOLD) ? "#1a1a1a" : "#ffffff",
+                fontFamily: jakarta,
+                fontSize: 12,
+                fontWeight: 800,
+                letterSpacing: "0.12em",
+                padding: "0.85rem 1rem",
+                textTransform: "uppercase",
+              }}
+            >
+              Update my RSVP
+            </button>
           </div>
         </div>
       </div>

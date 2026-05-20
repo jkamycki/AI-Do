@@ -438,12 +438,13 @@ export function RsvpFlow({
               {t("rsvp.greeting", { name: guest.name.split(" ")[0], defaultValue: "Hi {{name}}!" })}
             </h2>
             <p className="text-base mb-2" style={{ color: text }}>
-              {t("rsvp.already_replied_as", {
-                status: guest.rsvpStatus === "attending"
+              You've already RSVPed as{" "}
+              <span className="font-semibold">
+                {guest.rsvpStatus === "attending"
                   ? t("rsvp.status_attending", { defaultValue: "Attending" })
-                  : t("rsvp.status_declined", { defaultValue: "Declined" }),
-                defaultValue: "You've already RSVPed as <0>{{status}}</0>.",
-              })}
+                  : t("rsvp.status_declined", { defaultValue: "Declined" })}
+              </span>
+              .
             </p>
             <p className="text-sm font-medium mb-8" style={{ color: text }}>
               {guest.rsvpStatus === "attending"
