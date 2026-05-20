@@ -1609,6 +1609,11 @@ export default function Guests({
       optimisticUpdate(guestId, { saveTheDateStatus: "sent" } as any);
       invalidate();
       setSendModalGuest(null);
+      openGuestInvitationLink(
+        "saveTheDate",
+        data?.saveTheDateUrl ?? data?.previewUrl,
+        guestName,
+      );
       if (data?.emailSent) {
         toast({
           title: "Save the Date sent!",
@@ -1684,7 +1689,7 @@ export default function Guests({
         };
         throw new Error(err.details ?? err.error ?? "Failed to send RSVP");
       }
-      return res.json() as Promise<{ rsvpUrl: string; emailSent: boolean }>;
+      return res.json() as Promise<{ rsvpUrl: string; previewUrl?: string; emailSent: boolean }>;
     },
     onSuccess: (data, guestId) => {
       const guestName = sendModalGuest
@@ -1697,6 +1702,11 @@ export default function Guests({
       optimisticUpdate(guestId, { invitationStatus: "sent" });
       invalidate();
       setSendModalGuest(null);
+      openGuestInvitationLink(
+        "invitation",
+        data.rsvpUrl ?? data.previewUrl,
+        guestName,
+      );
       if (data.emailSent) {
         toast({
           title: "RSVP Invitation sent!",
@@ -1759,6 +1769,7 @@ export default function Guests({
   const [bulkLinksMode, setBulkLinksMode] = useState<
     null | "saveTheDate" | "invitation" | "reminder"
   >(null);
+  const [linkDialogKind, setLinkDialogKind] = useState<"shared" | "guest">("shared");
   const [bulkMobileChoiceMode, setBulkMobileChoiceMode] = useState<
     null | "saveTheDate" | "invitation" | "reminder"
   >(null);
@@ -1770,6 +1781,19 @@ export default function Guests({
   const [confirmBulkSend, setConfirmBulkSend] = useState<
     null | "saveTheDate" | "invitation" | "reminder"
   >(null);
+
+  const openGuestInvitationLink = (
+    mode: "saveTheDate" | "invitation",
+    url: string | undefined,
+    name: string,
+  ) => {
+    if (!url) return;
+    setBulkShareIntent("copy");
+    setLinkDialogKind("guest");
+    setBulkLinksMode(mode);
+    setBulkLinksLoading(false);
+    setBulkLinks([{ guestId: Date.now(), name, url }]);
+  };
 
   const handleSendAllReminders = async (targetGuests = reminderEligible) => {
     if (!targetGuests.length) return;
@@ -1913,13 +1937,21 @@ export default function Guests({
         ? selectedInvitationEligible
         : selectedReminderEligible;
   const getBulkLinksTitle = (mode: "saveTheDate" | "invitation" | "reminder") =>
-    mode === "saveTheDate"
+    linkDialogKind === "guest"
+      ? mode === "saveTheDate"
+        ? "Save-the-Date Link"
+        : mode === "invitation"
+          ? "RSVP Invitation Link"
+          : "RSVP Reminder Link"
+      : mode === "saveTheDate"
       ? "Shared Save-the-Date Link"
       : mode === "invitation"
         ? "Shared RSVP Invitation Link"
         : "Shared RSVP Reminder Link";
   const getBulkLinksDescription = (mode: "saveTheDate" | "invitation" | "reminder") =>
-    mode === "saveTheDate"
+    linkDialogKind === "guest"
+      ? "The invitation link is ready to copy and send manually."
+      : mode === "saveTheDate"
       ? "One save-the-date link can be sent to any guest."
       : mode === "invitation"
         ? "One RSVP link lets guests find their name and reply."
@@ -2008,6 +2040,7 @@ export default function Guests({
     }
 
     setBulkShareIntent(intent);
+    setLinkDialogKind("shared");
     setBulkLinksMode(mode);
     setBulkLinks([]);
     setBulkLinksLoading(true);
@@ -2038,8 +2071,10 @@ export default function Guests({
     const text = bulkLinks[0].url;
     await navigator.clipboard.writeText(text);
     toast({
-      title: "Shared link copied",
-      description: "Paste this one link anywhere you want guests to open it.",
+      title: linkDialogKind === "guest" ? "Invitation link copied" : "Shared link copied",
+      description: linkDialogKind === "guest"
+        ? "Paste it anywhere you want to send this guest's invitation."
+        : "Paste this one link anywhere you want guests to open it.",
     });
   };
   const bulkSendGuests =
@@ -3007,7 +3042,9 @@ export default function Guests({
                         <p className="text-sm leading-relaxed text-muted-foreground">
                           {bulkShareIntent === "text"
                             ? "Use your phone's Messages app to send the shared link."
-                            : "One shared link is ready to copy."}
+                            : linkDialogKind === "guest"
+                              ? "This guest's invitation link is ready to copy."
+                              : "One shared link is ready to copy."}
                         </p>
                         <div className="grid w-full gap-2 sm:flex sm:w-auto sm:items-center">
                           <Button
@@ -3047,8 +3084,8 @@ export default function Guests({
                           >
                             <p className="min-w-0 break-words font-semibold text-foreground">
                               {bulkLinksMode === "saveTheDate"
-                                ? "Save-the-Date shared link"
-                                : "RSVP shared link"}
+                                ? linkDialogKind === "guest" ? "Save-the-Date invitation link" : "Save-the-Date shared link"
+                                : linkDialogKind === "guest" ? "RSVP invitation link" : "RSVP shared link"}
                             </p>
                             <div className="mt-2 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
                               <p className="min-w-0 flex-1 overflow-hidden text-ellipsis break-all rounded-md bg-white/50 px-2 py-1.5 text-xs leading-relaxed text-muted-foreground sm:line-clamp-2">
@@ -3082,7 +3119,9 @@ export default function Guests({
                                     await navigator.clipboard.writeText(item.url);
                                     toast({
                                       title: "Link copied",
-                                      description: "The shared link is ready to paste.",
+                                      description: linkDialogKind === "guest"
+                                        ? "The invitation link is ready to paste."
+                                        : "The shared link is ready to paste.",
                                     });
                                   }}
                                 >
