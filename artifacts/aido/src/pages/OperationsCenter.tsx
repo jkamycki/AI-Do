@@ -452,7 +452,7 @@ const maintenanceSections: Array<{
 ];
 
 const defaultMaintenanceMessage =
-  "We'll be right back. We're making updates and improvements to this page.";
+  "We'll be right back. We're making updates and improvements to this page. Thank you for your patience!";
 
 export default function OperationsCenterPage() {
   const { getToken } = useAuth();

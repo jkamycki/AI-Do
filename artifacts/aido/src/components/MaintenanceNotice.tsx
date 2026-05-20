@@ -1,7 +1,7 @@
 import { Wrench } from "lucide-react";
 
 export const DEFAULT_MAINTENANCE_MESSAGE =
-  "We'll be right back. We're making updates and improvements to this page.";
+  "We'll be right back. We're making updates and improvements to this page. Thank you for your patience!";
 
 export function MaintenanceNotice({
   title = "We'll be right back",
@@ -35,6 +35,11 @@ export function MaintenanceNotice({
           <p className="mt-3 text-sm leading-relaxed text-[#6F3E54]">
             {message || DEFAULT_MAINTENANCE_MESSAGE}
           </p>
+          {!(message || DEFAULT_MAINTENANCE_MESSAGE).toLowerCase().includes("thank you for your patience") && (
+            <p className="mt-2 text-sm font-semibold leading-relaxed text-[#8D294D]">
+              Thank you for your patience!
+            </p>
+          )}
         </div>
         <p className="mt-5 text-xs text-[#6F3E54]/70">
           Powered by A.IDO
