@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: ai-do-api
+    name: AI-Do
     runtime: node
     region: oregon
     plan: free
