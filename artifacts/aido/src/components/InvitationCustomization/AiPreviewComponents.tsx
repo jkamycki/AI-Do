@@ -145,6 +145,43 @@ function Badge({ children, accent = GOLD }: { children: ReactNode; accent?: stri
 }
 
 // ── Shared card shell: dark bg + dots + logo + optional photo ─────────────────
+function InvitationMarketingFooter({ customColors, compact = false }: { customColors?: CustomColors; compact?: boolean }) {
+  const accent = customColors?.accent ?? GOLD;
+  const muted = customColors?.muted ?? MUTED;
+  const labelFont = customColors?.font ? `'${customColors.font}', ${cormorant}` : jakarta;
+  return (
+    <div
+      style={{
+        marginTop: compact ? 10 : 18,
+        paddingTop: compact ? 10 : 14,
+        borderTop: `1px solid ${customColors?.cardBdr ?? CARD_BDR}`,
+        textAlign: "center",
+      }}
+    >
+      <img
+        src="/logo.png"
+        alt="A.IDO"
+        style={{
+          display: "block",
+          height: compact ? 24 : 30,
+          width: "auto",
+          objectFit: "contain",
+          margin: "0 auto 6px",
+        }}
+      />
+      <p style={{ margin: 0, fontFamily: labelFont, fontSize: compact ? 8.5 : 9.5, color: muted, lineHeight: 1.45 }}>
+        Planning your own wedding?{" "}
+        <a href="https://aidowedding.net?theme=light" style={{ color: accent, fontWeight: 800, textDecoration: "none" }}>
+          Try A.IDO
+        </a>
+      </p>
+      <p style={{ margin: "2px 0 0", fontFamily: labelFont, fontSize: compact ? 8 : 9, color: muted, lineHeight: 1.35 }}>
+        aidowedding.net
+      </p>
+    </div>
+  );
+}
+
 function CardShell({
   topContent,
   children,
@@ -281,6 +318,7 @@ function CardShell({
         backgroundColor: bg, padding: "16px 24px 28px", textAlign: "center",
       }}>
         {children}
+        <InvitationMarketingFooter customColors={customColors} />
       </div>
     </div>
     </div>
@@ -563,6 +601,7 @@ function FullPhotoSaveDatePreview({
           </div>
         </div>
       </div>
+      <InvitationMarketingFooter customColors={customColors} compact />
     </div>
   );
 }
@@ -987,6 +1026,7 @@ function FullPhotoRsvpPreview({
           </div>
         </div>
       </div>
+      <InvitationMarketingFooter customColors={customColors} compact />
     </div>
   );
 }

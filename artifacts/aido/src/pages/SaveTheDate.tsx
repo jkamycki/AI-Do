@@ -423,9 +423,17 @@ export default function SaveTheDate() {
 
         {/* Footer — matches email card footer */}
         <div style={{ backgroundColor: BG, padding: "16px 24px", textAlign: "center", borderTop: `1px solid ${CARD_BDR}` }}>
+          <img
+            src="/logo.png"
+            alt="A.IDO"
+            style={{ display: "block", height: 30, width: "auto", objectFit: "contain", margin: "0 auto 8px" }}
+          />
           <p style={{ margin: "0 0 4px", fontFamily: jakarta, fontSize: 10, color: MUTED, letterSpacing: "0.5px" }}>Planning your own wedding?</p>
           <p style={{ margin: 0, fontFamily: jakarta, fontSize: 10, color: MUTED }}>
-            <a href="https://aidowedding.net" style={{ color: GOLD, textDecoration: "none", fontWeight: 600 }}>Try A.IDO free</a> - AI-powered wedding planning
+            <a href="https://aidowedding.net?theme=light" style={{ color: GOLD, textDecoration: "none", fontWeight: 700 }}>Try A.IDO</a> - AI-powered wedding planning
+          </p>
+          <p style={{ margin: "3px 0 0", fontFamily: jakarta, fontSize: 10, color: MUTED }}>
+            <a href="https://aidowedding.net?theme=light" style={{ color: MUTED, textDecoration: "underline" }}>aidowedding.net</a>
           </p>
         </div>
 

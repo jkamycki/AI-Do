@@ -458,8 +458,13 @@ export default function Rsvp() {
               )}
               <p style={{ fontFamily: jakarta, color: MUTED, fontSize: "0.68rem", lineHeight: 1.5, marginTop: info.websiteUrl ? "1rem" : "0.5rem" }}>
                 Planning your own wedding?{" "}
-                <a href="https://aidowedding.net" style={{ color: GOLD, textDecoration: "none", fontWeight: 700 }}>
-                  Try A.IDO free
+                <a href="https://aidowedding.net?theme=light" style={{ color: GOLD, textDecoration: "none", fontWeight: 700 }}>
+                  Try A.IDO
+                </a>
+              </p>
+              <p style={{ fontFamily: jakarta, color: MUTED, fontSize: "0.68rem", lineHeight: 1.5, marginTop: "0.15rem" }}>
+                <a href="https://aidowedding.net?theme=light" style={{ color: MUTED, textDecoration: "underline" }}>
+                  aidowedding.net
                 </a>
               </p>
             </div>
@@ -841,6 +846,24 @@ export default function Rsvp() {
                 Wedding Website
               </a>
             )}
+            <div style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid ${CARD_BDR}`, textAlign: "center" }}>
+              <img
+                src="/logo.png"
+                alt="A.IDO"
+                style={{ display: "block", height: 30, width: "auto", objectFit: "contain", margin: "0 auto 8px" }}
+              />
+              <p style={{ margin: 0, fontFamily: jakarta, fontSize: 10, color: MUTED, lineHeight: 1.45 }}>
+                Planning your own wedding?{" "}
+                <a href="https://aidowedding.net?theme=light" style={{ color: GOLD, fontWeight: 800, textDecoration: "none" }}>
+                  Try A.IDO
+                </a>
+              </p>
+              <p style={{ margin: "3px 0 0", fontFamily: jakarta, fontSize: 10, color: MUTED, lineHeight: 1.35 }}>
+                <a href="https://aidowedding.net?theme=light" style={{ color: MUTED, textDecoration: "underline" }}>
+                  aidowedding.net
+                </a>
+              </p>
+            </div>
 
           </div>
         </div>
@@ -1264,12 +1287,24 @@ export default function Rsvp() {
 
       {/* Footer — page is white, so use a dark muted colour instead of the
           dark-card MUTED (white@55%) which would be invisible on white. */}
-      <p style={{ fontFamily: jakarta, fontSize: 11, color: "rgba(0,0,0,0.55)", marginTop: 28, textAlign: "center" }}>
-        Planning your own wedding?{" "}
-        <a href="https://aidowedding.net" style={{ color: GOLD, textDecoration: "none", fontWeight: 600 }}>
-          Try A.IDO free
-        </a>
-      </p>
+      <div style={{ marginTop: 28, textAlign: "center" }}>
+        <img
+          src="/logo.png"
+          alt="A.IDO"
+          style={{ display: "block", height: 30, width: "auto", objectFit: "contain", margin: "0 auto 8px" }}
+        />
+        <p style={{ fontFamily: jakarta, fontSize: 11, color: "rgba(0,0,0,0.55)", margin: 0 }}>
+          Planning your own wedding?{" "}
+          <a href="https://aidowedding.net?theme=light" style={{ color: GOLD, textDecoration: "none", fontWeight: 700 }}>
+            Try A.IDO
+          </a>
+        </p>
+        <p style={{ fontFamily: jakarta, fontSize: 11, color: "rgba(0,0,0,0.55)", margin: "3px 0 0" }}>
+          <a href="https://aidowedding.net?theme=light" style={{ color: "rgba(0,0,0,0.55)", textDecoration: "underline" }}>
+            aidowedding.net
+          </a>
+        </p>
+      </div>
 
       <AlertDialog open={!!pendingData} onOpenChange={(open) => { if (!open) setPendingData(null); }}>
         <AlertDialogContent className="max-w-sm" style={{ backgroundColor: BG, borderColor: CARD_BDR, color: WHITE }}>

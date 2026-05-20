@@ -306,6 +306,38 @@ function aiLogoBlock(logoBase64: string | null, accent = AI_GOLD): string {
     : `<span style="font-family:${AI_CORMORANT};font-size:22px;font-style:italic;color:${accent};letter-spacing:1px;">A.IDO</span>`;
 }
 
+function aiMarketingFooterHtml({
+  logoBase64,
+  bg,
+  accent,
+  muted,
+  cardBdr,
+  labelFont,
+}: {
+  logoBase64: string | null | undefined;
+  bg: string;
+  accent: string;
+  muted: string;
+  cardBdr: string;
+  labelFont: string;
+}): string {
+  const logo = logoBase64
+    ? `<img src="${logoBase64}" alt="A.IDO" width="76" style="display:block;width:76px;max-width:76px;height:auto;border:0;outline:none;text-decoration:none;margin:0 auto 8px;" />`
+    : `<span style="display:block;font-family:${AI_CORMORANT};font-size:22px;font-style:italic;color:${accent};letter-spacing:1px;margin-bottom:8px;">A.IDO</span>`;
+  return `
+        <tr>
+          <td bgcolor="${bg}" style="background:${bg};padding:16px 24px 18px;text-align:center;border-top:1px solid ${cardBdr};">
+            ${logo}
+            <p style="margin:0;font-family:${labelFont};font-size:10px;line-height:1.45;color:${muted};">
+              Planning your own wedding? <a href="https://aidowedding.net?theme=light" style="color:${accent};font-weight:800;text-decoration:none;">Try A.IDO</a>
+            </p>
+            <p style="margin:3px 0 0;font-family:${labelFont};font-size:10px;line-height:1.35;color:${muted};">
+              <a href="https://aidowedding.net?theme=light" style="color:${muted};text-decoration:underline;">aidowedding.net</a>
+            </p>
+          </td>
+        </tr>`;
+}
+
 function aiPhotoBlock(
   photoSrc: string | null,
   alt: string,
@@ -520,6 +552,8 @@ function aiDigitalInvitationHtml(opts: AiDigitalInviteOpts): string {
           </td>
         </tr>
 
+        ${aiMarketingFooterHtml({ logoBase64: opts.logoBase64, bg: BG, accent: ACCENT, muted: MUTED, cardBdr: CARD_BDR, labelFont: LABEL_FONT })}
+
       </table>
 
     </td></tr>
@@ -663,6 +697,8 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
           </td>
         </tr>
 
+        ${aiMarketingFooterHtml({ logoBase64: opts.logoBase64, bg: BG, accent: ACCENT, muted: MUTED, cardBdr: CARD_BDR, labelFont: LABEL_FONT })}
+
       </table>
 
     </td></tr>
@@ -713,6 +749,15 @@ function aiRsvpReminderHtml(opts: AiRsvpReminderOpts): string {
               </p>
               <a href="${opts.rsvpUrl}" style="display:inline-block;background:#8D294D;color:#ffffff;font-weight:700;text-decoration:none;font-size:13px;letter-spacing:0.15em;text-transform:uppercase;padding:14px 36px;border-radius:8px;margin-top:6px;">RSVP Now</a>
               <p style="font-size:12px;color:#6F3E54;margin:28px 0 0;">With love,<br />${couple}</p>
+              <div style="margin-top:24px;padding-top:18px;border-top:1px solid rgba(230,166,183,0.55);">
+                ${logo}
+                <p style="margin:0;font-size:11px;line-height:1.45;color:#6F3E54;">
+                  Planning your own wedding? <a href="https://aidowedding.net?theme=light" style="color:#8D294D;font-weight:800;text-decoration:none;">Try A.IDO</a>
+                </p>
+                <p style="margin:3px 0 0;font-size:11px;line-height:1.35;color:#6F3E54;">
+                  <a href="https://aidowedding.net?theme=light" style="color:#6F3E54;text-decoration:underline;">aidowedding.net</a>
+                </p>
+              </div>
             </td>
           </tr>
         </table>

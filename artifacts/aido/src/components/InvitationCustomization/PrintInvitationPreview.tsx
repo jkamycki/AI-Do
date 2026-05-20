@@ -77,6 +77,36 @@ function RealQrCode({ url, accent }: { url: string; accent: string }) {
   );
 }
 
+function PrintMarketingFooter({ accent, text }: { accent: string; text: string }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: 42,
+        right: 42,
+        bottom: 22,
+        zIndex: 4,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        paddingTop: 6,
+        borderTop: `1px solid ${accent}33`,
+        fontFamily: "'Plus Jakarta Sans', Arial, sans-serif",
+        fontSize: 8.5,
+        lineHeight: 1.2,
+        color: text,
+        background: "transparent",
+      }}
+    >
+      <img src="/logo.png" alt="A.IDO" style={{ height: 18, width: "auto", objectFit: "contain", display: "block" }} />
+      <span>
+        Planning your own wedding? <strong style={{ color: accent }}>Try A.IDO</strong> | aidowedding.net
+      </span>
+    </div>
+  );
+}
+
 interface PrintInvitationPreviewProps {
   design: InvitationDesignDocument;
   size: PrintInvitationSize;
@@ -350,6 +380,7 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
             )}
           </div>
         )}
+        <PrintMarketingFooter accent={accent} text={text} />
       </div>
     );
   },

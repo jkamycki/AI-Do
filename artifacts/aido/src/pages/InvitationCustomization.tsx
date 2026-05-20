@@ -168,6 +168,43 @@ function printLocationLines(design: ReturnType<typeof buildInvitationDesignDocum
   ].filter(Boolean);
 }
 
+function drawInvitationMarketingFooter(
+  doc: {
+    setDrawColor: (...args: number[]) => void;
+    setLineWidth: (width: number) => void;
+    line: (x1: number, y1: number, x2: number, y2: number) => void;
+    addImage: (...args: unknown[]) => void;
+    setFont: (font: string, style?: string) => void;
+    setFontSize: (size: number) => void;
+    setTextColor: (...args: number[]) => void;
+    text: (text: string, x: number, y: number, options?: Record<string, unknown>) => void;
+  },
+  pageWidth: number,
+  pageHeight: number,
+  accent: [number, number, number],
+  text: [number, number, number],
+  logoDataUrl: string | null,
+) {
+  const y = pageHeight - 26;
+  doc.setDrawColor(...accent);
+  doc.setLineWidth(0.35);
+  doc.line(48, y - 10, pageWidth - 48, y - 10);
+  if (logoDataUrl) {
+    try {
+      doc.addImage(logoDataUrl, "PNG", pageWidth / 2 - 18, y - 8, 36, 14);
+    } catch {
+      doc.setFont("times", "italic");
+      doc.setFontSize(8.5);
+      doc.setTextColor(...accent);
+      doc.text("A.IDO", pageWidth / 2, y, { align: "center" });
+    }
+  }
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6.8);
+  doc.setTextColor(...text);
+  doc.text("Planning your own wedding? Try A.IDO | aidowedding.net", pageWidth / 2, y + 12, { align: "center" });
+}
+
 async function fileToDataUrl(blob: Blob) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -1146,6 +1183,7 @@ export default function InvitationCustomizationPage({
       doc.rect(34, 34, pageWidth - 68, pageHeight - 68);
       doc.setLineDashPattern([], 0);
       doc.setTextColor(...text);
+      const logoDataUrl = await loadImageDataUrl("/logo.png");
 
       if (effectivePrintSide === "front") {
         const aiPrint = activeDesignDocument.designMode === "ai";
@@ -1383,6 +1421,8 @@ export default function InvitationCustomizationPage({
           y += 13;
         }
       }
+
+      drawInvitationMarketingFooter(doc, pageWidth, pageHeight, accent, text, logoDataUrl);
 
       const safeCouple = activeDesignDocument.couple.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "_") || "wedding";
       doc.save(`${safeCouple}_${activeDesignDocument.kind}_${spec.label.replace(/\s+/g, "")}_${effectivePrintSide}.pdf`);
