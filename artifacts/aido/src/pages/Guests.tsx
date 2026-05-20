@@ -1442,11 +1442,10 @@ function GuestCollectorCard() {
                 className="border-primary/20 hover:bg-primary/10 text-primary gap-2"
                 onClick={() => {
                   const subject = encodeURIComponent(
-                    t("guests.email_subject_line") ||
-                      "Please share your contact info with us!",
+                    `Contact info request for ${coupleNames}'s wedding`,
                   );
                   const body = encodeURIComponent(
-                    `Hi!\n\nWe'd love to have your contact details for our wedding guest list. Please take a moment to fill out this quick form below:\n\n${collectorUrl}\n\nThank you!`,
+                    `Hi!\n\n${coupleNames} are collecting mailing addresses and contact info for their wedding invitations.\n\nPlease share your details here:\n${collectorUrl}\n\nThank you!`,
                   );
                   window.location.href = `mailto:?subject=${subject}&body=${body}`;
                 }}
