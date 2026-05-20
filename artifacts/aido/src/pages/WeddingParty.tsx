@@ -232,6 +232,7 @@ function MemberCard({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [cropFileName, setCropFileName] = useState("headshot");
+  const cropObjectUrlRef = useRef<string | null>(null);
 
   const sideColor = SIDE_COLORS[member.side] ?? SIDE_COLORS.bride;
   const sideLabel = member.side === "bride"
@@ -262,16 +263,49 @@ function MemberCard({
     onError: () => toast({ title: "Could not save photo", variant: "destructive" }),
   });
 
+  function clearCropSource() {
+    if (cropObjectUrlRef.current) {
+      URL.revokeObjectURL(cropObjectUrlRef.current);
+      cropObjectUrlRef.current = null;
+    }
+    setCropSrc(null);
+  }
+
+  function openCropSource(url: string, fileName: string) {
+    clearCropSource();
+    cropObjectUrlRef.current = url;
+    setCropFileName(fileName);
+    setCropSrc(url);
+  }
+
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setCropFileName(file.name);
-    setCropSrc(URL.createObjectURL(file));
+    openCropSource(URL.createObjectURL(file), file.name);
     e.target.value = "";
   }
 
+  async function openExistingPhotoEditor() {
+    if (!member.photoUrl || isBusy) return;
+    try {
+      const token = await getToken();
+      const res = await fetch(objectUrl(member.photoUrl), {
+        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error("Could not load photo");
+      openCropSource(URL.createObjectURL(await res.blob()), `${member.name || "headshot"}.jpg`);
+    } catch (err) {
+      toast({
+        title: "Could not open photo editor",
+        description: err instanceof Error ? err.message : "Try uploading the photo again.",
+        variant: "destructive",
+      });
+    }
+  }
+
   async function handleCropConfirm(croppedFile: File) {
-    setCropSrc(null);
+    clearCropSource();
     const result = await uploadFile(croppedFile);
     if (result) {
       photoMutation.mutate(result.objectPath);
@@ -308,8 +342,12 @@ function MemberCard({
               {/* Avatar — click to upload/change headshot */}
               <div
                 className="relative group h-32 w-32 cursor-pointer overflow-hidden rounded-full border border-primary/20 bg-primary/10 shadow-sm sm:h-36 sm:w-36"
-                onClick={() => !isBusy && fileInputRef.current?.click()}
-                title={member.photoUrl ? "Change headshot" : "Add headshot"}
+                onClick={() => {
+                  if (isBusy) return;
+                  if (member.photoUrl) void openExistingPhotoEditor();
+                  else fileInputRef.current?.click();
+                }}
+                title={member.photoUrl ? "Adjust headshot" : "Add headshot"}
               >
                 {member.photoUrl ? (
                   <AuthImage
@@ -339,6 +377,30 @@ function MemberCard({
                 className="sr-only"
                 onChange={handleFileSelect}
               />
+              {member.photoUrl && (
+                <div className="mt-2 flex justify-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-3 text-xs"
+                    onClick={() => void openExistingPhotoEditor()}
+                    disabled={isBusy}
+                  >
+                    Adjust
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-3 text-xs"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isBusy}
+                  >
+                    Change
+                  </Button>
+                </div>
+              )}
             </div>
 
               <div className="space-y-1.5">
@@ -367,7 +429,7 @@ function MemberCard({
           imageSrc={cropSrc}
           originalFileName={cropFileName}
           onConfirm={handleCropConfirm}
-          onCancel={() => setCropSrc(null)}
+          onCancel={clearCropSource}
         />
       )}
     </>
