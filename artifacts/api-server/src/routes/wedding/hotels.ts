@@ -97,6 +97,28 @@ function withSyncedRoomsBooked(h: typeof hotelBlocks.$inferSelect, bookedCount: 
   return fmt({ ...h, roomsBooked: bookedCount });
 }
 
+async function getBookedRoomCounts(
+  profileId: number,
+  log: { warn: (obj: unknown, msg?: string) => void },
+): Promise<Map<number, number> | null> {
+  try {
+    const assignedGuests = await db
+      .select({ bookedHotelBlockId: guests.bookedHotelBlockId, bookedHotelRoomCount: guests.bookedHotelRoomCount })
+      .from(guests)
+      .where(eq(guests.profileId, profileId));
+    const bookedCounts = new Map<number, number>();
+    for (const guest of assignedGuests) {
+      if (!guest.bookedHotelBlockId) continue;
+      const roomCount = Math.max(1, Math.min(2, Number(guest.bookedHotelRoomCount) || 1));
+      bookedCounts.set(guest.bookedHotelBlockId, (bookedCounts.get(guest.bookedHotelBlockId) ?? 0) + roomCount);
+    }
+    return bookedCounts;
+  } catch (err) {
+    log.warn({ err, profileId }, "Failed to sync hotel booked room counts; returning hotel blocks with stored counts");
+    return null;
+  }
+}
+
 async function hotelScope(req: Parameters<typeof resolveProfile>[0]) {
   const profile = await resolveProfile(req);
   const userId = profile?.userId ?? await resolveScopeUserId(req);
@@ -200,15 +222,10 @@ router.get("/hotels", requireAuth, async (req, res) => {
       return;
     }
 
-    const assignedGuests = await db
-      .select({ bookedHotelBlockId: guests.bookedHotelBlockId, bookedHotelRoomCount: guests.bookedHotelRoomCount })
-      .from(guests)
-      .where(eq(guests.profileId, profile.id));
-    const bookedCounts = new Map<number, number>();
-    for (const guest of assignedGuests) {
-      if (!guest.bookedHotelBlockId) continue;
-      const roomCount = Math.max(1, Math.min(2, Number(guest.bookedHotelRoomCount) || 1));
-      bookedCounts.set(guest.bookedHotelBlockId, (bookedCounts.get(guest.bookedHotelBlockId) ?? 0) + roomCount);
+    const bookedCounts = await getBookedRoomCounts(profile.id, req.log);
+    if (!bookedCounts) {
+      res.json(rows.map(fmt));
+      return;
     }
 
     res.json(rows.map((row) => withSyncedRoomsBooked(row, bookedCounts.get(row.id) ?? 0)));

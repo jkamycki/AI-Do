@@ -399,14 +399,19 @@ export default function Hotels() {
   const [isAdding, setIsAdding] = useState(false);
   const [editHotel, setEditHotel] = useState<HotelBlock | null>(null);
 
-  const { data: hotels = [], isLoading, isError } = useQuery<HotelBlock[]>({
+  const { data: hotelRows, isLoading, isError, error, refetch } = useQuery<unknown>({
     queryKey: ["hotels"],
     queryFn: async () => {
       const r = await authFetch(`${API}/api/hotels`);
-      if (!r.ok) throw new Error(r.statusText);
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({})) as { error?: string };
+        throw new Error(err.error || r.statusText || "Failed to load hotel blocks");
+      }
       return r.json();
     },
+    retry: 1,
   });
+  const hotels: HotelBlock[] = Array.isArray(hotelRows) ? hotelRows as HotelBlock[] : [];
 
   const { data: hotelGuestData } = useQuery<{ guests: HotelGuest[] }>({
     queryKey: ["guests"],
@@ -466,8 +471,24 @@ export default function Hotels() {
 
   if (isError) {
     return (
-      <div className="flex flex-col items-center justify-center h-[50vh] text-center">
-        <p className="text-muted-foreground">Failed to load hotel blocks. Please refresh.</p>
+      <div className="flex min-h-[50vh] items-center justify-center px-4 text-center">
+        <Card className="max-w-md border-primary/20 bg-card/95 shadow-sm">
+          <CardContent className="space-y-4 p-6">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+              <Hotel className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h2 className="font-serif text-xl font-semibold text-foreground">Hotel blocks did not load</h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                {error instanceof Error ? error.message : "Something went wrong loading your hotel blocks."}
+              </p>
+            </div>
+            <Button type="button" onClick={() => void refetch()} className="w-full">
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Try again
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
