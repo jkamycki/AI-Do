@@ -1756,6 +1756,13 @@ export default function Guests({
   const [sendingReminders, setSendingReminders] = useState(false);
   const [sendingSaveTheDates, setSendingSaveTheDates] = useState(false);
   const [sendingInvitations, setSendingInvitations] = useState(false);
+  const [bulkLinksMode, setBulkLinksMode] = useState<
+    null | "saveTheDate" | "invitation" | "reminder"
+  >(null);
+  const [bulkLinksLoading, setBulkLinksLoading] = useState(false);
+  const [bulkLinks, setBulkLinks] = useState<
+    Array<{ guestId: number; name: string; url: string }>
+  >([]);
   const [confirmBulkSend, setConfirmBulkSend] = useState<
     null | "saveTheDate" | "invitation" | "reminder"
   >(null);
@@ -1827,7 +1834,7 @@ export default function Guests({
     });
   };
 
-  const allGuests = data?.guests ?? [];
+  const allGuests = (data?.guests ?? []) as Guest[];
   const saveTheDateEligible = allGuests.filter(
     (g) => ((g as any).saveTheDateStatus ?? "not_sent") === "not_sent",
   );
@@ -1881,6 +1888,83 @@ export default function Guests({
     setSendModalDefaultTab(mode === "saveTheDate" ? "saveTheDate" : "digitalInvitation");
     setSendModalReminderOnly(false);
     setSendModalGuest(targetGuests[0]);
+  };
+  const getBulkLinkGuests = (mode: "saveTheDate" | "invitation" | "reminder") =>
+    mode === "saveTheDate"
+      ? selectedSaveTheDateEligible
+      : mode === "invitation"
+        ? selectedInvitationEligible
+        : selectedReminderEligible;
+  const getBulkLinksTitle = (mode: "saveTheDate" | "invitation" | "reminder") =>
+    mode === "saveTheDate"
+      ? "Personalized Save-the-Date Links"
+      : mode === "invitation"
+        ? "Personalized RSVP Invitation Links"
+        : "Personalized RSVP Reminder Links";
+  const getBulkLinksDescription = (mode: "saveTheDate" | "invitation" | "reminder") =>
+    mode === "saveTheDate"
+      ? "Each selected guest gets their own save-the-date link."
+      : mode === "invitation"
+        ? "Each selected guest gets their own RSVP invitation link."
+        : "RSVP reminders use each guest's same personalized RSVP link.";
+  const openBulkLinks = async (mode: "saveTheDate" | "invitation" | "reminder") => {
+    const targetGuests = getBulkLinkGuests(mode);
+    if (!targetGuests.length) {
+      toast({
+        title: "No selected guests ready",
+        description:
+          mode === "saveTheDate"
+            ? "Select at least one guest who has not received a save-the-date yet."
+            : mode === "invitation"
+              ? "Select at least one guest who has not received an RSVP invitation yet."
+              : "Select at least one guest who still needs an RSVP reminder.",
+      });
+      return;
+    }
+
+    setBulkLinksMode(mode);
+    setBulkLinks([]);
+    setBulkLinksLoading(true);
+    try {
+      const endpoint =
+        mode === "saveTheDate" ? "save-the-date-link" : "rsvp-link";
+      const links = await Promise.all(
+        targetGuests.map(async (guest) => {
+          const res = await authFetch(`/api/guests/${guest.id}/${endpoint}`);
+          if (!res.ok) {
+            const err = (await res.json().catch(() => ({}))) as { error?: string };
+            throw new Error(err.error ?? `Could not create a link for ${guest.name}`);
+          }
+          const data = (await res.json()) as {
+            saveTheDateUrl?: string;
+            rsvpUrl?: string;
+            previewUrl?: string;
+          };
+          const url = data.saveTheDateUrl ?? data.rsvpUrl ?? data.previewUrl;
+          if (!url) throw new Error(`No link was returned for ${guest.name}`);
+          return { guestId: guest.id, name: guest.name, url };
+        }),
+      );
+      setBulkLinks(links);
+    } catch (err) {
+      toast({
+        title: "Could not create links",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      });
+      setBulkLinksMode(null);
+    } finally {
+      setBulkLinksLoading(false);
+    }
+  };
+  const copyBulkLinks = async () => {
+    if (!bulkLinks.length) return;
+    const text = bulkLinks.map((item) => `${item.name}: ${item.url}`).join("\n");
+    await navigator.clipboard.writeText(text);
+    toast({
+      title: "Personalized links copied",
+      description: `${bulkLinks.length} guest link${bulkLinks.length !== 1 ? "s" : ""} copied.`,
+    });
   };
   const bulkSendGuests =
     confirmBulkSend === "saveTheDate"
@@ -2762,6 +2846,88 @@ export default function Guests({
           </Dialog>
           {allGuests.length > 0 && (
             <>
+              <Dialog
+                open={bulkLinksMode !== null}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setBulkLinksMode(null);
+                    setBulkLinks([]);
+                  }
+                }}
+              >
+                <DialogContent className="sm:max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle className="font-serif text-2xl text-primary">
+                      {bulkLinksMode
+                        ? getBulkLinksTitle(bulkLinksMode)
+                        : "Personalized Links"}
+                    </DialogTitle>
+                    <DialogDescription>
+                      {bulkLinksMode
+                        ? getBulkLinksDescription(bulkLinksMode)
+                        : "Each selected guest gets their own private link."}
+                    </DialogDescription>
+                  </DialogHeader>
+                  {bulkLinksLoading ? (
+                    <div className="flex items-center justify-center gap-2 rounded-lg border border-primary/15 bg-muted/20 p-8 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      Generating personalized links...
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm text-muted-foreground">
+                          {bulkLinks.length} personalized link
+                          {bulkLinks.length !== 1 ? "s" : ""} ready to share.
+                        </p>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="gap-2"
+                          disabled={bulkLinks.length === 0}
+                          onClick={copyBulkLinks}
+                        >
+                          <Copy className="h-4 w-4" />
+                          Copy all links
+                        </Button>
+                      </div>
+                      <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
+                        {bulkLinks.map((item) => (
+                          <div
+                            key={item.guestId}
+                            className="rounded-lg border border-primary/15 bg-[#FFF8F1] p-3 text-sm"
+                          >
+                            <p className="font-semibold text-foreground">
+                              {item.name}
+                            </p>
+                            <div className="mt-1 flex items-center gap-2">
+                              <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                                {item.url}
+                              </p>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 shrink-0 gap-1.5"
+                                onClick={async () => {
+                                  await navigator.clipboard.writeText(item.url);
+                                  toast({
+                                    title: "Link copied",
+                                    description: `${item.name}'s personalized link is ready to paste.`,
+                                  });
+                                }}
+                              >
+                                <Copy className="h-3.5 w-3.5" />
+                                Copy
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </DialogContent>
+              </Dialog>
               <AlertDialog
                 open={confirmBulkSend !== null}
                 onOpenChange={(open) => {
@@ -2865,64 +3031,103 @@ export default function Guests({
               Bulk email <span className="text-muted-foreground">({selectedGuestIds.size} selected)</span>
             </p>
             <div className="grid gap-3 lg:grid-cols-3">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-12 w-full justify-between gap-4 whitespace-nowrap border-primary/25 bg-white/65 px-4 text-[#6F3E54] hover:bg-primary/10 hover:text-primary dark:bg-card dark:text-primary"
-                disabled={
-                  sendingSaveTheDates || selectedSaveTheDateEligible.length === 0
-                }
-                onClick={() => openBulkPreview("saveTheDate")}
-              >
-                <span className="inline-flex items-center">
-                  {sendingSaveTheDates ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Mail className="h-4 w-4 mr-2" />
-                  )}
-                  Send Save-the-Dates
-                </span>
-                <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
-                  {selectedSaveTheDateEligible.length}
-                </Badge>
-              </Button>
-              <Button
-                size="sm"
-                className="h-12 w-full justify-between gap-4 whitespace-nowrap bg-primary px-4 text-primary-foreground hover:bg-primary/90"
-                disabled={sendingInvitations || selectedInvitationEligible.length === 0}
-                onClick={() => openBulkPreview("invitation")}
-              >
-                <span className="inline-flex items-center">
-                  {sendingInvitations ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4 mr-2" />
-                  )}
-                  Send RSVP Invitations
-                </span>
-                <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
-                  {selectedInvitationEligible.length}
-                </Badge>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-12 w-full justify-between gap-4 whitespace-nowrap px-4 text-primary/70 hover:bg-primary/10 hover:text-primary disabled:bg-transparent disabled:text-muted-foreground/55"
-                disabled={sendingReminders || selectedReminderEligible.length === 0}
-                onClick={() => setConfirmBulkSend("reminder")}
-              >
-                <span className="inline-flex items-center">
-                  {sendingReminders ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Clock className="h-4 w-4 mr-2" />
-                  )}
-                  Send RSVP Reminders
-                </span>
-                <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/15 disabled:text-muted-foreground">
-                  {selectedReminderEligible.length}
-                </Badge>
-              </Button>
+              <div className="rounded-lg border border-primary/15 bg-white/55 p-2 shadow-sm">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-12 w-full justify-between gap-4 whitespace-nowrap border-primary/25 bg-white/65 px-4 text-[#6F3E54] hover:bg-primary/10 hover:text-primary dark:bg-card dark:text-primary"
+                  disabled={
+                    sendingSaveTheDates || selectedSaveTheDateEligible.length === 0
+                  }
+                  onClick={() => openBulkPreview("saveTheDate")}
+                >
+                  <span className="inline-flex items-center">
+                    {sendingSaveTheDates ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Mail className="h-4 w-4 mr-2" />
+                    )}
+                    Send Save-the-Dates
+                  </span>
+                  <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+                    {selectedSaveTheDateEligible.length}
+                  </Badge>
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="mt-2 h-8 w-full justify-center gap-2 text-xs text-primary hover:bg-primary/10"
+                  disabled={bulkLinksLoading || selectedSaveTheDateEligible.length === 0}
+                  onClick={() => openBulkLinks("saveTheDate")}
+                >
+                  <Link2 className="h-3.5 w-3.5" />
+                  Copy personalized links
+                </Button>
+              </div>
+              <div className="rounded-lg border border-primary/15 bg-white/55 p-2 shadow-sm">
+                <Button
+                  size="sm"
+                  className="h-12 w-full justify-between gap-4 whitespace-nowrap bg-primary px-4 text-primary-foreground hover:bg-primary/90"
+                  disabled={sendingInvitations || selectedInvitationEligible.length === 0}
+                  onClick={() => openBulkPreview("invitation")}
+                >
+                  <span className="inline-flex items-center">
+                    {sendingInvitations ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4 mr-2" />
+                    )}
+                    Send RSVP Invitations
+                  </span>
+                  <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
+                    {selectedInvitationEligible.length}
+                  </Badge>
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="mt-2 h-8 w-full justify-center gap-2 text-xs text-primary hover:bg-primary/10"
+                  disabled={bulkLinksLoading || selectedInvitationEligible.length === 0}
+                  onClick={() => openBulkLinks("invitation")}
+                >
+                  <Link2 className="h-3.5 w-3.5" />
+                  Copy personalized links
+                </Button>
+              </div>
+              <div className="rounded-lg border border-primary/15 bg-white/55 p-2 shadow-sm">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-12 w-full justify-between gap-4 whitespace-nowrap px-4 text-primary/70 hover:bg-primary/10 hover:text-primary disabled:bg-transparent disabled:text-muted-foreground/55"
+                  disabled={sendingReminders || selectedReminderEligible.length === 0}
+                  onClick={() => setConfirmBulkSend("reminder")}
+                >
+                  <span className="inline-flex items-center">
+                    {sendingReminders ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Clock className="h-4 w-4 mr-2" />
+                    )}
+                    Send RSVP Reminders
+                  </span>
+                  <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/15 disabled:text-muted-foreground">
+                    {selectedReminderEligible.length}
+                  </Badge>
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="mt-2 h-8 w-full justify-center gap-2 text-xs text-primary hover:bg-primary/10"
+                  disabled={bulkLinksLoading || selectedReminderEligible.length === 0}
+                  onClick={() => openBulkLinks("reminder")}
+                >
+                  <Link2 className="h-3.5 w-3.5" />
+                  Copy personalized links
+                </Button>
+              </div>
             </div>
             <div className="rounded-lg border border-primary/10 bg-white/55 p-3 dark:bg-card/60">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -3488,17 +3693,20 @@ export default function Guests({
                 </colgroup>
                 <TableHeader className="bg-muted/10">
                   <TableRow>
-                    <TableHead className="text-primary" colSpan={2}>
-                      <div className="flex items-center gap-2">
+                    <TableHead className="text-primary">
+                      <div className="flex flex-col items-center gap-1">
                         <Checkbox
                           checked={allFilteredSelected ? true : someFilteredSelected ? "indeterminate" : false}
                           onCheckedChange={(checked) => setAllFilteredSelected(checked === true)}
                           aria-label="Select or deselect all visible guests"
                         />
-                        <span className="text-[10px] font-semibold uppercase tracking-wider leading-tight">
+                        <span className="text-center text-[9px] font-semibold uppercase tracking-wider leading-tight">
                           Select / Deselect
                         </span>
                       </div>
+                    </TableHead>
+                    <TableHead className="text-primary">
+                      Name
                     </TableHead>
                     <TableHead className="hidden sm:table-cell text-primary">
                       {t("guests.col_einvite_status")}
