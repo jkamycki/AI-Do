@@ -13,6 +13,99 @@ import {
   type CollaboratorRole,
 } from "../lib/workspaceAccess";
 import { trackEvent } from "../lib/trackEvent";
+import { sendEmail } from "../lib/resend";
+
+const DEFAULT_PUBLIC_ORIGIN = "https://aidowedding.net";
+
+function getPublicOrigin(): string {
+  const raw = process.env.FRONTEND_URL ?? process.env.PUBLIC_APP_URL ?? process.env.APP_ORIGIN ?? DEFAULT_PUBLIC_ORIGIN;
+  try {
+    const url = new URL(raw);
+    return url.origin.replace(/\/$/, "");
+  } catch {
+    return DEFAULT_PUBLIC_ORIGIN;
+  }
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+}
+
+function roleLabel(role: string): string {
+  if (role === "partner") return "Partner";
+  if (role === "planner") return "Planner";
+  if (role === "vendor") return "Vendor";
+  return "Collaborator";
+}
+
+function workspaceName(profile: { workstationName?: string | null; partner1Name?: string | null; partner2Name?: string | null }): string {
+  const custom = profile.workstationName?.trim();
+  if (custom) return custom;
+  const names = [profile.partner1Name, profile.partner2Name].map((name) => name?.trim()).filter(Boolean);
+  return names.length ? names.join(" & ") : "a wedding workspace";
+}
+
+function buildInviteUrl(token: string): string {
+  return `${getPublicOrigin()}/invite/${encodeURIComponent(token)}`;
+}
+
+async function sendCollaboratorInviteEmail(args: {
+  to: string;
+  workspaceName: string;
+  role: string;
+  inviteUrl: string;
+  resent?: boolean;
+}): Promise<{ ok: boolean; error?: string }> {
+  const roleName = roleLabel(args.role);
+  const subject = args.resent
+    ? `Reminder: accept your A.IDO invite for ${args.workspaceName}`
+    : `You're invited to collaborate on ${args.workspaceName}`;
+  const text = [
+    "Hi there!",
+    "",
+    `You've been invited to collaborate on ${args.workspaceName} as a ${roleName} on A.IDO.`,
+    "",
+    `Accept your invitation here: ${args.inviteUrl}`,
+    "",
+    "If the button or link does not open, copy and paste the link into your browser.",
+  ].join("\n");
+  const safeWorkspace = escapeHtml(args.workspaceName);
+  const safeRole = escapeHtml(roleName);
+  const safeInviteUrl = escapeHtml(args.inviteUrl);
+  const html = `
+<div style="margin:0;padding:0;background:#fff7f2;font-family:Arial,Helvetica,sans-serif;color:#3a1826;">
+  <div style="max-width:560px;margin:0 auto;padding:32px 20px;">
+    <div style="background:#fffaf7;border:1px solid #ead8cf;border-radius:18px;padding:28px;box-shadow:0 10px 28px rgba(61,24,38,0.08);">
+      <p style="margin:0 0 10px;color:#8d294d;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;">A.IDO collaboration invite</p>
+      <h1 style="margin:0 0 14px;font-family:Georgia,'Times New Roman',serif;color:#3a1826;font-size:28px;line-height:1.15;">Join ${safeWorkspace}</h1>
+      <p style="margin:0 0 18px;color:#6f4b5a;font-size:15px;line-height:1.55;">
+        You've been invited to collaborate as a <strong style="color:#3a1826;">${safeRole}</strong>.
+      </p>
+      <a href="${safeInviteUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#8d294d;color:#ffffff;text-decoration:none;font-weight:700;border-radius:12px;padding:13px 20px;font-size:15px;">
+        Accept invitation
+      </a>
+      <p style="margin:20px 0 8px;color:#6f4b5a;font-size:13px;line-height:1.5;">Or copy and paste this link into your browser:</p>
+      <p style="margin:0;word-break:break-all;">
+        <a href="${safeInviteUrl}" target="_blank" rel="noopener noreferrer" style="color:#8d294d;text-decoration:underline;">${safeInviteUrl}</a>
+      </p>
+    </div>
+  </div>
+</div>`;
+
+  const result = await sendEmail({
+    to: args.to,
+    subject,
+    text,
+    html,
+    fromName: "A.IDO Collaboration",
+  });
+  return result.ok ? { ok: true } : { ok: false, error: result.error };
+}
 
 async function getUserPrimaryEmail(userId: string): Promise<string | null> {
   try {
@@ -291,11 +384,25 @@ router.post("/collaborators/invite", requireAuth, async (req, res) => {
       { email: normalizedEmail, role, collaboratorId: collab.id }
     );
 
+    const inviteUrl = buildInviteUrl(token);
+    const emailResult = await sendCollaboratorInviteEmail({
+      to: normalizedEmail,
+      workspaceName: workspaceName(profile),
+      role,
+      inviteUrl,
+    });
+    if (!emailResult.ok) {
+      req.log.warn({ email: normalizedEmail, error: emailResult.error }, "Failed to send collaborator invite email");
+    }
+
     res.json({
       ...collab,
       inviteToken: token,
       invitedAt: collab.invitedAt.toISOString(),
       acceptedAt: null,
+      inviteUrl,
+      emailSent: emailResult.ok,
+      emailError: emailResult.error ?? null,
     });
   } catch (err) {
     req.log.error(err, "Failed to invite collaborator");
@@ -560,10 +667,35 @@ router.post("/collaborators/:id/resend", requireAuth, async (req, res) => {
       .where(eq(workspaceCollaborators.id, id))
       .returning();
 
+    const [profile] = await db
+      .select({
+        partner1Name: weddingProfiles.partner1Name,
+        partner2Name: weddingProfiles.partner2Name,
+        workstationName: weddingProfiles.workstationName,
+      })
+      .from(weddingProfiles)
+      .where(eq(weddingProfiles.id, updated.profileId))
+      .limit(1);
+
+    const inviteUrl = buildInviteUrl(updated.inviteToken);
+    const emailResult = await sendCollaboratorInviteEmail({
+      to: updated.inviteeEmail,
+      workspaceName: workspaceName(profile ?? {}),
+      role: updated.role,
+      inviteUrl,
+      resent: true,
+    });
+    if (!emailResult.ok) {
+      req.log.warn({ email: updated.inviteeEmail, error: emailResult.error }, "Failed to resend collaborator invite email");
+    }
+
     res.json({
       ...updated,
       invitedAt: updated.invitedAt.toISOString(),
       acceptedAt: null,
+      inviteUrl,
+      emailSent: emailResult.ok,
+      emailError: emailResult.error ?? null,
     });
   } catch (err) {
     req.log.error(err, "Failed to resend invite");

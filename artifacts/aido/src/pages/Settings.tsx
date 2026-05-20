@@ -35,6 +35,9 @@ interface Collaborator {
   role: CollabRole;
   status: CollabStatus;
   inviteToken?: string | null;
+  inviteUrl?: string | null;
+  emailSent?: boolean;
+  emailError?: string | null;
   invitedAt: string;
   acceptedAt: string | null;
 }
@@ -436,20 +439,26 @@ export default function SettingsPage() {
     },
     onSuccess: (collab) => {
       qc.invalidateQueries({ queryKey: ["collaborators", sharedProfileId] });
-      const link = `${window.location.origin}/invite/${collab.inviteToken ?? ""}`;
+      const link = collab.inviteUrl ?? `${window.location.origin}/invite/${collab.inviteToken ?? ""}`;
       setNewInviteLink(link);
 
-      // Open the user's email client with everything pre-filled
       const workspaceName = data?.workspaceName ?? "our wedding";
       const role = ROLE_CONFIG[inviteRole]?.label ?? inviteRole;
-      const subject = encodeURIComponent(`You're invited to collaborate on ${workspaceName}'s wedding planning`);
-      const body = encodeURIComponent(
-        `Hi there!\n\nYou've been invited to collaborate on ${workspaceName}'s wedding workspace as a ${role} on A.IDO.\n\nAccept your invitation by clicking the link below:\n\n${link}\n\n(If the link doesn't appear clickable, copy and paste it into your browser.)\n\nSee you there!\n${workspaceName}`
-      );
-      window.location.href = `mailto:${encodeURIComponent(inviteEmail)}?subject=${subject}&body=${body}`;
+      if (!collab.emailSent) {
+        const subject = encodeURIComponent(`You're invited to collaborate on ${workspaceName}'s wedding planning`);
+        const body = encodeURIComponent(
+          `Hi there!\n\nYou've been invited to collaborate on ${workspaceName}'s wedding workspace as a ${role} on A.IDO.\n\nAccept your invitation by clicking the link below:\n\n${link}\n\n(If the link doesn't appear clickable, copy and paste it into your browser.)\n\nSee you there!\n${workspaceName}`
+        );
+        window.location.href = `mailto:${encodeURIComponent(inviteEmail)}?subject=${subject}&body=${body}`;
+      }
 
       setInviteEmail("");
-      toast({ title: t("settings.invite_ready"), description: t("settings.invite_ready_desc") });
+      toast({
+        title: collab.emailSent ? t("settings.invite_sent") : t("settings.invite_ready"),
+        description: collab.emailSent
+          ? "The collaborator invite email was sent with a clickable accept button."
+          : t("settings.invite_ready_desc"),
+      });
     },
     onError: (err: Error) => {
       toast({ title: t("settings.invite_failed"), description: err.message, variant: "destructive" });
@@ -499,9 +508,14 @@ export default function SettingsPage() {
     },
     onSuccess: (collab) => {
       qc.invalidateQueries({ queryKey: ["collaborators", sharedProfileId] });
-      const link = `${window.location.origin}/invite/${collab.inviteToken ?? ""}`;
+      const link = collab.inviteUrl ?? `${window.location.origin}/invite/${collab.inviteToken ?? ""}`;
       setNewInviteLink(link);
-      toast({ title: t("settings.new_invite_link") });
+      toast({
+        title: collab.emailSent ? t("settings.invite_sent") : t("settings.new_invite_link"),
+        description: collab.emailSent
+          ? "The collaborator invite email was resent with a clickable accept button."
+          : undefined,
+      });
     },
   });
 
