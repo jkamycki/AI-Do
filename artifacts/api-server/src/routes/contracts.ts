@@ -3,7 +3,7 @@ import multer from "multer";
 import { createRequire } from "node:module";
 import JSZip from "jszip";
 import he from "he";
-import { db, documents, vendorContracts, vendors } from "@workspace/db";
+import { db, documents, hotelBlocks, vendorContracts, vendors } from "@workspace/db";
 import { eq, desc, and, sql, ne } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile, resolveScopeUserId, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
@@ -37,9 +37,18 @@ type SelectedVendor = {
   files: VendorFile[];
 };
 
+type SelectedHotel = {
+  id: number;
+  hotelName: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+};
+
 async function ensureVendorContractVendorColumn() {
   if (vendorContractVendorColumnReady) return;
   await db.execute(sql`ALTER TABLE vendor_contracts ADD COLUMN IF NOT EXISTS vendor_id integer`);
+  await db.execute(sql`ALTER TABLE vendor_contracts ADD COLUMN IF NOT EXISTS hotel_block_id integer`);
   vendorContractVendorColumnReady = true;
 }
 
@@ -66,7 +75,9 @@ function isSpecified(value: unknown): value is string {
 function contractAnalysisToDocumentFields(
   analysis: Record<string, unknown>,
   vendor: SelectedVendor | null,
+  hotel: SelectedHotel | null = null,
 ): NonNullable<typeof documents.$inferInsert.extractedFields> {
+  const assigneeName = vendor?.name ?? hotel?.hotelName ?? null;
   const keyTerms = Array.isArray(analysis.keyTerms)
     ? analysis.keyTerms.map((item) => asObject(item))
     : [];
@@ -80,8 +91,8 @@ function contractAnalysisToDocumentFields(
     : [];
   const suggestedTasks = [
     ...paymentSchedule.map((payment) => ({
-      title: `Review payment terms for ${vendor?.name ?? "contract"}`,
-      task: `Review payment terms for ${vendor?.name ?? "contract"}`,
+      title: `Review payment terms for ${assigneeName ?? "contract"}`,
+      task: `Review payment terms for ${assigneeName ?? "contract"}`,
       description: payment.notes ?? "",
       dueDate: null,
     })),
@@ -94,20 +105,20 @@ function contractAnalysisToDocumentFields(
   ];
 
   return {
-    vendorName: vendor?.name ?? null,
+    vendorName: assigneeName,
     paymentSchedule,
     dueDates: [],
     cancellationPolicy: isSpecified(analysis.cancellationPolicy) ? asText(analysis.cancellationPolicy) : null,
     deliverables,
     contactInfo: {
       name: vendor?.primaryContact ?? null,
-      phone: vendor?.phone ?? null,
-      email: vendor?.email ?? null,
-      address: vendor?.address ?? null,
+      phone: vendor?.phone ?? hotel?.phone ?? null,
+      email: vendor?.email ?? hotel?.email ?? null,
+      address: vendor?.address ?? hotel?.address ?? null,
     },
     suggestedTasks,
     suggestedVendorId: vendor?.id ?? null,
-    suggestedVendorName: vendor?.name ?? null,
+    suggestedVendorName: assigneeName,
   };
 }
 
@@ -719,6 +730,7 @@ ${analysisRaw.slice(0, 12000)}`;
     const displayName = (req.body?.displayName as string | undefined)?.trim() || originalname;
     const syncToDocumentLibrary = String(req.body?.syncToDocumentLibrary ?? "").toLowerCase() === "true";
     const rawVendorId = (req.body?.vendorId as string | undefined)?.trim();
+    const rawHotelBlockId = (req.body?.hotelBlockId as string | undefined)?.trim();
     let vendorId: number | null = null;
     if (rawVendorId) {
       const parsedVendorId = Number(rawVendorId);
@@ -726,6 +738,17 @@ ${analysisRaw.slice(0, 12000)}`;
         return res.status(400).json({ error: "Invalid vendor selection." });
       }
       vendorId = parsedVendorId;
+    }
+    let hotelBlockId: number | null = null;
+    if (rawHotelBlockId) {
+      const parsedHotelBlockId = Number(rawHotelBlockId);
+      if (!Number.isInteger(parsedHotelBlockId) || parsedHotelBlockId <= 0) {
+        return res.status(400).json({ error: "Invalid hotel selection." });
+      }
+      hotelBlockId = parsedHotelBlockId;
+    }
+    if (vendorId && hotelBlockId) {
+      return res.status(400).json({ error: "Choose either a vendor or a hotel block, not both." });
     }
     let selectedVendor: SelectedVendor | null = null;
     if (vendorId) {
@@ -745,6 +768,22 @@ ${analysisRaw.slice(0, 12000)}`;
       if (!vendor) return res.status(400).json({ error: "Selected vendor was not found." });
       selectedVendor = vendor;
     }
+    let selectedHotel: SelectedHotel | null = null;
+    if (hotelBlockId) {
+      const [hotel] = await db
+        .select({
+          id: hotelBlocks.id,
+          hotelName: hotelBlocks.hotelName,
+          email: hotelBlocks.email,
+          phone: hotelBlocks.phone,
+          address: hotelBlocks.address,
+        })
+        .from(hotelBlocks)
+        .where(and(eq(hotelBlocks.id, hotelBlockId), eq(hotelBlocks.profileId, scope.profileId)))
+        .limit(1);
+      if (!hotel) return res.status(400).json({ error: "Selected hotel block was not found." });
+      selectedHotel = hotel;
+    }
 
     const [saved] = await db
       .insert(vendorContracts)
@@ -759,6 +798,14 @@ ${analysisRaw.slice(0, 12000)}`;
         analysis,
       })
       .returning();
+
+    if (hotelBlockId) {
+      await db.execute(sql`
+        UPDATE vendor_contracts
+        SET hotel_block_id = ${hotelBlockId}
+        WHERE id = ${saved.id} AND user_id = ${scope.userId} AND profile_id = ${scope.profileId}
+      `);
+    }
 
     if (selectedVendor) {
       try {
@@ -809,8 +856,10 @@ ${analysisRaw.slice(0, 12000)}`;
           uploadedBy: req.userId!,
           linkedVendorId: selectedVendor?.id ?? null,
           summary: asText(analysis.summary, "Contract Analyzer reviewed this contract. Open Extract Info for payment terms, cancellation policy, deliverables, and vendor contact details."),
-          extractedFields: contractAnalysisToDocumentFields(analysis, selectedVendor),
-          tags: ["Contract", "Contract Analyzer"],
+          extractedFields: contractAnalysisToDocumentFields(analysis, selectedVendor, selectedHotel),
+          tags: selectedHotel
+            ? ["Contract", "Contract Analyzer", "Hotel Block"]
+            : ["Contract", "Contract Analyzer"],
           folder: "Contracts",
           visibility: [],
           extractedText: extractedText.slice(0, 40000),
@@ -914,7 +963,9 @@ router.get("/contracts", requireAuth, async (req, res) => {
       .select({
         id: vendorContracts.id,
         vendorId: vendorContracts.vendorId,
+        hotelBlockId: sql<number | null>`vendor_contracts.hotel_block_id`,
         vendorName: vendors.name,
+        hotelName: hotelBlocks.hotelName,
         fileName: vendorContracts.fileName,
         fileSize: vendorContracts.fileSize,
         analysis: vendorContracts.analysis,
@@ -924,6 +975,10 @@ router.get("/contracts", requireAuth, async (req, res) => {
       .leftJoin(vendors, and(
         eq(vendorContracts.vendorId, vendors.id),
         eq(vendors.profileId, scope.profileId),
+      ))
+      .leftJoin(hotelBlocks, and(
+        sql`vendor_contracts.hotel_block_id = ${hotelBlocks.id}`,
+        eq(hotelBlocks.profileId, scope.profileId),
       ))
       .where(and(
         eq(vendorContracts.userId, scope.userId),

@@ -68,11 +68,20 @@ interface ContractAnalysis {
 interface Contract {
   id: number;
   vendorId?: number | null;
+  hotelBlockId?: number | null;
   vendorName?: string | null;
+  hotelName?: string | null;
   fileName: string;
   fileSize: number | null;
   analysis: unknown;
   createdAt: string;
+}
+
+interface HotelBlockOption {
+  id: number;
+  hotelName: string;
+  city?: string | null;
+  state?: string | null;
 }
 
 function riskColor(level: "low" | "medium" | "high") {
@@ -464,9 +473,9 @@ function ContractCard({ contract, onDelete, onRename }: { contract: Contract; on
               </div>
             )}
             <div className="flex items-center gap-2 mt-1 flex-wrap">
-              {contract.vendorName && (
+              {(contract.vendorName || contract.hotelName) && (
                 <span className="text-xs font-medium text-primary bg-primary/10 border border-primary/15 px-2 py-0.5 rounded-full">
-                  {contract.vendorName}
+                  {contract.vendorName ?? contract.hotelName}
                 </span>
               )}
               {analysis?.vendorType && (
@@ -543,7 +552,15 @@ export default function Contracts({ embedded = false }: { embedded?: boolean } =
   const [pendingName, setPendingName] = useState("");
   const [pendingVendorId, setPendingVendorId] = useState<string>("none");
   const [syncToDocumentLibrary, setSyncToDocumentLibrary] = useState(false);
-  const { data: vendors = [] } = useListVendors();
+  const { data: vendors = [], isLoading: vendorsLoading } = useListVendors();
+  const { data: hotels = [], isLoading: hotelsLoading } = useQuery<HotelBlockOption[]>({
+    queryKey: ["hotels"],
+    queryFn: async () => {
+      const r = await authFetch(`${API}/api/hotels`);
+      if (!r.ok) throw new Error(r.statusText);
+      return r.json();
+    },
+  });
 
   const { data: contracts = [], isLoading } = useQuery<Contract[]>({
     queryKey: ["contracts"],
@@ -603,7 +620,8 @@ export default function Contracts({ embedded = false }: { embedded?: boolean } =
       const form = new FormData();
       form.append("file", pendingFile);
       if (pendingName.trim()) form.append("displayName", pendingName.trim());
-      if (pendingVendorId !== "none") form.append("vendorId", pendingVendorId);
+      if (pendingVendorId.startsWith("vendor:")) form.append("vendorId", pendingVendorId.slice("vendor:".length));
+      if (pendingVendorId.startsWith("hotel:")) form.append("hotelBlockId", pendingVendorId.slice("hotel:".length));
       form.append("syncToDocumentLibrary", syncToDocumentLibrary ? "true" : "false");
       const res = await authFetch(`${API}/api/contracts/upload`, { method: "POST", body: form });
       if (!res.ok) {
@@ -725,16 +743,24 @@ export default function Contracts({ embedded = false }: { embedded?: boolean } =
               <SelectContent>
                 <SelectItem value="none">{t("contracts.no_vendor_assigned", { defaultValue: "No vendor assigned" })}</SelectItem>
                 {vendors.map((vendor) => (
-                  <SelectItem key={vendor.id} value={String(vendor.id)}>
-                    {vendor.name} {vendor.category ? `(${vendor.category})` : ""}
+                  <SelectItem key={`vendor-${vendor.id}`} value={`vendor:${vendor.id}`}>
+                    Vendor: {vendor.name} {vendor.category ? `(${vendor.category})` : ""}
+                  </SelectItem>
+                ))}
+                {hotels.map((hotel) => (
+                  <SelectItem key={`hotel-${hotel.id}`} value={`hotel:${hotel.id}`}>
+                    Hotel: {hotel.hotelName}
+                    {[hotel.city, hotel.state].filter(Boolean).length ? ` (${[hotel.city, hotel.state].filter(Boolean).join(", ")})` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              {vendors.length > 0
-                ? t("contracts.assigned_vendor_hint", { defaultValue: "Choose which vendor from your vendor list this contract belongs to." })
-                : t("contracts.no_vendors_hint", { defaultValue: "Add vendors in the Vendor List to assign contracts here." })}
+              {vendorsLoading || hotelsLoading
+                ? t("contracts.loading_assignment_options", { defaultValue: "Loading vendors and hotel blocks..." })
+                : vendors.length + hotels.length > 0
+                  ? t("contracts.assigned_vendor_hint", { defaultValue: "Choose which vendor or hotel block this contract belongs to." })
+                  : t("contracts.no_vendors_hint", { defaultValue: "Add vendors in the Vendor List or hotels in Hotel Blocks to assign contracts here." })}
             </p>
           </div>
           <label className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3 cursor-pointer">
