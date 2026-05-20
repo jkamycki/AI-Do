@@ -109,6 +109,33 @@ const LEGACY_PENDING_SAVE_KEY = "aido_website_pending_save_v1";
 const PENDING_SAVE_KEY_PREFIX = "aido_website_pending_save_v2";
 const WEBSITE_TRANSLATION_CACHE_PREFIX = "aido_website_translation_v1";
 
+const DEFAULT_WEBSITE_COLOR_PALETTE = {
+  primary: "#8D294D",
+  secondary: "#E6A6B7",
+  accent: "#B16C8E",
+  neutral: "#F2E2C6",
+  background: "#FFF7F2",
+  text: "#3B1C2B",
+};
+
+const DEFAULT_WEBSITE_SECTIONS_ENABLED = {
+  welcome: false,
+  story: false,
+  schedule: false,
+  travel: false,
+  registry: false,
+  faq: false,
+  gallery: false,
+  weddingParty: false,
+  rsvp: true,
+};
+
+function safePlainObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
 function safeWebsiteCustomText(value: unknown): Record<string, string> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const out: Record<string, string> = {};
@@ -257,9 +284,32 @@ function stripDeviceOverridesFromText(customText: unknown): Record<string, strin
 }
 
 function stripDeviceOverridesFromRecord<T extends WebsiteRendererPayload>(rec: T): T {
+  const rawColorPalette = safePlainObject(rec.colorPalette);
+  const colorPalette = { ...DEFAULT_WEBSITE_COLOR_PALETTE };
+  for (const key of Object.keys(DEFAULT_WEBSITE_COLOR_PALETTE) as Array<keyof typeof DEFAULT_WEBSITE_COLOR_PALETTE>) {
+    const value = rawColorPalette[key];
+    if (typeof value === "string" && value.trim()) colorPalette[key] = value;
+  }
+
+  const rawSections = safePlainObject(rec.sectionsEnabled);
+  const sectionsEnabled = { ...DEFAULT_WEBSITE_SECTIONS_ENABLED };
+  for (const key of Object.keys(DEFAULT_WEBSITE_SECTIONS_ENABLED) as Array<keyof typeof DEFAULT_WEBSITE_SECTIONS_ENABLED>) {
+    const value = rawSections[key];
+    if (typeof value === "boolean") sectionsEnabled[key] = value;
+  }
+
   return {
     ...rec,
+    colorPalette,
+    sectionsEnabled,
     customText: stripDeviceOverridesFromText(rec.customText),
+    textStyles: safePlainObject(rec.textStyles) as T["textStyles"],
+    textPositions: safePlainObject(rec.textPositions) as T["textPositions"],
+    galleryImages: Array.isArray(rec.galleryImages) ? rec.galleryImages : [],
+    heroImages: Array.isArray(rec.heroImages) ? rec.heroImages : [],
+    portalParty: Array.isArray(rec.portalParty) ? rec.portalParty : [],
+    hotelOptions: Array.isArray(rec.hotelOptions) ? rec.hotelOptions : rec.hotelOptions,
+    heroImage: typeof rec.heroImage === "string" ? rec.heroImage : "",
   };
 }
 
