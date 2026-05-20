@@ -38,7 +38,7 @@ export function AppLayout({ children, fullWidth = false }: AppLayoutProps) {
         className="pointer-events-none fixed inset-0 z-0 dark:bg-[radial-gradient(circle_at_48%_0%,rgba(247,231,214,0.1)_0%,rgba(38,42,50,0.36)_40%,rgba(15,17,21,0.68)_100%)]"
         style={{
           background:
-            "radial-gradient(circle at 18% 4%, rgba(141, 41, 77, 0.12) 0%, rgba(177, 108, 142, 0.08) 26%, transparent 54%), radial-gradient(circle at 76% 0%, rgba(230, 166, 183, 0.16) 0%, rgba(250, 238, 222, 0.44) 34%, rgba(244, 226, 205, 0.34) 100%)",
+            "radial-gradient(circle at 18% 4%, rgba(141, 41, 77, 0.1) 0%, rgba(177, 108, 142, 0.07) 26%, transparent 54%), radial-gradient(circle at 76% 0%, rgba(230, 166, 183, 0.12) 0%, rgba(255, 247, 242, 0.62) 34%, rgba(255, 250, 246, 0.52) 100%)",
         }}
       />
       {!isVendorWorkspace && (

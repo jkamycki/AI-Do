@@ -452,11 +452,11 @@
   }
 
   :root:not(.dark) .portal-shell {
-    --background: 34 58% 94%;
-    --card: 38 62% 91%;
-    --card-border: 35 42% 84%;
-    --sidebar: 38 62% 91%;
-    --sidebar-border: 35 42% 84%;
+    --background: 24 78% 96%;
+    --card: 23 100% 97%;
+    --card-border: 27 46% 86%;
+    --sidebar: 23 100% 97%;
+    --sidebar-border: 27 46% 86%;
   }
 
   .dark .portal-shell {

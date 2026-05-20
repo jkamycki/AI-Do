@@ -1159,7 +1159,7 @@ export default function InvitationCustomizationPage({
       const pageWidth = printSize === "5x7" ? 5 * 72 : 4 * 72;
       const pageHeight = printSize === "5x7" ? 7 * 72 : 6 * 72;
       const doc = new jsPDF({ orientation: "p", unit: "pt", format: [pageWidth, pageHeight] });
-      const bg = pdfRgb(activeDesignDocument.style.backgroundColor, "#fffaf4");
+      const bg = pdfRgb(activeDesignDocument.style.backgroundColor, AIDO_BRAND_COLORS.ivory);
       const accent = pdfRgb(activeDesignDocument.style.accentColor, AIDO_BRAND_COLORS.burgundy);
       const text = pdfRgb(activeDesignDocument.style.textColor, "#1f2933");
       const isSaveTheDate = activeDesignDocument.kind === "saveTheDate";
