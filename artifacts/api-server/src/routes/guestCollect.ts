@@ -124,7 +124,7 @@ router.get("/guest-collect/:token/preview-card.svg", async (req, res) => {
     <rect x="60" y="135" width="1080" height="360" rx="30" fill="#FFF7F2" stroke="#E6A6B7" stroke-width="2"/>
     <rect x="60" y="135" width="1080" height="8" rx="4" fill="url(#top)"/>
     <circle cx="170" cy="300" r="50" fill="#EED2D9" stroke="#D9A9B7" stroke-width="2"/>
-    <text x="170" y="315" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="42" fill="#8D294D">♥</text>
+    <text x="170" y="315" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="42" fill="#8D294D">&#9829;</text>
     <text x="250" y="260" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" letter-spacing="4" fill="#B23062">CONTACT INFO REQUEST</text>
     <text x="250" y="315" font-family="Georgia, 'Times New Roman', serif" font-size="42" font-weight="700" fill="#3B1C2B">${couple}</text>
     <text x="250" y="365" font-family="Arial, Helvetica, sans-serif" font-size="28" fill="#6F3E54">${description}</text>
