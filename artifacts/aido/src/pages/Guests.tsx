@@ -3678,11 +3678,11 @@ export default function Guests({
               })}
             </div>
             <div className="hidden sm:block">
-              <Table wrapperClassName="overflow-visible" className="w-full table-fixed text-xs lg:text-sm">
+                <Table wrapperClassName="overflow-visible" className="w-full table-fixed text-xs lg:text-sm">
                 <colgroup>
-                  <col className="w-[4%]" />
-                  <col className="w-[17%]" />
+                  <col className="w-[8%]" />
                   <col className="w-[15%]" />
+                  <col className="w-[14%]" />
                   <col className="w-[10%]" />
                   <col className="w-[9%]" />
                   <col className="w-[8%]" />
@@ -3700,8 +3700,10 @@ export default function Guests({
                           onCheckedChange={(checked) => setAllFilteredSelected(checked === true)}
                           aria-label="Select or deselect all visible guests"
                         />
-                        <span className="text-center text-[9px] font-semibold uppercase tracking-wider leading-tight">
-                          Select / Deselect
+                        <span className="text-center text-[9px] font-semibold uppercase tracking-wide leading-tight">
+                          Select
+                          <br />
+                          Deselect
                         </span>
                       </div>
                     </TableHead>
