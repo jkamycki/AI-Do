@@ -1275,10 +1275,6 @@ function GuestCollectorCard() {
   const [copied, setCopied] = useState(false);
   const { data: profile } = useGetProfile();
 
-  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-  const formUrl = token
-    ? `${window.location.origin}${base}/collect/${token}`
-    : null;
   const collectorUrl = token
     ? `${window.location.origin}/api/guest-collect/${token}/preview`
     : null;
@@ -1286,6 +1282,10 @@ function GuestCollectorCard() {
   const coupleNames = profile
     ? `${profile.partner2Name ?? "Bride"} & ${profile.partner1Name ?? "Groom"}`
     : "Your names";
+  const previewTitle = `${coupleNames} - Contact Info Request`;
+  const previewHost = collectorUrl
+    ? new URL(collectorUrl).hostname.replace(/^www\./, "")
+    : "aidowedding.net";
 
   const generate = useMutation({
     mutationFn: async () => {
@@ -1402,38 +1402,21 @@ function GuestCollectorCard() {
               <p className="text-[11px] text-muted-foreground mb-1.5 font-medium">
                 {t("guests.link_preview_label")}
               </p>
-              <div className="rounded-xl border border-primary/20 bg-background/60 overflow-hidden shadow-sm">
-                <div
-                  className="h-1 w-full"
-                  style={{
-                    background: "linear-gradient(90deg, #E91E8C, #7B2FBE)",
-                  }}
-                />
-                <div className="flex items-start gap-3 p-3">
-                  <div className="shrink-0 h-11 w-11 rounded-full flex items-center justify-center bg-primary/10 ring-1 ring-primary/25 overflow-hidden">
-                    <img
-                      src="/logo.png"
-                      alt="A.IDO"
-                      className="h-9 w-9 object-contain"
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5 text-primary">
-                      {t("guests.contact_info_request")}
-                    </p>
-                    <p
-                      className="text-sm font-bold text-foreground leading-tight truncate"
-                      style={{ fontFamily: "Georgia, serif" }}
-                    >
-                      {coupleNames}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {t("guests.collecting_addresses")}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground/60 mt-1 truncate">
-                      {formUrl}
-                    </p>
-                  </div>
+              <div className="max-w-xl overflow-hidden rounded-[28px] border border-primary/15 bg-[#EDEAE6] shadow-sm">
+                <div className="aspect-[1200/630] bg-[#FFF7F2]">
+                  <img
+                    src="/opengraph.jpg"
+                    alt="A.IDO"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div className="border-t border-black/5 px-6 py-5">
+                  <p className="text-2xl font-bold leading-tight text-black">
+                    {previewTitle}
+                  </p>
+                  <p className="mt-2 text-xl text-neutral-500">
+                    {previewHost}
+                  </p>
                 </div>
               </div>
             </div>

@@ -163,7 +163,7 @@ router.get("/guest-collect/:token/preview", async (req, res) => {
     const frontendOrigin = buildFrontendOrigin(req);
     const formUrl = `${frontendOrigin}/collect/${req.params.token}`;
     const previewUrl = `${frontendOrigin}/api/guest-collect/${req.params.token}/preview`;
-    const imageUrl = `${frontendOrigin}/api/guest-collect/${req.params.token}/preview-card.svg`;
+    const imageUrl = `${frontendOrigin}/opengraph.jpg?v=guest-collector`;
 
     const safeTitle = escapeHtml(title);
     const safeDescription = escapeHtml(description);
@@ -186,10 +186,10 @@ router.get("/guest-collect/:token/preview", async (req, res) => {
   <meta property="og:url" content="${safePreviewUrl}" />
   <meta property="og:title" content="${safeTitle}" />
   <meta property="og:description" content="${safeDescription}" />
-  <meta property="og:site_name" content="A.IDO - AI Wedding Planning OS" />
+  <meta property="og:site_name" content="A.IDO" />
   <meta property="og:image" content="${safeImageUrl}" />
   <meta property="og:image:secure_url" content="${safeImageUrl}" />
-  <meta property="og:image:type" content="image/svg+xml" />
+  <meta property="og:image:type" content="image/jpeg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="${safeImageAlt}" />
