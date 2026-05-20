@@ -1402,7 +1402,7 @@ function GuestCollectorCard() {
               <p className="text-[11px] text-muted-foreground mb-1.5 font-medium">
                 {t("guests.link_preview_label")}
               </p>
-              <div className="max-w-xl overflow-hidden rounded-[28px] border border-primary/15 bg-[#EDEAE6] shadow-sm">
+              <div className="w-full max-w-sm overflow-hidden rounded-2xl border border-primary/15 bg-[#EDEAE6] shadow-sm">
                 <div className="aspect-[1200/630] bg-[#FFF7F2]">
                   <img
                     src="/opengraph.jpg"
@@ -1410,11 +1410,11 @@ function GuestCollectorCard() {
                     className="h-full w-full object-cover"
                   />
                 </div>
-                <div className="border-t border-black/5 px-6 py-5">
-                  <p className="text-2xl font-bold leading-tight text-black">
+                <div className="border-t border-black/5 px-4 py-3.5">
+                  <p className="text-base font-bold leading-tight text-black">
                     {previewTitle}
                   </p>
-                  <p className="mt-2 text-xl text-neutral-500">
+                  <p className="mt-1 text-sm text-neutral-500">
                     {previewHost}
                   </p>
                 </div>
@@ -1442,10 +1442,25 @@ function GuestCollectorCard() {
                 className="border-primary/20 hover:bg-primary/10 text-primary gap-2"
                 onClick={() => {
                   const subject = encodeURIComponent(
-                    `Contact info request for ${coupleNames}'s wedding`,
+                    previewTitle,
                   );
                   const body = encodeURIComponent(
-                    `Hi!\n\n${coupleNames} are collecting mailing addresses and contact info for their wedding invitations.\n\nPlease share your details here:\n${collectorUrl}\n\nThank you!`,
+                    [
+                      "Hi!",
+                      "",
+                      `${coupleNames} are collecting mailing addresses and contact info for their wedding invitations.`,
+                      "",
+                      "Preview:",
+                      "------------------------------",
+                      previewTitle,
+                      previewHost,
+                      "------------------------------",
+                      "",
+                      `Please share your details here:`,
+                      collectorUrl,
+                      "",
+                      "Thank you!",
+                    ].join("\n"),
                   );
                   window.location.href = `mailto:?subject=${subject}&body=${body}`;
                 }}
