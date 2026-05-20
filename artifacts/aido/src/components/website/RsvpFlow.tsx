@@ -336,6 +336,9 @@ export function RsvpFlow({
             </p>
             <form onSubmit={handleSearch} className="flex flex-col gap-3 max-w-md mx-auto">
               <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: text }}>{t("rsvp.your_name", { defaultValue: "Your name" })}</label>
+              <p className="-mt-2 text-xs leading-relaxed opacity-80" style={{ color: text }}>
+                {t("rsvp.exact_name_note", { defaultValue: "Enter your name exactly as it appears on your invitation." })}
+              </p>
               <input
                 type="text"
                 value={query}

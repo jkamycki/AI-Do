@@ -1839,6 +1839,16 @@ export default function Guests({
   };
 
   const allGuests = (data?.guests ?? []) as Guest[];
+  const { data: weddingWebsite } = useQuery({
+    queryKey: ["wedding-website-share-link"],
+    queryFn: async () => {
+      const res = await authFetch("/api/website/me");
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error("Failed to load wedding website");
+      return res.json() as Promise<{ slug?: string; published?: boolean }>;
+    },
+    retry: false,
+  });
   const saveTheDateEligible = allGuests.filter(
     (g) => ((g as any).saveTheDateStatus ?? "not_sent") === "not_sent",
   );
@@ -1901,18 +1911,16 @@ export default function Guests({
         : selectedReminderEligible;
   const getBulkLinksTitle = (mode: "saveTheDate" | "invitation" | "reminder") =>
     mode === "saveTheDate"
-      ? "Personalized Save-the-Date Links"
+      ? "Shared Save-the-Date Link"
       : mode === "invitation"
-        ? "Personalized RSVP Invitation Links"
-        : "Personalized RSVP Reminder Links";
+        ? "Shared RSVP Invitation Link"
+        : "Shared RSVP Reminder Link";
   const getBulkLinksDescription = (mode: "saveTheDate" | "invitation" | "reminder") =>
     mode === "saveTheDate"
-      ? "Each selected guest gets their own save-the-date link."
+      ? "One save-the-date link can be sent to any guest."
       : mode === "invitation"
-        ? "Each selected guest gets their own RSVP invitation link."
-        : "RSVP reminders use each guest's same personalized RSVP link.";
-  const normalizeSmsPhone = (phone: string | null | undefined) =>
-    (phone ?? "").trim().replace(/[^\d+]/g, "");
+        ? "One RSVP link lets guests find their name and reply."
+        : "One reminder link lets guests find their name and reply.";
   const getCoupleName = () => {
     const profile = weddingProfile as
       | { partner1Name?: string | null; partner2Name?: string | null }
@@ -1924,24 +1932,23 @@ export default function Guests({
   };
   const buildBulkTextMessage = (
     mode: "saveTheDate" | "invitation" | "reminder",
-    guestName: string,
     url: string,
   ) => {
-    const firstName = (guestName || "there").trim().split(/\s+/)[0] || "there";
     const couple = getCoupleName();
     const couplePart = couple ? `${couple}'s wedding` : "our wedding";
     if (mode === "saveTheDate") {
-      return `Hi ${firstName}, save the date for ${couplePart}! View it here: ${url}`;
+      return `Save the date for ${couplePart}! View it here: ${url}`;
     }
     if (mode === "reminder") {
-      return `Hi ${firstName}, quick reminder to RSVP for ${couplePart}: ${url}`;
+      return `Quick reminder to RSVP for ${couplePart}. Please enter your name exactly as it appears on your invitation: ${url}`;
     }
-    return `Hi ${firstName}, you're invited to ${couplePart}. Please RSVP here: ${url}`;
+    return `You're invited to ${couplePart}. Please RSVP here and enter your name exactly as it appears on your invitation: ${url}`;
   };
   const buildSmsHref = (phone: string, message: string) => {
     const isAppleDevice =
       typeof navigator !== "undefined" &&
       /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent);
+    if (!phone) return `sms:?body=${encodeURIComponent(message)}`;
     const separator = isAppleDevice ? "&" : "?";
     return `sms:${phone}${separator}body=${encodeURIComponent(message)}`;
   };
@@ -1994,29 +2001,18 @@ export default function Guests({
     setBulkLinks([]);
     setBulkLinksLoading(true);
     try {
-      const endpoint =
-        mode === "saveTheDate" ? "save-the-date-link" : "rsvp-link";
-      const links = await Promise.all(
-        targetGuests.map(async (guest) => {
-          const res = await authFetch(`/api/guests/${guest.id}/${endpoint}`);
-          if (!res.ok) {
-            const err = (await res.json().catch(() => ({}))) as { error?: string };
-            throw new Error(err.error ?? `Could not create a link for ${guest.name}`);
-          }
-          const data = (await res.json()) as {
-            saveTheDateUrl?: string;
-            rsvpUrl?: string;
-            previewUrl?: string;
-          };
-          const url = data.saveTheDateUrl ?? data.rsvpUrl ?? data.previewUrl;
-          if (!url) throw new Error(`No link was returned for ${guest.name}`);
-          return { guestId: guest.id, name: guest.name, phone: (guest as any).phone ?? null, url };
-        }),
-      );
-      setBulkLinks(links);
+      if (!weddingWebsite?.slug || !weddingWebsite.published) {
+        throw new Error("Publish your wedding website first so guests can open this shared link.");
+      }
+      const origin = window.location.origin;
+      const url =
+        mode === "saveTheDate"
+          ? `${origin}/save-the-date/shared/${encodeURIComponent(weddingWebsite.slug)}`
+          : `${origin}/w/${encodeURIComponent(weddingWebsite.slug)}/rsvp`;
+      setBulkLinks([{ guestId: 0, name: "Shared guest link", url }]);
     } catch (err) {
       toast({
-        title: "Could not create links",
+        title: "Could not create shared link",
         description: err instanceof Error ? err.message : undefined,
         variant: "destructive",
       });
@@ -2027,11 +2023,11 @@ export default function Guests({
   };
   const copyBulkLinks = async () => {
     if (!bulkLinks.length) return;
-    const text = bulkLinks.map((item) => `${item.name}: ${item.url}`).join("\n");
+    const text = bulkLinks[0].url;
     await navigator.clipboard.writeText(text);
     toast({
-      title: "Personalized links copied",
-      description: `${bulkLinks.length} guest link${bulkLinks.length !== 1 ? "s" : ""} copied.`,
+      title: "Shared link copied",
+      description: "Paste this one link anywhere you want guests to open it.",
     });
   };
   const bulkSendGuests =
@@ -2926,7 +2922,7 @@ export default function Guests({
                       Share selected guests
                     </DialogTitle>
                     <DialogDescription>
-                      Choose how to share each guest's personalized link.
+                      Choose how to share one link that works for every selected guest.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-3">
@@ -2943,8 +2939,7 @@ export default function Guests({
                     >
                       <Copy className="h-4 w-4 shrink-0" />
                       <span className="leading-tight">
-                        <span className="sm:hidden">Copy links</span>
-                        <span className="hidden sm:inline">Copy personalized links</span>
+                        Copy shared link
                       </span>
                     </Button>
                     <Button
@@ -2978,31 +2973,31 @@ export default function Guests({
                   <DialogHeader>
                     <DialogTitle className="max-w-full break-words pr-8 font-serif text-xl leading-tight text-primary sm:text-2xl">
                       {bulkShareIntent === "text"
-                        ? "Text Personalized Links"
+                        ? "Text Shared Link"
                         : bulkLinksMode
                           ? getBulkLinksTitle(bulkLinksMode)
-                          : "Personalized Links"}
+                          : "Shared Link"}
                     </DialogTitle>
                     <DialogDescription className="max-w-full break-words text-sm leading-relaxed">
                       {bulkShareIntent === "text"
-                        ? "Tap each guest to open a prefilled text message with their private link."
+                        ? "Open a prefilled text message with the shared link."
                         : bulkLinksMode
                           ? getBulkLinksDescription(bulkLinksMode)
-                          : "Each selected guest gets their own private link."}
+                          : "One shared link works for every guest."}
                     </DialogDescription>
                   </DialogHeader>
                   {bulkLinksLoading ? (
                     <div className="flex items-center justify-center gap-2 rounded-lg border border-primary/15 bg-muted/20 p-8 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                      Generating personalized links...
+                      Generating shared link...
                     </div>
                   ) : (
                     <div className="min-w-0 space-y-3">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-sm leading-relaxed text-muted-foreground">
                           {bulkShareIntent === "text"
-                            ? `${bulkLinks.filter((item) => normalizeSmsPhone(item.phone)).length} of ${bulkLinks.length} guests have phone numbers.`
-                            : `${bulkLinks.length} personalized link${bulkLinks.length !== 1 ? "s" : ""} ready to share.`}
+                            ? "Use your phone's Messages app to send the shared link."
+                            : "One shared link is ready to copy."}
                         </p>
                         <Button
                           type="button"
@@ -3012,7 +3007,7 @@ export default function Guests({
                           onClick={copyBulkLinks}
                         >
                           <Copy className="h-4 w-4" />
-                          {bulkShareIntent === "text" ? "Copy all instead" : "Copy all links"}
+                          {bulkShareIntent === "text" ? "Copy instead" : "Copy link"}
                         </Button>
                       </div>
                       <div className="max-h-[52vh] min-w-0 space-y-2 overflow-y-auto pr-1">
@@ -3022,13 +3017,13 @@ export default function Guests({
                             className="min-w-0 rounded-lg border border-primary/15 bg-[#FFF8F1] p-3 text-sm"
                           >
                             <p className="min-w-0 break-words font-semibold text-foreground">
-                              {item.name}
+                              {bulkLinksMode === "saveTheDate"
+                                ? "Save-the-Date shared link"
+                                : "RSVP shared link"}
                             </p>
                             <div className="mt-2 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
                               <p className="min-w-0 flex-1 overflow-hidden text-ellipsis break-all rounded-md bg-white/50 px-2 py-1.5 text-xs leading-relaxed text-muted-foreground sm:line-clamp-2">
-                                {bulkShareIntent === "text"
-                                  ? normalizeSmsPhone(item.phone) || "No phone number"
-                                  : item.url}
+                                {item.url}
                               </p>
                               {bulkShareIntent === "text" ? (
                                 <Button
@@ -3036,19 +3031,17 @@ export default function Guests({
                                   variant="outline"
                                   size="sm"
                                   className="h-9 w-full shrink-0 gap-1.5 sm:w-auto"
-                                  disabled={!normalizeSmsPhone(item.phone) || !bulkLinksMode}
+                                  disabled={!bulkLinksMode}
                                   onClick={() => {
                                     if (!bulkLinksMode) return;
-                                    const phone = normalizeSmsPhone(item.phone);
-                                    if (!phone) return;
                                     window.location.href = buildSmsHref(
-                                      phone,
-                                      buildBulkTextMessage(bulkLinksMode, item.name, item.url),
+                                      "",
+                                      buildBulkTextMessage(bulkLinksMode, item.url),
                                     );
                                   }}
                                 >
                                   <MessageSquare className="h-3.5 w-3.5" />
-                                  Text
+                                  Open text
                                 </Button>
                               ) : (
                                 <Button
@@ -3060,7 +3053,7 @@ export default function Guests({
                                     await navigator.clipboard.writeText(item.url);
                                     toast({
                                       title: "Link copied",
-                                      description: `${item.name}'s personalized link is ready to paste.`,
+                                      description: "The shared link is ready to paste.",
                                     });
                                   }}
                                 >
@@ -3218,9 +3211,8 @@ export default function Guests({
                   onClick={() => openBulkLinks("saveTheDate")}
                 >
                   <Link2 className="h-3.5 w-3.5 shrink-0" />
-                  <span>
-                    <span className="sm:hidden">Copy links</span>
-                    <span className="hidden sm:inline">Copy personalized links</span>
+                    <span>
+                    Copy shared link
                   </span>
                 </Button>
               </div>
@@ -3252,9 +3244,8 @@ export default function Guests({
                   onClick={() => openBulkLinks("invitation")}
                 >
                   <Link2 className="h-3.5 w-3.5 shrink-0" />
-                  <span>
-                    <span className="sm:hidden">Copy links</span>
-                    <span className="hidden sm:inline">Copy personalized links</span>
+                    <span>
+                    Copy shared link
                   </span>
                 </Button>
               </div>
@@ -3287,9 +3278,8 @@ export default function Guests({
                   onClick={() => openBulkLinks("reminder")}
                 >
                   <Link2 className="h-3.5 w-3.5 shrink-0" />
-                  <span>
-                    <span className="sm:hidden">Copy links</span>
-                    <span className="hidden sm:inline">Copy personalized links</span>
+                    <span>
+                    Copy shared link
                   </span>
                 </Button>
               </div>

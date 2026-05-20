@@ -2059,6 +2059,185 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
   }
 });
 
+async function buildSharedSaveTheDateInfo(profile: typeof weddingProfiles.$inferSelect, guestName: string) {
+  let customizationData: {
+    useGeneratedInvitation: boolean;
+    backgroundColor: string | null;
+    accentColor: string | null;
+    fontFamily: string | null;
+    fontColor: string | null;
+    fontSize: string | null;
+    textOverrides: Record<string, unknown>;
+    photoObjectPosition: string;
+    photoZoom: number;
+    photoEffect: string | null;
+    saveTheDatePhotoUrl: string | null;
+    colorPalette: Record<string, string> | null;
+    layout: string | null;
+  } = {
+    useGeneratedInvitation: true,
+    backgroundColor: null,
+    accentColor: null,
+    fontFamily: null,
+    fontColor: null,
+    fontSize: null,
+    textOverrides: {},
+    photoObjectPosition: "50% 50%",
+    photoZoom: 1,
+    photoEffect: null,
+    saveTheDatePhotoUrl: null,
+    colorPalette: null,
+    layout: null,
+  };
+
+  try {
+    const custRows = await db
+      .select()
+      .from(invitationCustomizations)
+      .where(eq(invitationCustomizations.profileId, profile.id))
+      .limit(1);
+    if (custRows.length > 0) {
+      const cust = custRows[0];
+      const useGenerated = cust.useGeneratedInvitation !== false;
+      const palette = (cust.colorPalette ?? {}) as Record<string, string>;
+      const customColors = (cust.customColors ?? {}) as Record<string, string>;
+      const mergedAccent =
+        cust.saveTheDateAccentColor
+        ?? customColors.saveTheDateAccent
+        ?? customColors.accent
+        ?? palette.accent
+        ?? null;
+      const allOverrides = ((cust.textOverrides ?? {}) as Record<string, Record<string, unknown>>);
+      const stdPhotoPos = (cust.saveTheDatePhotoPosition as { x?: number; y?: number } | null) ?? null;
+      const stdPhotoOverride = allOverrides["std:photo"] ?? {};
+      const ox = useGenerated
+        ? (stdPhotoPos?.x ?? 50)
+        : ((stdPhotoOverride.objectX as number | undefined) ?? stdPhotoPos?.x ?? 50);
+      const oy = useGenerated
+        ? (stdPhotoPos?.y ?? 50)
+        : ((stdPhotoOverride.objectY as number | undefined) ?? stdPhotoPos?.y ?? 50);
+      const mergedPalette: Record<string, string> = {
+        primary: customColors.primary ?? palette.primary ?? "#1f2937",
+        secondary: customColors.secondary ?? palette.secondary ?? "#9ca3af",
+        accent: customColors.accent ?? palette.accent ?? "#8D294D",
+        neutral: customColors.neutral ?? palette.neutral ?? "#f3f4f6",
+      };
+      customizationData = {
+        useGeneratedInvitation: useGenerated,
+        backgroundColor: useGenerated ? null : (cust.saveTheDateBackground ?? cust.digitalInvitationBackground ?? null),
+        accentColor: useGenerated ? null : mergedAccent,
+        fontFamily: useGenerated ? null : (cust.saveTheDateFont ?? cust.digitalInvitationFont ?? cust.selectedFont ?? null),
+        fontColor: useGenerated ? null : (cust.saveTheDateFontColor ?? null),
+        fontSize: useGenerated ? null : (cust.saveTheDateFontSize ?? null),
+        textOverrides: useGenerated ? {} : allOverrides,
+        photoObjectPosition: `${ox}% ${oy}%`,
+        photoZoom: photoZoomFromCustomColors(cust.customColors, "saveTheDatePhotoZoom"),
+        photoEffect: useGenerated ? null : (customColors.saveTheDatePhotoEffect ?? null),
+        saveTheDatePhotoUrl: cust.saveTheDatePhotoUrl ?? null,
+        colorPalette: useGenerated ? null : mergedPalette,
+        layout: useGenerated ? null : (cust.saveTheDateLayout ?? cust.digitalInvitationLayout ?? cust.selectedLayout ?? "classic"),
+      };
+    }
+  } catch {
+    // best-effort - fall back to AI defaults
+  }
+
+  return {
+    guestName,
+    partner1Name: profile.partner1Name,
+    partner2Name: profile.partner2Name,
+    weddingDate: profile.weddingDate,
+    venue: profile.venue,
+    venueAddress: profile.location,
+    venueCity: profile.venueCity,
+    venueState: profile.venueState,
+    venueZip: profile.venueZip,
+    ceremonyTime: profile.ceremonyTime,
+    receptionTime: profile.receptionTime,
+    ceremonyAtVenue: profile.ceremonyAtVenue,
+    ceremonyVenueName: profile.ceremonyVenueName,
+    ceremonyAddress: profile.ceremonyAddress,
+    ceremonyCity: profile.ceremonyCity,
+    ceremonyState: profile.ceremonyState,
+    ceremonyZip: profile.ceremonyZip,
+    saveTheDateMessage: (profile as any).saveTheDateMessage || (`Mark your calendar! ${coupleDisplayName(profile)}` + " are getting married and we'd love to celebrate with you.") || null,
+    hasPhoto: !!(customizationData.saveTheDatePhotoUrl || (profile as any).saveTheDatePhotoUrl),
+    photoVersion: crypto.createHash("md5")
+      .update(customizationData.saveTheDatePhotoUrl || (profile as any).saveTheDatePhotoUrl || "")
+      .digest("hex").substring(0, 8),
+    useGeneratedInvitation: customizationData.useGeneratedInvitation,
+    customBackgroundColor: customizationData.backgroundColor,
+    customAccentColor: customizationData.accentColor,
+    customFontFamily: customizationData.fontFamily,
+    customFontColor: customizationData.fontColor,
+    customFontSize: customizationData.fontSize,
+    customTextOverrides: customizationData.textOverrides,
+    photoObjectPosition: customizationData.photoObjectPosition,
+    photoZoom: customizationData.photoZoom,
+    photoEffect: customizationData.photoEffect,
+    customColorPalette: customizationData.colorPalette,
+    customLayout: customizationData.layout,
+  };
+}
+
+async function findPublishedProfileBySlug(slug: string) {
+  const [site] = await db
+    .select({ profileId: weddingWebsites.profileId, published: weddingWebsites.published })
+    .from(weddingWebsites)
+    .where(eq(weddingWebsites.slug, slug.toLowerCase()))
+    .limit(1);
+  if (!site?.published) return null;
+  const [profile] = await db
+    .select()
+    .from(weddingProfiles)
+    .where(eq(weddingProfiles.id, site.profileId))
+    .limit(1);
+  return profile ?? null;
+}
+
+router.get("/save-the-date/shared/:slug", async (req, res) => {
+  try {
+    const profile = await findPublishedProfileBySlug(String(req.params.slug ?? ""));
+    if (!profile) return res.status(404).json({ error: "Not found" });
+    res.json(await buildSharedSaveTheDateInfo(profile, "Guest"));
+  } catch (err) {
+    req.log.error(err, "Failed to get shared save-the-date info");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/save-the-date/shared/:slug/photo", async (req, res) => {
+  try {
+    const profile = await findPublishedProfileBySlug(String(req.params.slug ?? ""));
+    if (!profile) return res.status(404).end();
+    const customizations = await db
+      .select({ saveTheDatePhotoUrl: invitationCustomizations.saveTheDatePhotoUrl })
+      .from(invitationCustomizations)
+      .where(eq(invitationCustomizations.profileId, profile.id))
+      .limit(1);
+    const photoUrl = (customizations[0] as any)?.saveTheDatePhotoUrl || (profile as any).saveTheDatePhotoUrl;
+    if (!photoUrl) return res.status(404).end();
+    const file = await resolvePhotoFile(photoUrl);
+    const response = await objectStorageService.downloadObject(file, 3600);
+    res.set("Content-Type", response.headers.get("Content-Type") || "image/jpeg");
+    res.set("Cache-Control", "public, max-age=3600");
+    res.set("Access-Control-Allow-Origin", "*");
+    const reader = response.body!.getReader();
+    const pump = async () => {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        res.write(value);
+      }
+      res.end();
+    };
+    await pump();
+  } catch (err) {
+    req.log.error(err, "Failed to serve shared save-the-date photo");
+    res.status(500).end();
+  }
+});
+
 router.get("/save-the-date/:token", async (req, res) => {
   try {
     const { token } = req.params;

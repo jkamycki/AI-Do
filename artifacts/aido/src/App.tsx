@@ -1693,6 +1693,7 @@ function Router() {
       <Route path="/invite/:token" component={InviteAccept} />
       <Route path="/collect/:token" component={GuestCollect} />
       <Route path="/rsvp/:token" component={Rsvp} />
+      <Route path="/save-the-date/shared/:slug" component={SaveTheDate} />
       <Route path="/save-the-date/:token" component={SaveTheDate} />
       <Route path="/w/:slug" component={PublicWebsite} />
       <Route path="/w/:slug/:section" component={PublicWebsite} />

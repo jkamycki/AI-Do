@@ -79,18 +79,26 @@ function cloneCardForPdf(element: HTMLElement) {
 
 export default function SaveTheDate() {
   const [, params] = useRoute("/save-the-date/:token");
+  const [, sharedParams] = useRoute("/save-the-date/shared/:slug");
   const token = params?.token ?? "";
+  const slug = sharedParams?.slug ?? "";
+  const apiPath = slug
+    ? `/api/save-the-date/shared/${encodeURIComponent(slug)}`
+    : `/api/save-the-date/${token}`;
+  const photoPath = slug
+    ? `/api/save-the-date/shared/${encodeURIComponent(slug)}/photo`
+    : `/api/save-the-date/${token}/photo`;
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const { data: info, isLoading, isError } = useQuery({
-    queryKey: ["save-the-date", token],
+    queryKey: ["save-the-date", token, slug],
     queryFn: async () => {
-      const res = await apiFetch(`/api/save-the-date/${token}`);
+      const res = await apiFetch(apiPath);
       if (!res.ok) throw new Error("Not found");
       return res.json() as Promise<SaveTheDateInfo>;
     },
-    enabled: !!token,
+    enabled: !!token || !!slug,
     retry: false,
   });
 
@@ -238,7 +246,7 @@ export default function SaveTheDate() {
             style={{
               position: "absolute",
               inset: 0,
-              backgroundImage: `url('/api/save-the-date/${token}/photo?v=${info.photoVersion}')`,
+              backgroundImage: `url('${photoPath}?v=${info.photoVersion}')`,
               backgroundSize: photoBgSize,
               backgroundRepeat: "no-repeat",
               backgroundPosition: photoPos,
@@ -345,7 +353,7 @@ export default function SaveTheDate() {
               <div
                 style={{
                   width: "100%", height: 200,
-                  backgroundImage: `url('/api/save-the-date/${token}/photo?v=${info.photoVersion}')`,
+                  backgroundImage: `url('${photoPath}?v=${info.photoVersion}')`,
                   backgroundSize: photoBgSize,
                   backgroundRepeat: "no-repeat",
                   backgroundPosition: photoPos,
