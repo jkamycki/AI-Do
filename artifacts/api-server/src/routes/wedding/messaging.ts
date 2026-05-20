@@ -14,6 +14,7 @@ import {
   sendEmail,
 } from "../../lib/resend";
 import { hasMinRole, resolveCallerRole, resolveProfile, resolveScopeUserId } from "../../lib/workspaceAccess";
+import { getRequestLanguage } from "../../lib/language";
 
 const router = Router();
 
@@ -336,7 +337,8 @@ router.post("/messaging/conversations/:id/suggest-reply", requireAuth, async (re
       ? `Couple: ${profile.partner2Name} & ${profile.partner1Name}\nWedding date: ${profile.weddingDate}\nVenue: ${profile.venue}, ${profile.location}\nGuest count: ${profile.guestCount}`
       : "";
 
-    const lang = profile?.preferredLanguage && profile.preferredLanguage !== "English" ? profile.preferredLanguage : null;
+    const requestLanguage = getRequestLanguage(req, profile?.preferredLanguage);
+    const lang = requestLanguage !== "English" ? requestLanguage : null;
     const langInstruction = lang ? `\n\nIMPORTANT: Write the entire reply in ${lang}.` : "";
 
     const prompt = `You are drafting a reply on behalf of a couple to their wedding ${vendor?.category ?? "vendor"} "${vendor?.name ?? ""}".

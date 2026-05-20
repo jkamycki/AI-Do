@@ -3,6 +3,7 @@ import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
 import { hasMinRole, resolveCallerRole, resolveProfile } from "../../lib/workspaceAccess";
+import { getRequestLanguage } from "../../lib/language";
 
 const router = Router();
 
@@ -12,7 +13,8 @@ router.post("/dayof/emergency", requireAuth, async (req, res) => {
     if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
     const { situation } = req.body;
     const profile = await resolveProfile(req);
-    const lang = profile?.preferredLanguage && profile.preferredLanguage !== "English" ? profile.preferredLanguage : null;
+    const requestLanguage = getRequestLanguage(req, profile?.preferredLanguage);
+    const lang = requestLanguage !== "English" ? requestLanguage : null;
     const langInstruction = lang
       ? `\n\nLANGUAGE: Translate the values of "advice" and the "steps" array into ${lang}. Keep JSON keys ("advice", "steps") in English.`
       : "";

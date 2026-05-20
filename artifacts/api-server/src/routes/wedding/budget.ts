@@ -6,6 +6,7 @@ import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
 import { logActivity, resolveProfile, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
+import { getRequestLanguage } from "../../lib/language";
 
 const router = Router();
 
@@ -166,7 +167,8 @@ router.post("/budget/predict", requireAuth, async (req, res) => {
   try {
     const { location, guestCount, weddingVibe } = req.body;
     const profile = await resolveProfile(req);
-    const lang = profile?.preferredLanguage && profile.preferredLanguage !== "English" ? profile.preferredLanguage : null;
+    const requestLanguage = getRequestLanguage(req, profile?.preferredLanguage);
+    const lang = requestLanguage !== "English" ? requestLanguage : null;
     const langInstruction = lang
       ? `\n\nLANGUAGE: Translate ONLY the "notes" field values and the "aiSuggestions" string into ${lang}. JSON keys, the "category" enum names, and numeric values must stay in English.`
       : "";

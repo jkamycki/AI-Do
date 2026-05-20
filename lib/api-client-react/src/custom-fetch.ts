@@ -106,6 +106,14 @@ function mergeHeaders(...sources: Array<HeadersInit | undefined>): Headers {
   return headers;
 }
 
+function getActiveLanguageCode(): string | null {
+  if (typeof document !== "undefined") {
+    const lang = document.documentElement.getAttribute("lang");
+    if (lang) return lang.split("-", 1)[0] || null;
+  }
+  return null;
+}
+
 function getMediaType(headers: Headers): string | null {
   const value = headers.get("content-type");
   return value ? value.split(";", 1)[0].trim().toLowerCase() : null;
@@ -376,6 +384,11 @@ export async function customFetch<T = unknown>(
   // Forward active workspace profile ID so the server can serve the right data.
   if (_workspaceProfileId != null && !headers.has("x-workspace-profile-id")) {
     headers.set("x-workspace-profile-id", String(_workspaceProfileId));
+  }
+
+  const activeLanguageCode = getActiveLanguageCode();
+  if (activeLanguageCode && !headers.has("x-aido-language-code")) {
+    headers.set("x-aido-language-code", activeLanguageCode);
   }
 
   const requestInfo = { method, url: resolveUrl(input) };

@@ -9,6 +9,7 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile, resolveScopeUserId, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { getRequestLanguage } from "../lib/language";
 
 const require = createRequire(import.meta.url);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -862,9 +863,9 @@ router.post("/contracts/:id/negotiate", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "No red flags found — no negotiation needed." });
     }
 
-    const { preferredLanguage } = req.body as { preferredLanguage?: string };
-    const langInstruction = preferredLanguage && preferredLanguage !== "English"
-      ? `\n\nIMPORTANT: Write the entire email in ${preferredLanguage}.`
+    const requestLanguage = getRequestLanguage(req);
+    const langInstruction = requestLanguage !== "English"
+      ? `\n\nIMPORTANT: Write the entire email in ${requestLanguage}.`
       : "";
 
     const vendorType = asText(analysis.vendorType, "vendor");

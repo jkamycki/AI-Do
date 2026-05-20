@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@clerk/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { getCurrentLanguageName } from "@/lib/languagePreference";
 import {
   useGetOrCreateConversationByVendor,
   useListMessages,
@@ -680,7 +681,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
                       venue: profile?.venue ?? "",
                       guestCount: profile?.guestCount ?? 0,
                       additionalNotes: draftNotes,
-                      preferredLanguage: profile?.preferredLanguage ?? "English",
+                      preferredLanguage: getCurrentLanguageName(),
                     },
                   },
                   {

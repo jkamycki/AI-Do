@@ -6,6 +6,7 @@ import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
 import { logActivity, resolveProfile, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
+import { getRequestLanguage } from "../../lib/language";
 
 const router = Router();
 
@@ -423,7 +424,8 @@ router.post("/timeline", requireAuth, async (req, res) => {
 
     const { dayVision } = req.body as { dayVision?: string };
 
-    const lang = profile.preferredLanguage && profile.preferredLanguage !== "English" ? profile.preferredLanguage : null;
+    const requestLanguage = getRequestLanguage(req, profile.preferredLanguage);
+    const lang = requestLanguage !== "English" ? requestLanguage : null;
     // Important: tell the model to keep JSON structural fields (keys + the
     // category enum + time format) in English while only translating the
     // human-readable strings (title, description, location, notes). Small

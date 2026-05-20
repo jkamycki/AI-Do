@@ -2,16 +2,18 @@ import { Router } from "express";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
+import { getRequestLanguage } from "../../lib/language";
 
 const router = Router();
 
 router.post("/vendor/email", requireAuth, async (req, res) => {
   try {
     const {
-      vendorType, emailType, vendorName, weddingDate, venue, guestCount, additionalNotes, preferredLanguage,
+      vendorType, emailType, vendorName, weddingDate, venue, guestCount, additionalNotes,
     } = req.body;
 
-    const lang = preferredLanguage && preferredLanguage !== "English" ? preferredLanguage : null;
+    const requestLanguage = getRequestLanguage(req);
+    const lang = requestLanguage !== "English" ? requestLanguage : null;
 
     const emailTypeDescriptions: Record<string, string> = {
       inquiry: "initial inquiry email introducing ourselves and asking about availability",

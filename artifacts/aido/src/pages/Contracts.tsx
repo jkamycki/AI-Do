@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { authFetch } from "@/lib/authFetch";
+import { getCurrentLanguageName } from "@/lib/languagePreference";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -171,7 +172,7 @@ function NegotiationPanel({ contractId, redFlagCount, vendorId }: { contractId: 
       const res = await authFetch(`${API}/api/contracts/${contractId}/negotiate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ preferredLanguage: profile?.preferredLanguage ?? "English" }),
+        body: JSON.stringify({ preferredLanguage: getCurrentLanguageName() }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to generate");

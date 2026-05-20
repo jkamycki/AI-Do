@@ -6,6 +6,7 @@ import { openai, getModel, getVisionModel } from "@workspace/integrations-openai
 import { ObjectStorageService } from "../lib/objectStorage";
 import { ObjectPermission } from "../lib/objectAcl";
 import { hasMinRole, resolveCallerRole, resolveProfile, resolveScopeUserId } from "../lib/workspaceAccess";
+import { getRequestLanguage } from "../lib/language";
 
 const router = Router();
 const storage = new ObjectStorageService();
@@ -287,7 +288,8 @@ router.post("/mood-board/generate-summary", requireAuth, async (req, res) => {
     }
 
     const profile = await resolveProfile(req);
-    const lang = profile?.preferredLanguage && profile.preferredLanguage !== "English" ? profile.preferredLanguage : null;
+    const requestLanguage = getRequestLanguage(req, profile?.preferredLanguage);
+    const lang = requestLanguage !== "English" ? requestLanguage : null;
     const langInstruction = lang ? `\n\nIMPORTANT: Write the summary entirely in ${lang}.` : "";
 
     const prompt = `Based on a couple's wedding mood board, write a 1-2 sentence style summary that captures their aesthetic in a warm, personal way.

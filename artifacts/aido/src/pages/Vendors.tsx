@@ -2,6 +2,7 @@ import { useState, useRef, useMemo, useEffect } from "react";
 import { useAuth } from "@clerk/react";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { authFetch } from "@/lib/authFetch";
+import { getCurrentLanguageName } from "@/lib/languagePreference";
 import {
   useListVendors,
   useCreateVendor,
@@ -1303,7 +1304,7 @@ function VendorDetailDialog({
   );
 }
 
-function SummarizeEmailDialog({ open, onClose, preferredLanguage }: { open: boolean; onClose: () => void; preferredLanguage?: string }) {
+function SummarizeEmailDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const [emailText, setEmailText] = useState("");
@@ -1316,7 +1317,7 @@ function SummarizeEmailDialog({ open, onClose, preferredLanguage }: { open: bool
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!emailText.trim()) return;
-    mutation.mutate({ data: { emailText, preferredLanguage } });
+    mutation.mutate({ data: { emailText, preferredLanguage: getCurrentLanguageName() } });
   }
 
   const result = mutation.data;
@@ -2239,7 +2240,7 @@ export default function Vendors() {
       </AlertDialog>
 
       {showSummarize && (
-        <SummarizeEmailDialog open onClose={() => setShowSummarize(false)} preferredLanguage={profile?.preferredLanguage ?? "English"} />
+        <SummarizeEmailDialog open onClose={() => setShowSummarize(false)} />
       )}
     </div>
   );

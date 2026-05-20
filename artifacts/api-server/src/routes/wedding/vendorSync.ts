@@ -4,6 +4,7 @@ import { eq, and, asc, inArray } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { resolveProfile, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
+import { getRequestLanguage } from "../../lib/language";
 
 const router = Router();
 
@@ -843,12 +844,13 @@ router.delete("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) 
 
 router.post("/vendor/email/summarize", requireAuth, async (req, res) => {
   try {
-    const { emailText, preferredLanguage } = req.body;
+    const { emailText } = req.body;
     if (!emailText) {
       return res.status(400).json({ error: "emailText is required" });
     }
-    const langInstruction = preferredLanguage && preferredLanguage !== "English"
-      ? `\n\nIMPORTANT: Write your entire response in ${preferredLanguage}.`
+    const requestLanguage = getRequestLanguage(req);
+    const langInstruction = requestLanguage !== "English"
+      ? `\n\nIMPORTANT: Write your entire response in ${requestLanguage}.`
       : "";
 
     const MAX_EMAIL_CHARS = 4000;

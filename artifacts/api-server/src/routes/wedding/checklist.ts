@@ -6,6 +6,7 @@ import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
 import { logActivity, resolveProfile, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
+import { getRequestLanguage } from "../../lib/language";
 
 const router = Router();
 
@@ -156,7 +157,8 @@ router.post("/checklist", requireAuth, async (req, res) => {
     const wedding = new Date(effectiveWeddingDate);
     const monthsUntil = Math.max(1, Math.ceil((wedding.getTime() - today.getTime()) / (1000 * 60 * 60 * 24 * 30)));
 
-    const lang = profile.preferredLanguage && profile.preferredLanguage !== "English" ? profile.preferredLanguage : null;
+    const requestLanguage = getRequestLanguage(req, profile.preferredLanguage);
+    const lang = requestLanguage !== "English" ? requestLanguage : null;
     const langInstruction = lang ? `\n\nIMPORTANT: Write all task names, descriptions, and time period labels in ${lang}.` : "";
 
     const prompt = `Build a wedding checklist for a ${effectiveWeddingVibe} wedding with ${effectiveGuestCount} guests, ${monthsUntil} months out (date: ${effectiveWeddingDate}).${planningFocus ? `\n\nCouple's checklist focus / prompt: ${planningFocus}` : ""}

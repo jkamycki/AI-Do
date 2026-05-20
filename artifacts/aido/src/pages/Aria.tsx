@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
+import { getCurrentLanguageName } from "@/lib/languagePreference";
 import {
   Send,
   Plus,
@@ -463,7 +464,7 @@ export default function Aria() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: historyForApi,
-          preferredLanguage: profile?.preferredLanguage ?? "English",
+          preferredLanguage: getCurrentLanguageName(),
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         }),
         signal: abortRef.current.signal,

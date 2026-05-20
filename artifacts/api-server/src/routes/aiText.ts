@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { openai, getModel, supportsCustomTemperature } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../middlewares/requireAuth";
+import { getRequestLanguage, languageNameFromCode } from "../lib/language";
 
 const router = Router();
 
@@ -210,8 +211,9 @@ router.post("/ai/generate-text", requireAuth, async (req, res) => {
       return;
     }
 
-    const langInstruction = language && language !== "en"
-      ? `Write the response in the language with code "${language}".`
+    const requestLanguage = languageNameFromCode(language) ?? getRequestLanguage(req);
+    const langInstruction = requestLanguage !== "English"
+      ? `Write the response in ${requestLanguage}.`
       : "";
 
     const sys = [
@@ -275,6 +277,7 @@ router.post("/ai/venue-options", requireAuth, async (req, res) => {
     };
 
     const preferredLocations = parsePreferredLocations(location);
+    const requestLanguage = getRequestLanguage(req);
     const detailLines = [
       `Couple / event: ${coupleNames?.trim() || "Wedding couple"}`,
       `Guest count: ${guestCount?.trim() || "Not provided"}`,
@@ -297,8 +300,9 @@ router.post("/ai/venue-options", requireAuth, async (req, res) => {
       "Balance results across all provided cities/states instead of concentrating on one area.",
       "Never claim exact pricing, availability, package details, or capacity unless the source clearly supports it or the user provided it.",
       "After the grouped venues, include short sections for Questions to ask and Red flags.",
+      requestLanguage !== "English" ? `Write all user-facing prose in ${requestLanguage}. Keep venue names, URLs, and markdown link syntax unchanged.` : "",
       "Return concise markdown only.",
-    ].join(" ");
+    ].filter(Boolean).join(" ");
     const userPrompt = `Generate real wedding venue suggestions from these details:\n\n${detailLines}`;
     const minimumVenueCount = preferredLocations.length > 1
       ? Math.max(2, preferredLocations.length * 2)

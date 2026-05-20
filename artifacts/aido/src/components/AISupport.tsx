@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { useGetProfile } from "@workspace/api-client-react";
+import { getCurrentLanguageName, getLanguageHeader } from "@/lib/languagePreference";
 import { Loader2, Send, CheckCircle2, AlertCircle } from "lucide-react";
 
 interface Message {
@@ -21,7 +21,6 @@ export function AISupport() {
   const { getToken, isSignedIn } = useAuth();
   const { user } = useUser();
   const { toast } = useToast();
-  const { data: profile } = useGetProfile();
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -66,6 +65,7 @@ export function AISupport() {
       headers: {
         "Content-Type": "application/json",
         ...(init.headers ?? {}),
+        ...getLanguageHeader(),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
@@ -79,7 +79,7 @@ export function AISupport() {
         method: "POST",
         body: JSON.stringify({
           messages: updatedMessages,
-          preferredLanguage: profile?.preferredLanguage ?? "English",
+          preferredLanguage: getCurrentLanguageName(),
         }),
       });
 

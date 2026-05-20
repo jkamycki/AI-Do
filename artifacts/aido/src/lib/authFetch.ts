@@ -1,3 +1,5 @@
+import { getLanguageHeader } from "./languagePreference";
+
 let _getToken: (() => Promise<string | null>) | null = null;
 let _workspaceProfileId: number | null = null;
 let _baseUrl: string | null = null;
@@ -61,6 +63,7 @@ export async function authFetch(input: RequestInfo | URL, init: RequestInit = {}
       ...init.headers,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(wsId != null ? { "x-workspace-profile-id": String(wsId) } : {}),
+      ...getLanguageHeader(),
       ...getInternalTrackingHeaders(),
     },
   });

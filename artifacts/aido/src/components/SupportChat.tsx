@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/authFetch";
-import { useGetProfile } from "@workspace/api-client-react";
+import { getCurrentLanguageName } from "@/lib/languagePreference";
 import { X, Send, Sparkles, ChevronDown, RotateCcw, MessageCircle, Star } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
@@ -43,7 +43,6 @@ function AriaRobotAvatar({ className = "" }: { className?: string }) {
 
 export function SupportChat() {
   const { t } = useTranslation();
-  const { data: profile } = useGetProfile();
   const [open, setOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
@@ -172,7 +171,7 @@ export function SupportChat() {
         method: "POST",
         signal: ctrl.signal,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history, preferredLanguage: profile?.preferredLanguage ?? "English" }),
+        body: JSON.stringify({ messages: history, preferredLanguage: getCurrentLanguageName() }),
       });
 
       if (!res.ok || !res.body) throw new Error("Request failed");

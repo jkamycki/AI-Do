@@ -7,6 +7,7 @@ import { aiLimiter, incrementDailySupport } from "../middlewares/rateLimiter";
 import { getAuth, clerkClient } from "@clerk/express";
 import { db, supportTickets, contactMessages } from "@workspace/db";
 import { sendEmail, FROM_EMAIL } from "../lib/resend";
+import { getRequestLanguage } from "../lib/language";
 
 const router = Router();
 
@@ -276,9 +277,8 @@ async function fileSupportTicket(args: Record<string, unknown>, userId: string |
 
 router.post("/support/bot", supportBotLimiter, aiLimiter, async (req, res) => {
   try {
-    const { messages, preferredLanguage } = req.body as {
+    const { messages } = req.body as {
       messages: Array<{ role: "user" | "assistant"; content: string }>;
-      preferredLanguage?: string;
     };
 
     if (!messages || !Array.isArray(messages)) {
@@ -303,8 +303,9 @@ router.post("/support/bot", supportBotLimiter, aiLimiter, async (req, res) => {
     res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders();
 
-    const langInstruction = preferredLanguage && preferredLanguage !== "English"
-      ? `\n\nIMPORTANT: Always respond in ${preferredLanguage}, regardless of what language the user writes in.`
+    const requestLanguage = getRequestLanguage(req);
+    const langInstruction = requestLanguage !== "English"
+      ? `\n\nIMPORTANT: Always respond in ${requestLanguage}, regardless of what language the user writes in.`
       : "";
 
     const convo: Array<{ role: string; content: string }> = [
@@ -420,9 +421,8 @@ router.post("/support/chat", requireAuth, aiLimiter, async (req, res) => {
       return;
     }
 
-    const { messages, preferredLanguage } = req.body as {
+    const { messages } = req.body as {
       messages: Array<{ role: "user" | "assistant"; content: string }>;
-      preferredLanguage?: string;
     };
 
     if (!messages || !Array.isArray(messages)) {
@@ -461,8 +461,9 @@ router.post("/support/chat", requireAuth, aiLimiter, async (req, res) => {
     res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders();
 
-    const langInstruction = preferredLanguage && preferredLanguage !== "English"
-      ? `\n\nIMPORTANT: Always respond in ${preferredLanguage}, regardless of what language the user writes in.`
+    const requestLanguage = getRequestLanguage(req);
+    const langInstruction = requestLanguage !== "English"
+      ? `\n\nIMPORTANT: Always respond in ${requestLanguage}, regardless of what language the user writes in.`
       : "";
 
     const userContextNote = (knownName || knownEmail)

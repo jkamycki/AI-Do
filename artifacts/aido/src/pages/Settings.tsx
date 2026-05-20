@@ -194,12 +194,12 @@ function LanguageSwitcherCard() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { user } = useUser();
-  const qc = useQueryClient();
   const { data: profile } = useGetProfile();
-  const saveProfile = useSaveProfile();
   const [selected, setSelected] = useState<string | null>(null);
 
-  const storedCode = user?.id ? localStorage.getItem(`aido_language_${user.id}`) : null;
+  const storedCode = user?.id
+    ? localStorage.getItem(`aido_language_${user.id}`)
+    : localStorage.getItem("aido_language");
   const storedName = storedCode
     ? (Object.entries(LANG_NAME_TO_CODE).find(([, c]) => c === storedCode)?.[0] ?? "English")
     : (profile?.preferredLanguage ?? "English");
@@ -212,43 +212,8 @@ function LanguageSwitcherCard() {
     i18n.changeLanguage(code);
     const key = user?.id ? `aido_language_${user.id}` : "aido_language";
     localStorage.setItem(key, code);
+    localStorage.setItem("aido_language", code);
     setSelected(null);
-
-    if (profile) {
-      saveProfile.mutate(
-        {
-          data: {
-            accountType: "couple_individual",
-            partner1Name: profile.partner1Name,
-            partner2Name: profile.partner2Name,
-            weddingDate: profile.weddingDate,
-            ceremonyTime: profile.ceremonyTime,
-            receptionTime: profile.receptionTime,
-            venue: profile.venue,
-            location: profile.location,
-            venueCity: profile.venueCity ?? undefined,
-            venueState: profile.venueState ?? undefined,
-            venueZip: profile.venueZip ?? undefined,
-            venueCountry: (profile as { venueCountry?: string | null }).venueCountry ?? undefined,
-            ceremonyAtVenue: (profile as { ceremonyAtVenue?: boolean }).ceremonyAtVenue,
-            ceremonyVenueName: (profile as { ceremonyVenueName?: string | null }).ceremonyVenueName ?? undefined,
-            ceremonyAddress: (profile as { ceremonyAddress?: string | null }).ceremonyAddress ?? undefined,
-            ceremonyCity: (profile as { ceremonyCity?: string | null }).ceremonyCity ?? undefined,
-            ceremonyState: (profile as { ceremonyState?: string | null }).ceremonyState ?? undefined,
-            ceremonyZip: (profile as { ceremonyZip?: string | null }).ceremonyZip ?? undefined,
-            guestCount: profile.guestCount,
-            totalBudget: profile.totalBudget,
-            weddingVibe: profile.weddingVibe,
-            preferredLanguage: current,
-            vendorBccEmail: (profile as { vendorBccEmail?: string | null }).vendorBccEmail ?? undefined,
-          } as never,
-        },
-        {
-          onSuccess: () => qc.invalidateQueries({ queryKey: getGetProfileQueryKey() }),
-          onError: () => toast({ variant: "destructive", title: t("common.error"), description: "Display language changed, but AI language could not be saved. Please try again." }),
-        },
-      );
-    }
 
     toast({ title: t("settings.language_updated"), description: `${t("settings.language_switched")} ${current}.` });
   }

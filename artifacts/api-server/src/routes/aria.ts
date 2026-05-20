@@ -10,6 +10,7 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { isAllowedOrigin } from "../lib/allowedOrigins";
 import { aiLimiter, incrementDailyAria } from "../middlewares/rateLimiter";
 import { resolveProfile, resolveScopeUserId, resolveWorkspaceRole, resolveCallerRole, hasMinRole, logActivity } from "../lib/workspaceAccess";
+import { getRequestLanguage } from "../lib/language";
 import { getAuth } from "@clerk/express";
 import type { Request } from "express";
 
@@ -5006,13 +5007,12 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       return;
     }
 
-    const { messages, preferredLanguage, timezone } = req.body as {
+    const { messages, timezone } = req.body as {
       messages: Array<{ role: "user" | "assistant"; content: string }>;
-      preferredLanguage?: string;
       timezone?: string;
     };
     const profile = await resolveProfile(req);
-    const effectivePreferredLanguage = preferredLanguage || profile?.preferredLanguage || "English";
+    const effectivePreferredLanguage = getRequestLanguage(req, profile?.preferredLanguage);
 
     const dailyCheck = incrementDailyAria(userId);
     if (!dailyCheck.allowed) {
