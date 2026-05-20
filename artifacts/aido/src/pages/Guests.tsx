@@ -1921,6 +1921,14 @@ export default function Guests({
       : mode === "invitation"
         ? "One RSVP link lets guests find their name and reply."
         : "One reminder link lets guests find their name and reply.";
+  const getBulkShareTitle = (mode: "saveTheDate" | "invitation" | "reminder" | null) =>
+    mode === "saveTheDate"
+      ? "Share Save-the-Date"
+      : mode === "invitation"
+        ? "Share RSVP Invitation"
+        : mode === "reminder"
+          ? "Share RSVP Reminder"
+          : "Share Link";
   const getCoupleName = () => {
     const profile = weddingProfile as
       | { partner1Name?: string | null; partner2Name?: string | null }
@@ -2916,19 +2924,19 @@ export default function Guests({
                   if (!open) setBulkMobileChoiceMode(null);
                 }}
               >
-                <DialogContent className="max-w-sm">
+                <DialogContent className="w-[calc(100vw-1.5rem)] max-w-sm p-4 sm:p-6">
                   <DialogHeader>
-                    <DialogTitle className="font-serif text-2xl text-primary">
-                      Share selected guests
+                    <DialogTitle className="break-words pr-8 font-serif text-2xl leading-tight text-primary">
+                      {getBulkShareTitle(bulkMobileChoiceMode)}
                     </DialogTitle>
-                    <DialogDescription>
-                      Choose how to share one link that works for every selected guest.
+                    <DialogDescription className="text-sm leading-relaxed">
+                      One shared link works for every selected guest. Copy it, or open a text message with the link included.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-3">
                     <Button
                       type="button"
-                      className="h-12 justify-start gap-3"
+                      className="min-h-12 justify-start gap-3 whitespace-normal text-left"
                       disabled={!bulkMobileChoiceMode}
                       onClick={() => {
                         if (!bulkMobileChoiceMode) return;
@@ -2938,14 +2946,12 @@ export default function Guests({
                       }}
                     >
                       <Copy className="h-4 w-4 shrink-0" />
-                      <span className="leading-tight">
-                        Copy shared link
-                      </span>
+                      <span className="leading-tight">Copy shared link</span>
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-12 justify-start gap-3 border-primary/20 text-primary"
+                      className="min-h-12 justify-start gap-3 whitespace-normal border-primary/20 text-left text-primary"
                       disabled={!bulkMobileChoiceMode}
                       onClick={() => {
                         if (!bulkMobileChoiceMode) return;
@@ -2969,7 +2975,7 @@ export default function Guests({
                   }
                 }}
               >
-                <DialogContent className="left-1/2 w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] overflow-hidden p-4 sm:max-w-2xl sm:p-6">
+                <DialogContent className="left-1/2 max-h-[calc(100dvh-2rem)] w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] overflow-y-auto p-4 sm:max-w-2xl sm:p-6">
                   <DialogHeader>
                     <DialogTitle className="max-w-full break-words pr-8 font-serif text-xl leading-tight text-primary sm:text-2xl">
                       {bulkShareIntent === "text"
@@ -2999,16 +3005,35 @@ export default function Guests({
                             ? "Use your phone's Messages app to send the shared link."
                             : "One shared link is ready to copy."}
                         </p>
-                        <Button
-                          type="button"
-                          size="sm"
-                          className="w-full gap-2 sm:w-auto"
-                          disabled={bulkLinks.length === 0}
-                          onClick={copyBulkLinks}
-                        >
-                          <Copy className="h-4 w-4" />
-                          {bulkShareIntent === "text" ? "Copy instead" : "Copy link"}
-                        </Button>
+                        <div className="grid w-full gap-2 sm:flex sm:w-auto sm:items-center">
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="w-full gap-2 sm:w-auto"
+                            disabled={bulkLinks.length === 0}
+                            onClick={copyBulkLinks}
+                          >
+                            <Copy className="h-4 w-4" />
+                            {bulkShareIntent === "text" ? "Copy instead" : "Copy link"}
+                          </Button>
+                          {bulkLinks[0] && bulkLinksMode && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="w-full gap-2 border-primary/20 text-primary sm:hidden"
+                              onClick={() => {
+                                window.location.href = buildSmsHref(
+                                  "",
+                                  buildBulkTextMessage(bulkLinksMode, bulkLinks[0].url),
+                                );
+                              }}
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                              Text message
+                            </Button>
+                          )}
+                        </div>
                       </div>
                       <div className="max-h-[52vh] min-w-0 space-y-2 overflow-y-auto pr-1">
                         {bulkLinks.map((item) => (
