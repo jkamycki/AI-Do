@@ -723,14 +723,20 @@ export function InvitationSendModal({
   let title = "Preview & Send Invitation";
   if (isBlocked) title = "Design Incomplete";
   else if (isCustomMode) title = "Review & Send Custom Design";
-  const isBulkSend = !!bulkRecipientCount && bulkRecipientCount > 1;
-  const showInvitationTabs = !reminderOnly && !isBulkSend;
-  const recipientLabel = isBulkSend ? `${bulkRecipientCount} selected guests` : guest?.name;
+  const isBulkFlow = typeof bulkRecipientCount === "number";
+  const isBulkSend = isBulkFlow && bulkRecipientCount > 1;
   const bulkRecipientList = bulkRecipientNames.length
     ? bulkRecipientNames
-    : isBulkSend && guest?.name
+    : isBulkFlow && guest?.name
       ? [guest.name]
       : [];
+  const recipientLabel = isBulkFlow
+    ? bulkRecipientCount === 1 && bulkRecipientList[0]
+      ? bulkRecipientList[0]
+      : `${bulkRecipientCount} selected guests`
+    : guest?.name;
+  const bulkGuestLabel = `${bulkRecipientCount ?? 0} guest${bulkRecipientCount === 1 ? "" : "s"}`;
+  const showInvitationTabs = !reminderOnly && !isBulkFlow;
   const BulkRecipients = () =>
     isBulkSend ? (
       <div className="rounded-lg border border-primary/15 bg-[#FFF8F1] p-3 text-sm">
@@ -831,7 +837,7 @@ export function InvitationSendModal({
                   >
                     {isSendingSaveTheDate
                       ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
-                      : <><Send className="h-4 w-4" /> {isBulkSend ? `Send Save the Date to ${bulkRecipientCount} guests` : guest?.email ? "Send Save the Date email" : "Mark Save the Date as sent"}</>
+                      : <><Send className="h-4 w-4" /> {isBulkFlow ? `Send Save the Date to ${bulkGuestLabel}` : guest?.email ? "Send Save the Date email" : "Mark Save the Date as sent"}</>
                     }
                   </Button>
                   {!guest?.email && (
@@ -901,7 +907,7 @@ export function InvitationSendModal({
                     >
                       {isSendingDigital
                         ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
-                        : <><Send className="h-4 w-4" /> {isBulkSend ? `Send RSVP Invitation to ${bulkRecipientCount} guests` : guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
+                        : <><Send className="h-4 w-4" /> {isBulkFlow ? `Send RSVP Invitation to ${bulkGuestLabel}` : guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
                       }
                     </Button>
                   )}
@@ -947,7 +953,7 @@ export function InvitationSendModal({
                   >
                     {isSendingSaveTheDate
                       ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
-                      : <><Send className="h-4 w-4" /> {isBulkSend ? `Send Save the Date to ${bulkRecipientCount} guests` : guest?.email ? "Send Save the Date email" : "Mark Save the Date as sent"}</>
+                      : <><Send className="h-4 w-4" /> {isBulkFlow ? `Send Save the Date to ${bulkGuestLabel}` : guest?.email ? "Send Save the Date email" : "Mark Save the Date as sent"}</>
                     }
                   </Button>
                   {!guest?.email && (
@@ -1010,7 +1016,7 @@ export function InvitationSendModal({
                     >
                       {isSendingDigital
                         ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
-                        : <><Send className="h-4 w-4" /> {isBulkSend ? `Send RSVP Invitation to ${bulkRecipientCount} guests` : guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
+                        : <><Send className="h-4 w-4" /> {isBulkFlow ? `Send RSVP Invitation to ${bulkGuestLabel}` : guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
                       }
                     </Button>
                   )}
