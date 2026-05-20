@@ -277,7 +277,8 @@ export default function Rsvp() {
   // stops at the rounded edge — no bleed into the surrounding viewport.
   const PAGE_BG = "#FFF7F2";
   const PAGE_BG_PATTERN: string | undefined = undefined;
-  const photoZoom = Math.max(1, Math.min(2.5, Number(info?.photoZoom ?? 1) || 1));
+  const photoZoom = Math.max(0.5, Math.min(2.5, Number(info?.photoZoom ?? 1) || 1));
+  const fitWholePhoto = photoZoom < 1;
   const photoObjectPosition = info?.photoObjectPosition ?? "50% 58%";
 
   const couple = [info?.partner2Name, info?.partner1Name].filter(Boolean).join(" & ") || "The Couple";
@@ -500,9 +501,9 @@ export default function Rsvp() {
                 inset: 0,
                 width: "100%",
                 height: "100%",
-                objectFit: "cover",
+                objectFit: fitWholePhoto ? "contain" : "cover",
                 objectPosition: photoObjectPosition,
-                transform: `scale(${photoZoom})`,
+                transform: `scale(${fitWholePhoto ? 1 : photoZoom})`,
                 transformOrigin: photoObjectPosition,
                 filter: photoEffectToFilter(info.photoEffect),
               }}
@@ -617,9 +618,9 @@ export default function Rsvp() {
                 alt={couple}
                 crossOrigin="anonymous"
                 style={{
-                  width: "100%", height: "100%", objectFit: "cover",
+                  width: "100%", height: "100%", objectFit: fitWholePhoto ? "contain" : "cover",
                   objectPosition: photoObjectPosition,
-                  transform: `scale(${photoZoom})`,
+                  transform: `scale(${fitWholePhoto ? 1 : photoZoom})`,
                   transformOrigin: photoObjectPosition,
                   filter: photoEffectToFilter(info.photoEffect),
                   display: "block",

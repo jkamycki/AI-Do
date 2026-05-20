@@ -27,7 +27,7 @@ export interface WeddingInfo {
 
 export interface PhotoPosition { x: number; y: number }
 
-export const MIN_PHOTO_ZOOM = 1;
+export const MIN_PHOTO_ZOOM = 0.5;
 export const MAX_PHOTO_ZOOM = 2.5;
 export const DEFAULT_PHOTO_ZOOM = 1;
 export const DEFAULT_PHOTO_POSITION: PhotoPosition = { x: 50, y: 58 };
@@ -197,6 +197,7 @@ function CardShell({
   const resolvedPhotoUrl = resolveMediaUrl(photoUrl);
   const hasPhoto = isPhotoComplete(resolvedPhotoUrl);
   const zoom = clampPhotoZoom(photoZoom);
+  const fitWholePhoto = zoom < 1;
   return (
     <div style={{
       // Outer wrapper sits outside the rounded card. Keep it on the warm
@@ -250,10 +251,10 @@ function CardShell({
               style={{
                 width: "100%",
                 height: "100%",
-                objectFit: "cover",
+                objectFit: fitWholePhoto ? "contain" : "cover",
                 display: "block",
                 objectPosition: `${photoPosition.x}% ${photoPosition.y}%`,
-                transform: `scale(${zoom})`,
+                transform: `scale(${fitWholePhoto ? 1 : zoom})`,
                 transformOrigin: `${photoPosition.x}% ${photoPosition.y}%`,
                 filter: photoEffectToFilter(photoEffect),
                 pointerEvents: "none",
@@ -462,6 +463,7 @@ function FullPhotoSaveDatePreview({
   const resolvedPhotoUrl = resolveMediaUrl(photoUrl);
   const hasPhoto = isPhotoComplete(resolvedPhotoUrl);
   const zoom = clampPhotoZoom(photoZoom);
+  const fitWholePhoto = zoom < 1;
   const groomFirst = firstName(profile.partner1Name) || "Partner";
   const brideFirst = firstName(profile.partner2Name) || "Partner";
   const dateStr = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
@@ -499,9 +501,9 @@ function FullPhotoSaveDatePreview({
               inset: 0,
               width: "100%",
               height: "100%",
-              objectFit: "cover",
+              objectFit: fitWholePhoto ? "contain" : "cover",
               objectPosition: `${photoPosition.x}% ${photoPosition.y}%`,
-              transform: `scale(${zoom})`,
+              transform: `scale(${fitWholePhoto ? 1 : zoom})`,
               transformOrigin: `${photoPosition.x}% ${photoPosition.y}%`,
               filter: photoEffectToFilter(photoEffect),
               pointerEvents: "none",
@@ -838,6 +840,7 @@ function FullPhotoRsvpPreview({
   const resolvedPhotoUrl = resolveMediaUrl(photoUrl);
   const hasPhoto = isPhotoComplete(resolvedPhotoUrl);
   const zoom = clampPhotoZoom(photoZoom);
+  const fitWholePhoto = zoom < 1;
   const groomFirst = firstName(profile.partner1Name) || "Partner";
   const brideFirst = firstName(profile.partner2Name) || "Partner";
   const guestName = profile.guestName || "Guest";
@@ -881,9 +884,9 @@ function FullPhotoRsvpPreview({
               inset: 0,
               width: "100%",
               height: "100%",
-              objectFit: "cover",
+              objectFit: fitWholePhoto ? "contain" : "cover",
               objectPosition: `${photoPosition.x}% ${photoPosition.y}%`,
-              transform: `scale(${zoom})`,
+              transform: `scale(${fitWholePhoto ? 1 : zoom})`,
               transformOrigin: `${photoPosition.x}% ${photoPosition.y}%`,
               filter: photoEffectToFilter(photoEffect),
               pointerEvents: "none",

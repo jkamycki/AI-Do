@@ -102,7 +102,7 @@ function photoZoomFromCustomColors(
   const value = (customColors as Record<string, unknown> | null)?.[key];
   const numericValue = typeof value === "number" ? value : Number(value);
   return Number.isFinite(numericValue)
-    ? Math.max(1, Math.min(2.5, numericValue))
+    ? Math.max(0.5, Math.min(2.5, numericValue))
     : 1;
 }
 
@@ -301,13 +301,14 @@ function aiPhotoBlock(
   photoEffect: string | null = "none",
 ): string {
   if (!photoSrc) return "";
-  const safeZoom = Math.max(1, Math.min(2.5, zoom));
+  const safeZoom = Math.max(0.5, Math.min(2.5, zoom));
+  const fitWholePhoto = safeZoom < 1;
   const filter = photoEffectToFilter(photoEffect);
   return `
         <tr>
           <td bgcolor="${bg}" style="background:${bg};padding:0 20px 10px;line-height:0;font-size:0;">
             <div class="invite-photo" style="width:100%;max-width:${INVITATION_EMAIL_PHOTO_WIDTH}px;height:${INVITATION_EMAIL_PHOTO_HEIGHT}px;border-radius:8px;overflow:hidden;box-shadow:0 6px 30px rgba(0,0,0,0.5);">
-              <img src="${photoSrc}" alt="${escapeHtml(alt)}" width="${INVITATION_EMAIL_PHOTO_WIDTH}" height="${INVITATION_EMAIL_PHOTO_HEIGHT}" style="width:100%;max-width:${INVITATION_EMAIL_PHOTO_WIDTH}px;height:${INVITATION_EMAIL_PHOTO_HEIGHT}px;display:block;object-fit:cover;object-position:${objectPos};transform:scale(${safeZoom});transform-origin:${objectPos};filter:${filter};border:0;outline:none;text-decoration:none;" />
+              <img src="${photoSrc}" alt="${escapeHtml(alt)}" width="${INVITATION_EMAIL_PHOTO_WIDTH}" height="${INVITATION_EMAIL_PHOTO_HEIGHT}" style="width:100%;max-width:${INVITATION_EMAIL_PHOTO_WIDTH}px;height:${INVITATION_EMAIL_PHOTO_HEIGHT}px;display:block;object-fit:${fitWholePhoto ? "contain" : "cover"};object-position:${objectPos};transform:scale(${fitWholePhoto ? 1 : safeZoom});transform-origin:${objectPos};filter:${filter};border:0;outline:none;text-decoration:none;" />
             </div>
           </td>
         </tr>`;
@@ -909,7 +910,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
         <tr>
           <td style="padding:0;line-height:0;font-size:0;">
             <div style="width:100%;max-width:560px;aspect-ratio:560/360;overflow:hidden;">
-              <img src="${photoImgSrc}" alt="${couple}'s Wedding" width="560" style="width:100%;height:100%;display:block;object-fit:cover;object-position:${digPhotoObjectPos};transform:scale(${digPhotoZoom});transform-origin:${digPhotoObjectPos};"/>
+              <img src="${photoImgSrc}" alt="${couple}'s Wedding" width="560" style="width:100%;height:100%;display:block;object-fit:${digPhotoZoom < 1 ? "contain" : "cover"};object-position:${digPhotoObjectPos};transform:scale(${digPhotoZoom < 1 ? 1 : digPhotoZoom});transform-origin:${digPhotoObjectPos};"/>
             </div>
           </td>
         </tr>`
@@ -1933,7 +1934,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
         <tr>
           <td style="padding:0;line-height:0;font-size:0;">
             <div style="width:100%;max-width:560px;aspect-ratio:560/360;overflow:hidden;">
-              <img src="${photoImgSrc}" alt="Save the Date — ${couple}" width="560" style="width:100%;height:100%;display:block;object-fit:cover;object-position:${stdPhotoObjectPos};transform:scale(${stdPhotoZoom});transform-origin:${stdPhotoObjectPos};"/>
+              <img src="${photoImgSrc}" alt="Save the Date — ${couple}" width="560" style="width:100%;height:100%;display:block;object-fit:${stdPhotoZoom < 1 ? "contain" : "cover"};object-position:${stdPhotoObjectPos};transform:scale(${stdPhotoZoom < 1 ? 1 : stdPhotoZoom});transform-origin:${stdPhotoObjectPos};"/>
             </div>
           </td>
         </tr>`

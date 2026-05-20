@@ -90,7 +90,8 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
     const spec = PRINT_SIZES[size];
     const photoUrl = resolveMediaUrl(design.image.url);
     const hasPhoto = !!photoUrl;
-    const photoZoom = Math.max(1, Math.min(2.5, design.image.zoom ?? 1));
+    const photoZoom = Math.max(0.5, Math.min(2.5, design.image.zoom ?? 1));
+    const photoBackgroundSize = photoZoom < 1 ? "contain" : photoZoom === 1 ? "cover" : `${100 * photoZoom}%`;
     const locLines = locationLines(design);
     const isSaveTheDate = design.kind === "saveTheDate";
     const saveTheDateLocation = [design.fields.venueCity, design.fields.venueState].filter(Boolean).join(", ");
@@ -160,7 +161,8 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
                     height: isSaveTheDate ? "34%" : "30%",
                     margin: "18px 0 16px",
                     backgroundImage: `url("${photoUrl}")`,
-                    backgroundSize: photoZoom === 1 ? "cover" : `${100 * photoZoom}%`,
+                    backgroundSize: photoBackgroundSize,
+                    backgroundRepeat: "no-repeat",
                     backgroundPosition: `${design.image.position.x}% ${design.image.position.y}%`,
                     borderRadius: 8,
                     boxShadow: "0 6px 30px rgba(0,0,0,0.5)",
@@ -230,7 +232,8 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
                   height: isSaveTheDate ? "43%" : "42%",
                   marginBottom: isSaveTheDate ? 26 : 20,
                   backgroundImage: `url("${photoUrl}")`,
-                  backgroundSize: photoZoom === 1 ? "cover" : `${100 * photoZoom}%`,
+                  backgroundSize: photoBackgroundSize,
+                  backgroundRepeat: "no-repeat",
                   backgroundPosition: `${design.image.position.x}% ${design.image.position.y}%`,
                   border: `1px solid ${accent}66`,
                 }}

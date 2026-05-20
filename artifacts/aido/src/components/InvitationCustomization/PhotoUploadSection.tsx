@@ -103,6 +103,7 @@ export function PhotoUploadSection({
     ? onSaveTheDatePositionChange
     : onDigitalInvitationPositionChange;
   const photoZoom = clampPhotoZoom(isSaveTheDate ? saveTheDatePhotoZoom : digitalInvitationPhotoZoom);
+  const fitWholePhoto = photoZoom < 1;
   const onZoomChange = isSaveTheDate ? onSaveTheDateZoomChange : onDigitalInvitationZoomChange;
   const hasReposition = !!(position && onPositionChange);
   const photoEffect = isSaveTheDate ? saveTheDatePhotoEffect : digitalInvitationPhotoEffect;
@@ -308,18 +309,19 @@ export function PhotoUploadSection({
                 <AuthMediaImage
                   src={previewUrl}
                   alt={`${label} preview`}
-                  className="w-full h-40 object-cover border rounded"
+                  className="w-full h-40 border rounded"
                   style={
                     hasReposition && position
                       ? {
+                          objectFit: fitWholePhoto ? "contain" : "cover",
                           objectPosition: `${position.x}% ${position.y}%`,
-                          transform: `scale(${photoZoom})`,
+                          transform: `scale(${fitWholePhoto ? 1 : photoZoom})`,
                           transformOrigin: `${position.x}% ${position.y}%`,
                           filter: photoEffectToFilter(photoEffect),
                           userSelect: "none",
                           pointerEvents: "none",
                         }
-                      : { pointerEvents: "none", filter: photoEffectToFilter(photoEffect) }
+                      : { objectFit: "cover", pointerEvents: "none", filter: photoEffectToFilter(photoEffect) }
                   }
                   draggable={false}
                 />
@@ -393,7 +395,9 @@ export function PhotoUploadSection({
                 <div className="space-y-2 rounded-md border bg-muted/20 p-2">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[11px] font-medium text-muted-foreground">Photo zoom</span>
-                    <span className="text-[11px] tabular-nums text-muted-foreground">{Math.round(photoZoom * 100)}%</span>
+                    <span className="text-[11px] tabular-nums text-muted-foreground">
+                      {fitWholePhoto ? "Fit" : `${Math.round(photoZoom * 100)}%`}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
@@ -431,7 +435,7 @@ export function PhotoUploadSection({
                     </Button>
                   </div>
                   <p className="text-[11px] text-muted-foreground text-center">
-                    Drag to reposition, or{" "}
+                    Zoom out to fit, zoom in to crop, or{" "}
                     <button
                       type="button"
                       className="underline hover:text-foreground transition-colors"

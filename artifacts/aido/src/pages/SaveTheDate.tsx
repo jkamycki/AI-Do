@@ -146,8 +146,8 @@ export default function SaveTheDate() {
   const defaultMsg = couple ? `Mark your calendar! ${couple} are getting married and we'd love to celebrate with you.` : null;
   const msgText    = (overrides["std:message"]?.text as string | undefined) || info?.saveTheDateMessage || defaultMsg;
   const photoPos   = info?.photoObjectPosition ?? "50% 50%";
-  const photoZoom  = Math.max(1, Math.min(2.5, Number(info?.photoZoom ?? 1) || 1));
-  const photoBgSize = photoZoom === 1 ? "cover" : `${100 * photoZoom}%`;
+  const photoZoom  = Math.max(0.5, Math.min(2.5, Number(info?.photoZoom ?? 1) || 1));
+  const photoBgSize = photoZoom < 1 ? "contain" : photoZoom === 1 ? "cover" : `${100 * photoZoom}%`;
   const photoFilter = photoEffectToFilter(info?.photoEffect);
   const isFullPhotoLayout = false;
   const groomFirst = String(info?.partner1Name || "").trim().split(/\s+/)[0] || "Partner";
@@ -240,6 +240,7 @@ export default function SaveTheDate() {
               inset: 0,
               backgroundImage: `url('/api/save-the-date/${token}/photo?v=${info.photoVersion}')`,
               backgroundSize: photoBgSize,
+              backgroundRepeat: "no-repeat",
               backgroundPosition: photoPos,
               filter: photoFilter,
             }}
@@ -346,6 +347,7 @@ export default function SaveTheDate() {
                   width: "100%", height: 200,
                   backgroundImage: `url('/api/save-the-date/${token}/photo?v=${info.photoVersion}')`,
                   backgroundSize: photoBgSize,
+                  backgroundRepeat: "no-repeat",
                   backgroundPosition: photoPos,
                   filter: photoFilter,
                   borderRadius: 8,
