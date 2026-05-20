@@ -1914,20 +1914,33 @@ function ClerkProviderWithRoutes() {
   );
 }
 
+const chunkErrorPattern = /Failed to fetch dynamically imported module|Loading chunk \d+ failed|Importing a module script failed|ChunkLoadError/i;
+const chunkReloadFlag = "aido_chunk_reload_attempted";
+
+function isChunkLoadError(message: string) {
+  return chunkErrorPattern.test(message);
+}
+
+function canAutoRecoverChunk() {
+  return typeof sessionStorage !== "undefined" && !sessionStorage.getItem(chunkReloadFlag);
+}
+
 class AppErrorBoundary extends Component<
   { children: ReactNode },
-  { hasError: boolean; message: string; stack: string; componentStack: string }
+  { hasError: boolean; message: string; stack: string; componentStack: string; autoRecoveringChunk: boolean }
 > {
   constructor(props: { children: ReactNode }) {
     super(props);
-    this.state = { hasError: false, message: "", stack: "", componentStack: "" };
+    this.state = { hasError: false, message: "", stack: "", componentStack: "", autoRecoveringChunk: false };
   }
   static getDerivedStateFromError(error: Error) {
+    const message = error?.message || String(error);
     return {
       hasError: true,
-      message: error?.message || String(error),
+      message,
       stack: error?.stack || "",
       componentStack: "",
+      autoRecoveringChunk: isChunkLoadError(message) && canAutoRecoverChunk(),
     };
   }
   componentDidCatch(error: Error, info: { componentStack?: string | null }) {
@@ -1935,23 +1948,25 @@ class AppErrorBoundary extends Component<
     this.setState({ componentStack: info?.componentStack || "" });
     // Auto-reload once on stale-chunk errors after a deploy.
     const msg = error?.message || "";
-    if (/Failed to fetch dynamically imported module|Loading chunk \d+ failed|Importing a module script failed|ChunkLoadError/i.test(msg)) {
-      const flag = "aido_chunk_reload_attempted";
-      if (typeof sessionStorage !== "undefined" && !sessionStorage.getItem(flag)) {
-        sessionStorage.setItem(flag, String(Date.now()));
+    if (isChunkLoadError(msg)) {
+      if (canAutoRecoverChunk()) {
+        sessionStorage.setItem(chunkReloadFlag, String(Date.now()));
         window.location.reload();
       }
     }
   }
   render() {
     if (this.state.hasError) {
-      const isStale = false;
+      if (this.state.autoRecoveringChunk) {
+        return <RouteLoading />;
+      }
+      const isStale = isChunkLoadError(this.state.message);
       return (
         <div className="flex min-h-screen items-center justify-center bg-[#FFF7F2] bg-[radial-gradient(circle_at_18%_4%,rgba(141,41,77,0.10),transparent_52%)] p-8 text-center text-[#2D1B22]">
           <div className="w-full max-w-xl rounded-[20px] border border-[#8D294D]/20 bg-white/85 px-7 py-9 shadow-[0_20px_60px_rgba(91,15,42,0.12)]">
             <p className="mb-3 text-xs font-extrabold uppercase tracking-[0.16em] text-[#8D294D]">A.IDO</p>
             <h1 className="font-serif text-4xl font-semibold leading-none text-[#5B0F2A] sm:text-5xl">
-              {isStale ? "This page needs to be refreshed" : "We’re working on it"}
+              {isStale ? "This page needs to be refreshed" : "We're working on it"}
             </h1>
             <p className="mx-auto mt-5 max-w-md text-sm leading-7 text-[#6F3E54] sm:text-base">
               {isStale
