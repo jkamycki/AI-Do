@@ -85,6 +85,7 @@ interface Props {
   isSendingRsvpReminder?: boolean;
   defaultTab?: "saveTheDate" | "digitalInvitation";
   reminderOnly?: boolean;
+  bulkRecipientCount?: number;
 }
 
 function formatTime(timeStr: string | null | undefined): string | null {
@@ -512,6 +513,7 @@ export function InvitationSendModal({
   isSendingRsvpReminder,
   defaultTab = "saveTheDate",
   reminderOnly = false,
+  bulkRecipientCount,
 }: Props) {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"saveTheDate" | "digitalInvitation">(defaultTab);
@@ -719,6 +721,8 @@ export function InvitationSendModal({
   let title = "Preview & Send Invitation";
   if (isBlocked) title = "Design Incomplete";
   else if (isCustomMode) title = "Review & Send Custom Design";
+  const isBulkSend = !!bulkRecipientCount && bulkRecipientCount > 1;
+  const recipientLabel = isBulkSend ? `${bulkRecipientCount} selected guests` : guest?.name;
 
   return (
     <Dialog open={!!guest} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -727,8 +731,8 @@ export function InvitationSendModal({
           <DialogTitle className="font-serif text-xl text-primary flex items-center gap-2">
             <Send className="h-5 w-5" />
             {title}
-            {guest && (
-              <span className="text-base font-normal text-muted-foreground ml-1">for {guest.name}</span>
+            {recipientLabel && (
+              <span className="text-base font-normal text-muted-foreground ml-1">for {recipientLabel}</span>
             )}
           </DialogTitle>
         </DialogHeader>
@@ -795,7 +799,7 @@ export function InvitationSendModal({
                   >
                     {isSendingSaveTheDate
                       ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
-                      : <><Send className="h-4 w-4" /> {guest?.email ? "Send Save the Date email" : "Mark Save the Date as sent"}</>
+                      : <><Send className="h-4 w-4" /> {isBulkSend ? `Send Save the Date to ${bulkRecipientCount} guests` : guest?.email ? "Send Save the Date email" : "Mark Save the Date as sent"}</>
                     }
                   </Button>
                   {!guest?.email && (
@@ -864,7 +868,7 @@ export function InvitationSendModal({
                     >
                       {isSendingDigital
                         ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
-                        : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
+                        : <><Send className="h-4 w-4" /> {isBulkSend ? `Send RSVP Invitation to ${bulkRecipientCount} guests` : guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
                       }
                     </Button>
                   )}
@@ -909,7 +913,7 @@ export function InvitationSendModal({
                   >
                     {isSendingSaveTheDate
                       ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
-                      : <><Send className="h-4 w-4" /> {guest?.email ? "Send Save the Date email" : "Mark Save the Date as sent"}</>
+                      : <><Send className="h-4 w-4" /> {isBulkSend ? `Send Save the Date to ${bulkRecipientCount} guests` : guest?.email ? "Send Save the Date email" : "Mark Save the Date as sent"}</>
                     }
                   </Button>
                   {!guest?.email && (
@@ -971,7 +975,7 @@ export function InvitationSendModal({
                     >
                       {isSendingDigital
                         ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
-                        : <><Send className="h-4 w-4" /> {guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
+                        : <><Send className="h-4 w-4" /> {isBulkSend ? `Send RSVP Invitation to ${bulkRecipientCount} guests` : guest?.email ? "Send RSVP Invitation email" : "Mark RSVP Invitation as sent"}</>
                       }
                     </Button>
                   )}

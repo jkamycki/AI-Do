@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { useForm } from "react-hook-form";
 import ExcelJS from "exceljs";
@@ -1544,6 +1544,9 @@ export default function Guests({
     "saveTheDate" | "digitalInvitation"
   >(sendDefaultInvitation);
   const [sendModalReminderOnly, setSendModalReminderOnly] = useState(false);
+  const [bulkPreviewMode, setBulkPreviewMode] = useState<null | "saveTheDate" | "invitation">(null);
+  const [selectedGuestIds, setSelectedGuestIds] = useState<Set<number>>(new Set());
+  const initializedGuestSelectionRef = useRef(false);
 
   const { data: weddingProfile, isLoading: profileLoading } = useGetProfile();
   const { data, isLoading, isError } = useGetGuests();
@@ -1764,11 +1767,11 @@ export default function Guests({
     null | "saveTheDate" | "invitation" | "reminder"
   >(null);
 
-  const handleSendAllReminders = async () => {
-    if (!reminderEligible.length) return;
+  const handleSendAllReminders = async (targetGuests = reminderEligible) => {
+    if (!targetGuests.length) return;
     setSendingReminders(true);
     let sent = 0;
-    for (const g of reminderEligible) {
+    for (const g of targetGuests) {
       try {
         const res = await authFetch(
           `/api/guests/${g.id}/send-rsvp?reminder=true`,
@@ -1783,15 +1786,15 @@ export default function Guests({
     invalidate();
     toast({
       title: `Reminders sent`,
-      description: `${sent} of ${reminderEligible.length} reminder email${reminderEligible.length !== 1 ? "s" : ""} delivered.`,
+      description: `${sent} of ${targetGuests.length} reminder email${targetGuests.length !== 1 ? "s" : ""} delivered.`,
     });
   };
 
-  const handleSendAllSaveTheDates = async () => {
-    if (!saveTheDateEligible.length) return;
+  const handleSendAllSaveTheDates = async (targetGuests = saveTheDateEligible) => {
+    if (!targetGuests.length) return;
     setSendingSaveTheDates(true);
     let sent = 0;
-    for (const g of saveTheDateEligible) {
+    for (const g of targetGuests) {
       try {
         const res = await authFetch(`/api/guests/${g.id}/send-save-the-date`, {
           method: "POST",
@@ -1805,15 +1808,15 @@ export default function Guests({
     invalidate();
     toast({
       title: "Save-the-Dates sent",
-      description: `${sent} of ${saveTheDateEligible.length} save-the-date${saveTheDateEligible.length !== 1 ? "s" : ""} sent.`,
+      description: `${sent} of ${targetGuests.length} save-the-date${targetGuests.length !== 1 ? "s" : ""} sent.`,
     });
   };
 
-  const handleSendAllInvitations = async () => {
-    if (!invitationEligible.length) return;
+  const handleSendAllInvitations = async (targetGuests = invitationEligible) => {
+    if (!targetGuests.length) return;
     setSendingInvitations(true);
     let sent = 0;
-    for (const g of invitationEligible) {
+    for (const g of targetGuests) {
       try {
         const res = await authFetch(`/api/guests/${g.id}/send-rsvp`, {
           method: "POST",
@@ -1827,7 +1830,7 @@ export default function Guests({
     invalidate();
     toast({
       title: "RSVP Invitations sent",
-      description: `${sent} of ${invitationEligible.length} RSVP invitation${invitationEligible.length !== 1 ? "s" : ""} sent.`,
+      description: `${sent} of ${targetGuests.length} RSVP invitation${targetGuests.length !== 1 ? "s" : ""} sent.`,
     });
   };
 
@@ -1844,13 +1847,54 @@ export default function Guests({
       g.rsvpStatus === "pending" &&
       ((g as any).rsvpReminderStatus ?? "not_sent") !== "sent",
   );
+  useEffect(() => {
+    setSelectedGuestIds((current) => {
+      const liveIds = new Set(allGuests.map((guest) => guest.id));
+      const next = new Set<number>();
+      for (const id of current) {
+        if (liveIds.has(id)) next.add(id);
+      }
+      if (!initializedGuestSelectionRef.current && allGuests.length > 0) {
+        initializedGuestSelectionRef.current = true;
+        return new Set(allGuests.map((guest) => guest.id));
+      }
+      return next;
+    });
+  }, [allGuests]);
+  const selectedSaveTheDateEligible = saveTheDateEligible.filter((guest) => selectedGuestIds.has(guest.id));
+  const selectedInvitationEligible = invitationEligible.filter((guest) => selectedGuestIds.has(guest.id));
+  const selectedReminderEligible = reminderEligible.filter((guest) => selectedGuestIds.has(guest.id));
+  const toggleGuestSelected = (guestId: number, checked: boolean) => {
+    setSelectedGuestIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(guestId);
+      else next.delete(guestId);
+      return next;
+    });
+  };
+  const openBulkPreview = (mode: "saveTheDate" | "invitation") => {
+    const targetGuests = mode === "saveTheDate" ? selectedSaveTheDateEligible : selectedInvitationEligible;
+    if (!targetGuests.length) {
+      toast({
+        title: "No selected guests ready",
+        description: mode === "saveTheDate"
+          ? "Select at least one guest who has not received a save-the-date yet."
+          : "Select at least one guest who has not received an RSVP invitation yet.",
+      });
+      return;
+    }
+    setBulkPreviewMode(mode);
+    setSendModalDefaultTab(mode === "saveTheDate" ? "saveTheDate" : "digitalInvitation");
+    setSendModalReminderOnly(false);
+    setSendModalGuest(targetGuests[0]);
+  };
   const bulkSendGuests =
     confirmBulkSend === "saveTheDate"
-      ? saveTheDateEligible
+      ? selectedSaveTheDateEligible
       : confirmBulkSend === "invitation"
-        ? invitationEligible
+        ? selectedInvitationEligible
         : confirmBulkSend === "reminder"
-          ? reminderEligible
+          ? selectedReminderEligible
           : [];
   const summary = data?.summary ?? {
     total: 0,
@@ -1930,6 +1974,19 @@ export default function Guests({
         sensitivity: "base",
       }),
     );
+  const setAllFilteredSelected = (checked: boolean) => {
+    setSelectedGuestIds((current) => {
+      const next = new Set(current);
+      for (const guest of filtered) {
+        if (checked) next.add(guest.id);
+        else next.delete(guest.id);
+      }
+      return next;
+    });
+  };
+  const filteredSelectedCount = filtered.filter((guest) => selectedGuestIds.has(guest.id)).length;
+  const allFilteredSelected = filtered.length > 0 && filteredSelectedCount === filtered.length;
+  const someFilteredSelected = filteredSelectedCount > 0 && !allFilteredSelected;
 
   const queryKey = getGetGuestsQueryKey();
   const invalidate = () => {
@@ -2819,11 +2876,11 @@ export default function Guests({
                   <AlertDialogHeader>
                     <AlertDialogTitle>
                       {confirmBulkSend === "saveTheDate" &&
-                        "Send All Save-the-Dates?"}
+                        "Send Selected Save-the-Dates?"}
                       {confirmBulkSend === "invitation" &&
-                        "Send All RSVP Invitations?"}
+                        "Send Selected RSVP Invitations?"}
                       {confirmBulkSend === "reminder" &&
-                        "Send All RSVP Reminders?"}
+                        "Send Selected RSVP Reminders?"}
                     </AlertDialogTitle>
                     <AlertDialogDescription>
                       This will send emails to{" "}
@@ -2853,9 +2910,9 @@ export default function Guests({
                       onClick={() => {
                         const mode = confirmBulkSend;
                         setConfirmBulkSend(null);
-                        if (mode === "saveTheDate") handleSendAllSaveTheDates();
-                        if (mode === "invitation") handleSendAllInvitations();
-                        if (mode === "reminder") handleSendAllReminders();
+                        if (mode === "saveTheDate") handleSendAllSaveTheDates(selectedSaveTheDateEligible);
+                        if (mode === "invitation") handleSendAllInvitations(selectedInvitationEligible);
+                        if (mode === "reminder") handleSendAllReminders(selectedReminderEligible);
                       }}
                     >
                       Confirm & Send
@@ -2909,7 +2966,7 @@ export default function Guests({
         <div className="rounded-xl border border-primary/15 bg-[#FFF8F1]/85 p-3 shadow-sm dark:border-primary/25 dark:bg-card/80">
           <div className="flex flex-col gap-3">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-primary/80">
-              Bulk email
+              Bulk email <span className="text-muted-foreground">({selectedGuestIds.size} selected)</span>
             </p>
             <div className="grid gap-3 lg:grid-cols-3">
               <Button
@@ -2917,9 +2974,9 @@ export default function Guests({
                 size="sm"
                 className="h-12 w-full justify-between gap-4 whitespace-nowrap border-primary/25 bg-white/65 px-4 text-[#6F3E54] hover:bg-primary/10 hover:text-primary dark:bg-card dark:text-primary"
                 disabled={
-                  sendingSaveTheDates || saveTheDateEligible.length === 0
+                  sendingSaveTheDates || selectedSaveTheDateEligible.length === 0
                 }
-                onClick={() => setConfirmBulkSend("saveTheDate")}
+                onClick={() => openBulkPreview("saveTheDate")}
               >
                 <span className="inline-flex items-center">
                   {sendingSaveTheDates ? (
@@ -2930,14 +2987,14 @@ export default function Guests({
                   Send Save-the-Dates
                 </span>
                 <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
-                  {saveTheDateEligible.length}
+                  {selectedSaveTheDateEligible.length}
                 </Badge>
               </Button>
               <Button
                 size="sm"
                 className="h-12 w-full justify-between gap-4 whitespace-nowrap bg-primary px-4 text-primary-foreground hover:bg-primary/90"
-                disabled={sendingInvitations || invitationEligible.length === 0}
-                onClick={() => setConfirmBulkSend("invitation")}
+                disabled={sendingInvitations || selectedInvitationEligible.length === 0}
+                onClick={() => openBulkPreview("invitation")}
               >
                 <span className="inline-flex items-center">
                   {sendingInvitations ? (
@@ -2948,14 +3005,14 @@ export default function Guests({
                   Send RSVP Invitations
                 </span>
                 <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
-                  {invitationEligible.length}
+                  {selectedInvitationEligible.length}
                 </Badge>
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-12 w-full justify-between gap-4 whitespace-nowrap px-4 text-primary/70 hover:bg-primary/10 hover:text-primary disabled:bg-transparent disabled:text-muted-foreground/55"
-                disabled={sendingReminders || reminderEligible.length === 0}
+                disabled={sendingReminders || selectedReminderEligible.length === 0}
                 onClick={() => setConfirmBulkSend("reminder")}
               >
                 <span className="inline-flex items-center">
@@ -2967,7 +3024,7 @@ export default function Guests({
                   Send RSVP Reminders
                 </span>
                 <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/15 disabled:text-muted-foreground">
-                  {reminderEligible.length}
+                  {selectedReminderEligible.length}
                 </Badge>
               </Button>
             </div>
@@ -3301,16 +3358,23 @@ export default function Guests({
                     className={`rounded-lg border p-3 space-y-3 ${isDuplicate ? "bg-orange-50/60 dark:bg-orange-900/15 border-orange-300 dark:border-orange-700" : isNew ? (isRsvpSelfAdded ? "bg-orange-50/60 dark:bg-orange-900/15 border-orange-300 dark:border-orange-700" : "bg-amber-50/40 dark:bg-amber-900/10 border-amber-300 dark:border-amber-700") : "bg-background"}`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="flex items-center gap-1.5 font-medium leading-tight break-words">
-                          {isWeddingPartyGuest && (
-                            <Star
-                              className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-500"
-                              aria-label="Wedding party member"
-                            />
-                          )}
-                          {g.name}
-                        </p>
+                      <div className="flex min-w-0 items-start gap-2">
+                        <Checkbox
+                          checked={selectedGuestIds.has(g.id)}
+                          onCheckedChange={(checked) => toggleGuestSelected(g.id, checked === true)}
+                          aria-label={`Select ${g.name}`}
+                          className="mt-0.5"
+                        />
+                        <div className="min-w-0">
+                          <p className="flex items-center gap-1.5 font-medium leading-tight break-words">
+                            {isWeddingPartyGuest && (
+                              <Star
+                                className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-500"
+                                aria-label="Wedding party member"
+                              />
+                            )}
+                            {g.name}
+                          </p>
                         {isNew && (
                           <button
                             type="button"
@@ -3334,11 +3398,12 @@ export default function Guests({
                             {g.email}
                           </p>
                         )}
-                        {(g as any).phone && (
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {(g as any).phone}
-                          </p>
-                        )}
+                          {(g as any).phone && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {(g as any).phone}
+                            </p>
+                          )}
+                        </div>
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -3425,27 +3490,6 @@ export default function Guests({
                       >
                         <Edit2 className="h-3.5 w-3.5" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={`h-8 w-8 ${g.rsvpStatus === "attending" ? "text-emerald-500" : g.rsvpStatus === "declined" ? "text-red-400" : "text-muted-foreground"}`}
-                        disabled={
-                          g.rsvpStatus === "attending" ||
-                          g.rsvpStatus === "declined"
-                        }
-                        onClick={() => {
-                          if (
-                            g.rsvpStatus === "attending" ||
-                            g.rsvpStatus === "declined"
-                          )
-                            return;
-                          setSendModalDefaultTab(sendDefaultInvitation);
-                          setSendModalReminderOnly(false);
-                          setSendModalGuest(g);
-                        }}
-                      >
-                        <Send className="h-3.5 w-3.5" />
-                      </Button>
                       {(g as any).phone && (
                         <Button
                           variant="ghost"
@@ -3502,8 +3546,9 @@ export default function Guests({
             <div className="hidden sm:block">
               <Table wrapperClassName="overflow-visible" className="w-full table-fixed text-xs lg:text-sm">
                 <colgroup>
-                  <col className="w-[20%]" />
-                  <col className="w-[17%]" />
+                  <col className="w-[4%]" />
+                  <col className="w-[18%]" />
+                  <col className="w-[16%]" />
                   <col className="w-[10%]" />
                   <col className="w-[9%]" />
                   <col className="w-[8%]" />
@@ -3514,6 +3559,13 @@ export default function Guests({
                 </colgroup>
                 <TableHeader className="bg-muted/10">
                   <TableRow>
+                    <TableHead className="text-primary">
+                      <Checkbox
+                        checked={allFilteredSelected ? true : someFilteredSelected ? "indeterminate" : false}
+                        onCheckedChange={(checked) => setAllFilteredSelected(checked === true)}
+                        aria-label="Select all visible guests"
+                      />
+                    </TableHead>
                     <TableHead className="text-primary">
                       {t("guests.col_name")}
                     </TableHead>
@@ -3553,6 +3605,13 @@ export default function Guests({
                         key={g.id}
                         className={`group ${isDuplicate ? "bg-orange-50/60 dark:bg-orange-900/15 border-l-4 border-l-orange-500 dark:border-l-orange-400" : isNew ? "bg-amber-50/40 dark:bg-amber-900/10 border-l-4 border-l-amber-400 dark:border-l-amber-500" : ""}`}
                       >
+                        <TableCell className="align-top">
+                          <Checkbox
+                            checked={selectedGuestIds.has(g.id)}
+                            onCheckedChange={(checked) => toggleGuestSelected(g.id, checked === true)}
+                            aria-label={`Select ${g.name}`}
+                          />
+                        </TableCell>
                         <TableCell className="align-top">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="inline-flex min-w-0 items-center gap-1.5 font-medium">
@@ -3881,42 +3940,6 @@ export default function Guests({
                         </TableCell>
                         <TableCell className="align-top">
                           <div className="flex flex-wrap items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className={`h-8 w-8 transition-colors ${
-                                g.rsvpStatus === "attending"
-                                  ? "text-emerald-500 cursor-default"
-                                  : g.rsvpStatus === "declined"
-                                    ? "text-red-400 cursor-default"
-                                    : g.invitationStatus === "sent"
-                                      ? "text-yellow-500 hover:text-yellow-600"
-                                      : "text-muted-foreground hover:text-primary"
-                              }`}
-                              title={
-                                g.rsvpStatus === "attending"
-                                  ? "RSVP confirmed"
-                                  : g.rsvpStatus === "declined"
-                                    ? "Declined"
-                                    : "Preview & Send invitation"
-                              }
-                              disabled={
-                                g.rsvpStatus === "attending" ||
-                                g.rsvpStatus === "declined"
-                              }
-                              onClick={() => {
-                                if (
-                                  g.rsvpStatus === "attending" ||
-                                  g.rsvpStatus === "declined"
-                                )
-                                  return;
-                                setSendModalDefaultTab(sendDefaultInvitation);
-                                setSendModalReminderOnly(false);
-                                setSendModalGuest(g);
-                              }}
-                            >
-                              <Send className="h-3.5 w-3.5" />
-                            </Button>
                             {(g as any).phone && (
                               <Button
                                 variant="ghost"
@@ -3933,28 +3956,6 @@ export default function Guests({
                                 )}
                               </Button>
                             )}
-                            {g.rsvpStatus === "pending" &&
-                              g.invitationStatus === "sent" &&
-                              (g.email ||
-                                (g as any).saveTheDateStatus === "sent") && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-amber-500 hover:text-amber-600"
-                                  title={
-                                    g.email
-                                      ? "Send RSVP reminder"
-                                      : "Mark RSVP reminder as sent"
-                                  }
-                                  onClick={() => {
-                                    setSendModalDefaultTab("digitalInvitation");
-                                    setSendModalReminderOnly(true);
-                                    setSendModalGuest(g);
-                                  }}
-                                >
-                                  <Mail className="h-3.5 w-3.5" />
-                                </Button>
-                              )}
                             <Button
                               variant="ghost"
                               size="icon"
@@ -4125,15 +4126,35 @@ export default function Guests({
       <InvitationSendModal
         guest={sendModalGuest}
         profile={weddingProfile ?? null}
-        onClose={() => setSendModalGuest(null)}
-        onSendSaveTheDate={(guestId) => sendSaveTheDate.mutate(guestId)}
-        onSendDigitalInvitation={(guestId) => sendRsvp.mutate(guestId)}
+        onClose={() => {
+          setSendModalGuest(null);
+          setBulkPreviewMode(null);
+        }}
+        onSendSaveTheDate={(guestId) => {
+          if (bulkPreviewMode === "saveTheDate") {
+            void handleSendAllSaveTheDates(selectedSaveTheDateEligible);
+            setSendModalGuest(null);
+            setBulkPreviewMode(null);
+            return;
+          }
+          sendSaveTheDate.mutate(guestId);
+        }}
+        onSendDigitalInvitation={(guestId) => {
+          if (bulkPreviewMode === "invitation") {
+            void handleSendAllInvitations(selectedInvitationEligible);
+            setSendModalGuest(null);
+            setBulkPreviewMode(null);
+            return;
+          }
+          sendRsvp.mutate(guestId);
+        }}
         onSendRsvpReminder={(guestId) => sendRsvpReminder.mutate(guestId)}
-        isSendingSaveTheDate={sendSaveTheDate.isPending}
-        isSendingDigital={sendRsvp.isPending}
+        isSendingSaveTheDate={bulkPreviewMode === "saveTheDate" ? sendingSaveTheDates : sendSaveTheDate.isPending}
+        isSendingDigital={bulkPreviewMode === "invitation" ? sendingInvitations : sendRsvp.isPending}
         isSendingRsvpReminder={sendRsvpReminder.isPending}
         defaultTab={sendModalDefaultTab}
         reminderOnly={sendModalReminderOnly}
+        bulkRecipientCount={bulkPreviewMode === "saveTheDate" ? selectedSaveTheDateEligible.length : bulkPreviewMode === "invitation" ? selectedInvitationEligible.length : undefined}
       />
     </div>
   );
