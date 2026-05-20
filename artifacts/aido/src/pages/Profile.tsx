@@ -79,11 +79,61 @@ function normalizeVenueStatus(value?: string | null): VenueStatus {
   return value === "not_yet" || value === "deciding" ? "not_yet" : "booked";
 }
 
+type VenueFlowDraft = {
+  venueStatus: VenueStatus;
+  venueDiscovery: VenueDiscoveryData;
+  updatedAt: number;
+};
+
+function getVenueDraftStorageKey(profileId?: string | number | null, userId?: string | null) {
+  if (profileId != null) return `aido:venue-flow-draft:profile:${profileId}`;
+  if (userId) return `aido:venue-flow-draft:user:${userId}`;
+  return null;
+}
+
+function readVenueFlowDraft(key: string | null): VenueFlowDraft | null {
+  if (!key || typeof window === "undefined") return null;
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(key) ?? "null") as Partial<VenueFlowDraft> | null;
+    if (!parsed || typeof parsed.updatedAt !== "number") return null;
+    return {
+      venueStatus: normalizeVenueStatus(parsed.venueStatus),
+      venueDiscovery: normalizeVenueDiscovery(parsed.venueDiscovery),
+      updatedAt: parsed.updatedAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeVenueFlowDraft(key: string | null, draft: VenueFlowDraft) {
+  if (!key || typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(draft));
+  } catch {
+    // Large inspiration screenshots can exceed localStorage; the normal Save button still persists the full profile.
+  }
+}
+
+function clearVenueFlowDraft(key: string | null) {
+  if (!key || typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // Ignore unavailable storage in restricted browser modes.
+  }
+}
+
+function getProfileUpdatedAtMs(profile?: { updatedAt?: string | null }) {
+  const updatedAt = Date.parse(profile?.updatedAt ?? "");
+  return Number.isFinite(updatedAt) ? updatedAt : 0;
+}
+
 export default function Profile() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, userId } = useAuth();
   const { data: profile, isLoading, isFetching, isError, error, refetch } = useGetProfile({
     query: {
       queryKey: getGetProfileQueryKey(),
@@ -129,13 +179,19 @@ export default function Profile() {
       preferredLanguage: "English",
     },
   });
+  const profileId = (profile as { id?: string | number | null } | undefined)?.id;
+  const venueDraftKey = getVenueDraftStorageKey(profileId, userId);
+  const hasHydratedVenueDraftRef = useRef(false);
 
   useEffect(() => {
     if (profile) {
       const profileWithVenueFlow = profile as typeof profile & {
         venueStatus?: string | null;
         venueDiscovery?: VenueDiscoveryData | null;
+        updatedAt?: string | null;
       };
+      const draft = readVenueFlowDraft(venueDraftKey);
+      const shouldUseDraft = !!draft && draft.updatedAt > getProfileUpdatedAtMs(profileWithVenueFlow);
       form.reset({
         partner1Name: profile.partner1Name,
         accountType: "couple_individual",
@@ -143,8 +199,8 @@ export default function Profile() {
         weddingDate: (profile.weddingDate ?? "").split('T')[0],
         ceremonyTime: profile.ceremonyTime,
         receptionTime: profile.receptionTime,
-        venueStatus: normalizeVenueStatus(profileWithVenueFlow.venueStatus),
-        venueDiscovery: normalizeVenueDiscovery(profileWithVenueFlow.venueDiscovery),
+        venueStatus: shouldUseDraft ? draft.venueStatus : normalizeVenueStatus(profileWithVenueFlow.venueStatus),
+        venueDiscovery: shouldUseDraft ? draft.venueDiscovery : normalizeVenueDiscovery(profileWithVenueFlow.venueDiscovery),
         venue: profile.venue,
         location: profile.location,
         venueCity: profile.venueCity ?? "",
@@ -161,12 +217,78 @@ export default function Profile() {
         totalBudget: profile.totalBudget,
         preferredLanguage: profile.preferredLanguage ?? "English",
       });
+      hasHydratedVenueDraftRef.current = true;
     }
-  }, [profile, form]);
+  }, [profile, form, venueDraftKey]);
+
+  useEffect(() => {
+    if (!isNoProfileYet || !venueDraftKey || hasHydratedVenueDraftRef.current) return;
+    const draft = readVenueFlowDraft(venueDraftKey);
+    if (draft) {
+      form.reset({
+        ...form.getValues(),
+        venueStatus: draft.venueStatus,
+        venueDiscovery: draft.venueDiscovery,
+      });
+    }
+    hasHydratedVenueDraftRef.current = true;
+  }, [form, isNoProfileYet, venueDraftKey]);
+
+  useEffect(() => {
+    if (!venueDraftKey) return;
+    const subscription = form.watch((values, { name }) => {
+      if (!hasHydratedVenueDraftRef.current) return;
+      if (name && name !== "venueStatus" && name !== "venueDiscovery") return;
+
+      const nextStatus = normalizeVenueStatus(values.venueStatus);
+      writeVenueFlowDraft(venueDraftKey, {
+        venueStatus: nextStatus,
+        venueDiscovery: nextStatus === "booked"
+          ? emptyVenueDiscoveryData
+          : normalizeVenueDiscovery(values.venueDiscovery as VenueDiscoveryData | undefined),
+        updatedAt: Date.now(),
+      });
+    });
+
+    return () => subscription.unsubscribe();
+  }, [form, venueDraftKey]);
+
+  const handleVenueStatusChange = useCallback((value: VenueStatus) => {
+    form.setValue("venueStatus", value, { shouldDirty: true, shouldValidate: true });
+
+    if (value === "booked") {
+      form.setValue("venueDiscovery", emptyVenueDiscoveryData, { shouldDirty: true });
+      writeVenueFlowDraft(venueDraftKey, {
+        venueStatus: "booked",
+        venueDiscovery: emptyVenueDiscoveryData,
+        updatedAt: Date.now(),
+      });
+      return;
+    }
+
+    const currentDiscovery = normalizeVenueDiscovery(form.getValues("venueDiscovery"));
+    form.setValue("venueDiscovery", currentDiscovery, { shouldDirty: true });
+    writeVenueFlowDraft(venueDraftKey, {
+      venueStatus: "not_yet",
+      venueDiscovery: currentDiscovery,
+      updatedAt: Date.now(),
+    });
+  }, [form, venueDraftKey]);
+
+  const handleVenueDiscoveryChange = useCallback((value: VenueDiscoveryData) => {
+    const normalizedDiscovery = normalizeVenueDiscovery(value);
+    form.setValue("venueDiscovery", normalizedDiscovery, { shouldDirty: true });
+    writeVenueFlowDraft(venueDraftKey, {
+      venueStatus: "not_yet",
+      venueDiscovery: normalizedDiscovery,
+      updatedAt: Date.now(),
+    });
+  }, [form, venueDraftKey]);
 
   const onSubmit = (data: ProfileFormValues) => {
     saveProfile.mutate({ data: { ...data, accountType: "couple_individual" } }, {
       onSuccess: () => {
+        clearVenueFlowDraft(venueDraftKey);
         toast({
           title: t("profile.saved_toast"),
           description: t("profile.saved_toast_desc"),
@@ -323,13 +445,13 @@ export default function Profile() {
 
               <VenueQuestion
                 value={venueStatus}
-                onChange={(value) => form.setValue("venueStatus", value, { shouldDirty: true, shouldValidate: true })}
+                onChange={handleVenueStatusChange}
               />
 
               {venueStatus === "not_yet" && (
                 <VenueWizard
                   value={form.watch("venueDiscovery")}
-                  onChange={(value) => form.setValue("venueDiscovery", value, { shouldDirty: true })}
+                  onChange={handleVenueDiscoveryChange}
                   coupleNames={coupleNames || undefined}
                 />
               )}
@@ -622,31 +744,34 @@ export default function Profile() {
                   type="button"
                   size="lg"
                   variant="outline"
-                  onClick={() => form.reset({
-                    accountType: "couple_individual",
-                    partner1Name: "",
-                    partner2Name: "",
-                    weddingDate: "",
-                    ceremonyTime: "",
-                    receptionTime: "",
-                    venueStatus: "booked",
-                    venueDiscovery: emptyVenueDiscoveryData,
-                    venue: "",
-                    location: "",
-                    venueCity: "",
-                    venueState: "",
-                    venueZip: "",
-                    venueCountry: "",
-                    ceremonyAtVenue: true,
-                    ceremonyVenueName: "",
-                    ceremonyAddress: "",
-                    ceremonyCity: "",
-                    ceremonyState: "",
-                    ceremonyZip: "",
-                    guestCount: 0,
-                    totalBudget: 0,
-                    preferredLanguage: "English",
-                  })}
+                  onClick={() => {
+                    clearVenueFlowDraft(venueDraftKey);
+                    form.reset({
+                      accountType: "couple_individual",
+                      partner1Name: "",
+                      partner2Name: "",
+                      weddingDate: "",
+                      ceremonyTime: "",
+                      receptionTime: "",
+                      venueStatus: "booked",
+                      venueDiscovery: emptyVenueDiscoveryData,
+                      venue: "",
+                      location: "",
+                      venueCity: "",
+                      venueState: "",
+                      venueZip: "",
+                      venueCountry: "",
+                      ceremonyAtVenue: true,
+                      ceremonyVenueName: "",
+                      ceremonyAddress: "",
+                      ceremonyCity: "",
+                      ceremonyState: "",
+                      ceremonyZip: "",
+                      guestCount: 0,
+                      totalBudget: 0,
+                      preferredLanguage: "English",
+                    });
+                  }}
                   className="px-6"
                   data-testid="btn-reset-profile"
                 >
