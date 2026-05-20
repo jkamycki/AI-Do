@@ -3970,10 +3970,7 @@ export function WebsiteRenderer({
   }, [renderDevice]);
 
   const activeRenderDevice = renderDevice ?? detectedDevice;
-  const data = {
-    ...rawData,
-    customText: stripDeviceOverrides(rawData.customText),
-  };
+  const data = applyWebsiteDeviceOverrides(rawData, activeRenderDevice);
   const ctx: EditCtx =
     editable && onTextChange
       ? {
