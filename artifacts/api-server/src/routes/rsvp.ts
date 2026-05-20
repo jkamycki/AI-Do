@@ -193,7 +193,7 @@ async function buildPublishedWebsiteUrl(req: import("express").Request, profileI
     .where(eq(weddingWebsites.profileId, profileId))
     .limit(1);
   if (!site?.published || !site.slug) return null;
-  return `${buildFrontendOrigin(req)}/w/${site.slug}#rsvp`;
+  return `${buildFrontendOrigin(req)}/w/${site.slug}`;
 }
 
 /**
