@@ -2974,16 +2974,16 @@ export default function Guests({
                   }
                 }}
               >
-                <DialogContent className="sm:max-w-2xl">
+                <DialogContent className="left-1/2 w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] overflow-hidden p-4 sm:max-w-2xl sm:p-6">
                   <DialogHeader>
-                    <DialogTitle className="font-serif text-2xl text-primary">
+                    <DialogTitle className="max-w-full break-words pr-8 font-serif text-xl leading-tight text-primary sm:text-2xl">
                       {bulkShareIntent === "text"
                         ? "Text Personalized Links"
                         : bulkLinksMode
                           ? getBulkLinksTitle(bulkLinksMode)
                           : "Personalized Links"}
                     </DialogTitle>
-                    <DialogDescription>
+                    <DialogDescription className="max-w-full break-words text-sm leading-relaxed">
                       {bulkShareIntent === "text"
                         ? "Tap each guest to open a prefilled text message with their private link."
                         : bulkLinksMode
@@ -2997,9 +2997,9 @@ export default function Guests({
                       Generating personalized links...
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="min-w-0 space-y-3">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm leading-relaxed text-muted-foreground">
                           {bulkShareIntent === "text"
                             ? `${bulkLinks.filter((item) => normalizeSmsPhone(item.phone)).length} of ${bulkLinks.length} guests have phone numbers.`
                             : `${bulkLinks.length} personalized link${bulkLinks.length !== 1 ? "s" : ""} ready to share.`}
@@ -3007,7 +3007,7 @@ export default function Guests({
                         <Button
                           type="button"
                           size="sm"
-                          className="gap-2"
+                          className="w-full gap-2 sm:w-auto"
                           disabled={bulkLinks.length === 0}
                           onClick={copyBulkLinks}
                         >
@@ -3015,17 +3015,17 @@ export default function Guests({
                           {bulkShareIntent === "text" ? "Copy all instead" : "Copy all links"}
                         </Button>
                       </div>
-                      <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
+                      <div className="max-h-[52vh] min-w-0 space-y-2 overflow-y-auto pr-1">
                         {bulkLinks.map((item) => (
                           <div
                             key={item.guestId}
-                            className="rounded-lg border border-primary/15 bg-[#FFF8F1] p-3 text-sm"
+                            className="min-w-0 rounded-lg border border-primary/15 bg-[#FFF8F1] p-3 text-sm"
                           >
-                            <p className="font-semibold text-foreground">
+                            <p className="min-w-0 break-words font-semibold text-foreground">
                               {item.name}
                             </p>
-                            <div className="mt-1 flex items-center gap-2">
-                              <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                            <div className="mt-2 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+                              <p className="min-w-0 flex-1 overflow-hidden text-ellipsis break-all rounded-md bg-white/50 px-2 py-1.5 text-xs leading-relaxed text-muted-foreground sm:line-clamp-2">
                                 {bulkShareIntent === "text"
                                   ? normalizeSmsPhone(item.phone) || "No phone number"
                                   : item.url}
@@ -3035,7 +3035,7 @@ export default function Guests({
                                   type="button"
                                   variant="outline"
                                   size="sm"
-                                  className="h-8 shrink-0 gap-1.5"
+                                  className="h-9 w-full shrink-0 gap-1.5 sm:w-auto"
                                   disabled={!normalizeSmsPhone(item.phone) || !bulkLinksMode}
                                   onClick={() => {
                                     if (!bulkLinksMode) return;
@@ -3055,7 +3055,7 @@ export default function Guests({
                                   type="button"
                                   variant="outline"
                                   size="sm"
-                                  className="h-8 shrink-0 gap-1.5"
+                                  className="h-9 w-full shrink-0 gap-1.5 sm:w-auto"
                                   onClick={async () => {
                                     await navigator.clipboard.writeText(item.url);
                                     toast({
