@@ -221,7 +221,7 @@ function CardShell({
       {hasPhoto && (
         <div
           style={{
-            padding: "18px 24px 14px",
+            padding: 0,
             backgroundColor: bg, backgroundImage: dotPat, backgroundSize: "22px 22px",
             cursor: onPhotoPositionChange ? "grab" : undefined,
             touchAction: onPhotoPositionChange ? "none" : undefined,
@@ -236,10 +236,10 @@ function CardShell({
             style={{
               position: "relative",
               aspectRatio: "16 / 9",
-              maxHeight: 188,
+              maxHeight: 236,
               overflow: "hidden",
-              borderRadius: 8,
-              boxShadow: "0 5px 18px rgba(59,28,43,0.16)",
+              borderRadius: 0,
+              boxShadow: "none",
               backgroundColor: `${accent}12`,
             }}
           >
