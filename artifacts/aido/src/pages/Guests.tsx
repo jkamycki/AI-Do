@@ -1282,9 +1282,6 @@ function GuestCollectorCard() {
   const collectorUrl = token
     ? `${window.location.origin}/api/guest-collect/${token}/preview`
     : null;
-  const collectorPreviewImageUrl = token
-    ? `${window.location.origin}/api/guest-collect/${token}/preview-card.svg`
-    : null;
 
   const coupleNames = profile
     ? `${profile.partner2Name ?? "Bride"} & ${profile.partner1Name ?? "Groom"}`
@@ -1405,18 +1402,34 @@ function GuestCollectorCard() {
               <p className="text-[11px] text-muted-foreground mb-1.5 font-medium">
                 {t("guests.link_preview_label")}
               </p>
-              <div className="overflow-hidden rounded-xl border border-primary/20 bg-background/60 shadow-sm">
-                {collectorPreviewImageUrl && (
-                  <img
-                    src={collectorPreviewImageUrl}
-                    alt={`${coupleNames} contact info request preview`}
-                    className="block h-auto w-full"
-                    loading="lazy"
-                  />
-                )}
-                <div className="border-t border-primary/10 px-4 py-3">
-                  <p className="truncate text-xs font-medium text-foreground">{coupleNames} - Contact Info Request</p>
-                  <p className="truncate text-[11px] text-muted-foreground">{formUrl}</p>
+              <div className="rounded-xl border border-primary/20 bg-background/60 overflow-hidden shadow-sm">
+                <div
+                  className="h-1 w-full"
+                  style={{
+                    background: "linear-gradient(90deg, #E91E8C, #7B2FBE)",
+                  }}
+                />
+                <div className="flex items-start gap-3 p-3">
+                  <div className="shrink-0 h-11 w-11 rounded-full flex items-center justify-center bg-primary/15 ring-1 ring-primary/30">
+                    <Heart className="h-5 w-5 fill-primary text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5 text-primary">
+                      {t("guests.contact_info_request")}
+                    </p>
+                    <p
+                      className="text-sm font-bold text-foreground leading-tight truncate"
+                      style={{ fontFamily: "Georgia, serif" }}
+                    >
+                      {coupleNames}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {t("guests.collecting_addresses")}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-1 truncate">
+                      {formUrl}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

@@ -101,8 +101,11 @@ router.get("/guest-collect/:token/preview-card.svg", async (req, res) => {
     const p = profiles[0];
     const name1 = p.partner1Name ?? "Partner 1";
     const name2 = p.partner2Name ?? "Partner 2";
+    const frontendOrigin = buildFrontendOrigin(req);
+    const formUrl = `${frontendOrigin}/collect/${req.params.token}`;
     const couple = escapeHtml(`${name1} & ${name2}`);
     const description = escapeHtml("are collecting addresses for their wedding invitations");
+    const safeFormUrl = escapeHtml(formUrl);
 
     res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=300");
@@ -113,22 +116,22 @@ router.get("/guest-collect/:token/preview-card.svg", async (req, res) => {
       <stop offset="0%" stop-color="#E91E8C"/>
       <stop offset="100%" stop-color="#7B2FBE"/>
     </linearGradient>
-    <filter id="shadow" x="-10%" y="-20%" width="120%" height="160%">
-      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#3B1C2B" flood-opacity="0.22"/>
+    <filter id="shadow" x="-8%" y="-35%" width="116%" height="190%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#3B1C2B" flood-opacity="0.18"/>
     </filter>
   </defs>
   <rect width="1200" height="630" fill="#FFF7F2"/>
-  <circle cx="1070" cy="112" r="220" fill="#F2E2C6" opacity="0.38"/>
-  <circle cx="130" cy="520" r="240" fill="#E6A6B7" opacity="0.18"/>
+  <circle cx="1050" cy="120" r="230" fill="#F2E2C6" opacity="0.32"/>
+  <circle cx="124" cy="520" r="235" fill="#E6A6B7" opacity="0.16"/>
   <g filter="url(#shadow)">
-    <rect x="60" y="135" width="1080" height="360" rx="30" fill="#FFF7F2" stroke="#E6A6B7" stroke-width="2"/>
-    <rect x="60" y="135" width="1080" height="8" rx="4" fill="url(#top)"/>
-    <circle cx="170" cy="300" r="50" fill="#EED2D9" stroke="#D9A9B7" stroke-width="2"/>
-    <text x="170" y="315" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="42" fill="#8D294D">&#9829;</text>
-    <text x="250" y="260" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" letter-spacing="4" fill="#B23062">CONTACT INFO REQUEST</text>
-    <text x="250" y="315" font-family="Georgia, 'Times New Roman', serif" font-size="42" font-weight="700" fill="#3B1C2B">${couple}</text>
-    <text x="250" y="365" font-family="Arial, Helvetica, sans-serif" font-size="28" fill="#6F3E54">${description}</text>
-    <text x="250" y="420" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#9A7B88">aidowedding.net</text>
+    <rect x="70" y="218" width="1060" height="194" rx="22" fill="#FFF7F2" stroke="#E6A6B7" stroke-width="2"/>
+    <rect x="70" y="218" width="1060" height="8" rx="4" fill="url(#top)"/>
+    <circle cx="150" cy="315" r="38" fill="#EED2D9" stroke="#D9A9B7" stroke-width="2"/>
+    <text x="150" y="328" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="36" fill="#8D294D">&#9829;</text>
+    <text x="215" y="280" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="700" letter-spacing="4" fill="#B23062">CONTACT INFO REQUEST</text>
+    <text x="215" y="322" font-family="Georgia, 'Times New Roman', serif" font-size="34" font-weight="700" fill="#3B1C2B">${couple}</text>
+    <text x="215" y="358" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#6F3E54">${description}</text>
+    <text x="215" y="392" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#9A7B88">${safeFormUrl}</text>
   </g>
 </svg>`);
   } catch (err) {
