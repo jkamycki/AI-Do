@@ -3870,17 +3870,12 @@ export default function Guests({
                 <TableHeader className="bg-muted/10">
                   <TableRow>
                     <TableHead className="text-primary">
-                      <div className="flex flex-col items-center gap-1">
+                      <div className="flex items-center justify-center">
                         <Checkbox
                           checked={allFilteredSelected ? true : someFilteredSelected ? "indeterminate" : false}
                           onCheckedChange={(checked) => setAllFilteredSelected(checked === true)}
                           aria-label="Select or deselect all visible guests"
                         />
-                        <span className="text-center text-[9px] font-semibold uppercase tracking-wide leading-tight">
-                          Select
-                          <br />
-                          Deselect
-                        </span>
                       </div>
                     </TableHead>
                     <TableHead className="text-primary">
