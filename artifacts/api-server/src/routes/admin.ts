@@ -11,6 +11,12 @@ import {
 import { eq, gte, desc, sql, and, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { purgeUserData, snapshotUserData } from "../lib/userCleanup";
+import {
+  backupDatabase,
+  downloadDatabaseBackup,
+  listDatabaseBackups,
+  restoreDatabaseBackup,
+} from "../lib/backup";
 import { sendEmail, FROM_EMAIL } from "../lib/resend";
 import { trackEvent } from "../lib/trackEvent";
 import { openai, getModel, supportsCustomTemperature } from "@workspace/integrations-openai-ai-server";
@@ -118,6 +124,56 @@ router.put("/admin/maintenance/:section", requireAuth, requireAdmin, async (req,
   } catch (err) {
     req.log.error({ err }, "Maintenance setting save error");
     res.status(500).json({ error: "Failed to save maintenance settings" });
+  }
+});
+
+router.get("/admin/backups", requireAuth, requireAdmin, async (_req, res) => {
+  try {
+    res.json({ backups: await listDatabaseBackups() });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : "Failed to list database backups" });
+  }
+});
+
+router.post("/admin/backups/run", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const reason = typeof req.body?.reason === "string" && req.body.reason.trim()
+      ? req.body.reason.trim().slice(0, 80)
+      : "manual";
+    const result = await backupDatabase({ reason });
+    res.json(result);
+  } catch (err) {
+    req.log.error({ err }, "Manual database backup failed");
+    res.status(500).json({ error: err instanceof Error ? err.message : "Failed to run database backup" });
+  }
+});
+
+router.get("/admin/backups/download", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const key = typeof req.query.key === "string" ? req.query.key : "";
+    const backup = await downloadDatabaseBackup(key);
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Content-Disposition", `attachment; filename="${key.split("/").pop()?.replace(/\.gz$/, "") || "aido-backup.json"}"`);
+    res.json(backup);
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : "Failed to download database backup" });
+  }
+});
+
+router.post("/admin/backups/restore", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const key = typeof req.body?.key === "string" ? req.body.key : "";
+    const confirm = typeof req.body?.confirm === "string" ? req.body.confirm.trim() : "";
+    if (confirm !== "RESTORE DATABASE") {
+      return res.status(400).json({ error: "Type RESTORE DATABASE to confirm this destructive restore." });
+    }
+
+    await backupDatabase({ reason: "pre-restore-safety" });
+    const result = await restoreDatabaseBackup(key);
+    res.json(result);
+  } catch (err) {
+    req.log.error({ err }, "Database restore failed");
+    res.status(500).json({ error: err instanceof Error ? err.message : "Failed to restore database backup" });
   }
 });
 

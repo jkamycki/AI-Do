@@ -238,6 +238,7 @@ const TABS = [
   { key: "users", label: "Users", icon: Users },
   { key: "engagement", label: "Engagement", icon: Zap },
   { key: "marketing", label: "Marketing", icon: Megaphone },
+  { key: "backups", label: "Backups", icon: FileDown },
   { key: "archive", label: "Archive", icon: Shield },
   { key: "events", label: "Event Log", icon: Activity },
   { key: "messages", label: "Messages", icon: Inbox },
@@ -2492,6 +2493,223 @@ interface ArchiveSummary {
   manualExpenses: number;
 }
 
+interface DatabaseBackupEntry {
+  key: string;
+  createdAt: string | null;
+  reason: string | null;
+  totalRows: number | null;
+  size: number;
+  lastModified: string | null;
+}
+
+function formatBytes(size: number) {
+  if (!Number.isFinite(size) || size <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  let value = size;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value.toFixed(value >= 10 || unit === 0 ? 0 : 1)} ${units[unit]}`;
+}
+
+function DatabaseBackupsSection() {
+  const { toast } = useToast();
+  const [restoreKey, setRestoreKey] = useState("");
+  const [restoreConfirm, setRestoreConfirm] = useState("");
+
+  const { data, isLoading, refetch } = useQuery<{ backups: DatabaseBackupEntry[] }>({
+    queryKey: ["admin-database-backups"],
+    queryFn: async () => {
+      const r = await authFetch("/api/admin/backups");
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error ?? "Failed to load backups");
+      return j as { backups: DatabaseBackupEntry[] };
+    },
+  });
+
+  const runBackup = useMutation({
+    mutationFn: async () => {
+      const r = await authFetch("/api/admin/backups/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: "manual" }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error ?? "Backup failed");
+      return j as { key: string; totalRows: number };
+    },
+    onSuccess: (result) => {
+      toast({ title: "Backup saved", description: `${result.totalRows.toLocaleString()} rows copied to R2.` });
+      void refetch();
+    },
+    onError: (error) => {
+      toast({
+        title: "Backup failed",
+        description: error instanceof Error ? error.message : "Check backup environment variables.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const restoreBackup = useMutation({
+    mutationFn: async () => {
+      const r = await authFetch("/api/admin/backups/restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: restoreKey, confirm: restoreConfirm }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error ?? "Restore failed");
+      return j as { restoredRows: number; tables: number };
+    },
+    onSuccess: (result) => {
+      toast({ title: "Database restored", description: `${result.restoredRows.toLocaleString()} rows restored across ${result.tables} tables.` });
+      setRestoreConfirm("");
+      void refetch();
+    },
+    onError: (error) => {
+      toast({
+        title: "Restore failed",
+        description: error instanceof Error ? error.message : "Try a different backup.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const downloadBackup = async (key: string) => {
+    try {
+      const r = await authFetch(`/api/admin/backups/download?key=${encodeURIComponent(key)}`);
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        throw new Error(j.error ?? "Download failed");
+      }
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = key.split("/").pop()?.replace(/\.gz$/, "") || "aido-database-backup.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast({
+        title: "Download failed",
+        description: error instanceof Error ? error.message : "Could not download backup.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const backups = data?.backups ?? [];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-2xl font-serif text-primary flex items-center gap-2">
+            <FileDown className="h-6 w-6" />
+            Database Backups
+          </h2>
+          <p className="text-muted-foreground mt-1">
+            Full logical database backups are stored outside Neon in R2 so user data can be recovered if Neon is wiped.
+          </p>
+        </div>
+        <Button
+          onClick={() => runBackup.mutate()}
+          disabled={runBackup.isPending}
+          className="gap-2 bg-primary hover:bg-primary/90"
+        >
+          {runBackup.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          Run Backup Now
+        </Button>
+      </div>
+
+      <Card className="border-amber-200 bg-amber-50/70">
+        <CardContent className="pt-5">
+          <div className="flex items-start gap-3 text-amber-900">
+            <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+            <div className="space-y-1 text-sm">
+              <p className="font-semibold">Restore replaces the current database.</p>
+              <p>Before any restore, the app automatically creates a pre-restore safety backup. Type <span className="font-mono font-bold">RESTORE DATABASE</span> to confirm.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {isLoading ? (
+        <div className="space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full" />)}</div>
+      ) : backups.length === 0 ? (
+        <div className="py-16 text-center text-muted-foreground">
+          <FileDown className="h-10 w-10 mx-auto mb-3 opacity-20" />
+          <p className="font-medium">No backups found</p>
+          <p className="text-sm mt-1">Run a manual backup or wait for the scheduled backup job.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {backups.map((backup) => {
+            const isSelected = restoreKey === backup.key;
+            return (
+              <Card key={backup.key} className="border-none shadow-sm">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-primary truncate">{backup.key.split("/").pop()}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                        <span>{backup.lastModified ? new Date(backup.lastModified).toLocaleString() : "Unknown date"}</span>
+                        <span>{formatBytes(backup.size)}</span>
+                        {backup.totalRows !== null && <span>{backup.totalRows.toLocaleString()} rows</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="outline" className="gap-1.5" onClick={() => downloadBackup(backup.key)}>
+                        <FileDown className="h-3.5 w-3.5" />
+                        Download
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={isSelected ? "default" : "outline"}
+                        className={isSelected ? "gap-1.5 bg-primary hover:bg-primary/90" : "gap-1.5"}
+                        onClick={() => {
+                          setRestoreKey(isSelected ? "" : backup.key);
+                          setRestoreConfirm("");
+                        }}
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        Restore
+                      </Button>
+                    </div>
+                  </div>
+                  {isSelected && (
+                    <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+                      <p className="text-sm font-medium text-primary">Confirm restore from this backup</p>
+                      <input
+                        value={restoreConfirm}
+                        onChange={(event) => setRestoreConfirm(event.target.value)}
+                        placeholder="RESTORE DATABASE"
+                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono outline-none focus:ring-1 focus:ring-primary/40"
+                      />
+                      <Button
+                        size="sm"
+                        disabled={restoreConfirm !== "RESTORE DATABASE" || restoreBackup.isPending}
+                        onClick={() => restoreBackup.mutate()}
+                        className="gap-1.5 bg-primary hover:bg-primary/90"
+                      >
+                        {restoreBackup.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                        Restore Database
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function archiveSummary(archivedData: Record<string, unknown>): ArchiveSummary {
   const arr = (k: string) => Array.isArray(archivedData[k]) ? (archivedData[k] as unknown[]).length : 0;
   return {
@@ -2953,7 +3171,7 @@ export default function AdminPage() {
 
       {/* Tab content */}
       <div>
-        {metricsLoading && activeTab !== "events" && activeTab !== "messages" && activeTab !== "testActivity" && activeTab !== "launchPlan" && (
+        {metricsLoading && activeTab !== "events" && activeTab !== "messages" && activeTab !== "testActivity" && activeTab !== "launchPlan" && activeTab !== "backups" && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-24" />)}
@@ -2975,6 +3193,7 @@ export default function AdminPage() {
         )}
 
         {activeTab === "marketing" && <MarketingOutreachSection />}
+        {activeTab === "backups" && <DatabaseBackupsSection />}
         {activeTab === "archive" && <DeletedArchiveSection />}
 
         {activeTab === "events" && (
