@@ -1906,6 +1906,9 @@ export default function Guests({
   const selectedInvitationEligible = invitationEligible.filter((guest) => selectedGuestIds.has(guest.id));
   const selectedReminderEligible = reminderEligible.filter((guest) => selectedGuestIds.has(guest.id));
   const selectedGuests = allGuests.filter((guest) => selectedGuestIds.has(guest.id));
+  const readyBulkButtonClass =
+    "h-12 w-full justify-between gap-4 whitespace-nowrap bg-primary px-4 text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground";
+  const readyBulkBadgeClass = "bg-white/20 text-white border-white/30";
   const toggleGuestSelected = (guestId: number, checked: boolean) => {
     setSelectedGuestIds((current) => {
       const next = new Set(current);
@@ -3250,9 +3253,8 @@ export default function Guests({
             <div className="grid gap-3 lg:grid-cols-3">
               <div className="rounded-lg border border-primary/15 bg-white/55 p-2 shadow-sm">
                 <Button
-                  variant="outline"
                   size="sm"
-                  className="h-12 w-full justify-between gap-4 whitespace-nowrap border-primary/25 bg-white/65 px-4 text-[#6F3E54] hover:bg-primary/10 hover:text-primary dark:bg-card dark:text-primary"
+                  className={readyBulkButtonClass}
                   disabled={
                     sendingSaveTheDates || selectedSaveTheDateEligible.length === 0
                   }
@@ -3266,7 +3268,7 @@ export default function Guests({
                     )}
                     Send Save-the-Dates
                   </span>
-                  <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+                  <Badge variant="secondary" className={readyBulkBadgeClass}>
                     {selectedSaveTheDateEligible.length}
                   </Badge>
                 </Button>
@@ -3287,7 +3289,7 @@ export default function Guests({
               <div className="rounded-lg border border-primary/15 bg-white/55 p-2 shadow-sm">
                 <Button
                   size="sm"
-                  className="h-12 w-full justify-between gap-4 whitespace-nowrap bg-primary px-4 text-primary-foreground hover:bg-primary/90"
+                  className={readyBulkButtonClass}
                   disabled={sendingInvitations || selectedInvitationEligible.length === 0}
                   onClick={() => handleBulkPrimaryAction("invitation")}
                 >
@@ -3319,9 +3321,8 @@ export default function Guests({
               </div>
               <div className="rounded-lg border border-primary/15 bg-white/55 p-2 shadow-sm">
                 <Button
-                  variant="ghost"
                   size="sm"
-                  className="h-12 w-full justify-between gap-4 whitespace-nowrap px-4 text-primary/70 hover:bg-primary/10 hover:text-primary disabled:bg-transparent disabled:text-muted-foreground/55"
+                  className={readyBulkButtonClass}
                   disabled={sendingReminders || selectedReminderEligible.length === 0}
                   onClick={() => handleBulkPrimaryAction("reminder")}
                 >
@@ -3333,7 +3334,7 @@ export default function Guests({
                     )}
                     Send RSVP Reminders
                   </span>
-                  <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/15 disabled:text-muted-foreground">
+                  <Badge variant="secondary" className={readyBulkBadgeClass}>
                     {selectedReminderEligible.length}
                   </Badge>
                 </Button>
