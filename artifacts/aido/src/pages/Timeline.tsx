@@ -12,7 +12,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useGetTimeline, useGenerateTimeline, useGetProfile, getGetTimelineQueryKey, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { authFetch } from "@/lib/authFetch";
-import { getCurrentLanguageCode } from "@/lib/languagePreference";
+import { getCurrentLanguageCode, getCurrentLanguageName } from "@/lib/languagePreference";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
@@ -181,7 +181,7 @@ const STATUS_CONFIG: Record<TimelineStatus, { label: string; badgeClass: string;
 const ALL_STATUSES = Object.keys(STATUS_CONFIG) as TimelineStatus[];
 const LEGACY_VISION_STORAGE_KEY = "aido_timeline_day_vision";
 const VISION_STORAGE_KEY_PREFIX = "aido_timeline_day_vision_v2";
-const TIMELINE_TRANSLATION_CACHE_PREFIX = "aido_timeline_translation_v1";
+const TIMELINE_TRANSLATION_CACHE_PREFIX = "aido_timeline_translation_v2";
 
 function parseMinutes(time: string): number {
   if (!time) return -1;
@@ -756,6 +756,7 @@ export default function Timeline() {
       ? `user:${userId}`
       : "anonymous";
   const languageCode = (i18n.resolvedLanguage || i18n.language || getCurrentLanguageCode()).split("-")[0] || "en";
+  const languageName = getCurrentLanguageName();
   const translationSignature = useMemo(() => timelineTranslationSignature(localEvents), [localEvents]);
 
   useEffect(() => {
@@ -792,13 +793,27 @@ export default function Timeline() {
     authFetch(`${API}/api/timeline/${timelineId}/translate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ events: localEvents }),
+      body: JSON.stringify({ events: localEvents, preferredLanguage: languageName }),
     })
       .then(async (response) => {
         const body = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error((body as any)?.error ?? response.statusText);
+        if (languageCode !== "en" && (body as any)?.language === "English") {
+          throw new Error("Timeline translation returned English");
+        }
         const events = Array.isArray((body as any).events) ? (body as any).events.map(normalizeEvent) : null;
         if (!events || events.length !== localEvents.length || cancelled) return;
+        const changedText = events.some((event, index) => {
+          const source = localEvents[index];
+          return event.title !== source.title
+            || event.description !== source.description
+            || event.location !== source.location
+            || event.notes !== source.notes;
+        });
+        if (languageCode !== "en" && !changedText) {
+          setTranslatedEvents(null);
+          return;
+        }
         setTranslatedEvents(events);
         try {
           localStorage.setItem(cacheKey, JSON.stringify(events));
@@ -816,7 +831,7 @@ export default function Timeline() {
     return () => {
       cancelled = true;
     };
-  }, [isDirty, languageCode, localEvents, timeline?.id, translationScope, translationSignature]);
+  }, [isDirty, languageCode, languageName, localEvents, timeline?.id, translationScope, translationSignature]);
 
   const visibleEvents = translatedEvents ?? localEvents;
   const conflicts = useMemo(() => detectConflicts(visibleEvents), [visibleEvents]);

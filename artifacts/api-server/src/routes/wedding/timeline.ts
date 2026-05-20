@@ -619,7 +619,8 @@ router.post("/timeline/:id/translate", requireAuth, async (req, res) => {
     const prompt = `Translate these wedding timeline blocks into ${language}.
 
 CRITICAL RULES:
-- Return ONLY valid JSON. No markdown. No explanation.
+- Return ONLY valid JSON in this shape: {"events":[...]}.
+- No markdown. No explanation.
 - Preserve the array length and order.
 - Preserve every id, startTime, endTime, category, status, and any unknown fields exactly.
 - Translate ONLY the human-readable values: title, description, location, and notes.
@@ -631,16 +632,16 @@ ${JSON.stringify(events)}`;
 
     const completion = await openai.chat.completions.create({
       model: getModel(),
+      response_format: { type: "json_object" },
       max_completion_tokens: 2400,
       messages: [{ role: "user", content: prompt }],
     }, { signal: AbortSignal.timeout(30_000) });
 
     const content = completion.choices[0]?.message?.content ?? "[]";
-    let translated = events;
+    let translated: TimelineBlock[] | null = null;
     try {
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : content);
-      const parsedEvents = normalizeTimelineBlocks(parsed);
+      const parsed = JSON.parse(content);
+      const parsedEvents = normalizeTimelineBlocks(Array.isArray(parsed) ? parsed : parsed?.events);
       if (parsedEvents.length === events.length) {
         translated = parsedEvents.map((event, index) => ({
           ...events[index],
@@ -652,6 +653,10 @@ ${JSON.stringify(events)}`;
       }
     } catch (parseErr) {
       req.log.warn({ err: String(parseErr), preview: content.slice(0, 500) }, "Timeline translation JSON parse failed");
+    }
+    if (!translated) {
+      res.status(502).json({ error: "Timeline translation failed. Please try again." });
+      return;
     }
 
     res.json({ language, events: translated });

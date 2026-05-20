@@ -940,6 +940,10 @@
     "delete_event_title": "Delete this event",
     "reset_button": "Reset",
     "resetting": "Resetting…",
+    "status_not_started": "Not started",
+    "status_pending": "Pending",
+    "status_completed": "Completed",
+    "translating_blocks": "Translating saved blocks...",
     "reset_success": "Timeline reset",
     "reset_success_desc": "Your original wedding day timeline has been restored.",
     "reset_failed": "Could not reset timeline"
