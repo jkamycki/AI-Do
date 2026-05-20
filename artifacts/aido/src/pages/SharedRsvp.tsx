@@ -1,12 +1,27 @@
 import { useEffect, useState } from "react";
 import { useRoute } from "wouter";
 import { apiFetch } from "@/lib/authFetch";
-import { Loader2 } from "lucide-react";
+import { ArrowDown, Loader2 } from "lucide-react";
 import { RsvpFlow } from "@/components/website/RsvpFlow";
 import type { WebsiteRendererPayload } from "@/components/website/WebsiteRenderer";
+import {
+  AiDigitalInvitationPreview,
+  type CustomColors,
+  type PhotoPosition,
+  type WeddingInfo,
+} from "@/components/InvitationCustomization/AiPreviewComponents";
+import type { ColorPalette } from "@/types/invitations";
 
 interface PublicSitePayload extends WebsiteRendererPayload {
   slug: string;
+  invitationPreview?: {
+    profile: WeddingInfo;
+    photoUrl?: string | null;
+    photoPosition?: PhotoPosition;
+    photoZoom?: number;
+    photoEffect?: string | null;
+    customColors?: CustomColors | null;
+  };
 }
 
 function setMeta(name: string, content: string, isProperty = false) {
@@ -26,12 +41,14 @@ export default function SharedRsvp() {
   const [data, setData] = useState<PublicSitePayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showRsvp, setShowRsvp] = useState(false);
 
   useEffect(() => {
     if (!token) return;
     setLoading(true);
     setError(null);
     setData(null);
+    setShowRsvp(false);
     apiFetch(`/api/invitation-shares/${encodeURIComponent(token)}`)
       .then(async (res) => {
         if (res.status === 404) {
@@ -87,7 +104,46 @@ export default function SharedRsvp() {
 
   return (
     <main className="min-h-screen" style={{ background: data.customText._rsvpBg || data.colorPalette.background }}>
-      <RsvpFlow data={data} slug={token} sharedToken={token} />
+      {!showRsvp ? (
+        <section className="min-h-screen px-4 py-8 sm:px-6 sm:py-12">
+          <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-6">
+            <div className="w-full max-w-[520px]">
+              <AiDigitalInvitationPreview
+                profile={data.invitationPreview?.profile ?? {
+                  partner1Name: data.couple.partner1Name,
+                  partner2Name: data.couple.partner2Name,
+                  weddingDate: data.couple.weddingDate,
+                  venue: data.couple.venue,
+                  venueAddress: data.couple.location,
+                  venueCity: data.couple.venueCity,
+                  venueState: data.couple.venueState,
+                  ceremonyTime: data.couple.ceremonyTime,
+                  receptionTime: data.couple.receptionTime,
+                  websiteUrl: data.publicWebsiteUrl ?? null,
+                  guestName: "Guest",
+                }}
+                palette={data.colorPalette as ColorPalette}
+                photoUrl={data.invitationPreview?.photoUrl ?? data.heroImage}
+                photoPosition={data.invitationPreview?.photoPosition}
+                photoZoom={data.invitationPreview?.photoZoom}
+                photoEffect={data.invitationPreview?.photoEffect}
+                customColors={data.invitationPreview?.customColors ?? undefined}
+                onRsvpClick={() => setShowRsvp(true)}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowRsvp(true)}
+              className="inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold shadow-sm transition hover:opacity-90"
+              style={{ background: data.colorPalette.primary, color: "#fff" }}
+            >
+              RSVP Now <ArrowDown className="h-4 w-4" />
+            </button>
+          </div>
+        </section>
+      ) : (
+        <RsvpFlow data={data} slug={token} sharedToken={token} />
+      )}
     </main>
   );
 }

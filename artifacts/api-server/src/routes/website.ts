@@ -198,7 +198,19 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
     .orderBy(hotelBlocks.createdAt);
 
   const [invitationCustomization] = await db
-    .select({ customColors: invitationCustomizations.customColors })
+    .select({
+      customColors: invitationCustomizations.customColors,
+      colorPalette: invitationCustomizations.colorPalette,
+      digitalInvitationPhotoUrl: invitationCustomizations.digitalInvitationPhotoUrl,
+      digitalInvitationPhotoPosition: invitationCustomizations.digitalInvitationPhotoPosition,
+      digitalInvitationBackground: invitationCustomizations.digitalInvitationBackground,
+      digitalInvitationFont: invitationCustomizations.digitalInvitationFont,
+      digitalInvitationFontColor: invitationCustomizations.digitalInvitationFontColor,
+      digitalInvitationFontSize: invitationCustomizations.digitalInvitationFontSize,
+      digitalInvitationAccentColor: invitationCustomizations.digitalInvitationAccentColor,
+      useGeneratedInvitation: invitationCustomizations.useGeneratedInvitation,
+      rsvpByDate: invitationCustomizations.rsvpByDate,
+    })
     .from(invitationCustomizations)
     .where(eq(invitationCustomizations.profileId, profile.id))
     .limit(1);
@@ -287,12 +299,49 @@ async function buildInvitationSharePayload(profileId: number, frontendOrigin: st
   if (invitationColors.rsvpHotelBlockId !== undefined && invitationColors.rsvpHotelBlockId !== null) {
     customText._rsvpHotelBlockId = String(invitationColors.rsvpHotelBlockId);
   }
+  const publicWebsiteUrl = publishedWebsite?.published && publishedWebsite.slug
+    ? `${frontendOrigin.replace(/\/$/, "")}/w/${publishedWebsite.slug}`
+    : null;
+  const isCustomInvitation = invitationCustomization?.useGeneratedInvitation === false;
+  const digitalAccent = isCustomInvitation
+    ? String(invitationCustomization?.digitalInvitationAccentColor || invitationColors.digitalInvitationAccent || invitationCustomization?.colorPalette?.accent || "#8D294D")
+    : "#8D294D";
+  const digitalFontColor = String(invitationCustomization?.digitalInvitationFontColor || "#3B1C2B");
 
   return {
     slug: signInvitationShare(profile.id),
-    publicWebsiteUrl: publishedWebsite?.published && publishedWebsite.slug
-      ? `${frontendOrigin.replace(/\/$/, "")}/w/${publishedWebsite.slug}`
-      : null,
+    publicWebsiteUrl,
+    invitationPreview: {
+      photoUrl: invitationCustomization?.digitalInvitationPhotoUrl || profile.invitationPhotoUrl || defaultHeroImageFor(profile),
+      photoPosition: invitationCustomization?.digitalInvitationPhotoPosition ?? { x: 50, y: 58 },
+      photoZoom: typeof invitationColors.digitalInvitationPhotoZoom === "number" ? invitationColors.digitalInvitationPhotoZoom : 1,
+      photoEffect: typeof invitationColors.digitalInvitationPhotoEffect === "string" ? invitationColors.digitalInvitationPhotoEffect : "none",
+      customColors: isCustomInvitation ? {
+        bg: invitationCustomization?.digitalInvitationBackground || "#FFFFFF",
+        accent: digitalAccent,
+        text: digitalFontColor,
+        muted: `${digitalFontColor}99`,
+        cardBdr: `${digitalAccent}33`,
+        font: invitationCustomization?.digitalInvitationFont || "Playfair Display",
+        fontSize: invitationCustomization?.digitalInvitationFontSize || "16",
+      } : null,
+      profile: {
+        partner1Name: profile.partner1Name,
+        partner2Name: profile.partner2Name,
+        weddingDate: profile.weddingDate,
+        venue: profile.venue,
+        venueAddress: profile.location,
+        venueCity: profile.venueCity,
+        venueState: profile.venueState,
+        venueZip: profile.venueZip,
+        ceremonyTime: profile.ceremonyTime,
+        receptionTime: profile.receptionTime,
+        invitationMessage: profile.invitationMessage,
+        websiteUrl: publicWebsiteUrl,
+        guestName: "Guest",
+        rsvpByDate: invitationCustomization?.rsvpByDate ?? null,
+      },
+    },
     theme: "classic",
     layoutStyle: "standard",
     font: "Playfair Display",
