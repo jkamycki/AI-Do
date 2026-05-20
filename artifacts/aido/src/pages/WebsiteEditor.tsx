@@ -1106,8 +1106,8 @@ export default function WebsiteEditor() {
   // Per-URL focal points for hero photos, JSON-encoded under _heroFocals so
   // a single customText entry covers every image instead of polluting the
   // map with one key per URL.
-  const readHeroFocals = (): Record<string, string> => {
-    const raw = recordRef.current?.customText._heroFocals;
+  const parseHeroFocals = (customText?: Record<string, string>): Record<string, string> => {
+    const raw = customText?._heroFocals;
     if (!raw) return {};
     try {
       const parsed = JSON.parse(raw);
@@ -1117,23 +1117,29 @@ export default function WebsiteEditor() {
     }
   };
 
+  const readHeroFocals = (): Record<string, string> => parseHeroFocals(editingRecord?.customText);
+
   const writeHeroFocal = (url: string, position: string) => {
-    const next = { ...readHeroFocals(), [url]: position };
-    update({ customText: { ...recordRef.current!.customText, _heroFocals: JSON.stringify(next) } });
+    patchRecord((prev) => {
+      const next = { ...parseHeroFocals(prev.customText), [url]: position };
+      return { customText: { ...prev.customText, _heroFocals: JSON.stringify(next) } };
+    });
   };
 
   const dropHeroFocal = (url: string) => {
-    const current = readHeroFocals();
-    if (!(url in current)) return;
-    const { [url]: _drop, ...rest } = current;
-    void _drop;
-    update({ customText: { ...recordRef.current!.customText, _heroFocals: JSON.stringify(rest) } });
+    patchRecord((prev) => {
+      const current = parseHeroFocals(prev.customText);
+      if (!(url in current)) return {};
+      const { [url]: _drop, ...rest } = current;
+      void _drop;
+      return { customText: { ...prev.customText, _heroFocals: JSON.stringify(rest) } };
+    });
   };
 
   // Per-URL zoom levels (1.0 = native cover, up to 4.0). Same JSON-map shape
   // as _heroFocals so a single customText entry covers every hero photo.
-  const readHeroZooms = (): Record<string, number> => {
-    const raw = recordRef.current?.customText._heroZooms;
+  const parseHeroZooms = (customText?: Record<string, string>): Record<string, number> => {
+    const raw = customText?._heroZooms;
     if (!raw) return {};
     try {
       const parsed = JSON.parse(raw);
@@ -1148,13 +1154,15 @@ export default function WebsiteEditor() {
     }
   };
 
+  const readHeroZooms = (): Record<string, number> => parseHeroZooms(editingRecord?.customText);
+
   const writeHeroZoom = (url: string, zoom: number) => {
     const current = readHeroZooms();
     // zoom of 1.0 is the default — drop the entry instead of storing redundant data.
     const next = { ...current };
     if (zoom === 1) delete next[url];
     else next[url] = zoom;
-    update({ customText: { ...recordRef.current!.customText, _heroZooms: JSON.stringify(next) } });
+    patchRecord((prev) => ({ customText: { ...prev.customText, _heroZooms: JSON.stringify(next) } }));
   };
 
   const dropHeroZoom = (url: string) => {
@@ -1162,7 +1170,7 @@ export default function WebsiteEditor() {
     if (!(url in current)) return;
     const { [url]: _drop, ...rest } = current;
     void _drop;
-    update({ customText: { ...recordRef.current!.customText, _heroZooms: JSON.stringify(rest) } });
+    patchRecord((prev) => ({ customText: { ...prev.customText, _heroZooms: JSON.stringify(rest) } }));
   };
 
   const handleGalleryUpload = async (files: FileList) => {
@@ -2970,6 +2978,7 @@ export default function WebsiteEditor() {
       <HeroPhotoPositionDialog
         open={!!positioningUrl}
         imageUrl={positioningUrl}
+        device={previewDevice}
         initialPosition={positioningUrl ? readHeroFocals()[positioningUrl] ?? null : null}
         initialZoom={positioningUrl ? readHeroZooms()[positioningUrl] ?? null : null}
         onCommit={(pos, zoom) => {

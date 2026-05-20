@@ -10,6 +10,7 @@ interface Props {
   imageUrl: string | null;
   initialPosition: string | null;
   initialZoom: number | null;
+  device?: "desktop" | "mobile";
   onCommit: (position: string, zoom: number) => void;
   onClose: () => void;
 }
@@ -37,16 +38,15 @@ function clamp(n: number): number {
   return Math.max(0, Math.min(100, n));
 }
 
-// The hero section uses min-h-[80vh] which is roughly 16:10 on a typical
-// laptop. We render the picker at the same aspect ratio so the cropped
-// preview matches what the visitor will see.
-const PREVIEW_ASPECT = 16 / 10;
+const DESKTOP_PREVIEW_ASPECT = 16 / 10;
+const MOBILE_PREVIEW_ASPECT = 9 / 16;
 
-export function HeroPhotoPositionDialog({ open, imageUrl, initialPosition, initialZoom, onCommit, onClose }: Props) {
+export function HeroPhotoPositionDialog({ open, imageUrl, initialPosition, initialZoom, device = "desktop", onCommit, onClose }: Props) {
   const [pos, setPos] = useState(() => parsePosition(initialPosition));
   const [zoom, setZoom] = useState(() => clampZoom(initialZoom ?? 1));
   const frameRef = useRef<HTMLDivElement | null>(null);
   const draggingRef = useRef(false);
+  const previewAspect = device === "mobile" ? MOBILE_PREVIEW_ASPECT : DESKTOP_PREVIEW_ASPECT;
 
   // Reset to the persisted position whenever the dialog re-opens for a
   // (potentially different) image — otherwise reopening leaves the marker
@@ -96,14 +96,17 @@ export function HeroPhotoPositionDialog({ open, imageUrl, initialPosition, initi
         <DialogHeader>
           <DialogTitle>Position photo in frame</DialogTitle>
           <DialogDescription>
-            Drag the marker over the part of the photo that should stay centered when the home page crops to fit.
+            Drag the marker over the part of the photo that should stay centered for the {device} home page view.
           </DialogDescription>
         </DialogHeader>
 
         <div
           ref={frameRef}
           className="relative w-full bg-black/90 rounded-lg overflow-hidden touch-none select-none cursor-crosshair"
-          style={{ aspectRatio: `${PREVIEW_ASPECT}` }}
+          style={{
+            aspectRatio: `${previewAspect}`,
+            maxHeight: device === "mobile" ? "62vh" : undefined,
+          }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
