@@ -20,9 +20,6 @@ import {
 import {
   WebsiteRenderer,
   WEBSITE_DEVICE_OVERRIDES_KEY,
-  applyWebsiteDeviceOverrides,
-  parseWebsiteDeviceOverrides,
-  type WebsiteDeviceOverrides,
   type WebsiteRendererPayload,
   type WebsiteRenderDevice,
   parseRegistryLinks,
@@ -113,20 +110,6 @@ function editableTextFieldValue(value: string | undefined): string {
 
 const LEGACY_PENDING_SAVE_KEY = "aido_website_pending_save_v1";
 const PENDING_SAVE_KEY_PREFIX = "aido_website_pending_save_v2";
-const DEVICE_OVERRIDE_FIELDS = new Set<keyof WebsiteRendererPayload>([
-  "theme",
-  "layoutStyle",
-  "font",
-  "accentColor",
-  "colorPalette",
-  "sectionsEnabled",
-  "customText",
-  "textStyles",
-  "textPositions",
-  "galleryImages",
-  "heroImages",
-  "heroImage",
-]);
 
 function stripDeviceOverridesFromText(customText: Record<string, string> | undefined): Record<string, string> {
   const { [WEBSITE_DEVICE_OVERRIDES_KEY]: _marker, ...rest } = customText ?? {};
@@ -134,38 +117,26 @@ function stripDeviceOverridesFromText(customText: Record<string, string> | undef
   return rest;
 }
 
+function stripDeviceOverridesFromRecord<T extends WebsiteRendererPayload>(rec: T): T {
+  return {
+    ...rec,
+    customText: stripDeviceOverridesFromText(rec.customText),
+  };
+}
+
 function withDevicePatch(
   prev: WebsiteRecord,
-  device: WebsiteRenderDevice,
+  _device: WebsiteRenderDevice,
   patch: Partial<WebsiteRecord>,
 ): WebsiteRecord {
-  if (device === "desktop") return { ...prev, ...patch };
-
-  const overrides = parseWebsiteDeviceOverrides(prev.customText);
-  const current = overrides.mobile ?? {};
-  const nextMobile: WebsiteDeviceOverrides["mobile"] = { ...current };
-  const passthrough: Partial<WebsiteRecord> = {};
-
-  for (const [key, value] of Object.entries(patch) as Array<[keyof WebsiteRecord, unknown]>) {
-    if (DEVICE_OVERRIDE_FIELDS.has(key as keyof WebsiteRendererPayload)) {
-      if (key === "customText") {
-        nextMobile.customText = stripDeviceOverridesFromText(value as Record<string, string>);
-      } else {
-        (nextMobile as Record<string, unknown>)[key as string] = value;
-      }
-    } else {
-      (passthrough as Record<string, unknown>)[key as string] = value;
-    }
-  }
-
-  const nextOverrides: WebsiteDeviceOverrides = { ...overrides, mobile: nextMobile };
+  const base = stripDeviceOverridesFromRecord(prev);
+  const next = {
+    ...base,
+    ...patch,
+  };
   return {
-    ...prev,
-    ...passthrough,
-    customText: {
-      ...prev.customText,
-      [WEBSITE_DEVICE_OVERRIDES_KEY]: JSON.stringify(nextOverrides),
-    },
+    ...next,
+    customText: stripDeviceOverridesFromText(patch.customText ?? base.customText),
   };
 }
 
@@ -263,7 +234,7 @@ export default function WebsiteEditor() {
       if (cancelled) return;
       if (r.ok) {
         const body = (await r.json()) as WebsiteRecord;
-        setRecord(body);
+        setRecord(stripDeviceOverridesFromRecord(body));
       } else if (r.status !== 404) {
         toast({ title: "Failed to load website", variant: "destructive" });
       }
@@ -307,8 +278,9 @@ export default function WebsiteEditor() {
         const localPortalParty = JSON.stringify(recordRef.current?.portalParty ?? []);
         const remotePortalParty = JSON.stringify(remote.portalParty ?? []);
         if ((Number.isFinite(remoteTs) && remoteTs > localTs) || localPortalParty !== remotePortalParty) {
-          setRecord((prev) => ({ ...remote, portalParty: remote.portalParty ?? prev?.portalParty }));
-          recordRef.current = { ...remote, portalParty: remote.portalParty ?? recordRef.current?.portalParty };
+          const cleanRemote = stripDeviceOverridesFromRecord(remote);
+          setRecord((prev) => ({ ...cleanRemote, portalParty: cleanRemote.portalParty ?? prev?.portalParty }));
+          recordRef.current = { ...cleanRemote, portalParty: cleanRemote.portalParty ?? recordRef.current?.portalParty };
         }
       } catch { /* network blip — try again next tick */ }
     };
@@ -404,7 +376,7 @@ export default function WebsiteEditor() {
         throw new Error(err.error || `Failed to create website (${r.status})`);
       }
       const body = (await r.json()) as WebsiteRecord;
-      setRecord(body);
+      setRecord(stripDeviceOverridesFromRecord(body));
       toast({ title: "Wedding website created!" });
     } catch (err) {
       toast({
@@ -541,7 +513,7 @@ export default function WebsiteEditor() {
   const patchRecord = useCallback((fn: (prev: WebsiteRecord) => Partial<WebsiteRecord>) => {
     if (!recordRef.current) return;
     const prev = recordRef.current;
-    const activePrev = applyWebsiteDeviceOverrides(prev, previewDevice) as WebsiteRecord;
+    const activePrev = stripDeviceOverridesFromRecord(prev);
     const next = withDevicePatch(prev, previewDevice, fn(activePrev));
     queueHistory(prev);
     recordRef.current = next;
@@ -622,8 +594,8 @@ export default function WebsiteEditor() {
 
   const editingRecord = useMemo<WebsiteRecord | null>(() => {
     if (!record) return null;
-    return applyWebsiteDeviceOverrides(record, previewDevice) as WebsiteRecord;
-  }, [previewDevice, record]);
+    return stripDeviceOverridesFromRecord(record);
+  }, [record]);
 
   const [saveError, setSaveError] = useState(false);
   // Tracks the most recent server/network error so handleSave can surface it
@@ -639,7 +611,7 @@ export default function WebsiteEditor() {
     accentColor: rec.accentColor,
     colorPalette: rec.colorPalette,
     sectionsEnabled: rec.sectionsEnabled,
-    customText: rec.customText,
+    customText: stripDeviceOverridesFromText(rec.customText),
     textStyles: rec.textStyles ?? {},
     textPositions: rec.textPositions ?? {},
     galleryImages: rec.galleryImages,
@@ -739,25 +711,26 @@ export default function WebsiteEditor() {
       if (result.ok) {
         lastSaveErrorRef.current = null;
         const userEditedDuringSave = editSeqRef.current !== seqAtSend;
+        const cleanSavedRecord = stripDeviceOverridesFromRecord(result.record);
         setRecord((prev) => {
-          if (!prev) return result.record;
+          if (!prev) return cleanSavedRecord;
           // If the user kept typing during the POST, keep their in-memory record
           // and only fold in server-owned metadata (id, slug, lastUpdated, etc.).
           // Otherwise mirror the server's authoritative response.
           if (userEditedDuringSave) {
             return {
               ...prev,
-              id: result.record.id,
-              slug: result.record.slug,
-              published: result.record.published,
-              lastUpdated: result.record.lastUpdated,
-              passwordEnabled: result.record.passwordEnabled,
-              portalParty: result.record.portalParty ?? prev.portalParty,
+              id: cleanSavedRecord.id,
+              slug: cleanSavedRecord.slug,
+              published: cleanSavedRecord.published,
+              lastUpdated: cleanSavedRecord.lastUpdated,
+              passwordEnabled: cleanSavedRecord.passwordEnabled,
+              portalParty: cleanSavedRecord.portalParty ?? prev.portalParty,
             };
           }
           return {
-            ...result.record,
-            portalParty: result.record.portalParty ?? prev.portalParty,
+            ...cleanSavedRecord,
+            portalParty: cleanSavedRecord.portalParty ?? prev.portalParty,
           };
         });
         // Only mark clean if no edits happened during the POST. Otherwise the
@@ -806,9 +779,10 @@ export default function WebsiteEditor() {
       const result = await postSave(pending.body);
       if (cancelled) return;
       if (result.ok) {
+        const cleanSavedRecord = stripDeviceOverridesFromRecord(result.record);
         setRecord((prev) => ({
-          ...result.record,
-          portalParty: result.record.portalParty ?? prev?.portalParty,
+          ...cleanSavedRecord,
+          portalParty: cleanSavedRecord.portalParty ?? prev?.portalParty,
         }));
         clearPendingBackup(record.id);
       }
@@ -954,7 +928,7 @@ export default function WebsiteEditor() {
       });
       if (!r.ok) throw new Error("Failed to save password");
       const body = (await r.json()) as WebsiteRecord;
-      setRecord(body);
+      setRecord(stripDeviceOverridesFromRecord(body));
       setPasswordInput("");
       if (!silent) toast({ title: "Password saved. Your live site is protected." });
       return true;
@@ -981,7 +955,7 @@ export default function WebsiteEditor() {
       });
       if (!r.ok) throw new Error("Failed to clear password");
       const body = (await r.json()) as WebsiteRecord;
-      setRecord(body);
+      setRecord(stripDeviceOverridesFromRecord(body));
       setPasswordInput("");
       toast({ title: "Password removed." });
     } catch {
@@ -1087,16 +1061,17 @@ export default function WebsiteEditor() {
       });
       if (!r.ok) throw new Error("Failed");
       const body = (await r.json()) as WebsiteRecord;
+      const cleanBody = stripDeviceOverridesFromRecord(body);
       setRecord((prev) => ({
-        ...body,
-        portalParty: body.portalParty ?? prev?.portalParty,
+        ...cleanBody,
+        portalParty: cleanBody.portalParty ?? prev?.portalParty,
       }));
-      if (body.published) {
+      if (cleanBody.published) {
         setPublishSlugDialogOpen(false);
         setPreviewSection("home");
         setEditorSection("home");
       }
-      toast({ title: body.published ? "Website published!" : "Website unpublished" });
+      toast({ title: cleanBody.published ? "Website published!" : "Website unpublished" });
     } catch {
       toast({ title: "Failed to update publish state", variant: "destructive" });
     } finally {
@@ -1437,7 +1412,7 @@ export default function WebsiteEditor() {
               </Button>
             </div>
             <span className="hidden text-[11px] font-medium text-muted-foreground sm:inline">
-              Editing {previewDevice === "mobile" ? "mobile" : "desktop"} independently
+              Previewing {previewDevice === "mobile" ? "mobile" : "desktop"} layout. Edits stay synced.
             </span>
           </div>
           {/* Action toolbar — 2x2 grid. Brand gold backgrounds for the
