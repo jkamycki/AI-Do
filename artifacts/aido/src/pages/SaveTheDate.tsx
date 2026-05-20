@@ -348,11 +348,6 @@ export default function SaveTheDate() {
             Save the Date
           </p>
 
-          {/* Couple name */}
-          <h1 style={{ fontFamily: SERIF, fontSize: `${2.1 * sc}rem`, fontWeight: 400, fontStyle: "italic", color: GOLD, lineHeight: 1.2, margin: "0 0 16px" }}>
-            {coupleText}
-          </h1>
-
           {/* Photo rendered as background-image so html2canvas captures it correctly. */}
           {info.hasPhoto && (
             <div style={{ margin: "0 0 18px" }}>
@@ -370,6 +365,11 @@ export default function SaveTheDate() {
               />
             </div>
           )}
+
+          {/* Couple name */}
+          <h1 style={{ fontFamily: SERIF, fontSize: `${2.1 * sc}rem`, fontWeight: 400, fontStyle: "italic", color: GOLD, lineHeight: 1.2, margin: "0 0 16px" }}>
+            {coupleText}
+          </h1>
 
           {/* Divider */}
           <div style={{ height: 1, background: CARD_BDR, margin: "0 20px 16px" }} />

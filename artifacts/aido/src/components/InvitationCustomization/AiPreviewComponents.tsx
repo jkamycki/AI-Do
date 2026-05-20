@@ -352,20 +352,18 @@ export function AiSaveDatePreview({
       customColors={customColors}
       photoEffect={photoEffect}
       topContent={
-        <>
-      <p style={{ fontFamily: labelFont, fontSize: 11 * sc, fontWeight: 700,
-                  letterSpacing: "0.42em", textTransform: "uppercase",
-                  color: accent, margin: 0 }}>
-        Save the Date
-      </p>
-
-      <h2 style={{ fontFamily: displayFont, fontSize: `${2.1 * sc}rem`, fontWeight: 400,
-                   fontStyle: "italic", color: accent, lineHeight: 1.2, margin: "8px 0 0" }}>
-        {couple}
-      </h2>
-        </>
+        <p style={{ fontFamily: labelFont, fontSize: 11 * sc, fontWeight: 700,
+                    letterSpacing: "0.42em", textTransform: "uppercase",
+                    color: accent, margin: 0 }}>
+          Save the Date
+        </p>
       }
     >
+      <h2 style={{ fontFamily: displayFont, fontSize: `${2.1 * sc}rem`, fontWeight: 400,
+                   fontStyle: "italic", color: accent, lineHeight: 1.2, margin: "0 0 16px" }}>
+        {couple}
+      </h2>
+
       <div style={{ height: 1, background: cardBdr, margin: "0 16px 14px" }} />
 
       {dateStr && (

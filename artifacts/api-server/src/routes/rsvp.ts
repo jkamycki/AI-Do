@@ -614,13 +614,13 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
           </td>
         </tr>
 
+        ${aiPhotoBlock(opts.photoImgSrc, `Save the Date - ${opts.couple}`, opts.photoObjectPos, BG, opts.photoZoom, opts.photoEffect)}
+
         <tr>
-          <td bgcolor="${BG}" style="background:${BG};padding:8px 24px 0;text-align:center;">
+          <td bgcolor="${BG}" style="background:${BG};padding:16px 24px 0;text-align:center;">
             <h1 style="margin:0;font-family:${SERIF};font-size:${Math.round(34*sc)}px;font-weight:400;font-style:italic;color:${ACCENT};line-height:1.2;">${escapeHtml(opts.couple)}</h1>
           </td>
         </tr>
-
-        ${aiPhotoBlock(opts.photoImgSrc, `Save the Date - ${opts.couple}`, opts.photoObjectPos, BG, opts.photoZoom, opts.photoEffect)}
 
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:14px 40px 0;">
