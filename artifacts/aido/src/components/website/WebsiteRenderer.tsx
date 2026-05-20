@@ -254,6 +254,7 @@ type TextStyle = {
 // Edit mode props passed to every section (and its EditableText spans).
 interface EditCtx {
   editable: boolean;
+  renderDevice?: WebsiteRenderDevice;
   // True when rendered inside the editor's fullscreen "Preview" popup. The
   // editor wants to show the section's layout (heading, tall background, etc.)
   // even if the user hasn't filled in the body yet, but the public site
@@ -3232,15 +3233,17 @@ function PartyMemberCard({
   data,
   member,
   labelColor,
+  compact = false,
 }: {
   data: WebsiteRendererPayload;
   member: WeddingPartyMember;
   labelColor: string;
+  compact?: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center text-center">
+    <div className="flex min-w-0 flex-col items-center px-3 text-center">
       <div
-        className="w-32 h-32 sm:w-36 sm:h-36 rounded-full overflow-hidden mb-4 flex items-center justify-center"
+        className={`${compact ? "h-28 w-28" : "h-32 w-32 sm:h-36 sm:w-36"} mb-4 flex items-center justify-center overflow-hidden rounded-full`}
         style={{
           background: `${data.colorPalette.primary}15`,
           border: `1px solid ${data.colorPalette.primary}33`,
@@ -3264,10 +3267,12 @@ function PartyMemberCard({
         )}
       </div>
       <div
-        className="text-2xl sm:text-3xl mb-1"
+        className={`${compact ? "text-xl" : "text-2xl sm:text-3xl"} mb-1 max-w-full leading-tight`}
         style={{
           fontFamily: fontStack(headingFont(data)),
           color: data.colorPalette.primary,
+          overflowWrap: "anywhere",
+          wordBreak: "normal",
         }}
       >
         {member.name || "Name"}
@@ -3291,6 +3296,7 @@ function WeddingParty({
 }) {
   // Portal party members take precedence over manually-entered ones
 
+  const isMobileRender = ctx.renderDevice === "mobile";
   const labelColor = sectionTextColor(data, "weddingParty");
   const usesPortalParty = !!(data.portalParty && data.portalParty.length > 0);
   const rawMembers: WeddingPartyMember[] =
@@ -3374,7 +3380,7 @@ function WeddingParty({
         value={data.customText.weddingParty_subtitle ?? ""}
         defaultValue="Meet our family & friends standing with us"
         onCommit={(v) => ctx.onTextChange("weddingParty_subtitle", v)}
-        className="block text-center text-base sm:text-lg font-medium max-w-2xl mx-auto mb-12"
+        className="mx-auto mb-10 block max-w-2xl text-center text-base font-medium sm:mb-12 sm:text-lg"
         style={{
           color: labelColor,
           fontFamily: elementFontStack(
@@ -3396,10 +3402,13 @@ function WeddingParty({
       ) : (
         <div className="space-y-16">
           {(groomSide.length > 0 || brideSide.length > 0) && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-0 max-w-5xl mx-auto relative">
+            <div className={isMobileRender
+              ? "relative mx-auto grid max-w-sm grid-cols-1 gap-16"
+              : "relative mx-auto grid max-w-5xl grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-0"}
+            >
               {/* Bride's side */}
               <div
-                className="md:pr-12 md:border-r"
+                className={isMobileRender ? "" : "lg:border-r lg:pr-12"}
                 style={{ borderColor: `${data.colorPalette.primary}33` }}
               >
                 <h3
@@ -3429,7 +3438,9 @@ function WeddingParty({
                   </p>
                 ) : (
                   <div
-                    className={`grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-10 ${oddLastGridClass}`}
+                    className={isMobileRender
+                      ? "mx-auto grid max-w-[260px] grid-cols-1 gap-y-12"
+                      : `grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 ${oddLastGridClass}`}
                   >
                     {brideSide.map((m, i) => (
                       <PartyMemberCard
@@ -3437,6 +3448,7 @@ function WeddingParty({
                         data={data}
                         member={m}
                         labelColor={labelColor}
+                        compact={isMobileRender}
                       />
                     ))}
                   </div>
@@ -3444,7 +3456,7 @@ function WeddingParty({
               </div>
 
               {/* Groom's side */}
-              <div className="md:pl-12">
+              <div className={isMobileRender ? "" : "lg:pl-12"}>
                 <h3
                   className="text-center text-2xl sm:text-3xl mb-10"
                   style={{
@@ -3472,7 +3484,9 @@ function WeddingParty({
                   </p>
                 ) : (
                   <div
-                    className={`grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-10 ${oddLastGridClass}`}
+                    className={isMobileRender
+                      ? "mx-auto grid max-w-[260px] grid-cols-1 gap-y-12"
+                      : `grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 ${oddLastGridClass}`}
                   >
                     {groomSide.map((m, i) => (
                       <PartyMemberCard
@@ -3480,6 +3494,7 @@ function WeddingParty({
                         data={data}
                         member={m}
                         labelColor={labelColor}
+                        compact={isMobileRender}
                       />
                     ))}
                   </div>
@@ -3506,13 +3521,17 @@ function WeddingParty({
                   }
                 />
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-10">
+              <div className={isMobileRender
+                ? "mx-auto grid max-w-[260px] grid-cols-1 gap-y-12"
+                : "grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 md:grid-cols-3"}
+              >
                 {familySide.map((m, i) => (
                   <PartyMemberCard
                     key={`f-${i}`}
                     data={data}
                     member={m}
                     labelColor={labelColor}
+                    compact={isMobileRender}
                   />
                 ))}
               </div>
@@ -3688,12 +3707,14 @@ function TopNav({
   slug,
   currentSection,
   onSectionChange,
+  renderDevice,
 }: {
   data: WebsiteRendererPayload;
   scrollContainer?: HTMLElement | null;
   pageMode: boolean;
   slug?: string;
   currentSection: string;
+  renderDevice?: WebsiteRenderDevice;
   // When provided, nav buttons call this instead of scrolling or routing.
   // Used by the editor's Guest Preview to drive page-per-section navigation
   // through React state without changing the actual URL.
@@ -3701,6 +3722,7 @@ function TopNav({
 }) {
   const couple = `${data.couple.partner2Name} & ${data.couple.partner1Name}`;
   const [scrollActive, setScrollActive] = useState<string>("home");
+  const isMobileRender = renderDevice === "mobile";
 
   // Build the ordered list of nav items only for sections that are enabled.
   const items: Array<{ id: string; label: string }> = [
@@ -3832,11 +3854,11 @@ function TopNav({
           text={data.colorPalette.text}
         />
       )}
-      <div className="max-w-5xl mx-auto px-4 py-3 sm:py-4 flex flex-col items-center gap-2">
+      <div className={`mx-auto flex max-w-5xl flex-col items-center gap-2 px-4 ${isMobileRender ? "py-2" : "py-3 sm:py-4"}`}>
         {homeHref ? (
           <Link
             href={homeHref}
-            className="text-2xl sm:text-3xl leading-tight transition-colors hover:opacity-80"
+            className={`${isMobileRender ? "text-xl" : "text-2xl sm:text-3xl"} max-w-full truncate leading-tight transition-colors hover:opacity-80`}
             style={{
               fontFamily: fontStack(headingFont(data)),
               color:
@@ -3855,7 +3877,7 @@ function TopNav({
                 scrollTo("home");
               }
             }}
-            className="text-2xl sm:text-3xl leading-tight transition-colors hover:opacity-80"
+            className={`${isMobileRender ? "text-xl" : "text-2xl sm:text-3xl"} max-w-full truncate leading-tight transition-colors hover:opacity-80`}
             style={{
               fontFamily: fontStack(headingFont(data)),
               color:
@@ -3865,7 +3887,11 @@ function TopNav({
             {couple}
           </button>
         )}
-        <div className="flex flex-wrap items-center justify-center gap-x-5 sm:gap-x-7 gap-y-1 text-xs sm:text-sm">
+        <div
+          className={isMobileRender
+            ? "flex w-full max-w-full items-center justify-start gap-x-5 overflow-x-auto whitespace-nowrap px-1 pb-1 text-xs [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            : "flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-xs sm:gap-x-7 sm:text-sm"}
+        >
           {items.map(renderItem)}
         </div>
       </div>
@@ -3924,11 +3950,13 @@ export function WebsiteRenderer({
     return () => media.removeEventListener?.("change", updateDevice);
   }, [renderDevice]);
 
-  const data = applyWebsiteDeviceOverrides(rawData, renderDevice ?? detectedDevice);
+  const activeRenderDevice = renderDevice ?? detectedDevice;
+  const data = applyWebsiteDeviceOverrides(rawData, activeRenderDevice);
   const ctx: EditCtx =
     editable && onTextChange
       ? {
           editable: true,
+          renderDevice: activeRenderDevice,
           previewMode,
           onTextChange,
           textStyles: data.textStyles,
@@ -3940,6 +3968,7 @@ export function WebsiteRenderer({
         }
       : {
           editable: false,
+          renderDevice: activeRenderDevice,
           previewMode,
           onTextChange: () => {},
           textStyles: data.textStyles,
@@ -3995,6 +4024,7 @@ export function WebsiteRenderer({
         slug={navSlug}
         currentSection={currentSection ?? "home"}
         onSectionChange={onSectionChange}
+        renderDevice={activeRenderDevice}
       />
       {(showAll || currentSection === "home") && <Hero data={data} ctx={ctx} />}
       {data.sectionsEnabled.welcome &&
