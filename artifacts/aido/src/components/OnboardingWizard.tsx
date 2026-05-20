@@ -9,7 +9,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { MoneyInput } from "@/components/ui/money-input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -38,7 +37,7 @@ const schema = z.object({
   weddingVibe: z.string().default("Not set"),
   preferredLanguage: z.string().default("English"),
 }).superRefine((values, ctx) => {
-  for (const field of ["partner1Name", "partner2Name", "weddingDate", "ceremonyTime", "receptionTime", "venue", "location"] as const) {
+  for (const field of ["partner1Name", "partner2Name", "weddingDate", "ceremonyTime", "receptionTime", "venue"] as const) {
     if (!String(values[field] ?? "").trim()) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: [field], message: "Required" });
     }
@@ -91,7 +90,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
   async function handleNext() {
     let fields: (keyof WizardValues)[] = [];
     if (step === 1) fields = ["partner1Name", "partner2Name"];
-    if (step === 2) fields = ["weddingDate", "ceremonyTime", "receptionTime", "venue", "location"];
+    if (step === 2) fields = ["weddingDate", "ceremonyTime", "receptionTime", "venue"];
     const valid = fields.length === 0 ? true : await form.trigger(fields);
     if (!valid) return;
     if (step < 3) setStep(s => s + 1);
@@ -204,23 +203,6 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                   <FormItem>
                     <FormLabel><MapPin className="h-3.5 w-3.5 inline mr-1" />{t("onboarding.venue_name", { defaultValue: "Venue Name" })}</FormLabel>
                     <FormControl><Input placeholder={t("onboarding.venue_placeholder", { defaultValue: "e.g. The Grand Ballroom" })} {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="location" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("onboarding.city_location", { defaultValue: "City / Location" })}</FormLabel>
-                    <FormControl>
-                      <AddressAutocomplete
-                        value={field.value ?? ""}
-                        onChange={field.onChange}
-                        onSelect={(s) => {
-                          const composed = [s.city, s.state].filter(Boolean).join(", ");
-                          field.onChange(composed || s.street);
-                        }}
-                        placeholder={t("onboarding.city_placeholder", { defaultValue: "e.g. New York, NY" })}
-                      />
-                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
