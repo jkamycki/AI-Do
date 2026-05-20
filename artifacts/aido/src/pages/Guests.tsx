@@ -4135,14 +4135,13 @@ export default function Guests({
                             </p>
                             <button
                               type="button"
-                              className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-primary transition-colors hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
-                              title="Delete RSVP message"
+                              className="mt-1 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border/60 text-primary transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
+                              title="Delete"
                               aria-label={`Delete RSVP message from ${g.name}`}
                               disabled={clearRsvpMessage.isPending}
                               onClick={() => clearRsvpMessage.mutate(g.id)}
                             >
                               <Trash2 className="h-3 w-3" />
-                              Delete message
                             </button>
                             </>
                           )}
