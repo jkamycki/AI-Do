@@ -3881,7 +3881,7 @@ export default function Guests({
                 </colgroup>
                 <TableHeader className="bg-muted/10">
                   <TableRow>
-                    <TableHead className="text-primary">
+                    <TableHead className="px-0 text-primary">
                       <div className="flex items-center justify-center">
                         <Checkbox
                           checked={allFilteredSelected ? true : someFilteredSelected ? "indeterminate" : false}
@@ -3929,12 +3929,14 @@ export default function Guests({
                         key={g.id}
                         className={`group ${isDuplicate ? "bg-orange-50/60 dark:bg-orange-900/15 border-l-4 border-l-orange-500 dark:border-l-orange-400" : isNew ? "bg-amber-50/40 dark:bg-amber-900/10 border-l-4 border-l-amber-400 dark:border-l-amber-500" : ""}`}
                       >
-                        <TableCell className="align-top">
-                          <Checkbox
-                            checked={selectedGuestIds.has(g.id)}
-                            onCheckedChange={(checked) => toggleGuestSelected(g.id, checked === true)}
-                            aria-label={`Select ${g.name}`}
-                          />
+                        <TableCell className="px-0 align-top">
+                          <div className="flex justify-center">
+                            <Checkbox
+                              checked={selectedGuestIds.has(g.id)}
+                              onCheckedChange={(checked) => toggleGuestSelected(g.id, checked === true)}
+                              aria-label={`Select ${g.name}`}
+                            />
+                          </div>
                         </TableCell>
                         <TableCell className="align-top">
                           <div className="flex items-center gap-2 flex-wrap">
