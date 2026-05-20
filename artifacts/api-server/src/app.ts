@@ -404,6 +404,10 @@ app.use((err: unknown, _req: express.Request, res: express.Response, next: expre
   next(err);
 });
 
+app.get("/api/healthz", (_req, res) => {
+  res.json({ status: "ok" });
+});
+
 import { db, analyticsEvents } from "@workspace/db";
 app.post("/api/analytics/pageview", async (req, res) => {
   try {

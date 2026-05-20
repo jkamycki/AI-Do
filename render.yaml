@@ -23,5 +23,7 @@ services:
         sync: false
       - key: VITE_CLERK_PUBLISHABLE_KEY
         sync: false
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
       - key: INVITATION_SHARE_SECRET
         sync: false
