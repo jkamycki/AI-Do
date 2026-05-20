@@ -331,7 +331,7 @@ const INVITATION_EMAIL_PAGE_PADDING = "16px 12px";
 
 function aiLogoBlock(logoBase64: string | null, accent = AI_GOLD): string {
   return logoBase64
-    ? `<img src="${logoBase64}" alt="A.IDO" width="48" style="height:48px;width:auto;display:inline-block;border:0;outline:none;text-decoration:none;" />`
+    ? `<span style="display:inline-block;background:#FFF7F2;background-image:linear-gradient(#FFF7F2,#FFF7F2);border-radius:12px;padding:4px;"><img src="${logoBase64}" alt="A.IDO" width="48" style="height:48px;width:auto;display:block;border:0;outline:none;text-decoration:none;background:#FFF7F2;" /></span>`
     : `<span style="font-family:${AI_CORMORANT};font-size:22px;font-style:italic;color:${accent};letter-spacing:1px;">A.IDO</span>`;
 }
 
@@ -351,7 +351,7 @@ function aiMarketingFooterHtml({
   labelFont: string;
 }): string {
   const logo = logoBase64
-    ? `<img src="${logoBase64}" alt="A.IDO" width="76" style="display:block;width:76px;max-width:76px;height:auto;border:0;outline:none;text-decoration:none;margin:0 auto 8px;" />`
+    ? `<a href="https://aidowedding.net?theme=light" style="display:inline-block;background:#FFF7F2;background-image:linear-gradient(#FFF7F2,#FFF7F2);border-radius:14px;padding:6px 8px;margin:0 auto 8px;text-decoration:none;"><img src="${logoBase64}" alt="A.IDO" width="76" style="display:block;width:76px;max-width:76px;height:auto;border:0;outline:none;text-decoration:none;background:#FFF7F2;" /></a>`
     : `<span style="display:block;font-family:${AI_CORMORANT};font-size:22px;font-style:italic;color:${accent};letter-spacing:1px;margin-bottom:8px;">A.IDO</span>`;
   return `
         <tr>
@@ -1125,7 +1125,7 @@ router.post("/guests/:id/send-rsvp", requireAuth, async (req, res) => {
       // Use a direct public URL for the logo. Base64 data URIs are blocked or
       // truncated by some email clients (Gmail mobile, Outlook), so a public
       // HTTPS URL is more reliable.
-      const logoBase64 = `${apiOrigin}/logo.png`;
+      const logoBase64 = `${buildFrontendOrigin(req)}/logo.png`;
       let html: string;
       if (useGenerated) {
         html = aiDigitalInvitationHtml({
@@ -1259,7 +1259,7 @@ router.post("/guests/:id/send-rsvp-reminder", requireAuth, async (req, res) => {
     const apiOrigin = buildOrigin(req);
     const rsvpUrl = await buildGuestRsvpUrl(req, profile.id, token);
     const previewUrl = rsvpUrl;
-    const logoBase64 = `${apiOrigin}/logo.png`;
+    const logoBase64 = `${buildFrontendOrigin(req)}/logo.png`;
 
     // Load customization so the reminder email matches the invitation preview.
     let customization: typeof invitationCustomizations.$inferSelect | null = null;
@@ -2077,7 +2077,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
       // Use a direct public URL for the logo. Base64 data URIs are blocked or
       // truncated by some email clients (Gmail mobile, Outlook), so a public
       // HTTPS URL is more reliable.
-      const logoBase64 = `${origin}/logo.png`;
+      const logoBase64 = `${frontendOrigin}/logo.png`;
       const stdCityStateZip = [
         profile.venueCity,
         profile.venueState,

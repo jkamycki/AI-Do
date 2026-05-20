@@ -6,7 +6,7 @@ const RESEND_API = "https://api.resend.com";
 
 export const INBOUND_DOMAIN = process.env.INBOUND_EMAIL_DOMAIN ?? "mail.aidowedding.net";
 export const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? `messaging@${INBOUND_DOMAIN}`;
-export const FROM_NAME = process.env.RESEND_FROM_NAME ?? "A.IDo Messaging";
+export const FROM_NAME = process.env.RESEND_FROM_NAME ?? "A.IDO Messaging";
 
 // The domain Resend is verified to SEND from (extracted from FROM_EMAIL).
 // Used to build the per-conversation From/Reply-To address so that vendor
@@ -45,6 +45,9 @@ const AIDO_WEBSITE_URL = "https://aidowedding.net";
 const AIDO_WEBSITE_LIGHT_URL = `${AIDO_WEBSITE_URL}?theme=light`;
 const AIDO_LOGO_URL = `${AIDO_WEBSITE_URL}/logo.png`;
 const AIDO_SIGNATURE_MARKER = "data-aido-email-signature";
+const AIDO_SIGNATURE_BG = "#fffaf7";
+const AIDO_SIGNATURE_TEXT = "#6f4b5a";
+const AIDO_SIGNATURE_ACCENT = "#8d294d";
 
 function escapeEmailHtml(value: string): string {
   return value
@@ -59,19 +62,49 @@ function textToEmailHtml(text: string): string {
   return `<div style="font-family:Arial,Helvetica,sans-serif;color:#3a1826;font-size:15px;line-height:1.55;white-space:pre-wrap;">${escapeEmailHtml(text)}</div>`;
 }
 
+function withLightEmailHints(html: string): string {
+  const hints = `
+  <meta name="color-scheme" content="light only" />
+  <meta name="supported-color-schemes" content="light" />
+  <style>
+    :root { color-scheme: light only; supported-color-schemes: light; }
+    [${AIDO_SIGNATURE_MARKER}] { background-color: ${AIDO_SIGNATURE_BG} !important; color: ${AIDO_SIGNATURE_TEXT} !important; }
+    [data-aido-logo-card] { background-color: ${AIDO_SIGNATURE_BG} !important; background-image: linear-gradient(${AIDO_SIGNATURE_BG}, ${AIDO_SIGNATURE_BG}) !important; }
+  </style>`;
+
+  if (/<meta\s+name=["']color-scheme["']/i.test(html)) {
+    return html.replace(/<meta\s+name=["']color-scheme["'][^>]*>/i, `<meta name="color-scheme" content="light only" />`)
+      .replace(/<meta\s+name=["']supported-color-schemes["'][^>]*>/i, `<meta name="supported-color-schemes" content="light" />`);
+  }
+
+  if (/<\/head\s*>/i.test(html)) {
+    return html.replace(/<\/head\s*>/i, `${hints}</head>`);
+  }
+
+  if (/<html[\s>]/i.test(html)) {
+    return html;
+  }
+
+  return `<!DOCTYPE html><html><head>${hints}</head><body style="margin:0;padding:0;background:${AIDO_SIGNATURE_BG};color:#3a1826;">${html}</body></html>`;
+}
+
 function buildPortalHtmlSignature(): string {
   return `
-<div ${AIDO_SIGNATURE_MARKER}="true" style="margin-top:32px;padding:18px 0 0;border-top:1px solid #ead8cf;font-family:Arial,Helvetica,sans-serif;color:#6f4b5a;font-size:13px;line-height:1.5;color-scheme:light;background:#fffaf7;">
-  <a href="${AIDO_WEBSITE_LIGHT_URL}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;color:#8d294d;font-weight:700;background:#fffaf7;border-radius:12px;padding:8px 10px 6px 0;">
-    <img src="${AIDO_LOGO_URL}" alt="A.IDO" width="92" style="display:block;width:92px;max-width:92px;height:auto;border:0;margin:0;outline:none;text-decoration:none;background:#fffaf7;color:#8d294d;" />
-  </a>
-  <div>
-    Sent with <a href="${AIDO_WEBSITE_LIGHT_URL}" target="_blank" rel="noopener noreferrer" style="color:#8d294d;font-weight:700;text-decoration:none;">A.IDO</a>
-  </div>
-  <div>
-    <a href="${AIDO_WEBSITE_LIGHT_URL}" target="_blank" rel="noopener noreferrer" style="color:#8d294d;text-decoration:underline;">${AIDO_WEBSITE_URL}</a>
-  </div>
-</div>`;
+<table ${AIDO_SIGNATURE_MARKER}="true" role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${AIDO_SIGNATURE_BG}" style="margin-top:32px;border-top:1px solid #ead8cf;background-color:${AIDO_SIGNATURE_BG};background-image:linear-gradient(${AIDO_SIGNATURE_BG},${AIDO_SIGNATURE_BG});color-scheme:light only;mso-color-alt:auto;">
+  <tr>
+    <td bgcolor="${AIDO_SIGNATURE_BG}" style="padding:18px 0 0;background-color:${AIDO_SIGNATURE_BG};background-image:linear-gradient(${AIDO_SIGNATURE_BG},${AIDO_SIGNATURE_BG});font-family:Arial,Helvetica,sans-serif;color:${AIDO_SIGNATURE_TEXT};font-size:13px;line-height:1.5;">
+      <a href="${AIDO_WEBSITE_LIGHT_URL}" target="_blank" rel="noopener noreferrer" data-aido-logo-card="true" style="display:inline-block;text-decoration:none;color:${AIDO_SIGNATURE_ACCENT};font-weight:700;background-color:${AIDO_SIGNATURE_BG};background-image:linear-gradient(${AIDO_SIGNATURE_BG},${AIDO_SIGNATURE_BG});border-radius:14px;padding:8px 12px 6px 0;">
+        <img src="${AIDO_LOGO_URL}" alt="A.IDO" width="92" style="display:block;width:92px;max-width:92px;height:auto;border:0;margin:0;outline:none;text-decoration:none;background-color:${AIDO_SIGNATURE_BG};color:${AIDO_SIGNATURE_ACCENT};" />
+      </a>
+      <div style="margin:2px 0 0;color:${AIDO_SIGNATURE_TEXT};">
+        Sent with <a href="${AIDO_WEBSITE_LIGHT_URL}" target="_blank" rel="noopener noreferrer" style="color:${AIDO_SIGNATURE_ACCENT};font-weight:700;text-decoration:none;">A.IDO</a>
+      </div>
+      <div style="margin:2px 0 0;color:${AIDO_SIGNATURE_TEXT};">
+        <a href="${AIDO_WEBSITE_LIGHT_URL}" target="_blank" rel="noopener noreferrer" style="color:${AIDO_SIGNATURE_ACCENT};text-decoration:underline;">${AIDO_WEBSITE_URL}</a>
+      </div>
+    </td>
+  </tr>
+</table>`;
 }
 
 function appendPortalSignature(text: string, html?: string): { text: string; html: string } {
@@ -80,8 +113,8 @@ function appendPortalSignature(text: string, html?: string): { text: string; htm
     : `${text.trimEnd()}\n\n--\nSent with A.IDO\n${AIDO_WEBSITE_LIGHT_URL}`;
 
   const sourceHtml = html?.trim() ? html : textToEmailHtml(text);
-  if (sourceHtml.includes(AIDO_SIGNATURE_MARKER) || sourceHtml.includes(AIDO_LOGO_URL)) {
-    return { text: signedText, html: sourceHtml };
+  if (sourceHtml.includes(AIDO_SIGNATURE_MARKER)) {
+    return { text: signedText, html: withLightEmailHints(sourceHtml) };
   }
 
   const signature = buildPortalHtmlSignature();
@@ -89,7 +122,7 @@ function appendPortalSignature(text: string, html?: string): { text: string; htm
     ? sourceHtml.replace(/<\/body\s*>/i, `${signature}</body>`)
     : `${sourceHtml}${signature}`;
 
-  return { text: signedText, html: signedHtml };
+  return { text: signedText, html: withLightEmailHints(signedHtml) };
 }
 
 /** Fetch full inbound email body from Resend by email_id (webhook only sends metadata). */
