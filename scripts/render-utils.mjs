@@ -1,9 +1,6 @@
-import { existsSync } from "node:fs";
 import { cp, mkdir, rm } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import path from "node:path";
-
-const pnpmVersion = "10.26.1";
 
 export function run(command, args, options = {}) {
   return new Promise((resolve, reject) => {
@@ -24,27 +21,22 @@ export function run(command, args, options = {}) {
   });
 }
 
-export function runPnpm(args, options = {}) {
-  return run("npm", ["exec", "--yes", `pnpm@${pnpmVersion}`, "--", ...args], options);
+export async function installApi() {
+  await run("npm", ["install", "--include=dev", "--prefix", "artifacts/api-server"]);
 }
 
-export async function ensureWorkspaceInstall() {
-  const apiNodeModules = path.resolve("artifacts/api-server/node_modules");
-  const rootPnpmStore = path.resolve("node_modules/.pnpm");
-  if (existsSync(apiNodeModules) && existsSync(rootPnpmStore)) return;
-
-  console.log("[render] Installing workspace dependencies with pnpm.");
-  await runPnpm(["install", "--frozen-lockfile=false", "--prod=false"]);
+export async function installFrontend() {
+  await run("npm", ["install", "--include=dev", "--prefix", "artifacts/aido"]);
 }
 
 export async function buildApi() {
-  await ensureWorkspaceInstall();
-  await runPnpm(["--dir", "artifacts/api-server", "run", "build"]);
+  await installApi();
+  await run("npm", ["run", "build", "--prefix", "artifacts/api-server"]);
 }
 
 export async function buildFrontend() {
-  await ensureWorkspaceInstall();
-  await runPnpm(["--dir", "artifacts/aido", "run", "build"]);
+  await installFrontend();
+  await run("npm", ["run", "build", "--prefix", "artifacts/aido"]);
 }
 
 export async function copyFrontendDist() {
