@@ -2500,8 +2500,9 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   <EditableText
                     as="div"
                     editable={ctx.editable}
-                    value="Venue"
+                    value={data.customText._travelVenueLabel ?? ""}
                     defaultValue="Venue"
+                    onCommit={(v) => ctx.onTextChange("_travelVenueLabel", v)}
                     readOnlyText
                     aiEnabled={false}
                     textStyle={data.textStyles?._travelVenueLabel}
@@ -2537,7 +2538,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                 style={{ color: data.colorPalette.primary }}
               >
                 <Navigation className="h-3.5 w-3.5" />
-                Open in Google Maps
+                {data.customText._openInGoogleMaps || "Open in Google Maps"}
               </a>
             </div>
           )}
@@ -2554,8 +2555,9 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   <EditableText
                     as="div"
                     editable={ctx.editable}
-                    value="Hotel"
+                    value={data.customText._travelHotelLabel ?? ""}
                     defaultValue="Hotel"
+                    onCommit={(v) => ctx.onTextChange("_travelHotelLabel", v)}
                     readOnlyText
                     aiEnabled={false}
                     textStyle={data.textStyles?._travelHotelLabel}
@@ -2600,7 +2602,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   style={{ color: data.colorPalette.primary }}
                 >
                   <Navigation className="h-3.5 w-3.5" />
-                  Open in Google Maps
+                  {data.customText._openInGoogleMaps || "Open in Google Maps"}
                 </a>
               )}
             </div>
@@ -3723,26 +3725,28 @@ function TopNav({
   const couple = `${data.couple.partner2Name} & ${data.couple.partner1Name}`;
   const [scrollActive, setScrollActive] = useState<string>("home");
   const isMobileRender = renderDevice === "mobile";
+  const navLabel = (key: string, fallback: string) =>
+    data.customText[key]?.trim() || fallback;
 
   // Build the ordered list of nav items only for sections that are enabled.
   const items: Array<{ id: string; label: string }> = [
-    { id: "home", label: "Home" },
+    { id: "home", label: navLabel("_navHome", "Home") },
   ];
   if (data.sectionsEnabled.story)
-    items.push({ id: "story", label: "Our Story" });
+    items.push({ id: "story", label: navLabel("_navStory", "Our Story") });
   if (data.sectionsEnabled.schedule)
-    items.push({ id: "schedule", label: "Schedule" });
+    items.push({ id: "schedule", label: navLabel("_navSchedule", "Schedule") });
   if (data.sectionsEnabled.travel)
-    items.push({ id: "travel", label: "Travel" });
+    items.push({ id: "travel", label: navLabel("_navTravel", "Travel") });
   if (data.sectionsEnabled.registry)
-    items.push({ id: "registry", label: "Registry" });
+    items.push({ id: "registry", label: navLabel("_navRegistry", "Registry") });
   if (data.sectionsEnabled.weddingParty)
-    items.push({ id: "weddingParty", label: "Wedding Party" });
+    items.push({ id: "weddingParty", label: navLabel("_navWeddingParty", "Wedding Party") });
   if (data.sectionsEnabled.gallery)
-    items.push({ id: "gallery", label: "Gallery" });
-  if (data.sectionsEnabled.faq) items.push({ id: "faq", label: "FAQ" });
+    items.push({ id: "gallery", label: navLabel("_navGallery", "Gallery") });
+  if (data.sectionsEnabled.faq) items.push({ id: "faq", label: navLabel("_navFaq", "FAQ") });
   if (data.sectionsEnabled.rsvp !== false)
-    items.push({ id: "rsvp", label: "RSVP" });
+    items.push({ id: "rsvp", label: navLabel("_navRsvp", "RSVP") });
 
   // Anchor-scroll mode (used by editor preview): track the visible section
   // with IntersectionObserver to underline the right item.

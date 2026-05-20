@@ -5,10 +5,12 @@ import rateLimit from "express-rate-limit";
 import { db, weddingWebsites, weddingProfiles, guests, websiteRsvps, weddingParty, hotelBlocks, invitationCustomizations } from "@workspace/db";
 import type { WeddingProfile, WebsiteSectionsEnabled, WebsiteCustomText, WebsiteGalleryImage, WebsiteHeroImage, WebsiteTextStyles, WebsiteTextPositions } from "@workspace/db";
 import { and, eq, ilike, desc, not } from "drizzle-orm";
+import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../middlewares/requireAuth";
 import { publicRsvpLimiter } from "../middlewares/rateLimiter";
 import { hasMinRole, resolveCallerRole, resolveProfile } from "../lib/workspaceAccess";
 import { sendMaintenanceIfActive } from "../lib/maintenance";
+import { getRequestLanguage } from "../lib/language";
 
 const scryptAsync = promisify(scrypt);
 
@@ -197,6 +199,20 @@ function serialize(w: typeof weddingWebsites.$inferSelect) {
     lastUpdated: w.lastUpdated.toISOString(),
     createdAt: w.createdAt.toISOString(),
   };
+}
+
+function normalizeWebsiteTranslationText(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const out: Record<string, string> = {};
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof raw !== "string") continue;
+    const cleanKey = key.trim();
+    const cleanValue = raw.trim();
+    if (!cleanKey || !cleanValue) continue;
+    if (cleanKey.length > 80 || cleanValue.length > 5000) continue;
+    out[cleanKey] = cleanValue;
+  }
+  return out;
 }
 
 async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelect) {
@@ -517,6 +533,79 @@ router.get("/website/me", requireAuth, async (req, res) => {
   } catch (err) {
     req.log.error(err, "getWebsite failed");
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ---------- POST /api/website/:id/translate ----------
+
+router.post("/website/:id/translate", requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid website id" });
+
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(404).json({ error: "Wedding profile not found" });
+
+    const [row] = await db
+      .select()
+      .from(weddingWebsites)
+      .where(and(eq(weddingWebsites.id, id), eq(weddingWebsites.profileId, profile.id)))
+      .limit(1);
+    if (!row) return res.status(404).json({ error: "Website not found" });
+
+    const language = getRequestLanguage(req, profile.preferredLanguage);
+    const customText = normalizeWebsiteTranslationText(req.body?.customText);
+    if (language === "English" || Object.keys(customText).length === 0) {
+      return res.json({ language, customText });
+    }
+
+    const prompt = `Translate this wedding website editor copy into ${language}.
+
+CRITICAL RULES:
+- Return ONLY valid JSON in this shape: {"customText":{...}}.
+- Preserve every key exactly.
+- Preserve URLs, dates, times, emoji, names, venue names, addresses, and placeholders that are already proper nouns.
+- Translate only the readable UI/copy text values.
+- If a value is a JSON string for FAQ items, return a JSON string with the same array/object shape and translate only question and answer text.
+- Do not add, remove, rename, merge, or reorder keys.
+
+Website copy JSON:
+${JSON.stringify(customText)}`;
+
+    const completion = await openai.chat.completions.create({
+      model: getModel(),
+      response_format: { type: "json_object" },
+      max_completion_tokens: 3000,
+      messages: [{ role: "user", content: prompt }],
+    }, { signal: AbortSignal.timeout(30_000) });
+
+    const content = completion.choices[0]?.message?.content ?? "{}";
+    let translated: Record<string, string> | null = null;
+    try {
+      const parsed = JSON.parse(content);
+      const parsedText = normalizeWebsiteTranslationText(parsed?.customText);
+      const sourceKeys = Object.keys(customText);
+      if (sourceKeys.length > 0 && sourceKeys.every((key) => key in parsedText)) {
+        translated = Object.fromEntries(sourceKeys.map((key) => [key, parsedText[key]]));
+      }
+    } catch (parseErr) {
+      req.log.warn({ err: String(parseErr), preview: content.slice(0, 500) }, "Website translation JSON parse failed");
+    }
+    if (!translated) {
+      res.status(502).json({ error: "Website translation failed. Please try again." });
+      return;
+    }
+
+    res.json({ language, customText: translated });
+  } catch (err) {
+    req.log.error(err, "translateWebsite failed");
+    const e = err as { status?: number; message?: string };
+    if (e?.status === 429) {
+      return res.status(429).json({ error: "Aria is at her daily AI limit. Please try again after midnight UTC." });
+    }
+    res.status(500).json({ error: e?.message ? `Website translation failed: ${e.message}` : "Internal server error" });
   }
 });
 

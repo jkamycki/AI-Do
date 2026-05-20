@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { getCurrentLanguageCode, getCurrentLanguageName } from "@/lib/languagePreference";
 import {
   Loader2, Save, Globe, Eye, Copy, Check, Image as ImageIcon, X,
   Lock, Type, Palette, ToggleLeft, FileText, Heart, MapPin, Clock, Gift, HelpCircle,
@@ -110,6 +111,116 @@ function editableTextFieldValue(value: string | undefined): string {
 
 const LEGACY_PENDING_SAVE_KEY = "aido_website_pending_save_v1";
 const PENDING_SAVE_KEY_PREFIX = "aido_website_pending_save_v2";
+const WEBSITE_TRANSLATION_CACHE_PREFIX = "aido_website_translation_v1";
+
+const WEBSITE_TRANSLATABLE_DEFAULTS: Record<string, string> = {
+  _navHome: "Home",
+  _navStory: "Our Story",
+  _navSchedule: "Schedule",
+  _navTravel: "Travel",
+  _navRegistry: "Registry",
+  _navWeddingParty: "Wedding Party",
+  _navGallery: "Gallery",
+  _navFaq: "FAQ",
+  _navRsvp: "RSVP",
+  welcome_title: "Welcome",
+  story_title: "Our Story",
+  story_subtitle: "How we got here",
+  schedule_title: "Schedule",
+  _scheduleCeremonyLabel: "Ceremony",
+  _scheduleCocktailLabel: "Cocktail Hour",
+  _scheduleReceptionLabel: "Reception",
+  travel_title: "Travel & Venue",
+  travel_subtitle: "Where & how to get there",
+  _travelVenueLabel: "Venue",
+  _travelHotelLabel: "Hotel",
+  _openInGoogleMaps: "Open in Google Maps",
+  registry_title: "Registry",
+  registry_subtitle: "With love",
+  faq_title: "FAQ",
+  faq_subtitle: "Good to know",
+  gallery_title: "Gallery",
+  gallery_subtitle: "Moments",
+  weddingParty_title: "Wedding Party",
+  weddingParty_subtitle: "Meet our family & friends standing with us",
+  weddingParty_brideLabel: "Bride's Party",
+  weddingParty_groomLabel: "Groom's Party",
+  weddingParty_familyLabel: "Family & Friends",
+  rsvp_title: "RSVP",
+  rsvp_subtitle: "Let us know if you can celebrate with us",
+};
+
+const WEBSITE_TRANSLATABLE_KEYS = new Set([
+  "_announcement",
+  "_heroTagline",
+  "welcome",
+  "story",
+  "schedule",
+  "travel",
+  "registry",
+  "faq",
+  "faq_items_json",
+  "rsvp_subtitle",
+  "rsvp_thankyou",
+]);
+
+const WEBSITE_TRANSLATION_BLOCKED_KEYS = new Set([
+  WEBSITE_DEVICE_OVERRIDES_KEY,
+  "_coupleName",
+  "_heroDate",
+  "_footerCoupleName",
+  "_footerText",
+  "_hotelName",
+  "_hotelAddress",
+  "_registryLinks",
+  "_heroFocals",
+  "_heroZooms",
+]);
+
+function websiteTranslationSignature(customText: Record<string, string>): string {
+  const raw = JSON.stringify(collectWebsiteTranslationText(customText));
+  let hash = 0;
+  for (let index = 0; index < raw.length; index += 1) {
+    hash = (hash * 31 + raw.charCodeAt(index)) >>> 0;
+  }
+  return hash.toString(36);
+}
+
+function websiteTranslationCacheKey({
+  websiteId,
+  languageCode,
+  signature,
+  userId,
+}: {
+  websiteId: number;
+  languageCode: string;
+  signature: string;
+  userId: string;
+}) {
+  return `${WEBSITE_TRANSLATION_CACHE_PREFIX}:${userId}:${websiteId}:${languageCode}:${signature}`;
+}
+
+function isLikelyReadableWebsiteCopy(key: string, value: string): boolean {
+  if (!value.trim() || isEditableHiddenMarker(value)) return false;
+  if (WEBSITE_TRANSLATION_BLOCKED_KEYS.has(key)) return false;
+  if (WEBSITE_TRANSLATABLE_DEFAULTS[key] || WEBSITE_TRANSLATABLE_KEYS.has(key) || key.startsWith("_custom_")) return true;
+  if (key.startsWith("_")) return false;
+  return /[A-Za-z]/.test(value);
+}
+
+function collectWebsiteTranslationText(customText: Record<string, string> = {}): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, fallback] of Object.entries(WEBSITE_TRANSLATABLE_DEFAULTS)) {
+    const value = customText[key];
+    if (value && isEditableHiddenMarker(value)) continue;
+    out[key] = value?.trim() || fallback;
+  }
+  for (const [key, value] of Object.entries(customText)) {
+    if (!isLikelyReadableWebsiteCopy(key, value)) continue;
+    out[key] = value;
+  }
+  return out;
+}
 
 function stripDeviceOverridesFromText(customText: Record<string, string> | undefined): Record<string, string> {
   const { [WEBSITE_DEVICE_OVERRIDES_KEY]: _marker, ...rest } = customText ?? {};
@@ -143,7 +254,7 @@ function withDevicePatch(
 // ---------- main ----------
 
 export default function WebsiteEditor() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { getToken, userId } = useAuth();
   const { toast } = useToast();
   const [record, setRecord] = useState<WebsiteRecord | null>(null);
@@ -167,6 +278,8 @@ export default function WebsiteEditor() {
   const [activeTab, setActiveTab] = useState<"setup" | "design" | "sections" | "rsvp" | "publish">("setup");
   const inTab = (t: typeof activeTab) => activeTab === t;
   const [emojiFieldOpen, setEmojiFieldOpen] = useState<string | null>(null);
+  const [translatedWebsiteText, setTranslatedWebsiteText] = useState<Record<string, string> | null>(null);
+  const [isTranslatingWebsite, setIsTranslatingWebsite] = useState(false);
   const contentInputRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | null>>({});
   // x/y are viewport coords (used to position the menu); canvasX/canvasY are
   // coords relative to the WebsiteRenderer container (used so a newly
@@ -551,6 +664,85 @@ export default function WebsiteEditor() {
     }
   }, [invitationHotelSettings?.customColors, profileId, toast]);
 
+  const languageCode = (i18n.resolvedLanguage || i18n.language || getCurrentLanguageCode()).split("-")[0] || "en";
+  const languageName = getCurrentLanguageName();
+  const websiteTranslationSource = useMemo(
+    () => collectWebsiteTranslationText(record?.customText ?? {}),
+    [record?.customText],
+  );
+  const websiteTranslationSig = useMemo(
+    () => websiteTranslationSignature(record?.customText ?? {}),
+    [record?.customText],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!record || dirty || languageCode === "en" || Object.keys(websiteTranslationSource).length === 0) {
+      setTranslatedWebsiteText(null);
+      setIsTranslatingWebsite(false);
+      return;
+    }
+
+    const cacheKey = websiteTranslationCacheKey({
+      websiteId: record.id,
+      languageCode,
+      signature: websiteTranslationSig,
+      userId: userId ?? "anonymous",
+    });
+
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          setTranslatedWebsiteText(parsed as Record<string, string>);
+          setIsTranslatingWebsite(false);
+          return;
+        }
+      }
+    } catch {
+      // Cache is best-effort only.
+    }
+
+    setIsTranslatingWebsite(true);
+    authFetch(`/api/website/${record.id}/translate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ customText: websiteTranslationSource, preferredLanguage: languageName }),
+    })
+      .then(async (response) => {
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error((body as any)?.error ?? response.statusText);
+        if (languageCode !== "en" && (body as any)?.language === "English") {
+          throw new Error("Website translation returned English");
+        }
+        const customText = (body as any)?.customText;
+        if (!customText || typeof customText !== "object" || Array.isArray(customText) || cancelled) return;
+        const translated = customText as Record<string, string>;
+        const changedText = Object.keys(websiteTranslationSource).some((key) => translated[key] && translated[key] !== websiteTranslationSource[key]);
+        if (languageCode !== "en" && !changedText) {
+          setTranslatedWebsiteText(null);
+          return;
+        }
+        setTranslatedWebsiteText(translated);
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(translated));
+        } catch {
+          // Ignore storage limits.
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setTranslatedWebsiteText(null);
+      })
+      .finally(() => {
+        if (!cancelled) setIsTranslatingWebsite(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dirty, languageCode, languageName, record?.id, userId, websiteTranslationSig, websiteTranslationSource]);
+
   // Must be declared above any early return so the hook count stays stable.
   const livePreview = useMemo<WebsiteRendererPayload | null>(() => {
     if (!record) return null;
@@ -560,6 +752,9 @@ export default function WebsiteEditor() {
       if (invitationHotelSettings?.rsvpHotelBlockId && invitationHotelSettings.rsvpHotelBlockId !== "all") {
         previewCustomText._rsvpHotelBlockId = invitationHotelSettings.rsvpHotelBlockId;
       }
+    }
+    if (translatedWebsiteText) {
+      Object.assign(previewCustomText, translatedWebsiteText);
     }
     return {
       slug: record.slug,
@@ -590,7 +785,7 @@ export default function WebsiteEditor() {
         venueState: null,
       },
     };
-  }, [hotelBlocks, invitationHotelSettings, record, previewExtra?.couple]);
+  }, [hotelBlocks, invitationHotelSettings, record, previewExtra?.couple, translatedWebsiteText]);
 
   const editingRecord = useMemo<WebsiteRecord | null>(() => {
     if (!record) return null;
@@ -1391,6 +1586,11 @@ export default function WebsiteEditor() {
               {saveError && (
                 <span className="text-[10px] font-medium text-destructive bg-destructive/10 rounded px-2 py-0.5">
                   Save failed — retrying…
+                </span>
+              )}
+              {isTranslatingWebsite && (
+                <span className="text-[10px] font-medium text-primary bg-primary/10 rounded px-2 py-0.5">
+                  {t("website_editor.translating_copy", { defaultValue: "Translating copy..." })}
                 </span>
               )}
               <Button
