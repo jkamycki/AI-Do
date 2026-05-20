@@ -3634,10 +3634,7 @@ export default function Guests({
                     className="inline-flex w-fit items-center rounded-full border border-primary/15 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/15"
                     title="View selected guests"
                   >
-                    {filtered.length === 1
-                      ? t("guests.guest_count", { count: filtered.length })
-                      : t("guests.guests_count", { count: filtered.length })}
-                    {rsvpFilter !== "all" || search ? ` ${t("guests.filtered")}` : ""}
+                    {selectedGuests.length} selected
                   </button>
                 </DialogTrigger>
                 <DialogContent className="max-w-md">
