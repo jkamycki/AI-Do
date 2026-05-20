@@ -1533,13 +1533,6 @@ export default function Guests({
     useState<GuestFormValues | null>(null);
 
   const [sendModalGuest, setSendModalGuest] = useState<Guest | null>(null);
-  const [textDialog, setTextDialog] = useState<{
-    type: "saveTheDate" | "rsvp";
-    guestName: string;
-    phone: string;
-    message: string;
-  } | null>(null);
-  const [textingGuestId, setTextingGuestId] = useState<number | null>(null);
   const [sendModalDefaultTab, setSendModalDefaultTab] = useState<
     "saveTheDate" | "digitalInvitation"
   >(sendDefaultInvitation);
@@ -2069,104 +2062,6 @@ export default function Guests({
         ),
       };
     });
-  }
-
-  function invitationTypeForGuest(guest: Guest): "saveTheDate" | "rsvp" {
-    return (guest as any).saveTheDateStatus === "sent"
-      ? "rsvp"
-      : "saveTheDate";
-  }
-
-  function normalizeSmsPhone(phone: string | null | undefined) {
-    return (phone ?? "").trim().replace(/[^\d+]/g, "");
-  }
-
-  function getCoupleName() {
-    const profile = weddingProfile as
-      | { partner1Name?: string | null; partner2Name?: string | null }
-      | null
-      | undefined;
-    return [profile?.partner2Name, profile?.partner1Name]
-      .filter(Boolean)
-      .join(" & ");
-  }
-
-  function buildTextInviteMessage(
-    type: "saveTheDate" | "rsvp",
-    guest: Guest,
-    url: string,
-  ) {
-    const firstName = (guest.name ?? "there").split(/\s+/)[0] || "there";
-    const couple = getCoupleName();
-    const couplePart = couple ? `${couple}'s wedding` : "our wedding";
-    if (type === "saveTheDate") {
-      return `Hi ${firstName}, save the date for ${couplePart}! View it here: ${url}`;
-    }
-    return `Hi ${firstName}, you're invited to ${couplePart}. Please RSVP here: ${url}`;
-  }
-
-  function buildSmsHref(phone: string, message: string) {
-    const isAppleDevice =
-      typeof navigator !== "undefined" &&
-      /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent);
-    const separator = isAppleDevice ? "&" : "?";
-    return `sms:${phone}${separator}body=${encodeURIComponent(message)}`;
-  }
-
-  async function handleTextInvite(guest: Guest) {
-    const phone = normalizeSmsPhone((guest as any).phone);
-    if (!phone) {
-      toast({
-        title: "No phone number",
-        description: "Add a phone number before texting this invitation.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const type = invitationTypeForGuest(guest);
-    const endpoint =
-      type === "saveTheDate"
-        ? `/api/guests/${guest.id}/save-the-date-link`
-        : `/api/guests/${guest.id}/rsvp-link`;
-
-    try {
-      setTextingGuestId(guest.id);
-      const res = await authFetch(endpoint);
-      if (!res.ok) {
-        const err = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(err.error ?? "Failed to create invitation link");
-      }
-      const data = (await res.json()) as {
-        saveTheDateUrl?: string;
-        rsvpUrl?: string;
-        previewUrl?: string;
-      };
-      const url = data.saveTheDateUrl ?? data.rsvpUrl ?? data.previewUrl;
-      if (!url) throw new Error("Invitation link was not returned");
-
-      const message = buildTextInviteMessage(type, guest, url);
-      setTextDialog({
-        type,
-        guestName: guest.name || "Guest",
-        phone,
-        message,
-      });
-      window.location.href = buildSmsHref(phone, message);
-      toast({
-        title: "Opening text message",
-        description:
-          "The message is prefilled so you can review it before sending.",
-      });
-    } catch (err) {
-      toast({
-        title: "Could not open text invite",
-        description: err instanceof Error ? err.message : undefined,
-        variant: "destructive",
-      });
-    } finally {
-      setTextingGuestId(null);
-    }
   }
 
   function handleGroupChange(guest: Guest, raw: string) {
@@ -3540,22 +3435,6 @@ export default function Guests({
                       >
                         <Edit2 className="h-3.5 w-3.5" />
                       </Button>
-                      {(g as any).phone && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-sky-500 hover:text-sky-600"
-                          title="Text invitation link"
-                          disabled={textingGuestId === g.id}
-                          onClick={() => handleTextInvite(g)}
-                        >
-                          {textingGuestId === g.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <MessageSquare className="h-3.5 w-3.5" />
-                          )}
-                        </Button>
-                      )}
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button
@@ -3992,22 +3871,6 @@ export default function Guests({
                         </TableCell>
                         <TableCell className="align-top">
                           <div className="flex flex-wrap items-center justify-end gap-1">
-                            {(g as any).phone && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-sky-500 hover:text-sky-600"
-                                title="Text invitation link"
-                                disabled={textingGuestId === g.id}
-                                onClick={() => handleTextInvite(g)}
-                              >
-                                {textingGuestId === g.id ? (
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  <MessageSquare className="h-3.5 w-3.5" />
-                                )}
-                              </Button>
-                            )}
                             <Button
                               variant="ghost"
                               size="icon"
@@ -4119,58 +3982,6 @@ export default function Guests({
               submitLabel="Save Changes"
             />
           )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Text-message fallback. Native SMS links cannot confirm delivery. */}
-      <Dialog
-        open={!!textDialog}
-        onOpenChange={(open) => {
-          if (!open) setTextDialog(null);
-        }}
-      >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-base">
-              Text{" "}
-              {textDialog?.type === "saveTheDate"
-                ? "Save the Date"
-                : "RSVP invitation"}{" "}
-              to {textDialog?.guestName}
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              If your messages app did not open, copy this message and send it
-              to {textDialog?.phone}.
-            </DialogDescription>
-          </DialogHeader>
-          <Textarea
-            value={textDialog?.message ?? ""}
-            className="min-h-28 text-sm"
-            onChange={(e) => {
-              const next = e.currentTarget.value;
-              setTextDialog((current) =>
-                current ? { ...current, message: next } : current,
-              );
-            }}
-          />
-          <div className="flex justify-end">
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5"
-              onClick={() => {
-                if (!textDialog) return;
-                navigator.clipboard.writeText(textDialog.message).then(() => {
-                  toast({
-                    title: "Message copied",
-                    description: "Paste it into your text message.",
-                  });
-                });
-              }}
-            >
-              <Copy className="h-4 w-4" /> Copy message
-            </Button>
-          </div>
         </DialogContent>
       </Dialog>
 
