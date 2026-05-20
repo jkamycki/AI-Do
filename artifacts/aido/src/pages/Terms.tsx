@@ -18,7 +18,7 @@ export default function Terms() {
         </Link>
         <div className="space-y-2 mb-10">
           <h1 className="font-serif text-4xl text-[#3B1C2B]">Terms of Service</h1>
-          <p className="text-sm text-[#6F3E54]">Last updated: May 18, 2026</p>
+          <p className="text-sm text-[#6F3E54]">Last updated: May 20, 2026</p>
         </div>
 
         <div className="space-y-8 leading-relaxed text-[#3B1C2B]">
@@ -60,7 +60,8 @@ export default function Terms() {
               </li>
               <li>
                 <strong>Budget manager</strong> — tracks estimated vs. actual
-                costs, deposits, payment milestones, and vendor totals.
+                costs, deposits, partial payments, paid-in-full status, next
+                payment dates, vendor totals, and PDF / Excel financial reports.
               </li>
               <li>
                 <strong>Vendor tracking</strong> — store vendor contacts,
@@ -88,7 +89,13 @@ export default function Terms() {
               <li>
                 <strong>Guest list &amp; invitations</strong> — guest data,
                 dietary notes, RSVP tokens, save-the-date and digital invitation
-                flows.
+                flows, shared invitation links, RSVP name lookup, reminder
+                tracking, invitation-safe sending controls, and copyable links.
+              </li>
+              <li>
+                <strong>Guest collector</strong> - public contact-info request
+                links where guests can submit mailing address and contact
+                details for invitations.
               </li>
               <li>
                 <strong>Hotel blocks</strong> — booking link, code, room counts.
@@ -121,6 +128,12 @@ export default function Terms() {
               <li>
                 <strong>Support chat</strong> — an AI support assistant that can
                 file support tickets on your behalf.
+              </li>
+              <li>
+                <strong>Operations tools</strong> - support tickets, feedback,
+                maintenance-mode controls, test-account activity, launch
+                checklists, and database backup / restore tools for authorized
+                admins.
               </li>
             </ul>
             <p>
@@ -179,8 +192,10 @@ export default function Terms() {
             <p>
               You retain ownership of all content you upload (text, images,
               contracts, documents, mood boards, vendor records, vendor contact
-              records, guest lists, RSVPs,
-              wedding-website edits). By uploading you grant A.IDO a
+              records, guest lists, RSVPs, guest-submitted RSVP messages,
+              hotel-room responses, guest-collector submissions, invitation
+              customizations, wedding-website edits, financial-report exports,
+              and language preferences). By uploading you grant A.IDO a
               non-exclusive license to host, process, transmit, display, and
               back up that content solely to operate the Service for you and
               your workspace collaborators. You are responsible for ensuring you
@@ -250,10 +265,20 @@ export default function Terms() {
               </span>
               ) and may be indexed by search engines unless you set a password.
               Information your guests submit through the public RSVP flow
-              (including off-list "RSVP anyway" submissions) is stored in your
-              workspace and visible to your collaborators. You are responsible
-              for compliance with applicable privacy laws when collecting guest
-              data.
+              (including off-list "RSVP anyway" submissions, guest messages,
+              meal selections, hotel needs, and "already booked" hotel-room
+              counts) is stored in your workspace and visible to collaborators
+              with access. Shared save-the-date, RSVP, and guest-collector links
+              may generate link previews in email, SMS, or messaging apps. You
+              are responsible for compliance with applicable privacy laws when
+              collecting guest data.
+            </p>
+            <p>
+              Invitation links and QR codes are provided for convenience. You
+              are responsible for testing links, QR codes, email previews, and
+              printed materials before sending or printing at scale. If you use
+              safe mode or maintenance mode, those controls reduce accidental
+              sends or guest access, but they do not replace your own review.
             </p>
           </section>
 
@@ -292,10 +317,11 @@ export default function Terms() {
             <p>
               The Service integrates third-party providers including Clerk
               (authentication), Resend (transactional email), OpenAI and Groq
-              (AI inference), and our hosting and database providers. Their use
-              is governed by their own terms; we are not responsible for their
-              acts or omissions. The Privacy Policy and Data Handling page
-              describe what is shared with each.
+              (AI inference), OpenStreetMap / Nominatim (address lookup where
+              used), Cloudflare R2 or equivalent object storage, and our hosting
+              and database providers. Their use is governed by their own terms;
+              we are not responsible for their acts or omissions. The Privacy
+              Policy and Data Handling page describe what is shared with each.
             </p>
           </section>
 

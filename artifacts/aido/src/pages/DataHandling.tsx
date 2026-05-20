@@ -18,7 +18,7 @@ export default function DataHandling() {
         </Link>
         <div className="space-y-2 mb-10">
           <h1 className="font-serif text-4xl">Data Handling</h1>
-          <p className="text-sm text-[#6F3E54]">Last updated: May 18, 2026</p>
+          <p className="text-sm text-[#6F3E54]">Last updated: May 20, 2026</p>
         </div>
 
         <div className="space-y-8 leading-relaxed">
@@ -29,11 +29,15 @@ export default function DataHandling() {
               <li>
                 <strong>Profile</strong> — couple names, wedding date, venue,
                 location (city/state/zip), ceremony &amp; reception times, guest
-                count, total budget, theme, preferred language.
+                count, total budget, theme, and preferred language. Language
+                preference is stored per user so collaborators can use different
+                languages in the same workspace.
               </li>
               <li>
                 <strong>Budget</strong> — line items, manual expenses, payment
-                logs, vendor totals, deposit milestones.
+                logs, vendor totals, deposit milestones, partial-payment status,
+                paid-in-full status, next payment dates, receipts, notes, and
+                generated PDF / Excel financial reports.
               </li>
               <li>
                 <strong>Checklist</strong> — month-by-month tasks and completion
@@ -74,7 +78,15 @@ export default function DataHandling() {
               <li>
                 <strong>Guest list</strong> — names, optional
                 email/phone/address, dietary notes, plus-ones, RSVP status,
-                table assignment, save-the-date / e-invite delivery status.
+                table assignment, save-the-date / e-invite delivery status,
+                selected meal choices, RSVP messages, hotel needs, "already
+                booked" hotel responses, and booked room counts.
+              </li>
+              <li>
+                <strong>Guest collector</strong> - guest-submitted names,
+                mailing addresses, email addresses, phone numbers, meal notes,
+                dietary notes, plus-one details, request tokens, and submission
+                timestamps.
               </li>
               <li>
                 <strong>Hotel blocks</strong> — hotel name, address, code, room
@@ -91,7 +103,8 @@ export default function DataHandling() {
               <li>
                 <strong>Wedding website</strong> — slug, theme/colors/fonts,
                 custom text, hero photo, gallery, registry links, schedule, FAQ,
-                RSVP responses, optional password.
+                RSVP responses, optional password, desktop/mobile responsive
+                layout settings, and published/unpublished status.
               </li>
               <li>
                 <strong>Aria conversations</strong> — your messages to Aria and
@@ -103,7 +116,15 @@ export default function DataHandling() {
               </li>
               <li>
                 <strong>Workspace collaborators</strong> — invited users and
-                their assigned roles.
+                their assigned roles, invite tokens, invite status, invitee
+                email, inviter ID, and timestamps.
+              </li>
+              <li>
+                <strong>Operations and maintenance</strong> - support tickets,
+                contact messages, feedback, improvement suggestions,
+                maintenance-mode flags, maintenance messages, launch checklist
+                items, test-account activity, backup metadata, and admin audit
+                events.
               </li>
             </ul>
           </section>
@@ -190,6 +211,31 @@ export default function DataHandling() {
                       All workspace data described above
                     </td>
                   </tr>
+                  <tr>
+                    <td className="px-4 py-2.5 align-top">
+                      <strong>Cloudflare R2</strong>
+                    </td>
+                    <td className="px-4 py-2.5 align-top">
+                      Object storage for uploads and off-Neon logical database
+                      backups where configured
+                    </td>
+                    <td className="px-4 py-2.5 align-top text-[#3B1C2B]/80">
+                      Uploaded files, backup files, and metadata required to
+                      enforce access controls
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2.5 align-top">
+                      <strong>OpenStreetMap / Nominatim</strong>
+                    </td>
+                    <td className="px-4 py-2.5 align-top">
+                      Address autocomplete and distance lookup where enabled
+                    </td>
+                    <td className="px-4 py-2.5 align-top text-[#3B1C2B]/80">
+                      Address search text, request metadata, and returned
+                      geocoding results
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -212,8 +258,14 @@ export default function DataHandling() {
                 the primary database.
               </li>
               <li>
-                Database backups roll forward and are purged after roughly 30
-                days.
+                Neon database backups and off-Neon logical backups are retained
+                for disaster recovery according to configured retention windows,
+                typically about 30 days.
+              </li>
+              <li>
+                Restore operations are admin-only. Before a restore, the system
+                creates a pre-restore safety backup where backup storage is
+                configured.
               </li>
               <li>
                 Server logs are retained for security and debugging for
@@ -240,6 +292,9 @@ export default function DataHandling() {
               <li>The seating chart exports to PDF.</li>
               <li>The day-of timeline exports to PDF.</li>
               <li>The mood board exports to PDF.</li>
+              <li>
+                Budget summary and payment reports export to PDF and Excel.
+              </li>
               <li>RSVP responses export to CSV.</li>
               <li>
                 Documents and contracts can be downloaded from their original
@@ -267,7 +322,12 @@ export default function DataHandling() {
               submission is stored in your private workspace. Off-list guests
               who use "RSVP anyway" are stored with the source flag{" "}
               <span className="font-mono text-[#6F3E54]">rsvp_self_add</span> and
-              a notes line indicating they should be verified. As the workspace
+              may also include guest messages, meal choices, plus-one details,
+              hotel needs, "already booked" hotel responses, and room counts.
+              Guest collector submissions are stored in the guest list or
+              related request records.{" "}
+              Off-list submissions also receive a notes line indicating they
+              should be verified. As the workspace
               owner, you are the controller of your guests' data — please honor
               any deletion or correction requests they make to you directly.
             </p>

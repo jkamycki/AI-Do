@@ -18,7 +18,7 @@ export default function BetaDisclaimer() {
         </Link>
         <div className="space-y-2 mb-10">
           <h1 className="font-serif text-4xl">Beta Disclaimer</h1>
-          <p className="text-sm text-[#6F3E54]">Last updated: May 18, 2026</p>
+          <p className="text-sm text-[#6F3E54]">Last updated: May 20, 2026</p>
         </div>
 
         <div className="space-y-8 leading-relaxed">
@@ -48,6 +48,10 @@ export default function BetaDisclaimer() {
                 without prior warning.
               </li>
               <li>
+                Maintenance mode may temporarily block guest-facing pages or
+                selected portal sections while updates are being tested.
+              </li>
+              <li>
                 You may experience bugs, downtime, or unexpected behavior.
                 Please report issues via the in-app support widget or email{" "}
                 <a
@@ -71,6 +75,11 @@ export default function BetaDisclaimer() {
                 should keep your own independent copy of critical wedding
                 details (final guest list, signed vendor contracts, payment
                 records, Document Library uploads, vendor contacts, etc.).
+              </li>
+              <li>
+                Admin backup tools may create off-Neon logical backups and
+                pre-restore safety backups where configured, but no backup
+                system is guaranteed to recover every change or file.
               </li>
               <li>
                 You can delete your account at any time from Settings → Account.
@@ -125,6 +134,23 @@ export default function BetaDisclaimer() {
               <li>
                 <strong>Day-of coordinator</strong> output is general guidance,
                 not professional emergency advice.
+              </li>
+              <li>
+                <strong>Budget and vendor payment tools</strong> help track
+                deposits, partial payments, next payments, and paid-in-full
+                status, but they are planning aids only. Review financial
+                records against your contracts, invoices, receipts, and bank
+                statements.
+              </li>
+              <li>
+                <strong>Invitation and RSVP links</strong> may use shared links,
+                QR codes, email previews, SMS previews, and guest name lookup.
+                Test links and printed QR codes before sending at scale.
+              </li>
+              <li>
+                <strong>Language switching</strong> is intended to translate UI
+                and AI-generated planning text per user, but translations may
+                be incomplete or imperfect during beta.
               </li>
             </ul>
           </section>

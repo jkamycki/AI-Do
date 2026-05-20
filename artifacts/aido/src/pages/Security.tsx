@@ -18,7 +18,7 @@ export default function Security() {
         </Link>
         <div className="space-y-2 mb-10">
           <h1 className="font-serif text-4xl">Security</h1>
-          <p className="text-sm text-[#6F3E54]">Last updated: May 18, 2026</p>
+          <p className="text-sm text-[#6F3E54]">Last updated: May 20, 2026</p>
         </div>
 
         <div className="space-y-8 leading-relaxed">
@@ -77,6 +77,11 @@ export default function Security() {
                 Database backups are taken regularly by the hosting provider and
                 retained per their policy (typically up to 30 days).
               </li>
+              <li>
+                The app can also create off-Neon logical database backups in R2
+                or equivalent storage. Admin restore tools require confirmation
+                and create a pre-restore safety backup where configured.
+              </li>
             </ul>
           </section>
 
@@ -86,7 +91,8 @@ export default function Security() {
             </h2>
             <p>
               When you use AI features, the relevant prompt and necessary
-              context are sent to OpenAI or Groq. Per their API policies at the
+              context are sent to OpenRouter or the configured AI provider,
+              including models from OpenAI or Groq. Per provider API policies at the
               time of writing, they do not train public models on API customer
               data and retain content only briefly (≤30 days) for abuse
               monitoring. We do not include unrelated personal identifiers in
@@ -130,6 +136,21 @@ export default function Security() {
               <li>
                 Content-Security-Policy and other security headers configured at
                 the hosting layer.
+              </li>
+              <li>
+                Maintenance mode can temporarily block public guest-facing pages
+                or selected portal tabs while admins debug. Admins can bypass
+                portal-tab maintenance to inspect the real page.
+              </li>
+              <li>
+                Invitation safe mode and copy-link workflows are designed to
+                reduce accidental sends, but users should still review selected
+                guests, links, previews, and QR codes before sending.
+              </li>
+              <li>
+                Address autocomplete and hotel distance lookup use external
+                geocoding services only for the address text needed to return
+                suggestions or distance estimates.
               </li>
               <li>
                 Dependencies tracked via Dependabot; security upgrades reviewed

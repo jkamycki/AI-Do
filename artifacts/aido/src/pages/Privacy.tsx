@@ -18,7 +18,7 @@ export default function Privacy() {
         </Link>
         <div className="space-y-2 mb-10">
           <h1 className="font-serif text-4xl">Privacy Policy</h1>
-          <p className="text-sm text-[#6F3E54]">Last updated: May 13, 2026</p>
+          <p className="text-sm text-[#6F3E54]">Last updated: May 20, 2026</p>
         </div>
 
         <div className="space-y-8 leading-relaxed">
@@ -56,11 +56,18 @@ export default function Privacy() {
             <ul className="list-disc pl-6 space-y-1.5 text-[#3B1C2B]/90">
               <li>
                 Vendor records (contact info, contracts you upload, deposit
-                amounts, payment milestones, notes).
+                amounts, partial payments, paid-in-full status, next payment
+                dates, receipts, payment milestones, notes).
               </li>
               <li>
                 Guest list (name, email, phone, address, dietary notes,
-                plus-ones, RSVP status, table assignment).
+                plus-ones, RSVP status, RSVP messages, hotel needs, booked
+                hotel-room counts, meal choices, table assignment).
+              </li>
+              <li>
+                Guest collector submissions and invitation-link activity,
+                including contact-info request tokens and delivery/status
+                indicators.
               </li>
               <li>Wedding-party member directory.</li>
               <li>Hotel block details.</li>
@@ -72,6 +79,10 @@ export default function Privacy() {
               </li>
               <li>Day-of timeline events.</li>
               <li>
+                Budget financial reports, PDF/Excel exports, and related export
+                metadata.
+              </li>
+              <li>
                 Conversations with our AI assistant (Aria) and AI support
                 assistant.
               </li>
@@ -82,10 +93,16 @@ export default function Privacy() {
             </p>
             <ul className="list-disc pl-6 space-y-1.5 text-[#3B1C2B]/90">
               <li>
-                Name, email, attendance, dietary notes, plus-one details, and
-                any free-text message they include with their RSVP. Off-list
+                Name, email, attendance, meal choice, dietary notes, plus-one
+                details, hotel needs, booked room counts, and any free-text
+                message they include with their RSVP. Off-list
                 guests can self-add via "RSVP anyway" — that data is also
                 stored.
+              </li>
+              <li>
+                Through guest collector links: name, mailing address, email,
+                phone, plus-one information, meal notes, dietary notes, and
+                submission timestamps.
               </li>
             </ul>
             <p>
@@ -102,8 +119,8 @@ export default function Privacy() {
               </li>
               <li>
                 Cookies / local storage for authentication tokens, language
-                preference, and UI state. We do not use third-party advertising
-                or cross-site tracking cookies.
+                preference, account-switching flow state, and UI state. We do
+                not use third-party advertising or cross-site tracking cookies.
               </li>
             </ul>
           </section>
@@ -116,7 +133,9 @@ export default function Privacy() {
               <li>
                 To operate the Service — display your data, sync changes across
                 collaborators, generate AI output, send transactional email
-                (RSVP confirmations, support replies, invite links).
+                (RSVP confirmations, support replies, collaborator invites,
+                guest collector links, save-the-date and RSVP invitation links,
+                reminders, vendor emails).
               </li>
               <li>
                 To improve product quality and debug issues, using aggregate or
