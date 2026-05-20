@@ -1927,13 +1927,30 @@ function canAutoRecoverChunk() {
 
 class AppErrorBoundary extends Component<
   { children: ReactNode; resetKey: string },
-  { hasError: boolean; message: string; stack: string; componentStack: string; autoRecoveringChunk: boolean; showError: boolean }
+  { hasError: boolean; message: string; stack: string; componentStack: string; autoRecoveringChunk: boolean; showError: boolean; resetKey: string }
 > {
   private revealTimer: ReturnType<typeof window.setTimeout> | null = null;
 
   constructor(props: { children: ReactNode; resetKey: string }) {
     super(props);
-    this.state = { hasError: false, message: "", stack: "", componentStack: "", autoRecoveringChunk: false, showError: false };
+    this.state = { hasError: false, message: "", stack: "", componentStack: "", autoRecoveringChunk: false, showError: false, resetKey: props.resetKey };
+  }
+  static getDerivedStateFromProps(
+    props: { resetKey: string },
+    state: { resetKey: string },
+  ) {
+    if (props.resetKey !== state.resetKey) {
+      return {
+        hasError: false,
+        message: "",
+        stack: "",
+        componentStack: "",
+        autoRecoveringChunk: false,
+        showError: false,
+        resetKey: props.resetKey,
+      };
+    }
+    return null;
   }
   static getDerivedStateFromError(error: Error) {
     const message = error?.message || String(error);
@@ -1961,12 +1978,12 @@ class AppErrorBoundary extends Component<
     this.clearRevealTimer();
     this.revealTimer = window.setTimeout(() => {
       this.setState((state) => state.hasError ? { showError: true } : null);
-    }, 900);
+    }, 2500);
   }
   componentDidUpdate(prevProps: { resetKey: string }) {
     if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
       this.clearRevealTimer();
-      this.setState({ hasError: false, message: "", stack: "", componentStack: "", autoRecoveringChunk: false, showError: false });
+      this.setState({ hasError: false, message: "", stack: "", componentStack: "", autoRecoveringChunk: false, showError: false, resetKey: this.props.resetKey });
     }
   }
   componentWillUnmount() {
