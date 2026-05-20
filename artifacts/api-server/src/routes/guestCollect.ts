@@ -103,9 +103,11 @@ router.get("/guest-collect/:token/preview-card.svg", async (req, res) => {
     const name2 = p.partner2Name ?? "Partner 2";
     const frontendOrigin = buildFrontendOrigin(req);
     const formUrl = `${frontendOrigin}/collect/${req.params.token}`;
+    const logoUrl = `${frontendOrigin}/logo.png`;
     const couple = escapeHtml(`${name1} & ${name2}`);
     const description = escapeHtml("are collecting addresses for their wedding invitations");
     const safeFormUrl = escapeHtml(formUrl);
+    const safeLogoUrl = escapeHtml(logoUrl);
 
     res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=300");
@@ -126,8 +128,8 @@ router.get("/guest-collect/:token/preview-card.svg", async (req, res) => {
   <g filter="url(#shadow)">
     <rect x="70" y="218" width="1060" height="194" rx="22" fill="#FFF7F2" stroke="#E6A6B7" stroke-width="2"/>
     <rect x="70" y="218" width="1060" height="8" rx="4" fill="url(#top)"/>
-    <circle cx="150" cy="315" r="38" fill="#EED2D9" stroke="#D9A9B7" stroke-width="2"/>
-    <text x="150" y="328" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="36" fill="#8D294D">&#9829;</text>
+    <circle cx="150" cy="315" r="38" fill="#FFF7F2" stroke="#D9A9B7" stroke-width="2"/>
+    <image href="${safeLogoUrl}" x="118" y="282" width="64" height="64" preserveAspectRatio="xMidYMid meet"/>
     <text x="215" y="280" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="700" letter-spacing="4" fill="#B23062">CONTACT INFO REQUEST</text>
     <text x="215" y="322" font-family="Georgia, 'Times New Roman', serif" font-size="34" font-weight="700" fill="#3B1C2B">${couple}</text>
     <text x="215" y="358" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#6F3E54">${description}</text>

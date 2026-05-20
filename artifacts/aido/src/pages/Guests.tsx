@@ -1410,8 +1410,12 @@ function GuestCollectorCard() {
                   }}
                 />
                 <div className="flex items-start gap-3 p-3">
-                  <div className="shrink-0 h-11 w-11 rounded-full flex items-center justify-center bg-primary/15 ring-1 ring-primary/30">
-                    <Heart className="h-5 w-5 fill-primary text-primary" />
+                  <div className="shrink-0 h-11 w-11 rounded-full flex items-center justify-center bg-primary/10 ring-1 ring-primary/25 overflow-hidden">
+                    <img
+                      src="/logo.png"
+                      alt="A.IDO"
+                      className="h-9 w-9 object-contain"
+                    />
                   </div>
                   <div className="min-w-0">
                     <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5 text-primary">
