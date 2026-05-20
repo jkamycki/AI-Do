@@ -231,7 +231,9 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
             );
           })}
           {sharedWorkspaces.length > 0 && (
-            <p className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-widest font-semibold text-muted-foreground">Shared with me</p>
+            <p className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-widest font-semibold text-muted-foreground">
+              {t("sidebar.shared_with_me", { defaultValue: "Shared with me" })}
+            </p>
           )}
           {sharedWorkspaces.map(ws => (
             <button
@@ -276,7 +278,11 @@ export function Sidebar() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Max size is 10 MB.", variant: "destructive" });
+      toast({
+        title: t("sidebar.file_too_large", { defaultValue: "File too large" }),
+        description: t("sidebar.file_too_large_desc", { defaultValue: "Max size is 10 MB." }),
+        variant: "destructive",
+      });
       return;
     }
     const reader = new FileReader();
@@ -291,9 +297,9 @@ export function Sidebar() {
     setUploadingPic(true);
     try {
       await user.setProfileImage({ file: croppedFile });
-      toast({ title: "Profile picture updated!" });
+      toast({ title: t("sidebar.profile_picture_updated", { defaultValue: "Profile picture updated!" }) });
     } catch {
-      toast({ title: "Failed to update photo", variant: "destructive" });
+      toast({ title: t("sidebar.profile_picture_update_failed", { defaultValue: "Failed to update photo" }), variant: "destructive" });
     } finally {
       setUploadingPic(false);
     }
@@ -304,9 +310,9 @@ export function Sidebar() {
     setUploadingPic(true);
     try {
       await user.setProfileImage({ file: null });
-      toast({ title: "Profile picture removed" });
+      toast({ title: t("sidebar.profile_picture_removed", { defaultValue: "Profile picture removed" }) });
     } catch {
-      toast({ title: "Failed to remove photo", variant: "destructive" });
+      toast({ title: t("sidebar.profile_picture_remove_failed", { defaultValue: "Failed to remove photo" }), variant: "destructive" });
     } finally {
       setUploadingPic(false);
     }
@@ -483,7 +489,7 @@ export function Sidebar() {
         {activeWorkspace && (
           <div className="mx-4 mb-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/15">
             <p className="text-[10px] font-semibold text-primary uppercase tracking-wide">
-              {activeWorkspace.role === "owner" ? "Viewing Client" : t("sidebar.viewing_shared")}
+              {activeWorkspace.role === "owner" ? t("sidebar.viewing_client", { defaultValue: "Viewing Client" }) : t("sidebar.viewing_shared")}
             </p>
             <p className="text-xs text-foreground font-medium truncate mt-0.5">
               {activeWorkspace.workstationName || `${activeWorkspace.partner2Name} & ${activeWorkspace.partner1Name}`}
@@ -497,7 +503,7 @@ export function Sidebar() {
               <button
                 type="button"
                 className="flex items-center gap-3 w-full rounded-xl px-2 py-2 hover:bg-primary/5 transition-colors focus:outline-none disabled:opacity-70"
-                title="Edit profile picture"
+                title={t("sidebar.profile_picture_title", { defaultValue: "Edit profile picture" })}
               >
                 <div className="relative flex-shrink-0">
                   {user?.imageUrl ? (
@@ -533,8 +539,8 @@ export function Sidebar() {
                 onClick={() => picInputRef.current?.click()}
               >
                 {user?.imageUrl
-                  ? <><Camera className="h-4 w-4" /> Replace photo</>
-                  : <><ImagePlus className="h-4 w-4" /> Add photo</>
+                  ? <><Camera className="h-4 w-4" /> {t("sidebar.replace_photo", { defaultValue: "Replace photo" })}</>
+                  : <><ImagePlus className="h-4 w-4" /> {t("sidebar.add_photo", { defaultValue: "Add photo" })}</>
                 }
               </DropdownMenuItem>
               {user?.imageUrl && (
@@ -544,7 +550,7 @@ export function Sidebar() {
                     className="gap-2 cursor-pointer text-destructive focus:text-destructive"
                     onClick={handleRemovePic}
                   >
-                    <Trash2 className="h-4 w-4" /> Remove photo
+                    <Trash2 className="h-4 w-4" /> {t("sidebar.remove_photo", { defaultValue: "Remove photo" })}
                   </DropdownMenuItem>
                 </>
               )}
@@ -623,9 +629,11 @@ export function Sidebar() {
           <div className="rounded-md border border-primary/15 bg-card/75 px-2.5 py-2 shadow-sm dark:border-primary/20 dark:bg-secondary/45 dark:shadow-none">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-primary dark:text-primary">Theme</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-primary dark:text-primary">
+                  {t("sidebar.theme", { defaultValue: "Theme" })}
+                </p>
                 <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground">
-                  {theme === "dark" ? "Dark mode" : "Light palette mode"}
+                  {theme === "dark" ? t("sidebar.dark_mode") : t("sidebar.light_palette_mode", { defaultValue: "Light palette mode" })}
                 </p>
               </div>
               <div className="flex items-center gap-1.5">
@@ -633,7 +641,7 @@ export function Sidebar() {
                 <Switch
                   checked={theme === "dark"}
                   onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
-                  aria-label="Toggle dark mode"
+                  aria-label={theme === "dark" ? t("sidebar.switch_to_light") : t("sidebar.switch_to_dark")}
                   className="h-4 w-8"
                 />
                 <Moon className={`h-3.5 w-3.5 ${theme === "dark" ? "text-primary" : "text-muted-foreground"}`} />

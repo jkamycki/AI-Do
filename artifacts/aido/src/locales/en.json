@@ -70,7 +70,8 @@
     "settings": "Settings & Collaborators",
     "help": "Help & Support",
     "updates_improvements": "Updates & Improvements",
-    "admin": "Operations Center"
+    "admin": "Operations Center",
+    "website_editor": "Website Editor"
   },
   "sidebar": {
     "workspace_section": "Workspace",
@@ -79,8 +80,23 @@
     "my_workspace": "My Workspace",
     "active": "Active",
     "viewing_shared": "Viewing shared workspace",
+    "viewing_client": "Viewing Client",
+    "shared_with_me": "Shared with me",
+    "profile_picture_title": "Edit profile picture",
+    "replace_photo": "Replace photo",
+    "add_photo": "Add photo",
+    "remove_photo": "Remove photo",
+    "file_too_large": "File too large",
+    "file_too_large_desc": "Max size is 10 MB.",
+    "profile_picture_updated": "Profile picture updated!",
+    "profile_picture_removed": "Profile picture removed",
+    "profile_picture_update_failed": "Failed to update photo",
+    "profile_picture_remove_failed": "Failed to remove photo",
+    "guest_website_builder": "Guest Website Builder",
+    "theme": "Theme",
     "light_mode": "Light Mode",
     "dark_mode": "Dark Mode",
+    "light_palette_mode": "Light palette mode",
     "switch_to_light": "Switch to light mode",
     "switch_to_dark": "Switch to dark mode",
     "sign_out": "Sign Out"
