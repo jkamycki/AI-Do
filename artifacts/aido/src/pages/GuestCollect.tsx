@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Heart, CheckCircle2, AlertCircle, Loader2, MapPin } from "lucide-react";
+import { MaintenanceNotice } from "@/components/MaintenanceNotice";
+import { usePublicMaintenance } from "@/hooks/usePublicMaintenance";
 
 const schema = z.object({
   name: z.string().min(1, "Your full name is required"),
@@ -38,6 +40,7 @@ export default function GuestCollect() {
   const [, params] = useRoute("/collect/:token");
   const token = params?.token ?? "";
   const [submitted, setSubmitted] = useState(false);
+  const maintenance = usePublicMaintenance("guest-collector");
 
   const { data: wedding, isLoading, isError } = useQuery({
     queryKey: ["guest-collect", token],
@@ -85,6 +88,10 @@ export default function GuestCollect() {
     },
     onSuccess: () => setSubmitted(true),
   });
+
+  if (maintenance.data?.active) {
+    return <MaintenanceNotice message={maintenance.data.message} />;
+  }
 
   if (isLoading) {
     return (

@@ -14,6 +14,12 @@ import { purgeUserData, snapshotUserData } from "../lib/userCleanup";
 import { sendEmail, FROM_EMAIL } from "../lib/resend";
 import { trackEvent } from "../lib/trackEvent";
 import { openai, getModel, supportsCustomTemperature } from "@workspace/integrations-openai-ai-server";
+import {
+  DEFAULT_MAINTENANCE_MESSAGE,
+  isMaintenanceSection,
+  listMaintenanceFlags,
+  upsertMaintenanceFlag,
+} from "../lib/maintenance";
 
 const router = Router();
 
@@ -75,6 +81,43 @@ router.get("/admin/check", requireAuth, async (req, res) => {
     res.json({ isAdmin: adminStatus });
   } catch {
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/admin/maintenance", requireAuth, requireAdmin, async (_req, res) => {
+  try {
+    res.json({ flags: await listMaintenanceFlags(), defaultMessage: DEFAULT_MAINTENANCE_MESSAGE });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load maintenance settings" });
+  }
+});
+
+router.put("/admin/maintenance/:section", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const section = String(req.params.section ?? "");
+    if (!isMaintenanceSection(section)) {
+      return res.status(400).json({ error: "Unknown maintenance section" });
+    }
+
+    const enabled = Boolean(req.body?.enabled);
+    const rawMessage = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+    const message = rawMessage.slice(0, 240) || DEFAULT_MAINTENANCE_MESSAGE;
+    const rawExpiresAt = typeof req.body?.expiresAt === "string" ? req.body.expiresAt : null;
+    const expiresAt = rawExpiresAt ? new Date(rawExpiresAt) : null;
+    const safeExpiresAt = expiresAt && Number.isFinite(expiresAt.getTime()) ? expiresAt : null;
+
+    const flag = await upsertMaintenanceFlag({
+      section,
+      enabled,
+      message,
+      expiresAt: enabled ? safeExpiresAt : null,
+      updatedBy: req.userId ?? null,
+    });
+
+    res.json({ flag, flags: await listMaintenanceFlags() });
+  } catch (err) {
+    req.log.error({ err }, "Maintenance setting save error");
+    res.status(500).json({ error: "Failed to save maintenance settings" });
   }
 });
 

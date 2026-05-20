@@ -34,6 +34,7 @@ import moodboardRouter from "./moodboard";
 import invitationCustomizationsRouter from "./invitationCustomizations";
 import websiteRouter from "./website";
 import trackRouter from "./track";
+import maintenanceRouter from "./maintenance";
 
 const router: IRouter = Router();
 
@@ -72,5 +73,6 @@ router.use(moodboardRouter);
 router.use(invitationCustomizationsRouter);
 router.use(websiteRouter);
 router.use(trackRouter);
+router.use(maintenanceRouter);
 
 export default router;

@@ -270,6 +270,19 @@ export const adminLaunchPlanItems = pgTable("admin_launch_plan_items", {
 
 export type AdminLaunchPlanItem = typeof adminLaunchPlanItems.$inferSelect;
 
+export const maintenanceFlags = pgTable("maintenance_flags", {
+  id: serial("id").primaryKey(),
+  section: text("section").notNull().unique(),
+  enabled: boolean("enabled").notNull().default(false),
+  message: text("message"),
+  expiresAt: timestamp("expires_at"),
+  updatedBy: text("updated_by"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type MaintenanceFlag = typeof maintenanceFlags.$inferSelect;
+
 export const workspaceCollaborators = pgTable("workspace_collaborators", {
   id: serial("id").primaryKey(),
   profileId: integer("profile_id").notNull(),

@@ -8,6 +8,7 @@ import { and, eq, ilike, desc, not } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { publicRsvpLimiter } from "../middlewares/rateLimiter";
 import { hasMinRole, resolveCallerRole, resolveProfile } from "../lib/workspaceAccess";
+import { sendMaintenanceIfActive } from "../lib/maintenance";
 
 const scryptAsync = promisify(scrypt);
 
@@ -654,6 +655,7 @@ router.get("/invitation-shares/links", requireAuth, async (req, res) => {
 
 router.get("/invitation-shares/:token", async (req, res) => {
   try {
+    if (await sendMaintenanceIfActive(res, "rsvp")) return;
     const profile = await resolveInvitationShare(String(req.params.token ?? ""));
     if (!profile) return res.status(404).json({ error: "Not found" });
     const payload = await buildInvitationSharePayload(profile.id, buildFrontendOrigin(req));
@@ -667,6 +669,7 @@ router.get("/invitation-shares/:token", async (req, res) => {
 
 router.get("/invitation-shares/:token/guests/search", guestSearchLimiter, async (req, res) => {
   try {
+    if (await sendMaintenanceIfActive(res, "rsvp")) return;
     const profile = await resolveInvitationShare(String(req.params.token ?? ""));
     if (!profile) return res.status(404).json({ error: "Not found" });
     const q = String(req.query.q ?? "").trim();
@@ -685,6 +688,7 @@ router.get("/invitation-shares/:token/guests/search", guestSearchLimiter, async 
 
 router.get("/invitation-shares/:token/guests/:guestId", guestSearchLimiter, async (req, res) => {
   try {
+    if (await sendMaintenanceIfActive(res, "rsvp")) return;
     const profile = await resolveInvitationShare(String(req.params.token ?? ""));
     if (!profile) return res.status(404).json({ error: "Not found" });
     const guestId = parseInt(String(req.params.guestId), 10);
@@ -719,6 +723,7 @@ router.get("/invitation-shares/:token/guests/:guestId", guestSearchLimiter, asyn
 
 router.post("/invitation-shares/:token/rsvp/self-add", publicRsvpLimiter, async (req, res) => {
   try {
+    if (await sendMaintenanceIfActive(res, "rsvp")) return;
     const profile = await resolveInvitationShare(String(req.params.token ?? ""));
     if (!profile) return res.status(404).json({ error: "Not found" });
     const {
@@ -777,6 +782,7 @@ router.post("/invitation-shares/:token/rsvp/self-add", publicRsvpLimiter, async 
 
 router.post("/invitation-shares/:token/rsvp", publicRsvpLimiter, async (req, res) => {
   try {
+    if (await sendMaintenanceIfActive(res, "rsvp")) return;
     const profile = await resolveInvitationShare(String(req.params.token ?? ""));
     if (!profile) return res.status(404).json({ error: "Not found" });
     const {
@@ -852,6 +858,7 @@ router.post("/invitation-shares/:token/rsvp", publicRsvpLimiter, async (req, res
 
 router.get("/website/public/:slug", async (req, res) => {
   try {
+    if (await sendMaintenanceIfActive(res, "wedding-website")) return;
     const slug = String(req.params.slug ?? "").toLowerCase();
     if (!slug) return res.status(400).json({ error: "Slug required" });
 
@@ -896,6 +903,7 @@ router.get("/website/public/:slug", async (req, res) => {
 // a custom request header for the initial site load.
 router.post("/website/public/:slug/unlock", websiteUnlockLimiter, async (req, res) => {
   try {
+    if (await sendMaintenanceIfActive(res, "wedding-website")) return;
     const slug = String(req.params.slug ?? "").toLowerCase();
     if (!slug) return res.status(400).json({ error: "Slug required" });
 
@@ -1042,6 +1050,7 @@ async function normalizeHotelRsvp(
 // H-2: Strict rate limit + removed rsvpStatus/plusOne from response.
 router.get("/website/public/:slug/guests/search", guestSearchLimiter, async (req, res) => {
   try {
+    if (await sendMaintenanceIfActive(res, "wedding-website")) return;
     const slug = String(req.params.slug ?? "").toLowerCase();
     const q = String(req.query.q ?? "").trim();
     if (q.length < 2) return res.json({ matches: [] });
@@ -1069,6 +1078,7 @@ router.get("/website/public/:slug/guests/search", guestSearchLimiter, async (req
 // current RSVP details so the form can pre-fill (for guests editing their reply).
 router.get("/website/public/:slug/guests/:guestId", guestSearchLimiter, async (req, res) => {
   try {
+    if (await sendMaintenanceIfActive(res, "wedding-website")) return;
     const slug = String(req.params.slug ?? "").toLowerCase();
     const guestId = parseInt(String(req.params.guestId), 10);
     if (!Number.isFinite(guestId)) return res.status(400).json({ error: "Bad guest id" });
@@ -1178,6 +1188,7 @@ router.get("/website/preview/guests/:guestId", requireAuth, async (req, res) => 
 // the same shape as the existing flow above.
 router.post("/website/public/:slug/rsvp/self-add", publicRsvpLimiter, async (req, res) => {
   try {
+    if (await sendMaintenanceIfActive(res, "wedding-website")) return;
     const slug = String(req.params.slug ?? "").toLowerCase();
     const r = await resolvePublishedSite(slug, req);
     if (!r.ok) return res.status(r.status).json({ error: r.status === 401 ? "Password required" : "Not found" });
@@ -1280,6 +1291,7 @@ router.post("/website/public/:slug/rsvp/self-add", publicRsvpLimiter, async (req
 // guestId (returned from the search endpoint) instead of a token.
 router.post("/website/public/:slug/rsvp", publicRsvpLimiter, async (req, res) => {
   try {
+    if (await sendMaintenanceIfActive(res, "wedding-website")) return;
     const slug = String(req.params.slug ?? "").toLowerCase();
     const r = await resolvePublishedSite(slug, req);
     if (!r.ok) return res.status(r.status).json({ error: r.status === 401 ? "Password required" : "Not found" });
@@ -1384,6 +1396,7 @@ router.post("/website/public/:slug/rsvp", publicRsvpLimiter, async (req, res) =>
 
 router.post("/website/rsvp/:slug", publicRsvpLimiter, async (req, res) => {
   try {
+    if (await sendMaintenanceIfActive(res, "wedding-website")) return;
     const slug = String(req.params.slug ?? "").toLowerCase();
     if (!slug) return res.status(400).json({ error: "Slug required" });
 

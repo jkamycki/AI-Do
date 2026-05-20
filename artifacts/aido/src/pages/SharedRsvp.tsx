@@ -11,6 +11,8 @@ import {
   type WeddingInfo,
 } from "@/components/InvitationCustomization/AiPreviewComponents";
 import type { ColorPalette } from "@/types/invitations";
+import { MaintenanceNotice } from "@/components/MaintenanceNotice";
+import { usePublicMaintenance } from "@/hooks/usePublicMaintenance";
 
 interface PublicSitePayload extends WebsiteRendererPayload {
   slug: string;
@@ -42,6 +44,7 @@ export default function SharedRsvp() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showRsvp, setShowRsvp] = useState(false);
+  const maintenance = usePublicMaintenance("rsvp");
 
   useEffect(() => {
     if (!token) return;
@@ -82,6 +85,10 @@ export default function SharedRsvp() {
     setMeta("twitter:title", `${couple} - RSVP`);
     setMeta("twitter:description", description);
   }, [data]);
+
+  if (maintenance.data?.active) {
+    return <MaintenanceNotice message={maintenance.data.message} />;
+  }
 
   if (loading && !data && !error) {
     return (

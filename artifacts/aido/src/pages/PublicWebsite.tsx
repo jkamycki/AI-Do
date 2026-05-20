@@ -3,6 +3,8 @@ import { useRoute } from "wouter";
 import { apiFetch } from "@/lib/authFetch";
 import { Loader2, Lock } from "lucide-react";
 import { WebsiteRenderer, type WebsiteRendererPayload, sectionFromUrlSegment } from "@/components/website/WebsiteRenderer";
+import { MaintenanceNotice } from "@/components/MaintenanceNotice";
+import { usePublicMaintenance } from "@/hooks/usePublicMaintenance";
 
 interface PublicSitePayload extends WebsiteRendererPayload {
   slug: string;
@@ -102,6 +104,7 @@ export default function PublicWebsite() {
   const [pwError, setPwError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [unlocking, setUnlocking] = useState(false);
+  const maintenance = usePublicMaintenance("wedding-website");
 
   useEffect(() => {
     if (!slug) return;
@@ -227,6 +230,10 @@ export default function PublicWebsite() {
       document.title = "Wedding Website";
     }
   }, [data]);
+
+  if (maintenance.data?.active) {
+    return <MaintenanceNotice message={maintenance.data.message} />;
+  }
 
   if (loading && !data && !needsPassword && !error) {
     return (

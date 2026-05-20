@@ -8,6 +8,7 @@ import { FROM_EMAIL, sendEmail } from "../lib/resend";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { evaluateCustomDesignCompleteness } from "../lib/customDesignValidation";
 import { openai, getModel, supportsCustomTemperature } from "@workspace/integrations-openai-ai-server";
+import { sendMaintenanceIfActive } from "../lib/maintenance";
 import crypto from "crypto";
 
 const objectStorageService = new ObjectStorageService();
@@ -1536,6 +1537,7 @@ router.get("/preview/save-the-date/:token", async (req, res) => {
 
 router.get("/rsvp/:token", async (req, res) => {
   try {
+    if (await sendMaintenanceIfActive(res, "rsvp")) return;
     const rows = await db
       .select()
       .from(guests)
@@ -1678,6 +1680,7 @@ router.get("/rsvp/:token", async (req, res) => {
 
 router.post("/rsvp/:token", async (req, res) => {
   try {
+    if (await sendMaintenanceIfActive(res, "rsvp")) return;
     const rows = await db
       .select()
       .from(guests)
@@ -2259,6 +2262,7 @@ async function findPublishedProfileBySlug(slug: string) {
 
 router.get("/save-the-date/shared/:slug", async (req, res) => {
   try {
+    if (await sendMaintenanceIfActive(res, "save-the-date")) return;
     const profile = await findPublishedProfileBySlug(String(req.params.slug ?? ""));
     if (!profile) return res.status(404).json({ error: "Not found" });
     res.json(await buildSharedSaveTheDateInfo(profile, "Guest"));
@@ -2270,6 +2274,7 @@ router.get("/save-the-date/shared/:slug", async (req, res) => {
 
 router.get("/save-the-date/shared-invite/:token", async (req, res) => {
   try {
+    if (await sendMaintenanceIfActive(res, "save-the-date")) return;
     const profileId = verifyInvitationShare(String(req.params.token ?? ""));
     if (!profileId) return res.status(404).json({ error: "Not found" });
     const [profile] = await db.select().from(weddingProfiles).where(eq(weddingProfiles.id, profileId)).limit(1);
@@ -2349,6 +2354,7 @@ router.get("/save-the-date/shared-invite/:token/photo", async (req, res) => {
 
 router.get("/save-the-date/:token", async (req, res) => {
   try {
+    if (await sendMaintenanceIfActive(res, "save-the-date")) return;
     const { token } = req.params;
     const rows = await db.select().from(guests).where(eq(guests.rsvpToken, token)).limit(1);
     if (!rows.length) return res.status(404).json({ error: "Not found" });

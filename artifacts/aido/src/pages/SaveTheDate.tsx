@@ -5,6 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2, Download, AlertCircle, Heart } from "lucide-react";
 import { AnimatedInvitationShell } from "@/components/InvitationCustomization/AnimatedInvitationShell";
 import { photoEffectToFilter } from "@/components/InvitationCustomization/AiPreviewComponents";
+import { MaintenanceNotice } from "@/components/MaintenanceNotice";
+import { usePublicMaintenance } from "@/hooks/usePublicMaintenance";
 
 interface SaveTheDateInfo {
   guestName: string;
@@ -96,6 +98,7 @@ export default function SaveTheDate() {
     : `/api/save-the-date/${token}/photo`;
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  const maintenance = usePublicMaintenance("save-the-date");
 
   const { data: info, isLoading, isError } = useQuery({
     queryKey: ["save-the-date", token, slug, sharedInviteToken],
@@ -107,6 +110,10 @@ export default function SaveTheDate() {
     enabled: !!token || !!slug || !!sharedInviteToken,
     retry: false,
   });
+
+  if (maintenance.data?.active) {
+    return <MaintenanceNotice message={maintenance.data.message} />;
+  }
 
   const couple = [info?.partner2Name, info?.partner1Name].filter(Boolean).join(" & ") || "The Couple";
 

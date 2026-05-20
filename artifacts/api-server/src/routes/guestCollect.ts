@@ -5,6 +5,7 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { publicRsvpLimiter } from "../middlewares/rateLimiter";
 import { hasMinRole, resolveCallerRole, resolveProfile } from "../lib/workspaceAccess";
 import crypto from "crypto";
+import { sendMaintenanceIfActive } from "../lib/maintenance";
 
 const router = Router();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -278,6 +279,7 @@ router.get("/guest-collect/:token/preview-legacy", async (req, res) => {
 
 router.get("/guest-collect/:token", async (req, res) => {
   try {
+    if (await sendMaintenanceIfActive(res, "guest-collector")) return;
     const profiles = await db
       .select()
       .from(weddingProfiles)
@@ -303,6 +305,7 @@ router.get("/guest-collect/:token", async (req, res) => {
 
 router.post("/guest-collect/:token", publicRsvpLimiter, async (req, res) => {
   try {
+    if (await sendMaintenanceIfActive(res, "guest-collector")) return;
     const profiles = await db
       .select()
       .from(weddingProfiles)

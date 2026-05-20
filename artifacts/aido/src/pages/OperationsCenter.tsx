@@ -22,6 +22,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import {
   Mail,
@@ -37,8 +38,10 @@ import {
   Plus,
   Sparkles,
   Users,
+  Wrench,
 } from "lucide-react";
 import MessagesSection from "@/components/admin/MessagesSection";
+import { MaintenanceNotice } from "@/components/MaintenanceNotice";
 
 type TestSessionRow = {
   sessionId: string;
@@ -151,6 +154,23 @@ type AdminUsersResponse = {
     sharedWorkspace: number;
     deleted: number;
   };
+};
+
+type MaintenanceSection =
+  | "guest-collector"
+  | "rsvp"
+  | "save-the-date"
+  | "wedding-website"
+  | "public-guest-experience";
+
+type MaintenanceFlag = {
+  section: MaintenanceSection;
+  enabled: boolean;
+  configuredEnabled: boolean;
+  message: string;
+  expiresAt: string | null;
+  updatedBy: string | null;
+  updatedAt: string | null;
 };
 
 function nameFromEmail(email: string | null): string {
@@ -281,6 +301,41 @@ const makeLaunchPlanId = () => {
   return `launch-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 };
 
+const maintenanceSections: Array<{
+  section: MaintenanceSection;
+  label: string;
+  description: string;
+}> = [
+  {
+    section: "guest-collector",
+    label: "Guest Collector",
+    description: "Blocks the public contact-info collection form.",
+  },
+  {
+    section: "rsvp",
+    label: "RSVP Invitations",
+    description: "Blocks RSVP links and shared RSVP guest search/submission.",
+  },
+  {
+    section: "save-the-date",
+    label: "Save the Date",
+    description: "Blocks public save-the-date invitation pages.",
+  },
+  {
+    section: "wedding-website",
+    label: "Wedding Website",
+    description: "Blocks published wedding websites and website RSVP actions.",
+  },
+  {
+    section: "public-guest-experience",
+    label: "All Public Guest Pages",
+    description: "Blocks every public guest-facing page covered by maintenance mode.",
+  },
+];
+
+const defaultMaintenanceMessage =
+  "We'll be right back. We're making updates and improvements to this page.";
+
 export default function OperationsCenterPage() {
   const { getToken } = useAuth();
   const { toast } = useToast();
@@ -289,7 +344,7 @@ export default function OperationsCenterPage() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [expandedTicketIds, setExpandedTicketIds] = useState<Set<number | string>>(new Set());
-  const [activeTab, setActiveTab] = useState<"tickets" | "messages" | "users" | "workflow" | "testActivity" | "launchPlan">("tickets");
+  const [activeTab, setActiveTab] = useState<"tickets" | "messages" | "users" | "workflow" | "testActivity" | "launchPlan" | "maintenance">("tickets");
   const [workflowFilter, setWorkflowFilter] = useState<"all" | "completed" | "in_progress" | "not_started">("all");
   const [testSessionFilter, setTestSessionFilter] = useState<"test" | "all" | "real">("test");
   const [userSearch, setUserSearch] = useState("");
@@ -383,6 +438,51 @@ export default function OperationsCenterPage() {
     refetchInterval: activeTab === "users" ? 15000 : false,
     refetchOnWindowFocus: true,
     staleTime: 0,
+  });
+
+  const { data: maintenanceData, isLoading: isLoadingMaintenance } = useQuery<{
+    flags: MaintenanceFlag[];
+    defaultMessage: string;
+  }>({
+    queryKey: ["admin-maintenance"],
+    queryFn: async () => {
+      const r = await authedFetch("/api/admin/maintenance");
+      if (!r.ok) throw new Error("Failed to fetch maintenance settings");
+      return r.json();
+    },
+    enabled: activeTab === "maintenance",
+    refetchInterval: activeTab === "maintenance" ? 15000 : false,
+  });
+
+  const maintenanceMutation = useMutation({
+    mutationFn: async ({
+      section,
+      enabled,
+      message,
+      minutes,
+    }: {
+      section: MaintenanceSection;
+      enabled: boolean;
+      message: string;
+      minutes?: number | null;
+    }) => {
+      const expiresAt = enabled && minutes
+        ? new Date(Date.now() + minutes * 60_000).toISOString()
+        : null;
+      const r = await authedFetch(`/api/admin/maintenance/${section}`, {
+        method: "PUT",
+        body: JSON.stringify({ enabled, message, expiresAt }),
+      });
+      if (!r.ok) throw new Error("Failed to save maintenance setting");
+      return r.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-maintenance"] });
+      toast({ title: "Maintenance setting updated" });
+    },
+    onError: () => {
+      toast({ title: "Maintenance setting could not be saved", variant: "destructive" });
+    },
   });
   const signedUpUsers = signedUpUsersData?.activeUsers ?? signedUpUsersData?.users?.filter(user => !user.isDeleted) ?? [];
   const deletedSignedUpUsers = signedUpUsersData?.deletedUsers ?? signedUpUsersData?.users?.filter(user => user.isDeleted) ?? [];
@@ -964,7 +1064,141 @@ export default function OperationsCenterPage() {
           <ListChecks className="h-4 w-4" />
           A.IDO Launch Plan
         </button>
+        <button
+          onClick={() => setActiveTab("maintenance")}
+          className={`flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
+            ${activeTab === "maintenance" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
+        >
+          <Wrench className="h-4 w-4" />
+          Maintenance Mode
+        </button>
       </div>
+
+      {activeTab === "maintenance" && (
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-serif text-xl text-[#24171D]">Maintenance Mode</CardTitle>
+              <p className="text-sm font-medium text-[#4A3941]">
+                Temporarily block guest-facing pages while you debug. Signed-in admins can keep working in the portal.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {isLoadingMaintenance ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 rounded-lg" />)}
+                </div>
+              ) : (
+                maintenanceSections.map(item => {
+                  const flag = maintenanceData?.flags.find(row => row.section === item.section);
+                  const enabled = !!flag?.enabled;
+                  const message = flag?.message || maintenanceData?.defaultMessage || defaultMaintenanceMessage;
+                  const expiresAtMs = flag?.expiresAt ? new Date(flag.expiresAt).getTime() : null;
+                  const remainingMinutes = expiresAtMs
+                    ? Math.max(1, Math.ceil((expiresAtMs - Date.now()) / 60000))
+                    : null;
+                  const autoOffValue = !remainingMinutes
+                    ? "none"
+                    : remainingMinutes <= 30
+                      ? "30"
+                      : remainingMinutes <= 60
+                        ? "60"
+                        : "120";
+                  return (
+                    <div key={item.section} className={`rounded-xl border p-4 ${enabled ? "border-primary/40 bg-primary/5" : "border-[#E6C7D2] bg-[#F8EEDB]"}`}>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-[#24171D]">{item.label}</p>
+                            {enabled && <Badge className="bg-primary text-primary-foreground">Active</Badge>}
+                          </div>
+                          <p className="mt-1 text-sm text-[#6F3E54]">{item.description}</p>
+                          {flag?.expiresAt && (
+                            <p className="mt-1 text-xs font-medium text-[#7A5062]">
+                              Auto-off: {new Date(flag.expiresAt).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                        <Switch
+                          checked={enabled}
+                          disabled={maintenanceMutation.isPending}
+                          onCheckedChange={(checked) => maintenanceMutation.mutate({
+                            section: item.section,
+                            enabled: checked,
+                            message,
+                            minutes: checked ? 60 : null,
+                          })}
+                          aria-label={`Toggle ${item.label} maintenance`}
+                        />
+                      </div>
+                      <div className="mt-3 grid gap-2 lg:grid-cols-[minmax(0,1fr)_140px]">
+                        <Input
+                          value={message}
+                          onChange={(event) => {
+                            queryClient.setQueryData<{ flags: MaintenanceFlag[]; defaultMessage: string }>(["admin-maintenance"], current => {
+                              if (!current) return current;
+                              return {
+                                ...current,
+                                flags: current.flags.map(row => row.section === item.section ? { ...row, message: event.target.value } : row),
+                              };
+                            });
+                          }}
+                          onBlur={(event) => maintenanceMutation.mutate({
+                            section: item.section,
+                            enabled,
+                            message: event.target.value.trim() || defaultMaintenanceMessage,
+                            minutes: remainingMinutes && enabled ? remainingMinutes : null,
+                          })}
+                          className="bg-white"
+                          placeholder={defaultMaintenanceMessage}
+                        />
+                        <Select
+                          value={autoOffValue}
+                          onValueChange={(value) => maintenanceMutation.mutate({
+                            section: item.section,
+                            enabled,
+                            message,
+                            minutes: value === "none" ? null : Number(value),
+                          })}
+                        >
+                          <SelectTrigger className="bg-white">
+                            <SelectValue placeholder="Auto-off" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No auto-off</SelectItem>
+                            <SelectItem value="30">30 minutes</SelectItem>
+                            <SelectItem value="60">1 hour</SelectItem>
+                            <SelectItem value="120">2 hours</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="space-y-3">
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-serif text-lg text-[#24171D]">Guest Preview</CardTitle>
+              </CardHeader>
+              <CardContent className="overflow-hidden rounded-xl border border-[#E6C7D2] p-0">
+                <div className="scale-[0.58] origin-top-left w-[172%] h-[580px] pointer-events-none">
+                  <MaintenanceNotice
+                    preview
+                    message={maintenanceData?.flags.find(row => row.enabled)?.message || defaultMaintenanceMessage}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+            <p className="text-xs font-medium leading-relaxed text-[#6F3E54]">
+              Backend submissions are blocked with a 503 while maintenance is active, so guests with old tabs cannot submit stale forms.
+            </p>
+          </div>
+        </div>
+      )}
 
       {activeTab === "messages" && (
         <MessagesSection

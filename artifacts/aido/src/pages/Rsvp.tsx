@@ -23,6 +23,8 @@ import { Heart, CheckCircle2, XCircle, AlertCircle, Loader2, User, Download, Map
 import { AnimatedInvitationShell } from "@/components/InvitationCustomization/AnimatedInvitationShell";
 import { photoEffectToFilter } from "@/components/InvitationCustomization/AiPreviewComponents";
 import { DEFAULT_RSVP_MEAL_OPTIONS, normalizeMealOptions, type MealOption } from "@/lib/mealOptions";
+import { MaintenanceNotice } from "@/components/MaintenanceNotice";
+import { usePublicMaintenance } from "@/hooks/usePublicMaintenance";
 
 const schema = z.object({
   attendance: z.enum(["attending", "declined"], { required_error: "Please select Accept or Decline." }),
@@ -169,6 +171,7 @@ export default function Rsvp() {
   const [pdfError, setPdfError] = useState(false);
   const [allowRsvpUpdate, setAllowRsvpUpdate] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  const maintenance = usePublicMaintenance("rsvp");
 
   const { data: info, isLoading, isError } = useQuery({
     queryKey: ["rsvp", token],
@@ -372,6 +375,10 @@ export default function Rsvp() {
       setDownloadingPdf(false);
     }
   };
+
+  if (maintenance.data?.active) {
+    return <MaintenanceNotice message={maintenance.data.message} />;
+  }
 
   if (isLoading) {
     return (
