@@ -672,7 +672,7 @@ router.get("/invitation-shares/:token/guests/search", guestSearchLimiter, async 
     const q = String(req.query.q ?? "").trim();
     if (q.length < 2) return res.json({ matches: [] });
     const rows = await db
-      .select({ id: guests.id, name: guests.name })
+      .select({ id: guests.id, name: guests.name, rsvpStatus: guests.rsvpStatus })
       .from(guests)
       .where(and(eq(guests.profileId, profile.id), ilike(guests.name, `%${q.replace(/[%_]/g, "\\$&")}%`)))
       .limit(10);

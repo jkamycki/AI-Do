@@ -8,6 +8,7 @@ import { DEFAULT_RSVP_MEAL_OPTIONS, normalizeMealOptions } from "@/lib/mealOptio
 interface GuestMatch {
   id: number;
   name: string;
+  rsvpStatus?: string | null;
 }
 
 interface GuestDetails {
@@ -22,6 +23,10 @@ interface GuestDetails {
   needsHotel?: boolean;
   bookedHotelBlockId?: number | null;
   bookedHotelRoomCount?: number | null;
+}
+
+function normalizedRsvpStatus(status: string | null | undefined) {
+  return status === "attending" || status === "declined" ? status : "pending";
 }
 
 function fontStack(font: string): string {
@@ -142,7 +147,8 @@ export function RsvpFlow({
 
   useEffect(() => {
     if (!guest) return;
-    setAttendance(guest.rsvpStatus === "declined" ? "declined" : "attending");
+    const status = normalizedRsvpStatus(guest.rsvpStatus);
+    setAttendance(status === "declined" ? "declined" : "attending");
     setMealChoice(guest.mealChoice ?? "");
     setDietary(guest.dietaryNotes ?? "");
     setPlusOne(guest.plusOne);
@@ -209,9 +215,11 @@ export function RsvpFlow({
         return;
       }
       const body = (await r.json()) as GuestDetails;
-      setGuest(body);
-      if (body.rsvpStatus !== "pending") {
-        setAttendance(body.rsvpStatus === "declined" ? "declined" : "attending");
+      const status = normalizedRsvpStatus(body.rsvpStatus);
+      const normalizedGuest = { ...body, rsvpStatus: status };
+      setGuest(normalizedGuest);
+      if (status !== "pending") {
+        setAttendance(status === "declined" ? "declined" : "attending");
         setStep("already-rsvped");
       } else {
         setStep("form");
@@ -386,10 +394,10 @@ export function RsvpFlow({
                       style={{ borderColor: `${accent}55`, background: `${accent}08`, color: text }}
                     >
                       <div className="font-medium">{m.name}</div>
-                      {m.rsvpStatus !== "pending" && (
+                      {normalizedRsvpStatus(m.rsvpStatus) !== "pending" && (
                         <div className="text-xs font-medium mt-0.5">
                           {t("rsvp.already_replied", {
-                            status: m.rsvpStatus === "attending"
+                            status: normalizedRsvpStatus(m.rsvpStatus) === "attending"
                               ? t("rsvp.status_attending", { defaultValue: "Attending" })
                               : t("rsvp.status_declined", { defaultValue: "Declined" }),
                             defaultValue: "Already replied: {{status}} (you can change it)",
