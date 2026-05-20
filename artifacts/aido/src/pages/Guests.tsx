@@ -2101,6 +2101,29 @@ export default function Guests({
       queryKey: getGetDashboardSummaryQueryKey(),
     });
   };
+  const clearRsvpMessage = useMutation({
+    mutationFn: async (guestId: number) => {
+      const res = await authFetch(`/api/guests/${guestId}/rsvp-message`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(err.error || "Failed to delete RSVP message");
+      }
+      return res.json() as Promise<Guest>;
+    },
+    onSuccess: () => {
+      toast({ title: "RSVP message deleted" });
+      invalidate();
+    },
+    onError: (err) => {
+      toast({
+        title: "Could not delete RSVP message",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      });
+    },
+  });
 
   function findWeddingPartyMemberForGuest(
     guest: { name?: string | null; email?: string | null },
@@ -4091,12 +4114,25 @@ export default function Guests({
                             </DropdownMenuContent>
                           </DropdownMenu>
                           {g.rsvpMessage && (
+                            <>
                             <p
                               className="mt-1.5 text-xs italic text-muted-foreground whitespace-pre-wrap break-words max-w-full"
                               title={g.rsvpMessage}
                             >
                               “{g.rsvpMessage}”
                             </p>
+                            <button
+                              type="button"
+                              className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-primary transition-colors hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
+                              title="Delete RSVP message"
+                              aria-label={`Delete RSVP message from ${g.name}`}
+                              disabled={clearRsvpMessage.isPending}
+                              onClick={() => clearRsvpMessage.mutate(g.id)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                              Delete message
+                            </button>
+                            </>
                           )}
                         </TableCell>
                         <TableCell className="hidden md:table-cell align-top">
