@@ -139,12 +139,16 @@ function drawPatterns(modules: Matrix, reserved: Matrix, version: number) {
   }
 
   for (let i = 0; i < 9; i++) {
-    setModule(modules, reserved, 8, i, false);
-    setModule(modules, reserved, i, 8, false);
+    if (i !== 6) {
+      setModule(modules, reserved, 8, i, false);
+      setModule(modules, reserved, i, 8, false);
+    }
+  }
+  for (let i = 0; i < 8; i++) {
     setModule(modules, reserved, 8, size - 1 - i, false);
     setModule(modules, reserved, size - 1 - i, 8, false);
   }
-  setModule(modules, reserved, size - 8, 8, true);
+  setModule(modules, reserved, 8, size - 8, true);
 }
 
 function formatBits() {
@@ -160,13 +164,14 @@ function formatBits() {
 function drawFormatBits(modules: Matrix) {
   const size = modules.length;
   const bits = formatBits();
-  for (let i = 0; i <= 5; i++) modules[8][i] = ((bits >>> i) & 1) !== 0;
-  modules[8][7] = ((bits >>> 6) & 1) !== 0;
-  modules[8][8] = ((bits >>> 7) & 1) !== 0;
-  modules[7][8] = ((bits >>> 8) & 1) !== 0;
-  for (let i = 9; i < 15; i++) modules[14 - i][8] = ((bits >>> i) & 1) !== 0;
-  for (let i = 0; i < 8; i++) modules[size - 1 - i][8] = ((bits >>> i) & 1) !== 0;
-  for (let i = 8; i < 15; i++) modules[8][size - 15 + i] = ((bits >>> i) & 1) !== 0;
+  const bit = (index: number) => ((bits >>> (14 - index)) & 1) !== 0;
+  for (let i = 0; i <= 5; i++) modules[8][i] = bit(i);
+  modules[8][7] = bit(6);
+  modules[8][8] = bit(7);
+  modules[7][8] = bit(8);
+  for (let i = 9; i < 15; i++) modules[14 - i][8] = bit(i);
+  for (let i = 0; i < 8; i++) modules[size - 1 - i][8] = bit(i);
+  for (let i = 8; i < 15; i++) modules[8][size - 15 + i] = bit(i);
 }
 
 function placeData(modules: Matrix, reserved: Matrix, codewords: number[]) {
@@ -211,7 +216,7 @@ export function qrSvgMarkup(text: string, scale = 6, margin = 4) {
       dark ? `<rect x="${(c + margin) * scale}" y="${(r + margin) * scale}" width="${scale}" height="${scale}"/>` : "",
     ),
   ).join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size * scale}" height="${size * scale}" viewBox="0 0 ${size * scale} ${size * scale}" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><g fill="#111827">${rects}</g></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size * scale}" height="${size * scale}" viewBox="0 0 ${size * scale} ${size * scale}" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><g fill="#000">${rects}</g></svg>`;
 }
 
 export function qrSvgDataUrl(text: string, scale = 6, margin = 4) {
