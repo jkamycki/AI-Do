@@ -115,6 +115,11 @@ import { COUNTRIES } from "@/lib/countries";
 import { getAddressFormat } from "@/lib/addressFormat";
 import { publicAppOrigin } from "@/lib/publicUrls";
 
+type BulkSendMode = "saveTheDate" | "invitation" | "reminder";
+
+const SEND_PROTECTION_STORAGE_KEY = "aido_guest_send_protection";
+const SEND_PROTECTION_CONFIRM_TEXT = "SEND";
+
 const RSVP_OPTIONS = [
   {
     value: "attending",
@@ -1732,19 +1737,27 @@ export default function Guests({
   const [sendingSaveTheDates, setSendingSaveTheDates] = useState(false);
   const [sendingInvitations, setSendingInvitations] = useState(false);
   const [bulkLinksMode, setBulkLinksMode] = useState<
-    null | "saveTheDate" | "invitation" | "reminder"
+    null | BulkSendMode
   >(null);
   const [bulkMobileChoiceMode, setBulkMobileChoiceMode] = useState<
-    null | "saveTheDate" | "invitation" | "reminder"
+    null | BulkSendMode
   >(null);
   const [bulkShareIntent, setBulkShareIntent] = useState<"copy" | "text">("copy");
   const [bulkLinksLoading, setBulkLinksLoading] = useState(false);
   const [bulkLinks, setBulkLinks] = useState<
     Array<{ guestId: number; name: string; phone?: string | null; url: string }>
   >([]);
-  const [confirmBulkSend, setConfirmBulkSend] = useState<
-    null | "saveTheDate" | "invitation" | "reminder"
-  >(null);
+  const [confirmBulkSend, setConfirmBulkSend] = useState<null | BulkSendMode>(null);
+  const [sendProtectionPhrase, setSendProtectionPhrase] = useState("");
+  const [sendProtectionEnabled, setSendProtectionEnabled] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return window.localStorage.getItem(SEND_PROTECTION_STORAGE_KEY) !== "false";
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(SEND_PROTECTION_STORAGE_KEY, String(sendProtectionEnabled));
+  }, [sendProtectionEnabled]);
 
   const handleSendAllReminders = async (targetGuests = reminderEligible) => {
     if (!targetGuests.length) return;
@@ -1884,27 +1897,27 @@ export default function Guests({
     setSendModalReminderOnly(false);
     setSendModalGuest(targetGuests[0]);
   };
-  const getBulkLinkGuests = (mode: "saveTheDate" | "invitation" | "reminder") =>
+  const getBulkLinkGuests = (mode: BulkSendMode) =>
     mode === "saveTheDate"
       ? selectedSaveTheDateEligible
       : mode === "invitation"
         ? selectedInvitationEligible
         : selectedReminderEligible;
-  const hasGuestsForBulkSend = (mode: "saveTheDate" | "invitation" | "reminder") =>
+  const hasGuestsForBulkSend = (mode: BulkSendMode) =>
     getBulkLinkGuests(mode).length > 0;
-  const getBulkLinksTitle = (mode: "saveTheDate" | "invitation" | "reminder") =>
+  const getBulkLinksTitle = (mode: BulkSendMode) =>
     mode === "saveTheDate"
       ? "Shared Save-the-Date Link"
       : mode === "invitation"
         ? "Shared RSVP Invitation Link"
         : "Shared RSVP Reminder Link";
-  const getBulkLinksDescription = (mode: "saveTheDate" | "invitation" | "reminder") =>
+  const getBulkLinksDescription = (mode: BulkSendMode) =>
     mode === "saveTheDate"
       ? "One save-the-date link can be sent to any guest."
       : mode === "invitation"
         ? "One RSVP link lets guests find their name and reply."
         : "One reminder link lets guests find their name and reply.";
-  const getBulkShareTitle = (mode: "saveTheDate" | "invitation" | "reminder" | null) =>
+  const getBulkShareTitle = (mode: BulkSendMode | null) =>
     mode === "saveTheDate"
       ? "Share Save-the-Date"
       : mode === "invitation"
@@ -1922,7 +1935,7 @@ export default function Guests({
       .join(" & ");
   };
   const buildBulkTextMessage = (
-    mode: "saveTheDate" | "invitation" | "reminder",
+    mode: BulkSendMode,
     url: string,
   ) => {
     const couple = getCoupleName();
@@ -1946,7 +1959,7 @@ export default function Guests({
   const isMobileViewport = () =>
     typeof window !== "undefined" &&
     window.matchMedia("(max-width: 639px)").matches;
-  const handleBulkPrimaryAction = (mode: "saveTheDate" | "invitation" | "reminder") => {
+  const handleBulkPrimaryAction = (mode: BulkSendMode) => {
     if (isMobileViewport()) {
       if (!hasGuestsForBulkSend(mode)) {
         toast({
@@ -1966,10 +1979,10 @@ export default function Guests({
 
     if (mode === "saveTheDate") openBulkPreview("saveTheDate");
     if (mode === "invitation") openBulkPreview("invitation");
-    if (mode === "reminder") setConfirmBulkSend("reminder");
+    if (mode === "reminder") requestProtectedBulkSend("reminder");
   };
   const openBulkLinks = async (
-    mode: "saveTheDate" | "invitation" | "reminder",
+    mode: BulkSendMode,
     intent: "copy" | "text" = "copy",
   ) => {
     setBulkShareIntent(intent);
@@ -2015,6 +2028,48 @@ export default function Guests({
         : confirmBulkSend === "reminder"
           ? selectedReminderEligible
           : [];
+  const bulkSendEmailCount = bulkSendGuests.filter((guest) => Boolean(guest.email)).length;
+  const bulkSendMarkOnlyCount = bulkSendGuests.length - bulkSendEmailCount;
+  const bulkSendNeedsProtection = Boolean(
+    confirmBulkSend && (sendProtectionEnabled || bulkSendGuests.length > 10),
+  );
+  const bulkSendConfirmReady =
+    !bulkSendNeedsProtection ||
+    sendProtectionPhrase.trim().toUpperCase() === SEND_PROTECTION_CONFIRM_TEXT;
+  const getBulkSendName = (mode: BulkSendMode | null) =>
+    mode === "saveTheDate"
+      ? "Save-the-Dates"
+      : mode === "invitation"
+        ? "RSVP Invitations"
+        : mode === "reminder"
+          ? "RSVP Reminders"
+          : "Invitations";
+  const executeBulkSend = (mode: BulkSendMode) => {
+    if (mode === "saveTheDate") void handleSendAllSaveTheDates(selectedSaveTheDateEligible);
+    if (mode === "invitation") void handleSendAllInvitations(selectedInvitationEligible);
+    if (mode === "reminder") void handleSendAllReminders(selectedReminderEligible);
+  };
+  const requestProtectedBulkSend = (mode: BulkSendMode) => {
+    const targetGuests = getBulkLinkGuests(mode);
+    if (!targetGuests.length) {
+      toast({
+        title: "No selected guests ready",
+        description:
+          mode === "saveTheDate"
+            ? "Select at least one guest who has not received a save-the-date yet."
+            : mode === "invitation"
+              ? "Select at least one guest who has not received an RSVP invitation yet."
+              : "Select at least one guest who still needs an RSVP reminder.",
+      });
+      return;
+    }
+    if (!sendProtectionEnabled && targetGuests.length <= 10) {
+      executeBulkSend(mode);
+      return;
+    }
+    setSendProtectionPhrase("");
+    setConfirmBulkSend(mode);
+  };
   const summary = data?.summary ?? {
     total: 0,
     attending: 0,
@@ -3089,25 +3144,38 @@ export default function Guests({
               <AlertDialog
                 open={confirmBulkSend !== null}
                 onOpenChange={(open) => {
-                  if (!open) setConfirmBulkSend(null);
+                  if (!open) {
+                    setConfirmBulkSend(null);
+                    setSendProtectionPhrase("");
+                  }
                 }}
               >
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      {confirmBulkSend === "saveTheDate" &&
-                        "Send Selected Save-the-Dates?"}
-                      {confirmBulkSend === "invitation" &&
-                        "Send Selected RSVP Invitations?"}
-                      {confirmBulkSend === "reminder" &&
-                        "Send Selected RSVP Reminders?"}
+                    <AlertDialogTitle className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-primary" />
+                      Send Protection
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will send emails to{" "}
-                      <strong>{bulkSendGuests.length}</strong> eligible guest
-                      {bulkSendGuests.length !== 1 ? "s" : ""}
-                      . This action cannot be undone.
+                      You are about to send{" "}
+                      <strong>{getBulkSendName(confirmBulkSend)}</strong> to{" "}
+                      <strong>{bulkSendGuests.length}</strong> selected guest
+                      {bulkSendGuests.length !== 1 ? "s" : ""}. This action cannot be undone.
                     </AlertDialogDescription>
+                    <div className="grid gap-2 rounded-lg border border-primary/15 bg-[#FFF8F1] p-3 text-sm sm:grid-cols-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Selected</p>
+                        <p className="mt-1 text-lg font-bold text-foreground">{bulkSendGuests.length}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Email sends</p>
+                        <p className="mt-1 text-lg font-bold text-foreground">{bulkSendEmailCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Marked only</p>
+                        <p className="mt-1 text-lg font-bold text-foreground">{bulkSendMarkOnlyCount}</p>
+                      </div>
+                    </div>
                     {bulkSendGuests.length > 0 && (
                       <div className="rounded-lg border border-border/70 bg-muted/20 p-3 text-sm">
                         <p className="font-medium text-foreground">
@@ -3117,25 +3185,43 @@ export default function Guests({
                           {bulkSendGuests.map((guest) => (
                             <li key={guest.id} className="flex items-start gap-2">
                               <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                              <span className="break-words">{guest.name}</span>
+                              <span className="min-w-0 break-words">
+                                {guest.name}
+                                <span className="block text-xs text-muted-foreground">
+                                  {guest.email || "No email on file - status will be marked as sent"}
+                                </span>
+                              </span>
                             </li>
                           ))}
                         </ul>
+                      </div>
+                    )}
+                    {bulkSendNeedsProtection && (
+                      <div className="space-y-2 rounded-lg border border-primary/15 bg-background p-3 text-sm">
+                        <p className="font-medium text-foreground">
+                          Type <span className="font-mono text-primary">{SEND_PROTECTION_CONFIRM_TEXT}</span> to confirm.
+                        </p>
+                        <Input
+                          value={sendProtectionPhrase}
+                          onChange={(event) => setSendProtectionPhrase(event.target.value)}
+                          placeholder={SEND_PROTECTION_CONFIRM_TEXT}
+                          className="font-mono tracking-widest"
+                        />
                       </div>
                     )}
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction
+                      disabled={!bulkSendConfirmReady}
                       onClick={() => {
                         const mode = confirmBulkSend;
                         setConfirmBulkSend(null);
-                        if (mode === "saveTheDate") handleSendAllSaveTheDates(selectedSaveTheDateEligible);
-                        if (mode === "invitation") handleSendAllInvitations(selectedInvitationEligible);
-                        if (mode === "reminder") handleSendAllReminders(selectedReminderEligible);
+                        setSendProtectionPhrase("");
+                        if (mode) executeBulkSend(mode);
                       }}
                     >
-                      Confirm & Send
+                      Yes, send {getBulkSendName(confirmBulkSend)}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -3185,7 +3271,24 @@ export default function Guests({
       {allGuests.length > 0 && (
         <div className="rounded-xl border border-primary/15 bg-[#FFF8F1]/85 p-3 shadow-sm dark:border-primary/25 dark:bg-card/80">
           <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/15 bg-white/55 px-3 py-2 shadow-sm sm:min-w-[320px]">
+                <div className="min-w-0">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-[#3B1C2B]">
+                    <AlertTriangle className="h-4 w-4 text-primary" />
+                    Send Protection
+                  </p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                    Require confirmation before selected invitations are sent.
+                  </p>
+                </div>
+                <Switch
+                  id="guest-send-protection"
+                  checked={sendProtectionEnabled}
+                  onCheckedChange={setSendProtectionEnabled}
+                  aria-label="Toggle send protection"
+                />
+              </div>
               <Badge
                 variant="secondary"
                 className="w-fit border-primary/15 bg-primary/10 px-3 py-1 text-primary"
@@ -4401,7 +4504,7 @@ export default function Guests({
         }}
         onSendSaveTheDate={(guestId) => {
           if (bulkPreviewMode === "saveTheDate") {
-            void handleSendAllSaveTheDates(selectedSaveTheDateEligible);
+            requestProtectedBulkSend("saveTheDate");
             setSendModalGuest(null);
             setBulkPreviewMode(null);
             return;
@@ -4410,7 +4513,7 @@ export default function Guests({
         }}
         onSendDigitalInvitation={(guestId) => {
           if (bulkPreviewMode === "invitation") {
-            void handleSendAllInvitations(selectedInvitationEligible);
+            requestProtectedBulkSend("invitation");
             setSendModalGuest(null);
             setBulkPreviewMode(null);
             return;
