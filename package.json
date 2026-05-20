@@ -10,7 +10,7 @@
   "private": true,
   "packageManager": "pnpm@10.26.1",
   "engines": {
-    "node": ">=20"
+    "node": "20.x"
   },
   "devDependencies": {
     "eslint-plugin-no-unsanitized": "^4.1.5",
