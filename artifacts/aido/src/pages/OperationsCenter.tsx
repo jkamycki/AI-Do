@@ -161,7 +161,23 @@ type MaintenanceSection =
   | "rsvp"
   | "save-the-date"
   | "wedding-website"
-  | "public-guest-experience";
+  | "public-guest-experience"
+  | "portal-dashboard"
+  | "portal-profile"
+  | "portal-mood-board"
+  | "portal-timeline"
+  | "portal-checklist"
+  | "portal-vendors"
+  | "portal-budget"
+  | "portal-documents"
+  | "portal-guests"
+  | "portal-wedding-party"
+  | "portal-seating-chart"
+  | "portal-hotels"
+  | "portal-aria"
+  | "portal-day-of"
+  | "portal-website-editor"
+  | "portal-experience";
 
 type MaintenanceFlag = {
   section: MaintenanceSection;
@@ -305,31 +321,133 @@ const maintenanceSections: Array<{
   section: MaintenanceSection;
   label: string;
   description: string;
+  group: "Portal Tabs" | "Public Guest Links";
 }> = [
+  {
+    section: "portal-dashboard",
+    label: "Dashboard",
+    description: "Blocks the dashboard tab for non-admin users.",
+    group: "Portal Tabs",
+  },
+  {
+    section: "portal-profile",
+    label: "Wedding Profile",
+    description: "Blocks the wedding profile tab for non-admin users.",
+    group: "Portal Tabs",
+  },
+  {
+    section: "portal-mood-board",
+    label: "Mood Board",
+    description: "Blocks the mood board tab for non-admin users.",
+    group: "Portal Tabs",
+  },
+  {
+    section: "portal-timeline",
+    label: "Timeline",
+    description: "Blocks the timeline tab for non-admin users.",
+    group: "Portal Tabs",
+  },
+  {
+    section: "portal-checklist",
+    label: "Checklist",
+    description: "Blocks the checklist tab for non-admin users.",
+    group: "Portal Tabs",
+  },
+  {
+    section: "portal-vendors",
+    label: "Vendor Tracking",
+    description: "Blocks vendor tracking for non-admin users.",
+    group: "Portal Tabs",
+  },
+  {
+    section: "portal-budget",
+    label: "Budget & Payments",
+    description: "Blocks budget and payment planning for non-admin users.",
+    group: "Portal Tabs",
+  },
+  {
+    section: "portal-documents",
+    label: "Document Library",
+    description: "Blocks the document library for non-admin users.",
+    group: "Portal Tabs",
+  },
+  {
+    section: "portal-guests",
+    label: "Guest List & Invitations",
+    description: "Blocks the guest list and invitation studio for non-admin users.",
+    group: "Portal Tabs",
+  },
+  {
+    section: "portal-wedding-party",
+    label: "Wedding Party",
+    description: "Blocks the wedding party tab for non-admin users.",
+    group: "Portal Tabs",
+  },
+  {
+    section: "portal-seating-chart",
+    label: "Seating Chart",
+    description: "Blocks the seating chart tab for non-admin users.",
+    group: "Portal Tabs",
+  },
+  {
+    section: "portal-hotels",
+    label: "Hotel Blocks",
+    description: "Blocks the hotel blocks tab for non-admin users.",
+    group: "Portal Tabs",
+  },
+  {
+    section: "portal-aria",
+    label: "Aria — Planner AI",
+    description: "Blocks Aria Planner AI for non-admin users.",
+    group: "Portal Tabs",
+  },
+  {
+    section: "portal-day-of",
+    label: "Day-Of Coordinator",
+    description: "Blocks the day-of coordinator tab for non-admin users.",
+    group: "Portal Tabs",
+  },
+  {
+    section: "portal-website-editor",
+    label: "Website Editor",
+    description: "Blocks the website editor for non-admin users.",
+    group: "Portal Tabs",
+  },
+  {
+    section: "portal-experience",
+    label: "All Portal Tabs",
+    description: "Blocks all maintenance-covered portal tabs for non-admin users.",
+    group: "Portal Tabs",
+  },
   {
     section: "guest-collector",
     label: "Guest Collector",
     description: "Blocks the public contact-info collection form.",
+    group: "Public Guest Links",
   },
   {
     section: "rsvp",
     label: "RSVP Invitations",
     description: "Blocks RSVP links and shared RSVP guest search/submission.",
+    group: "Public Guest Links",
   },
   {
     section: "save-the-date",
     label: "Save the Date",
     description: "Blocks public save-the-date invitation pages.",
+    group: "Public Guest Links",
   },
   {
     section: "wedding-website",
     label: "Wedding Website",
     description: "Blocks published wedding websites and website RSVP actions.",
+    group: "Public Guest Links",
   },
   {
     section: "public-guest-experience",
     label: "All Public Guest Pages",
     description: "Blocks every public guest-facing page covered by maintenance mode.",
+    group: "Public Guest Links",
   },
 ];
 
@@ -1080,7 +1198,7 @@ export default function OperationsCenterPage() {
             <CardHeader>
               <CardTitle className="font-serif text-xl text-[#24171D]">Maintenance Mode</CardTitle>
               <p className="text-sm font-medium text-[#4A3941]">
-                Temporarily block guest-facing pages while you debug. Signed-in admins can keep working in the portal.
+                Temporarily block public pages or portal tabs while you debug. Signed-in admins can keep working in the portal.
               </p>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -1089,10 +1207,11 @@ export default function OperationsCenterPage() {
                   {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 rounded-lg" />)}
                 </div>
               ) : (
-                maintenanceSections.map(item => {
+                maintenanceSections.map((item, index) => {
                   const flag = maintenanceData?.flags.find(row => row.section === item.section);
                   const enabled = !!flag?.enabled;
                   const message = flag?.message || maintenanceData?.defaultMessage || defaultMaintenanceMessage;
+                  const showGroupHeader = index === 0 || maintenanceSections[index - 1]?.group !== item.group;
                   const expiresAtMs = flag?.expiresAt ? new Date(flag.expiresAt).getTime() : null;
                   const remainingMinutes = expiresAtMs
                     ? Math.max(1, Math.ceil((expiresAtMs - Date.now()) / 60000))
@@ -1105,72 +1224,79 @@ export default function OperationsCenterPage() {
                         ? "60"
                         : "120";
                   return (
-                    <div key={item.section} className={`rounded-xl border p-4 ${enabled ? "border-primary/40 bg-primary/5" : "border-[#E6C7D2] bg-[#F8EEDB]"}`}>
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-semibold text-[#24171D]">{item.label}</p>
-                            {enabled && <Badge className="bg-primary text-primary-foreground">Active</Badge>}
+                    <div key={item.section} className="space-y-2">
+                      {showGroupHeader && (
+                        <p className="pt-2 text-xs font-bold uppercase tracking-[0.18em] text-primary">
+                          {item.group}
+                        </p>
+                      )}
+                      <div className={`rounded-xl border p-4 ${enabled ? "border-primary/40 bg-primary/5" : "border-[#E6C7D2] bg-[#F8EEDB]"}`}>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-[#24171D]">{item.label}</p>
+                              {enabled && <Badge className="bg-primary text-primary-foreground">Active</Badge>}
+                            </div>
+                            <p className="mt-1 text-sm text-[#6F3E54]">{item.description}</p>
+                            {flag?.expiresAt && (
+                              <p className="mt-1 text-xs font-medium text-[#7A5062]">
+                                Auto-off: {new Date(flag.expiresAt).toLocaleString()}
+                              </p>
+                            )}
                           </div>
-                          <p className="mt-1 text-sm text-[#6F3E54]">{item.description}</p>
-                          {flag?.expiresAt && (
-                            <p className="mt-1 text-xs font-medium text-[#7A5062]">
-                              Auto-off: {new Date(flag.expiresAt).toLocaleString()}
-                            </p>
-                          )}
+                          <Switch
+                            checked={enabled}
+                            disabled={maintenanceMutation.isPending}
+                            onCheckedChange={(checked) => maintenanceMutation.mutate({
+                              section: item.section,
+                              enabled: checked,
+                              message,
+                              minutes: checked ? 60 : null,
+                            })}
+                            aria-label={`Toggle ${item.label} maintenance`}
+                          />
                         </div>
-                        <Switch
-                          checked={enabled}
-                          disabled={maintenanceMutation.isPending}
-                          onCheckedChange={(checked) => maintenanceMutation.mutate({
-                            section: item.section,
-                            enabled: checked,
-                            message,
-                            minutes: checked ? 60 : null,
-                          })}
-                          aria-label={`Toggle ${item.label} maintenance`}
-                        />
-                      </div>
-                      <div className="mt-3 grid gap-2 lg:grid-cols-[minmax(0,1fr)_140px]">
-                        <Input
-                          value={message}
-                          onChange={(event) => {
-                            queryClient.setQueryData<{ flags: MaintenanceFlag[]; defaultMessage: string }>(["admin-maintenance"], current => {
-                              if (!current) return current;
-                              return {
-                                ...current,
-                                flags: current.flags.map(row => row.section === item.section ? { ...row, message: event.target.value } : row),
-                              };
-                            });
-                          }}
-                          onBlur={(event) => maintenanceMutation.mutate({
-                            section: item.section,
-                            enabled,
-                            message: event.target.value.trim() || defaultMaintenanceMessage,
-                            minutes: remainingMinutes && enabled ? remainingMinutes : null,
-                          })}
-                          className="bg-white"
-                          placeholder={defaultMaintenanceMessage}
-                        />
-                        <Select
-                          value={autoOffValue}
-                          onValueChange={(value) => maintenanceMutation.mutate({
-                            section: item.section,
-                            enabled,
-                            message,
-                            minutes: value === "none" ? null : Number(value),
-                          })}
-                        >
-                          <SelectTrigger className="bg-white">
-                            <SelectValue placeholder="Auto-off" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">No auto-off</SelectItem>
-                            <SelectItem value="30">30 minutes</SelectItem>
-                            <SelectItem value="60">1 hour</SelectItem>
-                            <SelectItem value="120">2 hours</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <div className="mt-3 grid gap-2 lg:grid-cols-[minmax(0,1fr)_140px]">
+                          <Input
+                            value={message}
+                            onChange={(event) => {
+                              queryClient.setQueryData<{ flags: MaintenanceFlag[]; defaultMessage: string }>(["admin-maintenance"], current => {
+                                if (!current) return current;
+                                return {
+                                  ...current,
+                                  flags: current.flags.map(row => row.section === item.section ? { ...row, message: event.target.value } : row),
+                                };
+                              });
+                            }}
+                            onBlur={(event) => maintenanceMutation.mutate({
+                              section: item.section,
+                              enabled,
+                              message: event.target.value.trim() || defaultMaintenanceMessage,
+                              minutes: remainingMinutes && enabled ? remainingMinutes : null,
+                            })}
+                            className="bg-white"
+                            placeholder={defaultMaintenanceMessage}
+                          />
+                          <Select
+                            value={autoOffValue}
+                            onValueChange={(value) => maintenanceMutation.mutate({
+                              section: item.section,
+                              enabled,
+                              message,
+                              minutes: value === "none" ? null : Number(value),
+                            })}
+                          >
+                            <SelectTrigger className="bg-white">
+                              <SelectValue placeholder="Auto-off" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">No auto-off</SelectItem>
+                              <SelectItem value="30">30 minutes</SelectItem>
+                              <SelectItem value="60">1 hour</SelectItem>
+                              <SelectItem value="120">2 hours</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                     </div>
                   );
@@ -1194,7 +1320,7 @@ export default function OperationsCenterPage() {
               </CardContent>
             </Card>
             <p className="text-xs font-medium leading-relaxed text-[#6F3E54]">
-              Backend submissions are blocked with a 503 while maintenance is active, so guests with old tabs cannot submit stale forms.
+              Admins bypass portal-tab maintenance so you can debug the real page. Public invitation and website submissions are blocked with a 503 while their maintenance switches are active.
             </p>
           </div>
         </div>

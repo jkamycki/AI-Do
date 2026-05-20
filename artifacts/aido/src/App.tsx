@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, Component } from "react";
 import type { ReactNode } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
 import { ClerkProvider, useClerk, useAuth, useUser, useSignIn, useSignUp, Show, AuthenticateWithRedirectCallback } from "@clerk/react";
-import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
@@ -50,6 +50,7 @@ import DataHandling from "@/pages/DataHandling";
 import UpdatesImprovements from "@/pages/UpdatesImprovements";
 import NotFound from "@/pages/not-found";
 import VideoTemplate from "@/components/video/VideoTemplate";
+import { MaintenanceNotice } from "@/components/MaintenanceNotice";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
@@ -1294,10 +1295,58 @@ function HomeRedirect() {
   return <Landing />;
 }
 
-function ProtectedRoute({ component: Component, fullWidth = false }: { component: React.ComponentType; fullWidth?: boolean }) {
+type PortalMaintenanceSection =
+  | "portal-dashboard"
+  | "portal-profile"
+  | "portal-mood-board"
+  | "portal-timeline"
+  | "portal-checklist"
+  | "portal-vendors"
+  | "portal-budget"
+  | "portal-documents"
+  | "portal-guests"
+  | "portal-wedding-party"
+  | "portal-seating-chart"
+  | "portal-hotels"
+  | "portal-aria"
+  | "portal-day-of"
+  | "portal-website-editor";
+
+function ProtectedRoute({
+  component: Component,
+  fullWidth = false,
+  maintenanceSection,
+}: {
+  component: React.ComponentType;
+  fullWidth?: boolean;
+  maintenanceSection?: PortalMaintenanceSection;
+}) {
   const { isLoaded, isSignedIn } = useAuth();
   const { activeWorkspace } = useWorkspace();
   const [location] = useLocation();
+  const { data: adminCheck, isLoading: isLoadingAdminCheck } = useQuery({
+    queryKey: ["admin-check"],
+    queryFn: async () => {
+      const r = await authFetch("/api/admin/check");
+      if (!r.ok) return { isAdmin: false };
+      return r.json() as Promise<{ isAdmin: boolean }>;
+    },
+    enabled: isLoaded && !!isSignedIn && !!maintenanceSection,
+    staleTime: 30_000,
+    retry: false,
+  });
+  const { data: maintenance, isLoading: isLoadingMaintenance } = useQuery({
+    queryKey: ["maintenance", maintenanceSection],
+    queryFn: async () => {
+      const r = await authFetch(`/api/maintenance/public?section=${encodeURIComponent(maintenanceSection!)}`);
+      if (!r.ok) return { active: false, message: "" };
+      return r.json() as Promise<{ active: boolean; message: string }>;
+    },
+    enabled: isLoaded && !!isSignedIn && !!maintenanceSection,
+    staleTime: 15_000,
+    refetchInterval: 15_000,
+    retry: false,
+  });
 
   if (!isLoaded) {
     return (
@@ -1313,6 +1362,22 @@ function ProtectedRoute({ component: Component, fullWidth = false }: { component
 
   if (activeWorkspace?.role === "vendor" && !location.startsWith(`/workspace/${activeWorkspace.profileId}`)) {
     return <Redirect to={`/workspace/${activeWorkspace.profileId}`} />;
+  }
+
+  if (maintenanceSection && (isLoadingAdminCheck || isLoadingMaintenance)) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        Loading...
+      </div>
+    );
+  }
+
+  if (maintenanceSection && maintenance?.active && adminCheck?.isAdmin !== true) {
+    return (
+      <AppLayout fullWidth={fullWidth}>
+        <MaintenanceNotice message={maintenance.message} />
+      </AppLayout>
+    );
   }
 
   return (
@@ -1700,27 +1765,27 @@ function Router() {
       <Route path="/save-the-date/:token" component={SaveTheDate} />
       <Route path="/w/:slug" component={PublicWebsite} />
       <Route path="/w/:slug/:section" component={PublicWebsite} />
-      <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
-      <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
-      <Route path="/timeline" component={() => <ProtectedRoute component={Timeline} />} />
-      <Route path="/budget" component={() => <ProtectedRoute component={Budget} />} />
-      <Route path="/checklist" component={() => <ProtectedRoute component={Checklist} />} />
-      <Route path="/vendors" component={() => <ProtectedRoute component={Vendors} />} />
-      <Route path="/day-of" component={() => <ProtectedRoute component={DayOf} />} />
+      <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} maintenanceSection="portal-dashboard" />} />
+      <Route path="/profile" component={() => <ProtectedRoute component={Profile} maintenanceSection="portal-profile" />} />
+      <Route path="/timeline" component={() => <ProtectedRoute component={Timeline} maintenanceSection="portal-timeline" />} />
+      <Route path="/budget" component={() => <ProtectedRoute component={Budget} maintenanceSection="portal-budget" />} />
+      <Route path="/checklist" component={() => <ProtectedRoute component={Checklist} maintenanceSection="portal-checklist" />} />
+      <Route path="/vendors" component={() => <ProtectedRoute component={Vendors} maintenanceSection="portal-vendors" />} />
+      <Route path="/day-of" component={() => <ProtectedRoute component={DayOf} maintenanceSection="portal-day-of" />} />
       <Route path="/admin" component={() => <ProtectedRoute component={Admin} />} />
       <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
       <Route path="/help/updates-improvements" component={UpdatesImprovements} />
       <Route path="/help" component={() => <ProtectedRoute component={Help} />} />
       <Route path="/operations-center" component={() => <ProtectedRoute component={OperationsCenter} />} />
-      <Route path="/seating-chart" component={() => <ProtectedRoute component={SeatingChart} />} />
-      <Route path="/guests/:profileId?" component={() => <ProtectedRoute component={GuestListAndInvitations} />} />
-      <Route path="/wedding-party" component={() => <ProtectedRoute component={WeddingParty} />} />
-      <Route path="/hotels" component={() => <ProtectedRoute component={Hotels} />} />
+      <Route path="/seating-chart" component={() => <ProtectedRoute component={SeatingChart} maintenanceSection="portal-seating-chart" />} />
+      <Route path="/guests/:profileId?" component={() => <ProtectedRoute component={GuestListAndInvitations} maintenanceSection="portal-guests" />} />
+      <Route path="/wedding-party" component={() => <ProtectedRoute component={WeddingParty} maintenanceSection="portal-wedding-party" />} />
+      <Route path="/hotels" component={() => <ProtectedRoute component={Hotels} maintenanceSection="portal-hotels" />} />
       <Route path="/contracts" component={() => <ProtectedRoute component={Contracts} />} />
-      <Route path="/documents" component={() => <ProtectedRoute component={DocumentLibrary} />} />
-      <Route path="/mood-board" component={() => <ProtectedRoute component={MoodBoard} />} />
-      <Route path="/aria" component={() => <ProtectedRoute component={Aria} />} />
-      <Route path="/website-editor" component={() => <ProtectedRoute component={WebsiteEditor} fullWidth />} />
+      <Route path="/documents" component={() => <ProtectedRoute component={DocumentLibrary} maintenanceSection="portal-documents" />} />
+      <Route path="/mood-board" component={() => <ProtectedRoute component={MoodBoard} maintenanceSection="portal-mood-board" />} />
+      <Route path="/aria" component={() => <ProtectedRoute component={Aria} maintenanceSection="portal-aria" />} />
+      <Route path="/website-editor" component={() => <ProtectedRoute component={WebsiteEditor} fullWidth maintenanceSection="portal-website-editor" />} />
       <Route path="/workspace/:profileId" component={() => <ProtectedRoute component={SharedWorkspace} fullWidth />} />
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />

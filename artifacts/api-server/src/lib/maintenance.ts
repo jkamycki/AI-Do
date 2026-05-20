@@ -3,16 +3,41 @@ import { db, maintenanceFlags } from "@workspace/db";
 import { eq, inArray } from "drizzle-orm";
 
 export const PUBLIC_MAINTENANCE_SECTION = "public-guest-experience";
+export const PORTAL_MAINTENANCE_SECTION = "portal-experience";
 
 export const DEFAULT_MAINTENANCE_MESSAGE =
   "We'll be right back. We're making updates and improvements to this page.";
 
-export const MAINTENANCE_SECTIONS = [
+export const PUBLIC_MAINTENANCE_SECTIONS = [
   "guest-collector",
   "rsvp",
   "save-the-date",
   "wedding-website",
   PUBLIC_MAINTENANCE_SECTION,
+] as const;
+
+export const PORTAL_MAINTENANCE_SECTIONS = [
+  "portal-dashboard",
+  "portal-profile",
+  "portal-mood-board",
+  "portal-timeline",
+  "portal-checklist",
+  "portal-vendors",
+  "portal-budget",
+  "portal-documents",
+  "portal-guests",
+  "portal-wedding-party",
+  "portal-seating-chart",
+  "portal-hotels",
+  "portal-aria",
+  "portal-day-of",
+  "portal-website-editor",
+  PORTAL_MAINTENANCE_SECTION,
+] as const;
+
+export const MAINTENANCE_SECTIONS = [
+  ...PUBLIC_MAINTENANCE_SECTIONS,
+  ...PORTAL_MAINTENANCE_SECTIONS,
 ] as const;
 
 export type MaintenanceSection = typeof MAINTENANCE_SECTIONS[number];
@@ -38,10 +63,18 @@ function isFlagActive(flag: typeof maintenanceFlags.$inferSelect): boolean {
 }
 
 export async function getMaintenanceState(section: MaintenanceSection) {
+  const sectionsToCheck: MaintenanceSection[] = [section];
+  if ((PUBLIC_MAINTENANCE_SECTIONS as readonly string[]).includes(section)) {
+    sectionsToCheck.push(PUBLIC_MAINTENANCE_SECTION);
+  }
+  if ((PORTAL_MAINTENANCE_SECTIONS as readonly string[]).includes(section)) {
+    sectionsToCheck.push(PORTAL_MAINTENANCE_SECTION);
+  }
+
   const rows = await db
     .select()
     .from(maintenanceFlags)
-    .where(inArray(maintenanceFlags.section, [section, PUBLIC_MAINTENANCE_SECTION]));
+    .where(inArray(maintenanceFlags.section, Array.from(new Set(sectionsToCheck))));
 
   const active = rows.find(isFlagActive);
   return {

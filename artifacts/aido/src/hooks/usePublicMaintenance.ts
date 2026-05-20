@@ -7,7 +7,23 @@ export type MaintenanceSection =
   | "rsvp"
   | "save-the-date"
   | "wedding-website"
-  | "public-guest-experience";
+  | "public-guest-experience"
+  | "portal-dashboard"
+  | "portal-profile"
+  | "portal-mood-board"
+  | "portal-timeline"
+  | "portal-checklist"
+  | "portal-vendors"
+  | "portal-budget"
+  | "portal-documents"
+  | "portal-guests"
+  | "portal-wedding-party"
+  | "portal-seating-chart"
+  | "portal-hotels"
+  | "portal-aria"
+  | "portal-day-of"
+  | "portal-website-editor"
+  | "portal-experience";
 
 export type PublicMaintenanceState = {
   active: boolean;
