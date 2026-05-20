@@ -2941,8 +2941,11 @@ export default function Guests({
                         openBulkLinks(mode, "copy");
                       }}
                     >
-                      <Copy className="h-4 w-4" />
-                      Copy personalized links
+                      <Copy className="h-4 w-4 shrink-0" />
+                      <span className="leading-tight">
+                        <span className="sm:hidden">Copy links</span>
+                        <span className="hidden sm:inline">Copy personalized links</span>
+                      </span>
                     </Button>
                     <Button
                       type="button"
@@ -3210,12 +3213,15 @@ export default function Guests({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="mt-2 h-8 w-full justify-center gap-2 text-xs text-primary hover:bg-primary/10"
+                  className="mt-2 min-h-8 w-full justify-center gap-2 whitespace-normal px-2 py-1.5 text-center text-xs leading-tight text-primary hover:bg-primary/10"
                   disabled={bulkLinksLoading || selectedSaveTheDateEligible.length === 0}
                   onClick={() => openBulkLinks("saveTheDate")}
                 >
-                  <Link2 className="h-3.5 w-3.5" />
-                  Copy personalized links
+                  <Link2 className="h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    <span className="sm:hidden">Copy links</span>
+                    <span className="hidden sm:inline">Copy personalized links</span>
+                  </span>
                 </Button>
               </div>
               <div className="rounded-lg border border-primary/15 bg-white/55 p-2 shadow-sm">
@@ -3241,12 +3247,15 @@ export default function Guests({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="mt-2 h-8 w-full justify-center gap-2 text-xs text-primary hover:bg-primary/10"
+                  className="mt-2 min-h-8 w-full justify-center gap-2 whitespace-normal px-2 py-1.5 text-center text-xs leading-tight text-primary hover:bg-primary/10"
                   disabled={bulkLinksLoading || selectedInvitationEligible.length === 0}
                   onClick={() => openBulkLinks("invitation")}
                 >
-                  <Link2 className="h-3.5 w-3.5" />
-                  Copy personalized links
+                  <Link2 className="h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    <span className="sm:hidden">Copy links</span>
+                    <span className="hidden sm:inline">Copy personalized links</span>
+                  </span>
                 </Button>
               </div>
               <div className="rounded-lg border border-primary/15 bg-white/55 p-2 shadow-sm">
@@ -3273,12 +3282,15 @@ export default function Guests({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="mt-2 h-8 w-full justify-center gap-2 text-xs text-primary hover:bg-primary/10"
+                  className="mt-2 min-h-8 w-full justify-center gap-2 whitespace-normal px-2 py-1.5 text-center text-xs leading-tight text-primary hover:bg-primary/10"
                   disabled={bulkLinksLoading || selectedReminderEligible.length === 0}
                   onClick={() => openBulkLinks("reminder")}
                 >
-                  <Link2 className="h-3.5 w-3.5" />
-                  Copy personalized links
+                  <Link2 className="h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    <span className="sm:hidden">Copy links</span>
+                    <span className="hidden sm:inline">Copy personalized links</span>
+                  </span>
                 </Button>
               </div>
             </div>
