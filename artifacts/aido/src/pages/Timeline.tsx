@@ -762,7 +762,7 @@ export default function Timeline() {
   useEffect(() => {
     let cancelled = false;
     const timelineId = timeline?.id;
-    if (!timelineId || localEvents.length === 0 || isDirty || languageCode === "en") {
+    if (!timelineId || localEvents.length === 0 || languageCode === "en") {
       setTranslatedEvents(null);
       setIsTranslatingTimeline(false);
       return;
@@ -831,7 +831,7 @@ export default function Timeline() {
     return () => {
       cancelled = true;
     };
-  }, [isDirty, languageCode, languageName, localEvents, timeline?.id, translationScope, translationSignature]);
+  }, [languageCode, languageName, localEvents, timeline?.id, translationScope, translationSignature]);
 
   const visibleEvents = translatedEvents ?? localEvents;
   const conflicts = useMemo(() => detectConflicts(visibleEvents), [visibleEvents]);

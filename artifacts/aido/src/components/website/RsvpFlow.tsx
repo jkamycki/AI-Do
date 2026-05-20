@@ -188,7 +188,7 @@ export function RsvpFlow({
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (query.trim().length < 2) {
-      setError("Please type at least 2 letters of your name.");
+      setError(t("rsvp.error_min_name_letters", { defaultValue: "Please type at least 2 letters of your name." }));
       return;
     }
     setError(null);
@@ -207,7 +207,7 @@ export function RsvpFlow({
         // exposes when nothing matches the typed name.
         setMatches([]);
         setSearched(true);
-        setError("We couldn't search the guest list right now. You can still RSVP using your details below.");
+        setError(t("rsvp.error_search_unavailable", { defaultValue: "We couldn't search the guest list right now. You can still RSVP using your details below." }));
         return;
       }
       const body = (await r.json()) as { matches: GuestMatch[] };
@@ -216,7 +216,7 @@ export function RsvpFlow({
     } catch {
       setMatches([]);
       setSearched(true);
-      setError("We couldn't reach the guest list. You can still RSVP using your details below.");
+      setError(t("rsvp.error_guest_list_unreachable", { defaultValue: "We couldn't reach the guest list. You can still RSVP using your details below." }));
     } finally {
       setSearching(false);
     }
@@ -232,7 +232,7 @@ export function RsvpFlow({
         : `/api/website/public/${encodeURIComponent(slug)}/guests/${m.id}?name=${encodeURIComponent(m.name)}`;
       const r = previewMode ? await authFetch(url) : await apiFetch(url, { headers: sharedToken ? undefined : passwordHeader });
       if (!r.ok) {
-        setError("Couldn't load your details. Please try again.");
+        setError(t("rsvp.error_load_details", { defaultValue: "Couldn't load your details. Please try again." }));
         return;
       }
       const body = (await r.json()) as GuestDetails;
@@ -246,7 +246,7 @@ export function RsvpFlow({
         setStep("form");
       }
     } catch {
-      setError("Network error. Please try again.");
+      setError(t("common.network_error", { defaultValue: "Network error. Please try again." }));
     }
   };
 
@@ -285,12 +285,12 @@ export function RsvpFlow({
       });
       if (!r.ok) {
         const body = await r.json().catch(() => ({}));
-        setError(body?.error ?? "Failed to submit RSVP. Please try again.");
+        setError(body?.error ?? t("rsvp.error_submit_failed", { defaultValue: "Failed to submit RSVP. Please try again." }));
         return;
       }
       setStep("done");
     } catch {
-      setError("Network error. Please try again.");
+      setError(t("common.network_error", { defaultValue: "Network error. Please try again." }));
     } finally {
       setSubmitting(false);
     }
@@ -299,7 +299,7 @@ export function RsvpFlow({
   const handleSelfAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selfName.trim()) {
-      setError("Please enter your full name.");
+      setError(t("rsvp.error_full_name_required", { defaultValue: "Please enter your full name." }));
       return;
     }
     if (previewMode) {
@@ -335,12 +335,12 @@ export function RsvpFlow({
       });
       if (!r.ok) {
         const body = await r.json().catch(() => ({}));
-        setError(body?.error ?? "Failed to submit RSVP. Please try again.");
+        setError(body?.error ?? t("rsvp.error_submit_failed", { defaultValue: "Failed to submit RSVP. Please try again." }));
         return;
       }
       setStep("done");
     } catch {
-      setError("Network error. Please try again.");
+      setError(t("common.network_error", { defaultValue: "Network error. Please try again." }));
     } finally {
       setSubmitting(false);
     }
@@ -477,13 +477,12 @@ export function RsvpFlow({
               {t("rsvp.greeting", { name: guest.name.split(" ")[0], defaultValue: "Hi {{name}}!" })}
             </h2>
             <p className="text-base mb-2" style={{ color: text }}>
-              You've already RSVPed as{" "}
-              <span className="font-semibold">
-                {guest.rsvpStatus === "attending"
+              {t("rsvp.already_rsvped_as", {
+                status: guest.rsvpStatus === "attending"
                   ? t("rsvp.status_attending", { defaultValue: "Attending" })
-                  : t("rsvp.status_declined", { defaultValue: "Declined" })}
-              </span>
-              .
+                  : t("rsvp.status_declined", { defaultValue: "Declined" }),
+                defaultValue: "You've already RSVPed as {{status}}.",
+              })}
             </p>
             <p className="text-sm font-medium mb-8" style={{ color: text }}>
               {guest.rsvpStatus === "attending"

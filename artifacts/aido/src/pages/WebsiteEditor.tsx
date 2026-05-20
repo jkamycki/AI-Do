@@ -142,6 +142,10 @@ const WEBSITE_TRANSLATABLE_DEFAULTS: Record<string, string> = {
   _navGallery: "Gallery",
   _navFaq: "FAQ",
   _navRsvp: "RSVP",
+  _countdownLabelDays: "Days",
+  _countdownLabelHours: "Hours",
+  _countdownLabelMinutes: "Mins",
+  _countdownLabelSeconds: "Secs",
   welcome_title: "Welcome",
   story_title: "Our Story",
   story_subtitle: "How we got here",
@@ -167,6 +171,7 @@ const WEBSITE_TRANSLATABLE_DEFAULTS: Record<string, string> = {
   weddingParty_familyLabel: "Family & Friends",
   rsvp_title: "RSVP",
   rsvp_subtitle: "Let us know if you can celebrate with us",
+  rsvp_intro: "Find your name on the guest list and let us know if you can make it.",
 };
 
 const WEBSITE_TRANSLATABLE_KEYS = new Set([
@@ -180,6 +185,8 @@ const WEBSITE_TRANSLATABLE_KEYS = new Set([
   "faq",
   "faq_items_json",
   "rsvp_subtitle",
+  "rsvp_intro",
+  "rsvp_deadline",
   "rsvp_thankyou",
 ]);
 
@@ -698,7 +705,7 @@ export default function WebsiteEditor() {
 
   useEffect(() => {
     let cancelled = false;
-    if (!record || dirty || languageCode === "en" || Object.keys(websiteTranslationSource).length === 0) {
+    if (!record || languageCode === "en" || Object.keys(websiteTranslationSource).length === 0) {
       setTranslatedWebsiteText(null);
       setIsTranslatingWebsite(false);
       return;
@@ -762,7 +769,7 @@ export default function WebsiteEditor() {
     return () => {
       cancelled = true;
     };
-  }, [dirty, languageCode, languageName, record?.id, userId, websiteTranslationSig, websiteTranslationSource]);
+  }, [languageCode, languageName, record?.id, userId, websiteTranslationSig, websiteTranslationSource]);
 
   // Must be declared above any early return so the hook count stays stable.
   const livePreview = useMemo<WebsiteRendererPayload | null>(() => {

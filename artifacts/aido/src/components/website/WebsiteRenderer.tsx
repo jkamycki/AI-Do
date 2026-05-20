@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
 import {
   Calendar,
   MapPin,
@@ -886,29 +887,32 @@ function CountdownTimer({
   ];
   return (
     <div className="flex items-center justify-center gap-4 sm:gap-8 mt-8">
-      {units.map(({ key, label, value }) => (
-        <div key={label} className="flex flex-col items-center">
-          <span
-            className="text-3xl sm:text-5xl font-bold tabular-nums leading-none"
-            style={{ color: accentColor }}
-          >
-            {String(value).padStart(2, "0")}
-          </span>
-          <EditableText
-            as="span"
-            editable={ctx.editable}
-            value={label}
-            defaultValue={label}
-            readOnlyText
-            aiEnabled={false}
-            textStyle={data.textStyles?.[key]}
-            onStyleChange={
-              ctx.onStyleChange ? (s) => ctx.onStyleChange!(key, s) : undefined
-            }
-            className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest mt-2"
-          />
-        </div>
-      ))}
+      {units.map(({ key, label, value }) => {
+        const displayLabel = data.customText[key] || label;
+        return (
+          <div key={key} className="flex flex-col items-center">
+            <span
+              className="text-3xl sm:text-5xl font-bold tabular-nums leading-none"
+              style={{ color: accentColor }}
+            >
+              {String(value).padStart(2, "0")}
+            </span>
+            <EditableText
+              as="span"
+              editable={ctx.editable}
+              value={displayLabel}
+              defaultValue={label}
+              readOnlyText
+              aiEnabled={false}
+              textStyle={data.textStyles?.[key]}
+              onStyleChange={
+                ctx.onStyleChange ? (s) => ctx.onStyleChange!(key, s) : undefined
+              }
+              className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest mt-2"
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1110,6 +1114,7 @@ function RsvpSection({
   data: WebsiteRendererPayload;
   ctx: EditCtx;
 }) {
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [attending, setAttending] = useState<"yes" | "no" | "maybe">("yes");
@@ -1139,7 +1144,7 @@ function RsvpSection({
     e.preventDefault();
     if (ctx.editable) return;
     if (!name.trim()) {
-      setErr("Please enter your name.");
+      setErr(t("rsvp.error_name_required", { defaultValue: "Please enter your name." }));
       return;
     }
     setSubmitting(true);
@@ -1166,14 +1171,14 @@ function RsvpSection({
       );
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(body.error ?? "Submission failed");
+        throw new Error(body.error ?? t("rsvp.submission_failed", { defaultValue: "Submission failed" }));
       }
       setDone(true);
     } catch (e) {
       setErr(
         e instanceof Error
           ? e.message
-          : "Something went wrong. Please try again.",
+          : t("common.try_again_error", { defaultValue: "Something went wrong. Please try again." }),
       );
     } finally {
       setSubmitting(false);
@@ -1233,12 +1238,12 @@ function RsvpSection({
           className="text-center text-sm font-medium mb-8"
           style={{ color: labelColor }}
         >
-          Please RSVP by{" "}
+          {t("rsvp.please_rsvp_by", { defaultValue: "Please RSVP by" })}{" "}
           <EditableText
             as="span"
             editable={ctx.editable}
             value={data.customText.rsvp_deadline ?? ""}
-            defaultValue="(tap to add a date)"
+            defaultValue={t("rsvp.tap_to_add_date", { defaultValue: "(tap to add a date)" })}
             onCommit={(v) => ctx.onTextChange("rsvp_deadline", v)}
             className="font-semibold"
             style={{ color: labelColor }}
@@ -1260,17 +1265,17 @@ function RsvpSection({
             }}
           >
             {attending === "no"
-              ? "We're sorry you can't make it 💙"
-              : "Thank you! We can't wait to celebrate with you!"}
+              ? t("rsvp.sorry_you_cant", { defaultValue: "We're sorry you can't make it." })
+              : t("rsvp.thank_you_celebrate", { defaultValue: "Thank you! We can't wait to celebrate with you!" })}
           </p>
           <EditableText
             as="p"
             editable={false}
             value={
               data.customText.rsvp_thankyou ??
-              "We'll send you more details closer to the day."
+              t("rsvp.more_details_later", { defaultValue: "We'll send you more details closer to the day." })
             }
-            defaultValue="We'll send you more details closer to the day."
+            defaultValue={t("rsvp.more_details_later", { defaultValue: "We'll send you more details closer to the day." })}
             onCommit={() => {}}
             className="text-sm font-medium text-center max-w-sm"
             style={{ color: labelColor }}
@@ -1280,7 +1285,7 @@ function RsvpSection({
         <form onSubmit={submit} className="max-w-lg mx-auto space-y-4">
           {ctx.editable && (
             <p className="rounded-md border px-3 py-2 text-center text-xs font-medium" style={{ color: labelColor, borderColor: `${data.colorPalette.primary}33` }}>
-              Editor preview only. Guests can use this form on the published site.
+              {t("rsvp.editor_preview_only", { defaultValue: "Editor preview only. Guests can use this form on the published site." })}
             </p>
           )}
           <div className="grid sm:grid-cols-2 gap-4">
@@ -1289,13 +1294,13 @@ function RsvpSection({
                 className="block text-xs font-semibold mb-1.5"
                 style={{ color: labelColor }}
               >
-                Name *
+                {t("rsvp.name_required", { defaultValue: "Name *" })}
               </label>
               <input
                 style={inputStyle}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Your full name"
+                placeholder={t("rsvp.full_name", { defaultValue: "Your full name" })}
                 required
               />
             </div>
@@ -1304,7 +1309,7 @@ function RsvpSection({
                 className="block text-xs font-semibold mb-1.5"
                 style={{ color: labelColor }}
               >
-                Email
+                {t("rsvp.email", { defaultValue: "Email" })}
               </label>
               <input
                 style={inputStyle}
@@ -1321,7 +1326,7 @@ function RsvpSection({
               className="block text-xs font-semibold mb-2"
               style={{ color: labelColor }}
             >
-              Will you attend?
+              {t("rsvp.will_you_attend", { defaultValue: "Will you attend?" })}
             </label>
             <div className="flex gap-2">
               {(["yes", "no", "maybe"] as const).map((opt) => (
@@ -1341,10 +1346,10 @@ function RsvpSection({
                   }}
                 >
                   {opt === "yes"
-                    ? "Joyfully accepts"
+                    ? t("rsvp.joyfully_accepts", { defaultValue: "Joyfully accepts" })
                     : opt === "no"
-                      ? "Regretfully declines"
-                      : "Maybe"}
+                      ? t("rsvp.regretfully_declines", { defaultValue: "Regretfully declines" })
+                      : t("rsvp.maybe", { defaultValue: "Maybe" })}
                 </button>
               ))}
             </div>
@@ -1357,7 +1362,7 @@ function RsvpSection({
                   className="block text-xs font-semibold mb-1.5"
                   style={{ color: labelColor }}
                 >
-                  Additional guests
+                  {t("rsvp.additional_guests", { defaultValue: "Additional guests" })}
                 </label>
                 <select
                   style={inputStyle}
@@ -1366,7 +1371,9 @@ function RsvpSection({
                 >
                   {[0, 1, 2, 3, 4, 5].map((n) => (
                     <option key={n} value={n}>
-                      {n === 0 ? "Just me" : `+${n} guest${n > 1 ? "s" : ""}`}
+                      {n === 0
+                        ? t("rsvp.just_me", { defaultValue: "Just me" })
+                        : t("rsvp.guest_count_option", { count: n, defaultValue: "+{{count}} guest" })}
                     </option>
                   ))}
                 </select>
@@ -1376,7 +1383,7 @@ function RsvpSection({
                   className="block text-xs font-semibold mb-1.5"
                   style={{ color: labelColor }}
                 >
-                  Dietary restrictions
+                  {t("rsvp.dietary_restrictions", { defaultValue: "Dietary restrictions" })}
                 </label>
                 <input
                   style={inputStyle}
@@ -1392,7 +1399,7 @@ function RsvpSection({
             <div className="rounded-lg border p-4 space-y-3" style={{ borderColor: `${data.colorPalette.primary}44`, background: `${data.colorPalette.primary}0d` }}>
               <div>
                 <label className="block text-xs font-semibold mb-1.5" style={{ color: labelColor }}>
-                  Will you need a hotel room?
+                  {t("rsvp.need_hotel_question", { defaultValue: "Will you need a hotel room?" })}
                 </label>
                 <select
                   style={inputStyle}
@@ -1400,16 +1407,18 @@ function RsvpSection({
                   onChange={(e) => handleHotelResponseChange(e.target.value as HotelResponse)}
                   disabled={ctx.editable}
                 >
-                  <option value="no">No</option>
-                  <option value="yes">Yes</option>
-                  <option value="booked">I've already booked</option>
+                  <option value="no">{t("common.no", { defaultValue: "No" })}</option>
+                  <option value="yes">{t("common.yes", { defaultValue: "Yes" })}</option>
+                  <option value="booked">{t("rsvp.hotel_already_booked", { defaultValue: "I've already booked" })}</option>
                 </select>
               </div>
 
               {effectiveHotelNeeded && (
                 <div className="space-y-2">
                   <label className="block text-xs font-semibold mb-1.5" style={{ color: labelColor }}>
-                    {hotelResponse === "booked" ? "Which hotel did you book?" : "Hotel block"}
+                    {hotelResponse === "booked"
+                      ? t("rsvp.hotel_block_booked", { defaultValue: "Which hotel did you book?" })
+                      : t("rsvp.hotel_block", { defaultValue: "Hotel block" })}
                   </label>
                   <select
                     style={inputStyle}
@@ -1418,17 +1427,21 @@ function RsvpSection({
                     disabled={ctx.editable}
                   >
                     <option value="">
-                      {hotelResponse === "booked" ? "I booked outside this block / not listed" : "I will decide later"}
+                      {hotelResponse === "booked"
+                        ? t("rsvp.hotel_not_listed", { defaultValue: "I booked outside this block / not listed" })
+                        : t("rsvp.hotel_decide_later", { defaultValue: "I will decide later" })}
                     </option>
                     {hotelOptions.map((hotel) => (
                       <option key={hotel.id} value={hotel.id}>
-                        {hotel.hotelName || "Hotel block"}
+                        {hotel.hotelName || t("rsvp.hotel_block", { defaultValue: "Hotel block" })}
                       </option>
                     ))}
                   </select>
 
                   <label className="block text-xs font-semibold mb-1.5" style={{ color: labelColor }}>
-                    {hotelResponse === "booked" ? "How many rooms did you book?" : "How many rooms?"}
+                    {hotelResponse === "booked"
+                      ? t("rsvp.hotel_rooms_booked", { defaultValue: "How many rooms did you book?" })
+                      : t("rsvp.hotel_room_count", { defaultValue: "How many rooms?" })}
                   </label>
                   <select
                     style={inputStyle}
@@ -1436,29 +1449,29 @@ function RsvpSection({
                     onChange={(e) => setHotelRoomCount(e.target.value)}
                     disabled={ctx.editable}
                   >
-                    <option value="1">1 room</option>
-                    <option value="2">2 rooms</option>
+                    <option value="1">{t("rsvp.one_room", { defaultValue: "1 room" })}</option>
+                    <option value="2">{t("rsvp.two_rooms", { defaultValue: "2 rooms" })}</option>
                   </select>
 
                   {selectedHotel && (
                     <div className="rounded-lg border p-3 text-sm" style={{ color: labelColor, borderColor: `${data.colorPalette.primary}33`, background: `${data.colorPalette.background}cc` }}>
-                      <p className="font-semibold">{selectedHotel.hotelName || "Hotel block"}</p>
+                      <p className="font-semibold">{selectedHotel.hotelName || t("rsvp.hotel_block", { defaultValue: "Hotel block" })}</p>
                       {websiteHotelAddressLine(selectedHotel) && (
                         <p className="mt-1 text-xs font-medium">{websiteHotelAddressLine(selectedHotel)}</p>
                       )}
                       {selectedHotel.groupName && (
-                        <p className="mt-2 text-xs opacity-85"><span className="font-semibold">Wedding block:</span> {selectedHotel.groupName}</p>
+                        <p className="mt-2 text-xs opacity-85"><span className="font-semibold">{t("rsvp.wedding_block", { defaultValue: "Wedding block:" })}</span> {selectedHotel.groupName}</p>
                       )}
                       {selectedHotel.discountCode && (
-                        <p className="mt-1 text-xs opacity-85"><span className="font-semibold">Group code:</span> <span className="font-mono font-semibold">{selectedHotel.discountCode}</span></p>
+                        <p className="mt-1 text-xs opacity-85"><span className="font-semibold">{t("rsvp.group_code", { defaultValue: "Group code:" })}</span> <span className="font-mono font-semibold">{selectedHotel.discountCode}</span></p>
                       )}
                       {selectedHotel.cutoffDate && (
-                        <p className="mt-1 text-xs opacity-85"><span className="font-semibold">Book by:</span> {websiteHotelCutoffDate(selectedHotel.cutoffDate)}</p>
+                        <p className="mt-1 text-xs opacity-85"><span className="font-semibold">{t("rsvp.book_by", { defaultValue: "Book by:" })}</span> {websiteHotelCutoffDate(selectedHotel.cutoffDate)}</p>
                       )}
-                      <p className="mt-1 text-xs opacity-85"><span className="font-semibold">Rooms:</span> {hotelRoomCount === "2" ? "2 rooms" : "1 room"}</p>
+                      <p className="mt-1 text-xs opacity-85"><span className="font-semibold">{t("rsvp.rooms", { defaultValue: "Rooms:" })}</span> {hotelRoomCount === "2" ? t("rsvp.two_rooms", { defaultValue: "2 rooms" }) : t("rsvp.one_room", { defaultValue: "1 room" })}</p>
                       {selectedHotel.bookingLink && (
                         <div className="mt-3 rounded-md px-3 py-2 text-center text-xs font-semibold text-white" style={{ background: data.colorPalette.primary }}>
-                          Open booking link
+                          {t("rsvp.open_booking_link", { defaultValue: "Open booking link" })}
                         </div>
                       )}
                     </div>
@@ -1473,13 +1486,13 @@ function RsvpSection({
               className="block text-xs font-semibold mb-1.5"
               style={{ color: labelColor }}
             >
-              Message to the couple (optional)
+              {t("rsvp.message_to_couple", { defaultValue: "Message to the couple (optional)" })}
             </label>
             <textarea
               style={{ ...inputStyle, resize: "vertical", minHeight: "80px" }}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Share a wish or note…"
+              placeholder={t("rsvp.message_placeholder_short", { defaultValue: "Share a wish or note..." })}
               rows={3}
             />
           </div>
@@ -1492,7 +1505,7 @@ function RsvpSection({
             className="w-full py-3 rounded-lg text-white font-medium transition-opacity hover:opacity-90 disabled:opacity-60"
             style={{ background: data.colorPalette.primary }}
           >
-            {submitting ? "Sending…" : "Send RSVP"}
+            {submitting ? t("rsvp.sending", { defaultValue: "Sending..." }) : t("rsvp.send_rsvp", { defaultValue: "Send RSVP" })}
           </button>
         </form>
       )}

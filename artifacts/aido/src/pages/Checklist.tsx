@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useGetChecklist,
   useToggleChecklistItem,
@@ -8,6 +8,7 @@ import {
 } from "@workspace/api-client-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { authFetch } from "@/lib/authFetch";
+import { getCurrentLanguageCode, getCurrentLanguageName } from "@/lib/languagePreference";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import { useTranslation } from "react-i18next";
 import { Progress } from "@/components/ui/progress";
 
 const API = import.meta.env.VITE_API_URL ?? "";
+const CHECKLIST_TRANSLATION_CACHE_PREFIX = "aido_checklist_translation_v1";
 
 type ChecklistItem = {
   id: number;
@@ -31,8 +33,41 @@ type ChecklistItem = {
   resolveNote?: string;
 };
 
+function checklistTranslationSignature(items: ChecklistItem[]): string {
+  const raw = JSON.stringify(items.map((item) => ({
+    id: item.id,
+    month: item.month,
+    task: item.task,
+    description: item.description,
+  })));
+  let hash = 0;
+  for (let index = 0; index < raw.length; index += 1) {
+    hash = (hash * 31 + raw.charCodeAt(index)) >>> 0;
+  }
+  return hash.toString(36);
+}
+
+function checklistTranslationCacheKey({
+  languageCode,
+  signature,
+}: {
+  languageCode: string;
+  signature: string;
+}) {
+  return `${CHECKLIST_TRANSLATION_CACHE_PREFIX}:${languageCode}:${signature}`;
+}
+
+function normalizeChecklistDisplayItem(source: ChecklistItem, translated?: Partial<ChecklistItem>): ChecklistItem {
+  return {
+    ...source,
+    month: typeof translated?.month === "string" && translated.month.trim() ? translated.month : source.month,
+    task: typeof translated?.task === "string" && translated.task.trim() ? translated.task : source.task,
+    description: typeof translated?.description === "string" ? translated.description : source.description,
+  };
+}
+
 export default function Checklist() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: checklist, isLoading: isLoadingChecklist } = useGetChecklist();
@@ -52,6 +87,8 @@ export default function Checklist() {
   const [noteDraft, setNoteDraft] = useState("");
   const [planningFocus, setPlanningFocus] = useState("");
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [translatedItems, setTranslatedItems] = useState<ChecklistItem[] | null>(null);
+  const [isTranslatingChecklist, setIsTranslatingChecklist] = useState(false);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getGetChecklistQueryKey() });
@@ -235,7 +272,7 @@ export default function Checklist() {
   }
 
   const handleDownloadPdf = async () => {
-    if (!checklist?.items?.length) return;
+    if (!visibleItems.length) return;
     setIsDownloadingPdf(true);
     try {
       const coupleName = profile ? `${profile.partner2Name} & ${profile.partner1Name}` : undefined;
@@ -243,7 +280,7 @@ export default function Checklist() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          items: checklist.items.map(item => ({
+          items: visibleItems.map(item => ({
             month: item.month,
             task: item.task,
             description: item.description,
@@ -275,6 +312,82 @@ export default function Checklist() {
     }
   };
 
+  const sourceItems = useMemo(() => (checklist?.items ?? []) as ChecklistItem[], [checklist?.items]);
+  const languageCode = (i18n.resolvedLanguage || i18n.language || getCurrentLanguageCode()).split("-")[0] || "en";
+  const languageName = getCurrentLanguageName();
+  const checklistSignature = useMemo(() => checklistTranslationSignature(sourceItems), [sourceItems]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!sourceItems.length || languageCode === "en") {
+      setTranslatedItems(null);
+      setIsTranslatingChecklist(false);
+      return;
+    }
+
+    const cacheKey = checklistTranslationCacheKey({ languageCode, signature: checklistSignature });
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length === sourceItems.length) {
+          setTranslatedItems(sourceItems.map((item, index) => normalizeChecklistDisplayItem(item, parsed[index])));
+          setIsTranslatingChecklist(false);
+          return;
+        }
+      }
+    } catch {
+      // Translation cache is best-effort only.
+    }
+
+    setIsTranslatingChecklist(true);
+    authFetch(`${API}/api/checklist/translate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: sourceItems.map(({ id, month, task, description }) => ({ id, month, task, description })),
+        preferredLanguage: languageName,
+      }),
+    })
+      .then(async (response) => {
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error((body as any)?.error ?? response.statusText);
+        if (languageCode !== "en" && (body as any)?.language === "English") {
+          throw new Error("Checklist translation returned English");
+        }
+        const items = Array.isArray((body as any).items) ? (body as any).items : null;
+        if (!items || items.length !== sourceItems.length || cancelled) return;
+        const next = sourceItems.map((item, index) => normalizeChecklistDisplayItem(item, items[index]));
+        const changedText = next.some((item, index) => (
+          item.month !== sourceItems[index].month ||
+          item.task !== sourceItems[index].task ||
+          item.description !== sourceItems[index].description
+        ));
+        if (languageCode !== "en" && !changedText) {
+          setTranslatedItems(null);
+          return;
+        }
+        setTranslatedItems(next);
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(items));
+        } catch {
+          // Ignore storage limits.
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setTranslatedItems(null);
+      })
+      .finally(() => {
+        if (!cancelled) setIsTranslatingChecklist(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [checklistSignature, languageCode, languageName, sourceItems]);
+
+  const visibleItems = translatedItems ?? sourceItems;
+
   if (isLoadingChecklist || isLoadingProfile) {
     return (
       <div className="space-y-8 max-w-4xl mx-auto">
@@ -291,15 +404,15 @@ export default function Checklist() {
     );
   }
 
-  const hasChecklist = checklist && checklist.items && checklist.items.length > 0;
-  const groupedItems = (checklist?.items ?? []).reduce((acc, item) => {
+  const hasChecklist = sourceItems.length > 0;
+  const groupedItems = visibleItems.reduce((acc, item) => {
     if (!acc[item.month]) acc[item.month] = [];
     acc[item.month].push(item);
     return acc;
   }, {} as Record<string, ChecklistItem[]>);
 
-  const totalItems = checklist?.items.length || 0;
-  const completedItems = checklist?.items.filter(i => i.isCompleted).length || 0;
+  const totalItems = sourceItems.length;
+  const completedItems = sourceItems.filter(i => i.isCompleted).length;
   const progress = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
 
   return (
@@ -442,6 +555,11 @@ export default function Checklist() {
                 <span>{t("checklist.tasks_completed_count", { completed: completedItems, total: totalItems })}</span>
               </div>
               <Progress value={progress} className="h-3" />
+              {isTranslatingChecklist && (
+                <p className="mt-3 text-xs font-medium text-primary">
+                  {t("checklist.translating_saved_tasks", { defaultValue: "Translating saved tasks..." })}
+                </p>
+              )}
             </CardContent>
           </Card>
 

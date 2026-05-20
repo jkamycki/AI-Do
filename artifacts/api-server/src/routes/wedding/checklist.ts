@@ -11,6 +11,20 @@ import { getRequestLanguage } from "../../lib/language";
 const router = Router();
 
 type ChecklistTask = { month: string; task: string; description: string };
+type ChecklistTranslationItem = ChecklistTask & { id?: number };
+
+function normalizeChecklistTranslationItems(value: unknown): ChecklistTranslationItem[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => {
+    const row = item && typeof item === "object" ? item as Record<string, unknown> : {};
+    return {
+      id: typeof row.id === "number" ? row.id : Number.isFinite(Number(row.id)) ? Number(row.id) : undefined,
+      month: String(row.month ?? ""),
+      task: String(row.task ?? ""),
+      description: String(row.description ?? ""),
+    };
+  }).filter(item => item.month.trim() || item.task.trim() || item.description.trim());
+}
 
 function normalizeTaskText(value: string): string {
   return value.toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
@@ -307,6 +321,79 @@ If a checklist focus / prompt is provided, make the generated tasks visibly refl
       req.log.error(fallbackErr, "Checklist fallback generation failed");
     }
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/checklist/translate", requireAuth, async (req, res) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.status(404).json({ error: "Profile not found" });
+      return;
+    }
+
+    const language = getRequestLanguage(req, profile.preferredLanguage);
+    const items = normalizeChecklistTranslationItems(req.body?.items);
+    if (language === "English" || items.length === 0) {
+      res.json({ language, items });
+      return;
+    }
+
+    const prompt = `Translate these wedding checklist items into ${language}.
+
+CRITICAL RULES:
+- Return ONLY valid JSON in this shape: {"items":[...]}.
+- Preserve the array length and order.
+- Preserve every id exactly.
+- Translate ONLY the human-readable month, task, and description values.
+- Do not add, remove, merge, or regenerate tasks.
+- If a field is empty, keep it empty.
+
+Checklist JSON:
+${JSON.stringify(items)}`;
+
+    const completion = await openai.chat.completions.create({
+      model: getModel(),
+      response_format: { type: "json_object" },
+      max_completion_tokens: 2400,
+      messages: [{ role: "user", content: prompt }],
+    }, { signal: AbortSignal.timeout(30_000) });
+
+    const content = completion.choices[0]?.message?.content ?? "{}";
+    let translated: ChecklistTranslationItem[] | null = null;
+    try {
+      const parsed = JSON.parse(content);
+      const parsedItems = normalizeChecklistTranslationItems(Array.isArray(parsed) ? parsed : parsed?.items);
+      if (parsedItems.length === items.length) {
+        translated = parsedItems.map((item, index) => ({
+          ...items[index],
+          month: item.month,
+          task: item.task,
+          description: item.description,
+        }));
+      }
+    } catch (parseErr) {
+      req.log.warn({ err: String(parseErr), preview: content.slice(0, 500) }, "Checklist translation JSON parse failed");
+    }
+    if (!translated) {
+      res.status(502).json({ error: "Checklist translation failed. Please try again." });
+      return;
+    }
+
+    res.json({ language, items: translated });
+  } catch (err) {
+    req.log.error(err, "Failed to translate checklist");
+    const e = err as { status?: number; message?: string };
+    if (e?.status === 429) {
+      res.status(429).json({ error: "Aria is at her daily AI limit. Please try again after midnight UTC." });
+      return;
+    }
+    res.status(500).json({ error: e?.message ? `Checklist translation failed: ${e.message}` : "Internal server error" });
   }
 });
 
