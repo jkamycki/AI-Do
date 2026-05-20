@@ -86,6 +86,7 @@ interface Props {
   defaultTab?: "saveTheDate" | "digitalInvitation";
   reminderOnly?: boolean;
   bulkRecipientCount?: number;
+  bulkRecipientNames?: string[];
 }
 
 function formatTime(timeStr: string | null | undefined): string | null {
@@ -514,6 +515,7 @@ export function InvitationSendModal({
   defaultTab = "saveTheDate",
   reminderOnly = false,
   bulkRecipientCount,
+  bulkRecipientNames = [],
 }: Props) {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"saveTheDate" | "digitalInvitation">(defaultTab);
@@ -724,6 +726,34 @@ export function InvitationSendModal({
   const isBulkSend = !!bulkRecipientCount && bulkRecipientCount > 1;
   const showInvitationTabs = !reminderOnly && !isBulkSend;
   const recipientLabel = isBulkSend ? `${bulkRecipientCount} selected guests` : guest?.name;
+  const bulkRecipientList = bulkRecipientNames.length
+    ? bulkRecipientNames
+    : isBulkSend && guest?.name
+      ? [guest.name]
+      : [];
+  const BulkRecipients = () =>
+    isBulkSend ? (
+      <div className="rounded-lg border border-primary/15 bg-[#FFF8F1] p-3 text-sm">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="font-semibold text-primary">Sending to</p>
+          <Badge variant="secondary" className="w-fit bg-primary/10 text-primary border-primary/15">
+            {bulkRecipientCount} guests
+          </Badge>
+        </div>
+        {bulkRecipientList.length > 0 && (
+          <div className="mt-2 flex max-h-24 flex-wrap gap-1.5 overflow-y-auto pr-1">
+            {bulkRecipientList.map((name, index) => (
+              <span
+                key={`${name}-${index}`}
+                className="rounded-full border border-primary/15 bg-white/70 px-2 py-1 text-xs font-medium text-[#6F3E54]"
+              >
+                {name}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    ) : null;
 
   return (
     <Dialog open={!!guest} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -776,6 +806,7 @@ export function InvitationSendModal({
                 )}
 
                 <TabsContent value="saveTheDate" className="pt-4 space-y-4">
+                  <BulkRecipients />
                   <p className="text-xs text-muted-foreground text-center">
                     Email preview - this is what your guest will receive in their inbox
                   </p>
@@ -809,6 +840,7 @@ export function InvitationSendModal({
                 </TabsContent>
 
                 <TabsContent value="digitalInvitation" className="pt-4 space-y-4">
+                  <BulkRecipients />
                   <p className="text-xs text-muted-foreground text-center">
                     Email preview - this is what your guest will receive in their inbox
                   </p>
@@ -896,6 +928,7 @@ export function InvitationSendModal({
                 )}
 
                 <TabsContent value="saveTheDate" className="pt-4 space-y-4">
+                  <BulkRecipients />
                   <p className="text-xs text-muted-foreground text-center">Email preview — this is what your guest will receive in their inbox</p>
                   {profile && (
                     <AiSaveDatePreview
@@ -923,6 +956,7 @@ export function InvitationSendModal({
                 </TabsContent>
 
                 <TabsContent value="digitalInvitation" className="pt-4 space-y-4">
+                  <BulkRecipients />
                   <p className="text-xs text-muted-foreground text-center">Email preview — this is what your guest will receive in their inbox</p>
                   {profile && (
                     <AiDigitalInvitationPreview

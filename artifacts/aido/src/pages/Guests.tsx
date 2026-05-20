@@ -4395,6 +4395,7 @@ export default function Guests({
         defaultTab={sendModalDefaultTab}
         reminderOnly={sendModalReminderOnly}
         bulkRecipientCount={bulkPreviewMode === "saveTheDate" ? selectedSaveTheDateEligible.length : bulkPreviewMode === "invitation" ? selectedInvitationEligible.length : undefined}
+        bulkRecipientNames={bulkPreviewMode === "saveTheDate" ? selectedSaveTheDateEligible.map((guest) => guest.name) : bulkPreviewMode === "invitation" ? selectedInvitationEligible.map((guest) => guest.name) : undefined}
       />
     </div>
   );
