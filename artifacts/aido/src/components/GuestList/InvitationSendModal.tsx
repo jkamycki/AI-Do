@@ -722,6 +722,7 @@ export function InvitationSendModal({
   if (isBlocked) title = "Design Incomplete";
   else if (isCustomMode) title = "Review & Send Custom Design";
   const isBulkSend = !!bulkRecipientCount && bulkRecipientCount > 1;
+  const showInvitationTabs = !reminderOnly && !isBulkSend;
   const recipientLabel = isBulkSend ? `${bulkRecipientCount} selected guests` : guest?.name;
 
   return (
@@ -763,7 +764,7 @@ export function InvitationSendModal({
               </div>
 
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "saveTheDate" | "digitalInvitation")}>
-                {!reminderOnly && (
+                {showInvitationTabs && (
                   <TabsList className="w-full">
                     <TabsTrigger value="saveTheDate" className="flex-1 text-xs">
                       <Calendar className="h-3.5 w-3.5 mr-1" /> Save the Date
@@ -883,7 +884,7 @@ export function InvitationSendModal({
             /* ── AI-Generated Mode ── */
             <div className="space-y-4">
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "saveTheDate" | "digitalInvitation")}>
-                {!reminderOnly && (
+                {showInvitationTabs && (
                   <TabsList className="w-full">
                     <TabsTrigger value="saveTheDate" className="flex-1 text-xs">
                       <Calendar className="h-3.5 w-3.5 mr-1" /> Save the Date
