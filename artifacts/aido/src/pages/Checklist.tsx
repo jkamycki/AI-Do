@@ -325,6 +325,8 @@ export default function Checklist() {
       return;
     }
 
+    setTranslatedItems(null);
+
     const cacheKey = checklistTranslationCacheKey({ languageCode, signature: checklistSignature });
     try {
       const cached = localStorage.getItem(cacheKey);

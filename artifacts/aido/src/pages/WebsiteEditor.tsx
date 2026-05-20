@@ -711,6 +711,8 @@ export default function WebsiteEditor() {
       return;
     }
 
+    setTranslatedWebsiteText(null);
+
     const cacheKey = websiteTranslationCacheKey({
       websiteId: record.id,
       languageCode,

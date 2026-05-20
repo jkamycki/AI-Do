@@ -768,6 +768,8 @@ export default function Timeline() {
       return;
     }
 
+    setTranslatedEvents(null);
+
     const cacheKey = timelineTranslationCacheKey({
       timelineId,
       languageCode,
