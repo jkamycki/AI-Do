@@ -29,7 +29,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, Plus, Trash2, Pencil, ArrowUpRight, Sparkles, Lock, Paperclip, X, AlertTriangle, Bell } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DollarSign, Plus, Trash2, Pencil, ArrowUpRight, Sparkles, Lock, Paperclip, X, AlertTriangle, Bell, CheckCircle2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 const MANUAL_CATEGORIES = [
@@ -74,6 +75,7 @@ interface ManualExpenseFormState {
   amountPaid: string;
   nextPaymentDue: string;
   nextPaymentAmount: string;
+  paidInFull: boolean;
   notes: string;
   receiptUrl: string | null;
   receiptName: string | null;
@@ -86,6 +88,7 @@ const emptyManualForm = (): ManualExpenseFormState => ({
   amountPaid: "",
   nextPaymentDue: "",
   nextPaymentAmount: "",
+  paidInFull: false,
   notes: "",
   receiptUrl: null,
   receiptName: null,
@@ -176,6 +179,36 @@ function CategoryBadge({ category }: { category: string }) {
     <Badge variant="outline" className={`rounded-full border px-2.5 py-0.5 font-medium ${categoryBadgeClass(label)}`}>
       {label}
     </Badge>
+  );
+}
+
+function PaidInFullBadge({ t }: { t: (key: string, options?: Record<string, unknown>) => string }) {
+  return (
+    <Badge className="gap-1 rounded-full border-emerald-500/30 bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
+      <CheckCircle2 className="h-3.5 w-3.5" />
+      {t("budget.paid_in_full", { defaultValue: "Paid in full" })}
+    </Badge>
+  );
+}
+
+function MarkPaidInFullButton({
+  onClick,
+  t,
+}: {
+  onClick: () => void;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}) {
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      className="h-7 border-emerald-500/40 bg-emerald-50 px-2.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+      onClick={onClick}
+    >
+      <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+      {t("budget.mark_paid_in_full", { defaultValue: "Mark paid in full" })}
+    </Button>
   );
 }
 
@@ -397,6 +430,7 @@ export default function Budget() {
     setIsAdding(true);
   };
   const openEdit = (m: typeof manualExpenses[number]) => {
+    const isPaidInFull = (m.cost ?? 0) > 0 && (m.amountPaid ?? 0) >= (m.cost ?? 0);
     setForm({
       name: m.name,
       category: m.category || "Other",
@@ -404,6 +438,7 @@ export default function Budget() {
       amountPaid: String(m.amountPaid ?? 0),
       nextPaymentDue: m.nextPaymentDue ?? "",
       nextPaymentAmount: m.nextPaymentAmount != null ? String(m.nextPaymentAmount) : "",
+      paidInFull: isPaidInFull,
       notes: m.notes ?? "",
       receiptUrl: m.receiptUrl ?? null,
       receiptName: m.receiptName ?? null,
@@ -428,13 +463,15 @@ export default function Budget() {
       toast({ variant: "destructive", title: t("budget.toast_name_required") });
       return;
     }
+    const costNum = parseFloat(form.cost) || 0;
+    const paidInFull = form.paidInFull && costNum > 0;
     const payload = {
       name: form.name.trim(),
       category: form.category || "Other",
-      cost: parseFloat(form.cost) || 0,
-      amountPaid: parseFloat(form.amountPaid) || 0,
-      nextPaymentDue: form.nextPaymentDue.trim() || null,
-      nextPaymentAmount: parseFloat(form.nextPaymentAmount) || null,
+      cost: costNum,
+      amountPaid: paidInFull ? costNum : parseFloat(form.amountPaid) || 0,
+      nextPaymentDue: paidInFull ? null : form.nextPaymentDue.trim() || null,
+      nextPaymentAmount: paidInFull ? null : parseFloat(form.nextPaymentAmount) || null,
       notes: form.notes.trim() || null,
       receiptUrl: form.receiptUrl,
       receiptName: form.receiptName,
@@ -504,6 +541,32 @@ export default function Budget() {
     }
   };
 
+  const handleManualPaidInFull = async (expense: typeof manualExpenses[number]) => {
+    const cost = Number(expense.cost ?? 0);
+    if (cost <= 0) return;
+    if (!confirm(t("budget.confirm_mark_paid_in_full", { defaultValue: "Mark this item paid in full? This will set Paid to the total cost and clear the next payment date." }))) return;
+    try {
+      const r = await authFetch(`/api/manual-expenses/${expense.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amountPaid: cost,
+          nextPaymentDue: null,
+          nextPaymentAmount: null,
+        }),
+      });
+      if (!r.ok) {
+        toast({ variant: "destructive", title: t("budget.toast_mark_paid_failed", { defaultValue: "Couldn't mark payment paid. Please try again." }) });
+        return;
+      }
+      toast({ title: t("budget.toast_paid_in_full", { defaultValue: "Marked paid in full" }) });
+      queryClient.invalidateQueries({ queryKey: getListManualExpensesQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+    } catch {
+      toast({ variant: "destructive", title: t("budget.toast_mark_paid_failed", { defaultValue: "Couldn't mark payment paid. Please try again." }) });
+    }
+  };
+
   const handleVendorPaymentPaid = async (
     vendorId: number,
     payment?: { id?: number | null; dueDate?: string | null; amount?: number | null },
@@ -530,6 +593,28 @@ export default function Budget() {
         queryClient.invalidateQueries({ queryKey: ["vendor-financials"] }),
         queryClient.invalidateQueries({ queryKey: getListVendorsQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getGetVendorQueryKey(vendorId) }),
+        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }),
+      ]);
+    } catch {
+      toast({ variant: "destructive", title: t("budget.toast_mark_paid_failed", { defaultValue: "Couldn't mark payment paid. Please try again." }) });
+    }
+  };
+
+  const handleVendorPaidInFull = async (vendorId: number) => {
+    if (!confirm(t("budget.confirm_mark_paid_in_full", { defaultValue: "Mark this item paid in full? This will set Paid to the total cost and clear the next payment date." }))) return;
+    try {
+      const r = await authFetch(`/api/vendors/${vendorId}/payments/mark-paid-in-full`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!r.ok) {
+        toast({ variant: "destructive", title: t("budget.toast_mark_paid_failed", { defaultValue: "Couldn't mark payment paid. Please try again." }) });
+        return;
+      }
+      toast({ title: t("budget.toast_paid_in_full", { defaultValue: "Marked paid in full" }) });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["vendor-financials"] }),
+        queryClient.invalidateQueries({ queryKey: getListVendorsQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }),
       ]);
     } catch {
@@ -672,20 +757,29 @@ export default function Budget() {
                         <TableCell className="text-right tabular-nums">{formatMoney(v.totalPaid)}</TableCell>
                         <TableCell className="text-right tabular-nums">{formatMoney(remaining)}</TableCell>
                         <TableCell className="text-sm">
-                          <NextPaymentDisplay
-                            date={v.nextPaymentDue}
-                            amount={v.nextPaymentAmount ?? remaining}
-                            onMarkPaid={
-                              v.nextPaymentDue && remaining > 0
-                                ? () => handleVendorPaymentPaid(v.id, {
-                                    id: v.nextPaymentId,
-                                    dueDate: v.nextPaymentDue,
-                                    amount: v.nextPaymentAmount ?? remaining,
-                                  })
-                                : undefined
-                            }
-                            t={t}
-                          />
+                          <div className="flex min-w-[180px] flex-col items-start gap-2">
+                            {remaining <= 0 ? (
+                              <PaidInFullBadge t={t} />
+                            ) : (
+                              <>
+                                <NextPaymentDisplay
+                                  date={v.nextPaymentDue}
+                                  amount={v.nextPaymentAmount ?? remaining}
+                                  onMarkPaid={
+                                    v.nextPaymentDue && remaining > 0
+                                      ? () => handleVendorPaymentPaid(v.id, {
+                                          id: v.nextPaymentId,
+                                          dueDate: v.nextPaymentDue,
+                                          amount: v.nextPaymentAmount ?? remaining,
+                                        })
+                                      : undefined
+                                  }
+                                  t={t}
+                                />
+                                <MarkPaidInFullButton onClick={() => handleVendorPaidInFull(v.id)} t={t} />
+                              </>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">
@@ -781,43 +875,52 @@ export default function Budget() {
                         <TableCell className="text-right tabular-nums">{formatMoney(m.amountPaid)}</TableCell>
                         <TableCell className="text-right tabular-nums">{formatMoney(remaining)}</TableCell>
                         <TableCell className="text-sm">
-                          {m.nextPaymentDue ? (() => {
-                            const daysUntil = daysUntilDate(m.nextPaymentDue);
-                            const isOverdue = daysUntil < 0;
-                            const isSoon = daysUntil >= 0 && daysUntil <= 7;
-                            const tone = isOverdue
-                              ? "text-red-600 dark:text-red-400 font-semibold"
-                              : isSoon
-                                ? "text-amber-600 dark:text-amber-400 font-medium"
-                                : "text-muted-foreground";
-                            const dueLabel = isOverdue
-                              ? t("budget.due_overdue", { n: Math.abs(daysUntil), defaultValue: `${Math.abs(daysUntil)} day(s) overdue` })
-                              : daysUntil === 0
-                                ? t("budget.due_today", { defaultValue: "Due today" })
-                                : isSoon
-                                  ? t("budget.due_in_days", { n: daysUntil, defaultValue: `Due in ${daysUntil} day(s)` })
-                                  : formatDate(m.nextPaymentDue);
-                            const amount = m.nextPaymentAmount ?? 0;
-                            return (
-                              <div className="space-y-1">
-                                <div className={`text-xs ${tone}`}>{dueLabel}</div>
-                                {amount > 0 && (
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-xs tabular-nums text-foreground">{formatMoney(amount)}</span>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-6 px-2 text-[10px] border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400"
-                                      onClick={() => handleMarkPaid(m.id)}
-                                      title={t("budget.mark_paid_title", { defaultValue: "Mark this payment paid (rolls into Paid total)" })}
-                                    >
-                                      {t("budget.mark_paid", { defaultValue: "Mark Paid" })}
-                                    </Button>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })() : <span className="text-muted-foreground text-xs">-</span>}
+                          <div className="flex min-w-[180px] flex-col items-start gap-2">
+                            {remaining <= 0 ? (
+                              <PaidInFullBadge t={t} />
+                            ) : (
+                              <>
+                                {m.nextPaymentDue ? (() => {
+                                  const daysUntil = daysUntilDate(m.nextPaymentDue);
+                                  const isOverdue = daysUntil < 0;
+                                  const isSoon = daysUntil >= 0 && daysUntil <= 7;
+                                  const tone = isOverdue
+                                    ? "text-red-600 dark:text-red-400 font-semibold"
+                                    : isSoon
+                                      ? "text-amber-600 dark:text-amber-400 font-medium"
+                                      : "text-muted-foreground";
+                                  const dueLabel = isOverdue
+                                    ? t("budget.due_overdue", { n: Math.abs(daysUntil), defaultValue: `${Math.abs(daysUntil)} day(s) overdue` })
+                                    : daysUntil === 0
+                                      ? t("budget.due_today", { defaultValue: "Due today" })
+                                      : isSoon
+                                        ? t("budget.due_in_days", { n: daysUntil, defaultValue: `Due in ${daysUntil} day(s)` })
+                                        : formatDate(m.nextPaymentDue);
+                                  const amount = m.nextPaymentAmount ?? 0;
+                                  return (
+                                    <div className="space-y-1">
+                                      <div className={`text-xs ${tone}`}>{dueLabel}</div>
+                                      {amount > 0 && (
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-xs tabular-nums text-foreground">{formatMoney(amount)}</span>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-6 px-2 text-[10px] border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400"
+                                            onClick={() => handleMarkPaid(m.id)}
+                                            title={t("budget.mark_paid_title", { defaultValue: "Mark this payment paid (rolls into Paid total)" })}
+                                          >
+                                            {t("budget.mark_paid", { defaultValue: "Mark Paid" })}
+                                          </Button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })() : <span className="text-muted-foreground text-xs">-</span>}
+                                <MarkPaidInFullButton onClick={() => handleManualPaidInFull(m)} t={t} />
+                              </>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">
@@ -1006,36 +1109,69 @@ export default function Budget() {
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">{t("budget.col_cost")}</label>
-                <MoneyInput value={form.cost} onChange={(v) => setForm((f) => ({ ...f, cost: v }))} placeholder="0" />
+                <MoneyInput
+                  value={form.cost}
+                  onChange={(v) => setForm((f) => ({ ...f, cost: v, amountPaid: f.paidInFull ? v : f.amountPaid }))}
+                  placeholder="0"
+                />
               </div>
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">{t("budget.amount_paid_label")}</label>
               <MoneyInput
                 value={form.amountPaid}
-                onChange={(v) => setForm((f) => ({ ...f, amountPaid: v }))}
+                onChange={(v) => setForm((f) => ({ ...f, amountPaid: v, paidInFull: false }))}
                 placeholder="0"
+                disabled={form.paidInFull}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">{t("budget.next_payment_date_label", { defaultValue: "Next payment date" })}</label>
-                <Input
-                  type="date"
-                  value={form.nextPaymentDue}
-                  onChange={(e) => setForm((f) => ({ ...f, nextPaymentDue: e.target.value }))}
-                  className="[color-scheme:light] dark:[color-scheme:dark]"
+            <div className="rounded-lg border border-emerald-500/25 bg-emerald-50/70 p-3">
+              <label className="flex cursor-pointer items-start gap-3">
+                <Checkbox
+                  checked={form.paidInFull}
+                  onCheckedChange={(checked) => setForm((f) => {
+                    const paidInFull = checked === true;
+                    return {
+                      ...f,
+                      paidInFull,
+                      amountPaid: paidInFull ? f.cost : f.amountPaid,
+                      nextPaymentDue: paidInFull ? "" : f.nextPaymentDue,
+                      nextPaymentAmount: paidInFull ? "" : f.nextPaymentAmount,
+                    };
+                  })}
+                  className="mt-0.5"
                 />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">{t("budget.next_payment_amount_label", { defaultValue: "Next payment amount" })}</label>
-                <MoneyInput
-                  value={form.nextPaymentAmount}
-                  onChange={(v) => setForm((f) => ({ ...f, nextPaymentAmount: v }))}
-                  placeholder="0"
-                />
-              </div>
+                <span className="space-y-0.5">
+                  <span className="block text-sm font-semibold text-emerald-900">
+                    {t("budget.paid_in_full_question", { defaultValue: "Paid in full?" })}
+                  </span>
+                  <span className="block text-xs text-emerald-800/80">
+                    {t("budget.paid_in_full_hint", { defaultValue: "If yes, this sets Paid to the full cost and skips the next payment date." })}
+                  </span>
+                </span>
+              </label>
             </div>
+            {!form.paidInFull && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">{t("budget.next_payment_date_label", { defaultValue: "Next payment date" })}</label>
+                  <Input
+                    type="date"
+                    value={form.nextPaymentDue}
+                    onChange={(e) => setForm((f) => ({ ...f, nextPaymentDue: e.target.value }))}
+                    className="[color-scheme:light]"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">{t("budget.next_payment_amount_label", { defaultValue: "Next payment amount" })}</label>
+                  <MoneyInput
+                    value={form.nextPaymentAmount}
+                    onChange={(v) => setForm((f) => ({ ...f, nextPaymentAmount: v }))}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+            )}
             <div className="space-y-1.5">
               <label className="text-sm font-medium">{t("budget.notes_label")}</label>
               <Textarea

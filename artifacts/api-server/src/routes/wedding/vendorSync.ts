@@ -760,6 +760,72 @@ router.post("/vendors/:id/payments/mark-next-paid", requireAuth, async (req, res
   }
 });
 
+router.post("/vendors/:id/payments/mark-paid-in-full", requireAuth, async (req, res) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      return res.status(404).json({ error: "Vendor not found" });
+    }
+    const vendorId = parseInt(String(req.params.id), 10);
+    const [vendor] = await db
+      .select()
+      .from(vendors)
+      .where(and(eq(vendors.id, vendorId), eq(vendors.profileId, profile.id)))
+      .limit(1);
+    if (!vendor) {
+      return res.status(404).json({ error: "Vendor not found" });
+    }
+
+    const payments = await db
+      .select()
+      .from(vendorPayments)
+      .where(eq(vendorPayments.vendorId, vendorId));
+    const now = new Date();
+    const unpaidPaymentIds = payments.filter((p) => !p.isPaid).map((p) => p.id);
+    if (unpaidPaymentIds.length > 0) {
+      await db
+        .update(vendorPayments)
+        .set({ isPaid: true, paidAt: now })
+        .where(and(eq(vendorPayments.vendorId, vendorId), inArray(vendorPayments.id, unpaidPaymentIds)));
+    }
+
+    const hasDepositMilestone = payments.some((p) => p.label.toLowerCase() === "deposit");
+    const paidFromPayments = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+    const paidTotal = (hasDepositMilestone ? 0 : Number(vendor.depositAmount)) + paidFromPayments;
+    const remaining = Math.max(0, Number(vendor.totalCost) - paidTotal);
+    let finalPayment: typeof vendorPayments.$inferSelect | null = null;
+    if (remaining > 0) {
+      const [created] = await db
+        .insert(vendorPayments)
+        .values({
+          vendorId,
+          label: "Paid in full",
+          amount: String(remaining),
+          dueDate: now.toISOString().slice(0, 10),
+          isPaid: true,
+          paidAt: now,
+        })
+        .returning();
+      finalPayment = created;
+    }
+
+    await db
+      .update(vendors)
+      .set({ nextPaymentDue: null, updatedAt: now })
+      .where(and(eq(vendors.id, vendorId), eq(vendors.profileId, profile.id)));
+    await syncNextPaymentDue(vendorId);
+    res.json({ success: true, payment: finalPayment ? formatPayment(finalPayment) : null });
+  } catch (err) {
+    req.log.error(err, "Failed to mark vendor paid in full");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.put("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) => {
   try {
     const callerRole = await resolveCallerRole(req);
