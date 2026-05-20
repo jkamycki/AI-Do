@@ -3359,12 +3359,14 @@ export default function Guests({
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex min-w-0 items-start gap-2">
-                        <Checkbox
-                          checked={selectedGuestIds.has(g.id)}
-                          onCheckedChange={(checked) => toggleGuestSelected(g.id, checked === true)}
-                          aria-label={`Select ${g.name}`}
-                          className="mt-0.5"
-                        />
+                        <label className="mt-0.5 inline-flex shrink-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-primary/80">
+                          <Checkbox
+                            checked={selectedGuestIds.has(g.id)}
+                            onCheckedChange={(checked) => toggleGuestSelected(g.id, checked === true)}
+                            aria-label={`Select or deselect ${g.name}`}
+                          />
+                          <span>Select / Deselect</span>
+                        </label>
                         <div className="min-w-0">
                           <p className="flex items-center gap-1.5 font-medium leading-tight break-words">
                             {isWeddingPartyGuest && (
@@ -3547,8 +3549,8 @@ export default function Guests({
               <Table wrapperClassName="overflow-visible" className="w-full table-fixed text-xs lg:text-sm">
                 <colgroup>
                   <col className="w-[4%]" />
-                  <col className="w-[18%]" />
-                  <col className="w-[16%]" />
+                  <col className="w-[17%]" />
+                  <col className="w-[15%]" />
                   <col className="w-[10%]" />
                   <col className="w-[9%]" />
                   <col className="w-[8%]" />
@@ -3559,15 +3561,17 @@ export default function Guests({
                 </colgroup>
                 <TableHeader className="bg-muted/10">
                   <TableRow>
-                    <TableHead className="text-primary">
-                      <Checkbox
-                        checked={allFilteredSelected ? true : someFilteredSelected ? "indeterminate" : false}
-                        onCheckedChange={(checked) => setAllFilteredSelected(checked === true)}
-                        aria-label="Select all visible guests"
-                      />
-                    </TableHead>
-                    <TableHead className="text-primary">
-                      {t("guests.col_name")}
+                    <TableHead className="text-primary" colSpan={2}>
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={allFilteredSelected ? true : someFilteredSelected ? "indeterminate" : false}
+                          onCheckedChange={(checked) => setAllFilteredSelected(checked === true)}
+                          aria-label="Select or deselect all visible guests"
+                        />
+                        <span className="text-[10px] font-semibold uppercase tracking-wider leading-tight">
+                          Select / Deselect
+                        </span>
+                      </div>
                     </TableHead>
                     <TableHead className="hidden sm:table-cell text-primary">
                       {t("guests.col_einvite_status")}
