@@ -12,6 +12,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useGetTimeline, useGenerateTimeline, useGetProfile, getGetTimelineQueryKey, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { authFetch } from "@/lib/authFetch";
+import { getCurrentLanguageCode } from "@/lib/languagePreference";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
@@ -180,6 +181,7 @@ const STATUS_CONFIG: Record<TimelineStatus, { label: string; badgeClass: string;
 const ALL_STATUSES = Object.keys(STATUS_CONFIG) as TimelineStatus[];
 const LEGACY_VISION_STORAGE_KEY = "aido_timeline_day_vision";
 const VISION_STORAGE_KEY_PREFIX = "aido_timeline_day_vision_v2";
+const TIMELINE_TRANSLATION_CACHE_PREFIX = "aido_timeline_translation_v1";
 
 function parseMinutes(time: string): number {
   if (!time) return -1;
@@ -272,6 +274,37 @@ function detectConflicts(events: TimelineEvent[]): Conflict[] {
   }
 
   return conflicts;
+}
+
+function timelineTranslationSignature(events: TimelineEvent[]): string {
+  const raw = JSON.stringify(events.map((event) => ({
+    id: event.id,
+    startTime: event.startTime,
+    endTime: event.endTime,
+    title: event.title,
+    description: event.description,
+    location: event.location,
+    notes: event.notes,
+  })));
+  let hash = 0;
+  for (let index = 0; index < raw.length; index += 1) {
+    hash = (hash * 31 + raw.charCodeAt(index)) >>> 0;
+  }
+  return hash.toString(36);
+}
+
+function timelineTranslationCacheKey({
+  timelineId,
+  languageCode,
+  signature,
+  scope,
+}: {
+  timelineId: number;
+  languageCode: string;
+  signature: string;
+  scope: string;
+}) {
+  return `${TIMELINE_TRANSLATION_CACHE_PREFIX}:${scope}:${timelineId}:${languageCode}:${signature}`;
 }
 
 const BLANK_EVENT: Omit<TimelineEvent, "id"> = {
@@ -528,7 +561,7 @@ function SortableEventCard({
 }
 
 export default function Timeline() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { userId } = useAuth();
   const { activeWorkspace } = useWorkspace();
   const { toast } = useToast();
@@ -548,6 +581,8 @@ export default function Timeline() {
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [dayVision, setDayVision] = useState<string>("");
   const [localEvents, setLocalEvents] = useState<TimelineEvent[]>([]);
+  const [translatedEvents, setTranslatedEvents] = useState<TimelineEvent[] | null>(null);
+  const [isTranslatingTimeline, setIsTranslatingTimeline] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
 
   const [editingEvent, setEditingEvent] = useState<TimelineEvent | null>(null);
@@ -559,6 +594,7 @@ export default function Timeline() {
   useEffect(() => {
     if (timeline?.events) {
       setLocalEvents((timeline.events as any[]).map(normalizeEvent));
+      setTranslatedEvents(null);
       setIsDirty(false);
     }
   }, [timeline]);
@@ -714,9 +750,76 @@ export default function Timeline() {
     setAddingEvent(false);
   }
 
-  const conflicts = useMemo(() => detectConflicts(localEvents), [localEvents]);
+  const translationScope = activeWorkspace?.profileId
+    ? `workspace:${activeWorkspace.profileId}`
+    : userId
+      ? `user:${userId}`
+      : "anonymous";
+  const languageCode = (i18n.resolvedLanguage || i18n.language || getCurrentLanguageCode()).split("-")[0] || "en";
+  const translationSignature = useMemo(() => timelineTranslationSignature(localEvents), [localEvents]);
 
-  const visibleEvents = localEvents;
+  useEffect(() => {
+    let cancelled = false;
+    const timelineId = timeline?.id;
+    if (!timelineId || localEvents.length === 0 || isDirty || languageCode === "en") {
+      setTranslatedEvents(null);
+      setIsTranslatingTimeline(false);
+      return;
+    }
+
+    const cacheKey = timelineTranslationCacheKey({
+      timelineId,
+      languageCode,
+      signature: translationSignature,
+      scope: translationScope,
+    });
+
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length === localEvents.length) {
+          setTranslatedEvents(parsed.map(normalizeEvent));
+          setIsTranslatingTimeline(false);
+          return;
+        }
+      }
+    } catch {
+      // Cache is only a convenience; fall through to live translation.
+    }
+
+    setIsTranslatingTimeline(true);
+    authFetch(`${API}/api/timeline/${timelineId}/translate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ events: localEvents }),
+    })
+      .then(async (response) => {
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error((body as any)?.error ?? response.statusText);
+        const events = Array.isArray((body as any).events) ? (body as any).events.map(normalizeEvent) : null;
+        if (!events || events.length !== localEvents.length || cancelled) return;
+        setTranslatedEvents(events);
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(events));
+        } catch {
+          // Ignore storage limits.
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setTranslatedEvents(null);
+      })
+      .finally(() => {
+        if (!cancelled) setIsTranslatingTimeline(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isDirty, languageCode, localEvents, timeline?.id, translationScope, translationSignature]);
+
+  const visibleEvents = translatedEvents ?? localEvents;
+  const conflicts = useMemo(() => detectConflicts(visibleEvents), [visibleEvents]);
 
   const handleGenerate = () => {
     if (!profile?.id) {
@@ -761,7 +864,9 @@ export default function Timeline() {
         title: e.title,
         description: e.description,
         category: e.category,
-        status: STATUS_CONFIG[e.status]?.label ?? STATUS_CONFIG.not_started.label,
+        status: t(`timeline.status_${e.status}`, {
+          defaultValue: STATUS_CONFIG[e.status]?.label ?? STATUS_CONFIG.not_started.label,
+        }),
         location: e.location,
         endTime: e.endTime ? formatTime(e.endTime) : "",
       }));
@@ -931,6 +1036,11 @@ export default function Timeline() {
               <p className="text-xs text-muted-foreground">
                 {visibleEvents.length} {visibleEvents.length !== 1 ? t("timeline.blocks_label", { defaultValue: "blocks" }) : t("timeline.block_label", { defaultValue: "block" })}
               </p>
+              {isTranslatingTimeline && (
+                <p className="text-xs text-primary">
+                  {t("timeline.translating_blocks", { defaultValue: "Translating saved blocks..." })}
+                </p>
+              )}
             </div>
           </div>
 

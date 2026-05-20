@@ -21,6 +21,24 @@ type TimelineBlock = {
   notes: string;
 };
 
+function normalizeTimelineBlocks(value: unknown): TimelineBlock[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((event, index) => {
+    const row = event && typeof event === "object" ? event as Record<string, unknown> : {};
+    return {
+      ...row,
+      id: String(row.id ?? `block-${index + 1}`),
+      startTime: String(row.startTime ?? ""),
+      endTime: String(row.endTime ?? ""),
+      title: String(row.title ?? ""),
+      description: String(row.description ?? ""),
+      category: String(row.category ?? "other"),
+      location: String(row.location ?? ""),
+      notes: String(row.notes ?? ""),
+    } as TimelineBlock;
+  });
+}
+
 function parseTimeToMinutes(value: string | null | undefined, fallback: number): number {
   if (!value) return fallback;
   const match = String(value).match(/^(\d{1,2}):(\d{2})/);
@@ -574,6 +592,76 @@ Use 24-hour HH:MM format for startTime and endTime. Use sequential IDs like bloc
     res.status(500).json({
       error: e?.message ? `Timeline generation failed: ${e.message}` : "Internal server error",
     });
+  }
+});
+
+router.post("/timeline/:id/translate", requireAuth, async (req, res) => {
+  try {
+    const id = parseInt(String(req.params.id), 10);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid timeline id" });
+
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(404).json({ error: "Profile not found" });
+
+    const [timeline] = await db
+      .select()
+      .from(timelines)
+      .where(and(eq(timelines.id, id), eq(timelines.profileId, profile.id)))
+      .limit(1);
+    if (!timeline) return res.status(404).json({ error: "Timeline not found" });
+
+    const language = getRequestLanguage(req, profile.preferredLanguage);
+    const events = normalizeTimelineBlocks(req.body?.events ?? timeline.events);
+    if (language === "English" || events.length === 0) {
+      return res.json({ language, events });
+    }
+
+    const prompt = `Translate these wedding timeline blocks into ${language}.
+
+CRITICAL RULES:
+- Return ONLY valid JSON. No markdown. No explanation.
+- Preserve the array length and order.
+- Preserve every id, startTime, endTime, category, status, and any unknown fields exactly.
+- Translate ONLY the human-readable values: title, description, location, and notes.
+- If a field is empty, keep it empty.
+- Do not add, remove, reorder, merge, or regenerate events.
+
+Timeline JSON:
+${JSON.stringify(events)}`;
+
+    const completion = await openai.chat.completions.create({
+      model: getModel(),
+      max_completion_tokens: 2400,
+      messages: [{ role: "user", content: prompt }],
+    }, { signal: AbortSignal.timeout(30_000) });
+
+    const content = completion.choices[0]?.message?.content ?? "[]";
+    let translated = events;
+    try {
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : content);
+      const parsedEvents = normalizeTimelineBlocks(parsed);
+      if (parsedEvents.length === events.length) {
+        translated = parsedEvents.map((event, index) => ({
+          ...events[index],
+          title: event.title,
+          description: event.description,
+          location: event.location,
+          notes: event.notes,
+        }));
+      }
+    } catch (parseErr) {
+      req.log.warn({ err: String(parseErr), preview: content.slice(0, 500) }, "Timeline translation JSON parse failed");
+    }
+
+    res.json({ language, events: translated });
+  } catch (err) {
+    req.log.error(err, "Failed to translate timeline");
+    const e = err as { status?: number; message?: string };
+    if (e?.status === 429) {
+      return res.status(429).json({ error: "Aria is at her daily AI limit. Please try again after midnight UTC." });
+    }
+    res.status(500).json({ error: e?.message ? `Timeline translation failed: ${e.message}` : "Internal server error" });
   }
 });
 
