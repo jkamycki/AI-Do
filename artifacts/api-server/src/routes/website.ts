@@ -280,7 +280,19 @@ async function buildInvitationSharePayload(profileId: number, frontendOrigin: st
     .orderBy(hotelBlocks.createdAt);
 
   const [invitationCustomization] = await db
-    .select({ customColors: invitationCustomizations.customColors })
+    .select({
+      customColors: invitationCustomizations.customColors,
+      colorPalette: invitationCustomizations.colorPalette,
+      digitalInvitationPhotoUrl: invitationCustomizations.digitalInvitationPhotoUrl,
+      digitalInvitationPhotoPosition: invitationCustomizations.digitalInvitationPhotoPosition,
+      digitalInvitationBackground: invitationCustomizations.digitalInvitationBackground,
+      digitalInvitationFont: invitationCustomizations.digitalInvitationFont,
+      digitalInvitationFontColor: invitationCustomizations.digitalInvitationFontColor,
+      digitalInvitationFontSize: invitationCustomizations.digitalInvitationFontSize,
+      digitalInvitationAccentColor: invitationCustomizations.digitalInvitationAccentColor,
+      useGeneratedInvitation: invitationCustomizations.useGeneratedInvitation,
+      rsvpByDate: invitationCustomizations.rsvpByDate,
+    })
     .from(invitationCustomizations)
     .where(eq(invitationCustomizations.profileId, profile.id))
     .limit(1);
@@ -312,7 +324,7 @@ async function buildInvitationSharePayload(profileId: number, frontendOrigin: st
     slug: signInvitationShare(profile.id),
     publicWebsiteUrl,
     invitationPreview: {
-      photoUrl: invitationCustomization?.digitalInvitationPhotoUrl || profile.invitationPhotoUrl || defaultHeroImageFor(profile),
+      photoUrl: invitationCustomization?.digitalInvitationPhotoUrl || profile.digitalInvitationPhotoUrl || profile.invitationPhotoUrl || defaultHeroImageFor(profile),
       photoPosition: invitationCustomization?.digitalInvitationPhotoPosition ?? { x: 50, y: 58 },
       photoZoom: typeof invitationColors.digitalInvitationPhotoZoom === "number" ? invitationColors.digitalInvitationPhotoZoom : 1,
       photoEffect: typeof invitationColors.digitalInvitationPhotoEffect === "string" ? invitationColors.digitalInvitationPhotoEffect : "none",

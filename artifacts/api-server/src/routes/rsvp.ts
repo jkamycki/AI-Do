@@ -1365,7 +1365,7 @@ router.get("/rsvp/:token/photo", async (req, res) => {
 
     if (!rows.length) return res.status(404).end();
 
-    // Try customized photo first, fall back to profile photo
+    // Try customized photo first, then the profile's dedicated digital invitation photo.
     const customizations = await db
       .select({ digitalInvitationPhotoUrl: invitationCustomizations.digitalInvitationPhotoUrl })
       .from(invitationCustomizations)
@@ -1376,11 +1376,14 @@ router.get("/rsvp/:token/photo", async (req, res) => {
 
     if (!photoUrl) {
       const profiles = await db
-        .select({ invitationPhotoUrl: weddingProfiles.invitationPhotoUrl })
+        .select({
+          digitalInvitationPhotoUrl: weddingProfiles.digitalInvitationPhotoUrl,
+          invitationPhotoUrl: weddingProfiles.invitationPhotoUrl,
+        })
         .from(weddingProfiles)
         .where(eq(weddingProfiles.id, rows[0].profileId))
         .limit(1);
-      photoUrl = profiles[0]?.invitationPhotoUrl;
+      photoUrl = profiles[0]?.digitalInvitationPhotoUrl ?? profiles[0]?.invitationPhotoUrl;
     }
 
     if (!photoUrl) return res.status(404).end();
@@ -1562,7 +1565,7 @@ router.get("/rsvp/:token", async (req, res) => {
 
     // Resolve the best available photo URL — prefer the digital invitation
     // customization photo, then fall back to the profile's invitation photo.
-    const resolvedPhotoUrl = customizationPhoto || profile?.invitationPhotoUrl || null;
+    const resolvedPhotoUrl = customizationPhoto || profile?.digitalInvitationPhotoUrl || profile?.invitationPhotoUrl || null;
     const publicPhotoUrl = resolvedPhotoUrl
       ? (resolvedPhotoUrl.startsWith("http")
           ? resolvedPhotoUrl
