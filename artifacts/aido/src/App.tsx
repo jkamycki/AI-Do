@@ -1926,12 +1926,14 @@ function canAutoRecoverChunk() {
 }
 
 class AppErrorBoundary extends Component<
-  { children: ReactNode },
-  { hasError: boolean; message: string; stack: string; componentStack: string; autoRecoveringChunk: boolean }
+  { children: ReactNode; resetKey: string },
+  { hasError: boolean; message: string; stack: string; componentStack: string; autoRecoveringChunk: boolean; showError: boolean }
 > {
-  constructor(props: { children: ReactNode }) {
+  private revealTimer: ReturnType<typeof window.setTimeout> | null = null;
+
+  constructor(props: { children: ReactNode; resetKey: string }) {
     super(props);
-    this.state = { hasError: false, message: "", stack: "", componentStack: "", autoRecoveringChunk: false };
+    this.state = { hasError: false, message: "", stack: "", componentStack: "", autoRecoveringChunk: false, showError: false };
   }
   static getDerivedStateFromError(error: Error) {
     const message = error?.message || String(error);
@@ -1941,6 +1943,7 @@ class AppErrorBoundary extends Component<
       stack: error?.stack || "",
       componentStack: "",
       autoRecoveringChunk: isChunkLoadError(message) && canAutoRecoverChunk(),
+      showError: false,
     };
   }
   componentDidCatch(error: Error, info: { componentStack?: string | null }) {
@@ -1954,10 +1957,30 @@ class AppErrorBoundary extends Component<
         window.location.reload();
       }
     }
+
+    this.clearRevealTimer();
+    this.revealTimer = window.setTimeout(() => {
+      this.setState((state) => state.hasError ? { showError: true } : null);
+    }, 900);
+  }
+  componentDidUpdate(prevProps: { resetKey: string }) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.clearRevealTimer();
+      this.setState({ hasError: false, message: "", stack: "", componentStack: "", autoRecoveringChunk: false, showError: false });
+    }
+  }
+  componentWillUnmount() {
+    this.clearRevealTimer();
+  }
+  clearRevealTimer() {
+    if (this.revealTimer) {
+      window.clearTimeout(this.revealTimer);
+      this.revealTimer = null;
+    }
   }
   render() {
     if (this.state.hasError) {
-      if (this.state.autoRecoveringChunk) {
+      if (this.state.autoRecoveringChunk || !this.state.showError) {
         return <RouteLoading />;
       }
       const isStale = isChunkLoadError(this.state.message);
@@ -1995,13 +2018,20 @@ class AppErrorBoundary extends Component<
   }
 }
 
+function AppWithRouteBoundary() {
+  const [location] = useLocation();
+  return (
+    <AppErrorBoundary resetKey={location}>
+      <ClerkProviderWithRoutes />
+    </AppErrorBoundary>
+  );
+}
+
 function App() {
   return (
-    <AppErrorBoundary>
-      <WouterRouter base={basePath}>
-        <ClerkProviderWithRoutes />
-      </WouterRouter>
-    </AppErrorBoundary>
+    <WouterRouter base={basePath}>
+      <AppWithRouteBoundary />
+    </WouterRouter>
   );
 }
 
