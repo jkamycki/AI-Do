@@ -29,7 +29,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ToastAction } from "@/components/ui/toast";
 import { DollarSign, Plus, Trash2, Pencil, ArrowUpRight, Sparkles, Paperclip, X, AlertTriangle, Bell, CheckCircle2, FileDown, FileSpreadsheet } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -249,6 +248,105 @@ function MarkPaidInFullButton({
   );
 }
 
+function BalanceRemainingActions({
+  remaining,
+  onSchedule,
+  onPaidInFull,
+  t,
+}: {
+  remaining: number;
+  onSchedule: () => void;
+  onPaidInFull: () => void;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}) {
+  return (
+    <div className="flex min-w-[190px] flex-col items-start gap-1.5">
+      <div className="rounded-md border border-amber-500/25 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
+        {t("budget.balance_remaining", { amount: formatMoney(remaining), defaultValue: `Balance remaining ${formatMoney(remaining)}` })}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-7 border-primary/35 px-2.5 text-xs font-semibold text-primary hover:bg-primary/10"
+          onClick={onSchedule}
+        >
+          <Bell className="mr-1 h-3.5 w-3.5" />
+          {t("budget.schedule_payment", { defaultValue: "Schedule payment" })}
+        </Button>
+        <MarkPaidInFullButton onClick={onPaidInFull} t={t} />
+      </div>
+    </div>
+  );
+}
+
+function PaymentStatusDecision({
+  paidInFull,
+  remaining,
+  onPaidInFull,
+  onSchedulePayment,
+  paidHint,
+  partialHint,
+  t,
+}: {
+  paidInFull: boolean;
+  remaining: number;
+  onPaidInFull: () => void;
+  onSchedulePayment: () => void;
+  paidHint: string;
+  partialHint: string;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}) {
+  return (
+    <div className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-foreground">
+          {t("budget.payment_status_question", { defaultValue: "Is this paid in full?" })}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {t("budget.payment_status_hint", {
+            amount: formatMoney(remaining),
+            defaultValue: `Balance remaining: ${formatMoney(remaining)}. Choose yes to close it out, or no to schedule the next payment.`,
+          })}
+        </p>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={onPaidInFull}
+          className={`rounded-lg border p-3 text-left transition ${
+            paidInFull
+              ? "border-emerald-500/45 bg-emerald-50 text-emerald-900 shadow-sm"
+              : "border-border bg-background hover:border-emerald-500/35 hover:bg-emerald-50/60"
+          }`}
+        >
+          <span className="flex items-center gap-2 text-sm font-semibold">
+            <CheckCircle2 className="h-4 w-4" />
+            {t("budget.yes_paid_in_full", { defaultValue: "Yes - paid in full" })}
+          </span>
+          <span className="mt-1 block text-xs opacity-80">{paidHint}</span>
+        </button>
+        <button
+          type="button"
+          onClick={onSchedulePayment}
+          className={`rounded-lg border p-3 text-left transition ${
+            !paidInFull
+              ? "border-primary/45 bg-background text-primary shadow-sm"
+              : "border-border bg-background hover:border-primary/35 hover:bg-primary/5"
+          }`}
+        >
+          <span className="flex items-center gap-2 text-sm font-semibold">
+            <Bell className="h-4 w-4" />
+            {t("budget.no_schedule_payment", { defaultValue: "No - schedule next payment" })}
+          </span>
+          <span className="mt-1 block text-xs text-muted-foreground">{partialHint}</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Returns days from today until the given ISO date (negative = past).
 // Used by the budget table to color-code the next-payment cell.
 function daysUntilDate(d: string | null | undefined): number {
@@ -359,6 +457,14 @@ export default function Budget() {
   const [isSavingVendorBudget, setIsSavingVendorBudget] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const manualFormCost = Math.max(0, Number(form.cost || 0));
+  const manualFormPaid = form.paidInFull ? manualFormCost : Math.max(0, Number(form.amountPaid || 0));
+  const manualFormRemaining = Math.max(0, manualFormCost - manualFormPaid);
+  const vendorFormCost = Math.max(0, Number(vendorForm.totalCost || 0));
+  const vendorExistingPaid = editingVendor?.totalPaid ?? 0;
+  const vendorFormDeposit = Math.max(0, Number(vendorForm.depositAmount || 0));
+  const vendorFormPaid = vendorForm.paidInFull ? vendorFormCost : Math.max(vendorExistingPaid, vendorFormDeposit);
+  const vendorFormRemaining = Math.max(0, vendorFormCost - vendorFormPaid);
 
   const upload = useUpload({
     getToken,
@@ -508,15 +614,16 @@ export default function Budget() {
     setEditingId(null);
     setIsAdding(true);
   };
-  const openEdit = (m: typeof manualExpenses[number]) => {
+  const openEdit = (m: typeof manualExpenses[number], options?: { scheduleNextPayment?: boolean }) => {
     const isPaidInFull = (m.cost ?? 0) > 0 && (m.amountPaid ?? 0) >= (m.cost ?? 0);
+    const remaining = Math.max(0, (m.cost ?? 0) - (m.amountPaid ?? 0));
     setForm({
       name: m.name,
       category: m.category || "Other",
       cost: String(m.cost ?? 0),
       amountPaid: String(m.amountPaid ?? 0),
       nextPaymentDue: m.nextPaymentDue ?? "",
-      nextPaymentAmount: m.nextPaymentAmount != null ? String(m.nextPaymentAmount) : "",
+      nextPaymentAmount: m.nextPaymentAmount != null ? String(m.nextPaymentAmount) : options?.scheduleNextPayment && remaining > 0 ? String(remaining) : "",
       paidInFull: isPaidInFull,
       notes: m.notes ?? "",
       receiptUrl: m.receiptUrl ?? null,
@@ -525,7 +632,8 @@ export default function Budget() {
     setEditingId(m.id);
     setIsAdding(true);
   };
-  const openVendorBudgetEdit = (vendor: VendorRow) => {
+  const openVendorBudgetEdit = (vendor: VendorRow, options?: { scheduleNextPayment?: boolean }) => {
+    const remaining = Math.max(0, vendor.totalCost - vendor.totalPaid);
     setEditingVendor(vendor);
     setVendorForm({
       name: vendor.name,
@@ -533,8 +641,53 @@ export default function Budget() {
       totalCost: vendor.totalCost > 0 ? String(vendor.totalCost) : "",
       depositAmount: vendor.depositAmount > 0 ? String(vendor.depositAmount) : "",
       nextPaymentDue: vendor.nextPaymentDue ?? "",
-      nextPaymentAmount: vendor.nextPaymentAmount != null ? String(vendor.nextPaymentAmount) : "",
+      nextPaymentAmount: vendor.nextPaymentAmount != null ? String(vendor.nextPaymentAmount) : options?.scheduleNextPayment && remaining > 0 ? String(remaining) : "",
       paidInFull: vendor.totalCost > 0 && vendor.totalPaid >= vendor.totalCost,
+    });
+  };
+
+  const markManualFormPaidInFull = () => {
+    setForm((f) => ({
+      ...f,
+      paidInFull: true,
+      amountPaid: f.cost,
+      nextPaymentDue: "",
+      nextPaymentAmount: "",
+    }));
+  };
+
+  const scheduleManualFormPayment = () => {
+    setForm((f) => {
+      const cost = Math.max(0, Number(f.cost || 0));
+      const paid = Math.max(0, Number(f.amountPaid || 0));
+      const balance = Math.max(0, cost - paid);
+      return {
+        ...f,
+        paidInFull: false,
+        nextPaymentAmount: f.nextPaymentAmount || (balance > 0 ? String(balance) : ""),
+      };
+    });
+  };
+
+  const markVendorFormPaidInFull = () => {
+    setVendorForm((f) => ({
+      ...f,
+      paidInFull: true,
+      nextPaymentDue: "",
+      nextPaymentAmount: "",
+    }));
+  };
+
+  const scheduleVendorFormPayment = () => {
+    setVendorForm((f) => {
+      const cost = Math.max(0, Number(f.totalCost || 0));
+      const paid = Math.max(editingVendor?.totalPaid ?? 0, Math.max(0, Number(f.depositAmount || 0)));
+      const balance = Math.max(0, cost - paid);
+      return {
+        ...f,
+        paidInFull: false,
+        nextPaymentAmount: f.nextPaymentAmount || (balance > 0 ? String(balance) : ""),
+      };
     });
   };
 
@@ -1379,21 +1532,28 @@ export default function Budget() {
                               <PaidInFullBadge t={t} />
                             ) : (
                               <>
-                                <NextPaymentDisplay
-                                  date={v.nextPaymentDue}
-                                  amount={v.nextPaymentAmount ?? remaining}
-                                  onMarkPaid={
-                                    v.nextPaymentDue && remaining > 0
-                                      ? () => handleVendorPaymentPaid(v.id, {
-                                          id: v.nextPaymentId,
-                                          dueDate: v.nextPaymentDue,
-                                          amount: v.nextPaymentAmount ?? remaining,
-                                        })
-                                      : undefined
-                                  }
-                                  t={t}
-                                />
-                                <MarkPaidInFullButton onClick={() => handleVendorPaidInFull(v.id)} t={t} />
+                                {v.nextPaymentDue ? (
+                                  <>
+                                    <NextPaymentDisplay
+                                      date={v.nextPaymentDue}
+                                      amount={v.nextPaymentAmount ?? remaining}
+                                      onMarkPaid={() => handleVendorPaymentPaid(v.id, {
+                                        id: v.nextPaymentId,
+                                        dueDate: v.nextPaymentDue,
+                                        amount: v.nextPaymentAmount ?? remaining,
+                                      })}
+                                      t={t}
+                                    />
+                                    <MarkPaidInFullButton onClick={() => handleVendorPaidInFull(v.id)} t={t} />
+                                  </>
+                                ) : (
+                                  <BalanceRemainingActions
+                                    remaining={remaining}
+                                    onSchedule={() => openVendorBudgetEdit(v, { scheduleNextPayment: true })}
+                                    onPaidInFull={() => handleVendorPaidInFull(v.id)}
+                                    t={t}
+                                  />
+                                )}
                               </>
                             )}
                           </div>
@@ -1506,51 +1666,51 @@ export default function Budget() {
                 />
               </div>
             </div>
+            <p className="text-xs text-muted-foreground">
+              {t("budget.vendor_partial_payment_hint", {
+                defaultValue: "Use Deposit for money already paid. If a balance is still due, schedule the next payment below.",
+              })}
+            </p>
             {(vendorForm.paidInFull || !vendorForm.nextPaymentDue) && (
-              <div className="rounded-lg border border-emerald-500/25 bg-emerald-50/70 p-3">
-                <label className="flex cursor-pointer items-start gap-3">
-                  <Checkbox
-                    checked={vendorForm.paidInFull}
-                    onCheckedChange={(checked) => setVendorForm((f) => {
-                      const paidInFull = checked === true;
-                      return {
-                        ...f,
-                        paidInFull,
-                        nextPaymentDue: paidInFull ? "" : f.nextPaymentDue,
-                        nextPaymentAmount: paidInFull ? "" : f.nextPaymentAmount,
-                      };
-                    })}
-                    className="mt-0.5"
-                  />
-                  <span className="space-y-0.5">
-                    <span className="block text-sm font-semibold text-emerald-900">
-                      {t("budget.paid_in_full_question", { defaultValue: "Paid in full?" })}
-                    </span>
-                    <span className="block text-xs text-emerald-800/80">
-                      {t("budget.vendor_paid_in_full_hint", { defaultValue: "If yes, this marks the vendor fully paid and skips the next payment date." })}
-                    </span>
-                  </span>
-                </label>
-              </div>
+              <PaymentStatusDecision
+                paidInFull={vendorForm.paidInFull}
+                remaining={vendorFormRemaining}
+                onPaidInFull={markVendorFormPaidInFull}
+                onSchedulePayment={scheduleVendorFormPayment}
+                paidHint={t("budget.vendor_paid_in_full_hint", { defaultValue: "Marks this vendor fully paid and skips the next payment date." })}
+                partialHint={t("budget.vendor_partial_next_payment_hint", {
+                  defaultValue: "Keeps the vendor open and lets you enter the next amount and due date.",
+                })}
+                t={t}
+              />
             )}
             {!vendorForm.paidInFull && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">{t("budget.next_payment_date_label", { defaultValue: "Next payment date" })}</label>
-                  <Input
-                    type="date"
-                    value={vendorForm.nextPaymentDue}
-                    onChange={(e) => setVendorForm((f) => ({ ...f, nextPaymentDue: e.target.value }))}
-                    className="[color-scheme:light]"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">{t("budget.next_payment_amount_label", { defaultValue: "Next payment amount" })}</label>
-                  <MoneyInput
-                    value={vendorForm.nextPaymentAmount}
-                    onChange={(v) => setVendorForm((f) => ({ ...f, nextPaymentAmount: v }))}
-                    placeholder="0"
-                  />
+              <div className="space-y-2">
+                {vendorForm.nextPaymentDue && (
+                  <p className="text-xs font-medium text-primary">
+                    {t("budget.next_payment_already_scheduled", {
+                      defaultValue: "Next payment is already scheduled. Update the date or amount below if needed.",
+                    })}
+                  </p>
+                )}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">{t("budget.next_payment_date_label", { defaultValue: "Next payment date" })}</label>
+                    <Input
+                      type="date"
+                      value={vendorForm.nextPaymentDue}
+                      onChange={(e) => setVendorForm((f) => ({ ...f, nextPaymentDue: e.target.value }))}
+                      className="[color-scheme:light]"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">{t("budget.next_payment_amount_label", { defaultValue: "Next payment amount" })}</label>
+                    <MoneyInput
+                      value={vendorForm.nextPaymentAmount}
+                      onChange={(v) => setVendorForm((f) => ({ ...f, nextPaymentAmount: v }))}
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -1682,8 +1842,15 @@ export default function Budget() {
                                       )}
                                     </div>
                                   );
-                                })() : <span className="text-muted-foreground text-xs">-</span>}
-                                <MarkPaidInFullButton onClick={() => handleManualPaidInFull(m)} t={t} />
+                                })() : (
+                                  <BalanceRemainingActions
+                                    remaining={remaining}
+                                    onSchedule={() => openEdit(m, { scheduleNextPayment: true })}
+                                    onPaidInFull={() => handleManualPaidInFull(m)}
+                                    t={t}
+                                  />
+                                )}
+                                {m.nextPaymentDue && <MarkPaidInFullButton onClick={() => handleManualPaidInFull(m)} t={t} />}
                               </>
                             )}
                           </div>
@@ -1890,53 +2057,52 @@ export default function Budget() {
                 placeholder="0"
                 disabled={form.paidInFull}
               />
+              <p className="text-xs text-muted-foreground">
+                {t("budget.manual_partial_payment_hint", {
+                  defaultValue: "Use Amount paid for payments already made. If a balance is still due, schedule the next payment below.",
+                })}
+              </p>
             </div>
             {(form.paidInFull || !form.nextPaymentDue) && (
-              <div className="rounded-lg border border-emerald-500/25 bg-emerald-50/70 p-3">
-                <label className="flex cursor-pointer items-start gap-3">
-                  <Checkbox
-                    checked={form.paidInFull}
-                    onCheckedChange={(checked) => setForm((f) => {
-                      const paidInFull = checked === true;
-                      return {
-                        ...f,
-                        paidInFull,
-                        amountPaid: paidInFull ? f.cost : f.amountPaid,
-                        nextPaymentDue: paidInFull ? "" : f.nextPaymentDue,
-                        nextPaymentAmount: paidInFull ? "" : f.nextPaymentAmount,
-                      };
-                    })}
-                    className="mt-0.5"
-                  />
-                  <span className="space-y-0.5">
-                    <span className="block text-sm font-semibold text-emerald-900">
-                      {t("budget.paid_in_full_question", { defaultValue: "Paid in full?" })}
-                    </span>
-                    <span className="block text-xs text-emerald-800/80">
-                      {t("budget.paid_in_full_hint", { defaultValue: "If yes, this sets Paid to the full cost and skips the next payment date." })}
-                    </span>
-                  </span>
-                </label>
-              </div>
+              <PaymentStatusDecision
+                paidInFull={form.paidInFull}
+                remaining={manualFormRemaining}
+                onPaidInFull={markManualFormPaidInFull}
+                onSchedulePayment={scheduleManualFormPayment}
+                paidHint={t("budget.paid_in_full_hint", { defaultValue: "Sets Paid to the full cost and skips the next payment date." })}
+                partialHint={t("budget.partial_next_payment_hint", {
+                  defaultValue: "Keeps the expense open and lets you enter the next amount and due date.",
+                })}
+                t={t}
+              />
             )}
             {!form.paidInFull && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">{t("budget.next_payment_date_label", { defaultValue: "Next payment date" })}</label>
-                  <Input
-                    type="date"
-                    value={form.nextPaymentDue}
-                    onChange={(e) => setForm((f) => ({ ...f, nextPaymentDue: e.target.value }))}
-                    className="[color-scheme:light]"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">{t("budget.next_payment_amount_label", { defaultValue: "Next payment amount" })}</label>
-                  <MoneyInput
-                    value={form.nextPaymentAmount}
-                    onChange={(v) => setForm((f) => ({ ...f, nextPaymentAmount: v }))}
-                    placeholder="0"
-                  />
+              <div className="space-y-2">
+                {form.nextPaymentDue && (
+                  <p className="text-xs font-medium text-primary">
+                    {t("budget.next_payment_already_scheduled", {
+                      defaultValue: "Next payment is already scheduled. Update the date or amount below if needed.",
+                    })}
+                  </p>
+                )}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">{t("budget.next_payment_date_label", { defaultValue: "Next payment date" })}</label>
+                    <Input
+                      type="date"
+                      value={form.nextPaymentDue}
+                      onChange={(e) => setForm((f) => ({ ...f, nextPaymentDue: e.target.value }))}
+                      className="[color-scheme:light]"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">{t("budget.next_payment_amount_label", { defaultValue: "Next payment amount" })}</label>
+                    <MoneyInput
+                      value={form.nextPaymentAmount}
+                      onChange={(v) => setForm((f) => ({ ...f, nextPaymentAmount: v }))}
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
               </div>
             )}
