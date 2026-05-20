@@ -1759,9 +1759,13 @@ export default function Guests({
   const [bulkLinksMode, setBulkLinksMode] = useState<
     null | "saveTheDate" | "invitation" | "reminder"
   >(null);
+  const [bulkMobileChoiceMode, setBulkMobileChoiceMode] = useState<
+    null | "saveTheDate" | "invitation" | "reminder"
+  >(null);
+  const [bulkShareIntent, setBulkShareIntent] = useState<"copy" | "text">("copy");
   const [bulkLinksLoading, setBulkLinksLoading] = useState(false);
   const [bulkLinks, setBulkLinks] = useState<
-    Array<{ guestId: number; name: string; url: string }>
+    Array<{ guestId: number; name: string; phone?: string | null; url: string }>
   >([]);
   const [confirmBulkSend, setConfirmBulkSend] = useState<
     null | "saveTheDate" | "invitation" | "reminder"
@@ -1907,7 +1911,70 @@ export default function Guests({
       : mode === "invitation"
         ? "Each selected guest gets their own RSVP invitation link."
         : "RSVP reminders use each guest's same personalized RSVP link.";
-  const openBulkLinks = async (mode: "saveTheDate" | "invitation" | "reminder") => {
+  const normalizeSmsPhone = (phone: string | null | undefined) =>
+    (phone ?? "").trim().replace(/[^\d+]/g, "");
+  const getCoupleName = () => {
+    const profile = weddingProfile as
+      | { partner1Name?: string | null; partner2Name?: string | null }
+      | null
+      | undefined;
+    return [profile?.partner2Name, profile?.partner1Name]
+      .filter(Boolean)
+      .join(" & ");
+  };
+  const buildBulkTextMessage = (
+    mode: "saveTheDate" | "invitation" | "reminder",
+    guestName: string,
+    url: string,
+  ) => {
+    const firstName = (guestName || "there").trim().split(/\s+/)[0] || "there";
+    const couple = getCoupleName();
+    const couplePart = couple ? `${couple}'s wedding` : "our wedding";
+    if (mode === "saveTheDate") {
+      return `Hi ${firstName}, save the date for ${couplePart}! View it here: ${url}`;
+    }
+    if (mode === "reminder") {
+      return `Hi ${firstName}, quick reminder to RSVP for ${couplePart}: ${url}`;
+    }
+    return `Hi ${firstName}, you're invited to ${couplePart}. Please RSVP here: ${url}`;
+  };
+  const buildSmsHref = (phone: string, message: string) => {
+    const isAppleDevice =
+      typeof navigator !== "undefined" &&
+      /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent);
+    const separator = isAppleDevice ? "&" : "?";
+    return `sms:${phone}${separator}body=${encodeURIComponent(message)}`;
+  };
+  const isMobileViewport = () =>
+    typeof window !== "undefined" &&
+    window.matchMedia("(max-width: 639px)").matches;
+  const handleBulkPrimaryAction = (mode: "saveTheDate" | "invitation" | "reminder") => {
+    if (isMobileViewport()) {
+      const targetGuests = getBulkLinkGuests(mode);
+      if (!targetGuests.length) {
+        toast({
+          title: "No selected guests ready",
+          description:
+            mode === "saveTheDate"
+              ? "Select at least one guest who has not received a save-the-date yet."
+              : mode === "invitation"
+                ? "Select at least one guest who has not received an RSVP invitation yet."
+                : "Select at least one guest who still needs an RSVP reminder.",
+        });
+        return;
+      }
+      setBulkMobileChoiceMode(mode);
+      return;
+    }
+
+    if (mode === "saveTheDate") openBulkPreview("saveTheDate");
+    if (mode === "invitation") openBulkPreview("invitation");
+    if (mode === "reminder") setConfirmBulkSend("reminder");
+  };
+  const openBulkLinks = async (
+    mode: "saveTheDate" | "invitation" | "reminder",
+    intent: "copy" | "text" = "copy",
+  ) => {
     const targetGuests = getBulkLinkGuests(mode);
     if (!targetGuests.length) {
       toast({
@@ -1922,6 +1989,7 @@ export default function Guests({
       return;
     }
 
+    setBulkShareIntent(intent);
     setBulkLinksMode(mode);
     setBulkLinks([]);
     setBulkLinksLoading(true);
@@ -1942,7 +2010,7 @@ export default function Guests({
           };
           const url = data.saveTheDateUrl ?? data.rsvpUrl ?? data.previewUrl;
           if (!url) throw new Error(`No link was returned for ${guest.name}`);
-          return { guestId: guest.id, name: guest.name, url };
+          return { guestId: guest.id, name: guest.name, phone: (guest as any).phone ?? null, url };
         }),
       );
       setBulkLinks(links);
@@ -2847,6 +2915,54 @@ export default function Guests({
           {allGuests.length > 0 && (
             <>
               <Dialog
+                open={bulkMobileChoiceMode !== null}
+                onOpenChange={(open) => {
+                  if (!open) setBulkMobileChoiceMode(null);
+                }}
+              >
+                <DialogContent className="max-w-sm">
+                  <DialogHeader>
+                    <DialogTitle className="font-serif text-2xl text-primary">
+                      Share selected guests
+                    </DialogTitle>
+                    <DialogDescription>
+                      Choose how to share each guest's personalized link.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-3">
+                    <Button
+                      type="button"
+                      className="h-12 justify-start gap-3"
+                      disabled={!bulkMobileChoiceMode}
+                      onClick={() => {
+                        if (!bulkMobileChoiceMode) return;
+                        const mode = bulkMobileChoiceMode;
+                        setBulkMobileChoiceMode(null);
+                        openBulkLinks(mode, "copy");
+                      }}
+                    >
+                      <Copy className="h-4 w-4" />
+                      Copy personalized links
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-12 justify-start gap-3 border-primary/20 text-primary"
+                      disabled={!bulkMobileChoiceMode}
+                      onClick={() => {
+                        if (!bulkMobileChoiceMode) return;
+                        const mode = bulkMobileChoiceMode;
+                        setBulkMobileChoiceMode(null);
+                        openBulkLinks(mode, "text");
+                      }}
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      Text message directly
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+              <Dialog
                 open={bulkLinksMode !== null}
                 onOpenChange={(open) => {
                   if (!open) {
@@ -2858,14 +2974,18 @@ export default function Guests({
                 <DialogContent className="sm:max-w-2xl">
                   <DialogHeader>
                     <DialogTitle className="font-serif text-2xl text-primary">
-                      {bulkLinksMode
-                        ? getBulkLinksTitle(bulkLinksMode)
-                        : "Personalized Links"}
+                      {bulkShareIntent === "text"
+                        ? "Text Personalized Links"
+                        : bulkLinksMode
+                          ? getBulkLinksTitle(bulkLinksMode)
+                          : "Personalized Links"}
                     </DialogTitle>
                     <DialogDescription>
-                      {bulkLinksMode
-                        ? getBulkLinksDescription(bulkLinksMode)
-                        : "Each selected guest gets their own private link."}
+                      {bulkShareIntent === "text"
+                        ? "Tap each guest to open a prefilled text message with their private link."
+                        : bulkLinksMode
+                          ? getBulkLinksDescription(bulkLinksMode)
+                          : "Each selected guest gets their own private link."}
                     </DialogDescription>
                   </DialogHeader>
                   {bulkLinksLoading ? (
@@ -2877,8 +2997,9 @@ export default function Guests({
                     <div className="space-y-3">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-sm text-muted-foreground">
-                          {bulkLinks.length} personalized link
-                          {bulkLinks.length !== 1 ? "s" : ""} ready to share.
+                          {bulkShareIntent === "text"
+                            ? `${bulkLinks.filter((item) => normalizeSmsPhone(item.phone)).length} of ${bulkLinks.length} guests have phone numbers.`
+                            : `${bulkLinks.length} personalized link${bulkLinks.length !== 1 ? "s" : ""} ready to share.`}
                         </p>
                         <Button
                           type="button"
@@ -2888,7 +3009,7 @@ export default function Guests({
                           onClick={copyBulkLinks}
                         >
                           <Copy className="h-4 w-4" />
-                          Copy all links
+                          {bulkShareIntent === "text" ? "Copy all instead" : "Copy all links"}
                         </Button>
                       </div>
                       <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
@@ -2902,24 +3023,48 @@ export default function Guests({
                             </p>
                             <div className="mt-1 flex items-center gap-2">
                               <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-                                {item.url}
+                                {bulkShareIntent === "text"
+                                  ? normalizeSmsPhone(item.phone) || "No phone number"
+                                  : item.url}
                               </p>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-8 shrink-0 gap-1.5"
-                                onClick={async () => {
-                                  await navigator.clipboard.writeText(item.url);
-                                  toast({
-                                    title: "Link copied",
-                                    description: `${item.name}'s personalized link is ready to paste.`,
-                                  });
-                                }}
-                              >
-                                <Copy className="h-3.5 w-3.5" />
-                                Copy
-                              </Button>
+                              {bulkShareIntent === "text" ? (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 shrink-0 gap-1.5"
+                                  disabled={!normalizeSmsPhone(item.phone) || !bulkLinksMode}
+                                  onClick={() => {
+                                    if (!bulkLinksMode) return;
+                                    const phone = normalizeSmsPhone(item.phone);
+                                    if (!phone) return;
+                                    window.location.href = buildSmsHref(
+                                      phone,
+                                      buildBulkTextMessage(bulkLinksMode, item.name, item.url),
+                                    );
+                                  }}
+                                >
+                                  <MessageSquare className="h-3.5 w-3.5" />
+                                  Text
+                                </Button>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 shrink-0 gap-1.5"
+                                  onClick={async () => {
+                                    await navigator.clipboard.writeText(item.url);
+                                    toast({
+                                      title: "Link copied",
+                                      description: `${item.name}'s personalized link is ready to paste.`,
+                                    });
+                                  }}
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                  Copy
+                                </Button>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -3047,7 +3192,7 @@ export default function Guests({
                   disabled={
                     sendingSaveTheDates || selectedSaveTheDateEligible.length === 0
                   }
-                  onClick={() => openBulkPreview("saveTheDate")}
+                  onClick={() => handleBulkPrimaryAction("saveTheDate")}
                 >
                   <span className="inline-flex items-center">
                     {sendingSaveTheDates ? (
@@ -3078,7 +3223,7 @@ export default function Guests({
                   size="sm"
                   className="h-12 w-full justify-between gap-4 whitespace-nowrap bg-primary px-4 text-primary-foreground hover:bg-primary/90"
                   disabled={sendingInvitations || selectedInvitationEligible.length === 0}
-                  onClick={() => openBulkPreview("invitation")}
+                  onClick={() => handleBulkPrimaryAction("invitation")}
                 >
                   <span className="inline-flex items-center">
                     {sendingInvitations ? (
@@ -3110,7 +3255,7 @@ export default function Guests({
                   size="sm"
                   className="h-12 w-full justify-between gap-4 whitespace-nowrap px-4 text-primary/70 hover:bg-primary/10 hover:text-primary disabled:bg-transparent disabled:text-muted-foreground/55"
                   disabled={sendingReminders || selectedReminderEligible.length === 0}
-                  onClick={() => setConfirmBulkSend("reminder")}
+                  onClick={() => handleBulkPrimaryAction("reminder")}
                 >
                   <span className="inline-flex items-center">
                     {sendingReminders ? (
