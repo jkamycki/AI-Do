@@ -1340,8 +1340,11 @@ function GuestCollectorCard() {
     /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent)
       ? "&"
       : "?";
+  const smsShareMessage = collectorUrl
+    ? `${coupleNames} are collecting mailing addresses for their wedding invitations.\n\nPlease share your contact info here:\n${collectorUrl}`
+    : "";
   const smsShareHref = collectorUrl
-    ? `sms:${smsSeparator}body=${encodeURIComponent(collectorUrl)}`
+    ? `sms:${smsSeparator}body=${encodeURIComponent(smsShareMessage)}`
     : undefined;
 
   return (
