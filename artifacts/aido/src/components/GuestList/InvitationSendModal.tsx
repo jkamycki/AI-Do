@@ -14,8 +14,10 @@ import { Badge } from "@/components/ui/badge";
 import {
   Send, Loader2, AlertTriangle, Eye, Heart, CheckCircle2, XCircle,
   MapPin, Paintbrush, ChevronRight, Calendar, User, ImageOff, Mail,
+  Copy, Link as LinkIcon,
 } from "lucide-react";
 import { authFetch } from "@/lib/authFetch";
+import { useToast } from "@/hooks/use-toast";
 import type { Guest } from "@workspace/api-client-react";
 import type { TextOverrides, ColorPalette } from "@/types/invitations";
 import { SaveTheDatePreview } from "@/components/InvitationCustomization/SaveTheDatePreview";
@@ -518,8 +520,10 @@ export function InvitationSendModal({
   bulkRecipientNames = [],
 }: Props) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"saveTheDate" | "digitalInvitation">(defaultTab);
   const [bypassBlock, setBypassBlock] = useState(false);
+  const [copyingLink, setCopyingLink] = useState<"saveTheDate" | "digitalInvitation" | null>(null);
 
   useEffect(() => {
     setActiveTab(defaultTab);
@@ -755,6 +759,55 @@ export function InvitationSendModal({
       </div>
     ) : null;
 
+  const copyInvitationLink = async (type: "saveTheDate" | "digitalInvitation") => {
+    if (!guest) return;
+    setCopyingLink(type);
+    try {
+      const endpoint = type === "saveTheDate"
+        ? `/api/guests/${guest.id}/save-the-date-link`
+        : `/api/guests/${guest.id}/rsvp-link`;
+      const res = await authFetch(endpoint);
+      if (!res.ok) throw new Error("Failed to create invitation link");
+      const data = await res.json() as { saveTheDateUrl?: string; rsvpUrl?: string; previewUrl?: string };
+      const url = type === "saveTheDate"
+        ? data.saveTheDateUrl ?? data.previewUrl
+        : data.rsvpUrl ?? data.previewUrl;
+      if (!url) throw new Error("Invitation link was not returned");
+      await navigator.clipboard.writeText(url);
+      toast({
+        title: type === "saveTheDate" ? "Save the Date link copied" : "RSVP invitation link copied",
+        description: "Paste it anywhere you want to send the invitation manually.",
+      });
+    } catch (err) {
+      toast({
+        title: "Could not copy link",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setCopyingLink(null);
+    }
+  };
+
+  const CopyLinkButton = ({ type }: { type: "saveTheDate" | "digitalInvitation" }) =>
+    !isBulkSend ? (
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full gap-2"
+        onClick={() => void copyInvitationLink(type)}
+        disabled={!guest || copyingLink === type}
+      >
+        {copyingLink === type ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Copy className="h-4 w-4" />
+        )}
+        {type === "saveTheDate" ? "Copy Save the Date link" : "Copy RSVP invitation link"}
+        <LinkIcon className="h-3.5 w-3.5 opacity-60" />
+      </Button>
+    ) : null;
+
   return (
     <Dialog open={!!guest} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col gap-0 p-0">
@@ -834,6 +887,7 @@ export function InvitationSendModal({
                       : <><Send className="h-4 w-4" /> {isBulkSend ? `Send Save the Date to ${bulkRecipientCount} guests` : guest?.email ? "Send Save the Date email" : "Mark Save the Date as sent"}</>
                     }
                   </Button>
+                  <CopyLinkButton type="saveTheDate" />
                   {!guest?.email && (
                     <p className="text-xs text-muted-foreground text-center">No email on file — status will be updated without sending an email.</p>
                   )}
@@ -905,6 +959,7 @@ export function InvitationSendModal({
                       }
                     </Button>
                   )}
+                  {!reminderOnly && <CopyLinkButton type="digitalInvitation" />}
                   {!reminderOnly && !guest?.email && (
                     <p className="text-xs text-muted-foreground text-center">No email on file — status will be updated without sending an email.</p>
                   )}
@@ -950,6 +1005,7 @@ export function InvitationSendModal({
                       : <><Send className="h-4 w-4" /> {isBulkSend ? `Send Save the Date to ${bulkRecipientCount} guests` : guest?.email ? "Send Save the Date email" : "Mark Save the Date as sent"}</>
                     }
                   </Button>
+                  <CopyLinkButton type="saveTheDate" />
                   {!guest?.email && (
                     <p className="text-xs text-muted-foreground text-center">No email on file — status will be updated without sending an email.</p>
                   )}
@@ -1014,6 +1070,7 @@ export function InvitationSendModal({
                       }
                     </Button>
                   )}
+                  {!reminderOnly && <CopyLinkButton type="digitalInvitation" />}
                   {!reminderOnly && !guest?.email && (
                     <p className="text-xs text-muted-foreground text-center">No email on file — status will be updated without sending an email.</p>
                   )}
