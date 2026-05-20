@@ -80,25 +80,31 @@ function cloneCardForPdf(element: HTMLElement) {
 export default function SaveTheDate() {
   const [, params] = useRoute("/save-the-date/:token");
   const [, sharedParams] = useRoute("/save-the-date/shared/:slug");
+  const [, sharedInviteParams] = useRoute("/save-the-date/shared-invite/:token");
   const token = params?.token ?? "";
   const slug = sharedParams?.slug ?? "";
+  const sharedInviteToken = sharedInviteParams?.token ?? "";
   const apiPath = slug
     ? `/api/save-the-date/shared/${encodeURIComponent(slug)}`
+    : sharedInviteToken
+      ? `/api/save-the-date/shared-invite/${encodeURIComponent(sharedInviteToken)}`
     : `/api/save-the-date/${token}`;
   const photoPath = slug
     ? `/api/save-the-date/shared/${encodeURIComponent(slug)}/photo`
+    : sharedInviteToken
+      ? `/api/save-the-date/shared-invite/${encodeURIComponent(sharedInviteToken)}/photo`
     : `/api/save-the-date/${token}/photo`;
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const { data: info, isLoading, isError } = useQuery({
-    queryKey: ["save-the-date", token, slug],
+    queryKey: ["save-the-date", token, slug, sharedInviteToken],
     queryFn: async () => {
       const res = await apiFetch(apiPath);
       if (!res.ok) throw new Error("Not found");
       return res.json() as Promise<SaveTheDateInfo>;
     },
-    enabled: !!token || !!slug,
+    enabled: !!token || !!slug || !!sharedInviteToken,
     retry: false,
   });
 

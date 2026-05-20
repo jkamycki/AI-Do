@@ -13,6 +13,20 @@ import crypto from "crypto";
 const objectStorageService = new ObjectStorageService();
 
 const router = Router();
+const INVITATION_SHARE_SECRET = process.env.INVITATION_SHARE_SECRET || process.env.SESSION_SECRET || process.env.JWT_SECRET || "aido-local-invitation-share-secret";
+
+function verifyInvitationShare(token: string): number | null {
+  const [payload, sig] = String(token || "").split(".");
+  if (!payload || !sig) return null;
+  const expected = crypto.createHmac("sha256", INVITATION_SHARE_SECRET).update(payload).digest("base64url").slice(0, 32);
+  try {
+    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+  } catch {
+    return null;
+  }
+  const profileId = Number(Buffer.from(payload, "base64url").toString("utf8"));
+  return Number.isFinite(profileId) && profileId > 0 ? profileId : null;
+}
 
 // Default colors (fallback)
 const DEFAULT_COLORS = {
@@ -2206,6 +2220,19 @@ router.get("/save-the-date/shared/:slug", async (req, res) => {
   }
 });
 
+router.get("/save-the-date/shared-invite/:token", async (req, res) => {
+  try {
+    const profileId = verifyInvitationShare(String(req.params.token ?? ""));
+    if (!profileId) return res.status(404).json({ error: "Not found" });
+    const [profile] = await db.select().from(weddingProfiles).where(eq(weddingProfiles.id, profileId)).limit(1);
+    if (!profile) return res.status(404).json({ error: "Not found" });
+    res.json(await buildSharedSaveTheDateInfo(profile, "Guest"));
+  } catch (err) {
+    req.log.error(err, "Failed to get shared invite save-the-date info");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/save-the-date/shared/:slug/photo", async (req, res) => {
   try {
     const profile = await findPublishedProfileBySlug(String(req.params.slug ?? ""));
@@ -2234,6 +2261,40 @@ router.get("/save-the-date/shared/:slug/photo", async (req, res) => {
     await pump();
   } catch (err) {
     req.log.error(err, "Failed to serve shared save-the-date photo");
+    res.status(500).end();
+  }
+});
+
+router.get("/save-the-date/shared-invite/:token/photo", async (req, res) => {
+  try {
+    const profileId = verifyInvitationShare(String(req.params.token ?? ""));
+    if (!profileId) return res.status(404).end();
+    const [profile] = await db.select().from(weddingProfiles).where(eq(weddingProfiles.id, profileId)).limit(1);
+    if (!profile) return res.status(404).end();
+    const customizations = await db
+      .select({ saveTheDatePhotoUrl: invitationCustomizations.saveTheDatePhotoUrl })
+      .from(invitationCustomizations)
+      .where(eq(invitationCustomizations.profileId, profile.id))
+      .limit(1);
+    const photoUrl = (customizations[0] as any)?.saveTheDatePhotoUrl || (profile as any).saveTheDatePhotoUrl;
+    if (!photoUrl) return res.status(404).end();
+    const file = await resolvePhotoFile(photoUrl);
+    const response = await objectStorageService.downloadObject(file, 3600);
+    res.set("Content-Type", response.headers.get("Content-Type") || "image/jpeg");
+    res.set("Cache-Control", "public, max-age=3600");
+    res.set("Access-Control-Allow-Origin", "*");
+    const reader = response.body!.getReader();
+    const pump = async () => {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        res.write(value);
+      }
+      res.end();
+    };
+    await pump();
+  } catch (err) {
+    req.log.error(err, "Failed to serve shared invite save-the-date photo");
     res.status(500).end();
   }
 });

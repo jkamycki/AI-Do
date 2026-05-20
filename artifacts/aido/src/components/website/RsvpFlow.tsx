@@ -49,6 +49,7 @@ export function RsvpFlow({
   slug,
   password,
   previewMode = false,
+  sharedToken,
 }: {
   data: WebsiteRendererPayload;
   slug: string;
@@ -56,6 +57,7 @@ export function RsvpFlow({
   // When true (editor "Guest Preview"), use authenticated owner-scoped endpoints
   // so guests on the user's list show up even if the site isn't published yet.
   previewMode?: boolean;
+  sharedToken?: string;
 }) {
   const { t } = useTranslation();
   const [step, setStep] = useState<"search" | "already-rsvped" | "form" | "self-add" | "done">("search");
@@ -166,10 +168,12 @@ export function RsvpFlow({
     setSearching(true);
     setSearched(false);
     try {
-      const url = previewMode
+      const url = sharedToken
+        ? `/api/invitation-shares/${encodeURIComponent(sharedToken)}/guests/search?q=${encodeURIComponent(query.trim())}`
+        : previewMode
         ? `/api/website/preview/guests/search?q=${encodeURIComponent(query.trim())}`
         : `/api/website/public/${encodeURIComponent(slug)}/guests/search?q=${encodeURIComponent(query.trim())}`;
-      const r = previewMode ? await authFetch(url) : await apiFetch(url, { headers: passwordHeader });
+      const r = previewMode ? await authFetch(url) : await apiFetch(url, { headers: sharedToken ? undefined : passwordHeader });
       if (!r.ok) {
         // Treat a failed lookup as "no match found" so the guest can still
         // self-add via "RSVP anyway" — same fallback path the editor preview
@@ -194,10 +198,12 @@ export function RsvpFlow({
   const selectGuest = async (m: GuestMatch) => {
     setError(null);
     try {
-      const url = previewMode
+      const url = sharedToken
+        ? `/api/invitation-shares/${encodeURIComponent(sharedToken)}/guests/${m.id}?name=${encodeURIComponent(m.name)}`
+        : previewMode
         ? `/api/website/preview/guests/${m.id}`
         : `/api/website/public/${encodeURIComponent(slug)}/guests/${m.id}?name=${encodeURIComponent(m.name)}`;
-      const r = previewMode ? await authFetch(url) : await apiFetch(url, { headers: passwordHeader });
+      const r = previewMode ? await authFetch(url) : await apiFetch(url, { headers: sharedToken ? undefined : passwordHeader });
       if (!r.ok) {
         setError("Couldn't load your details. Please try again.");
         return;
@@ -225,7 +231,9 @@ export function RsvpFlow({
     setSubmitting(true);
     setError(null);
     try {
-      const r = await apiFetch(`/api/website/public/${encodeURIComponent(slug)}/rsvp`, {
+      const r = await apiFetch(sharedToken
+        ? `/api/invitation-shares/${encodeURIComponent(sharedToken)}/rsvp`
+        : `/api/website/public/${encodeURIComponent(slug)}/rsvp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -273,7 +281,9 @@ export function RsvpFlow({
     setSubmitting(true);
     setError(null);
     try {
-      const r = await apiFetch(`/api/website/public/${encodeURIComponent(slug)}/rsvp/self-add`, {
+      const r = await apiFetch(sharedToken
+        ? `/api/invitation-shares/${encodeURIComponent(sharedToken)}/rsvp/self-add`
+        : `/api/website/public/${encodeURIComponent(slug)}/rsvp/self-add`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -941,7 +951,7 @@ export function RsvpFlow({
                     ? t("rsvp.confirmation_declined_named", { name: replyName, defaultValue: "Thank you for letting us know, {{name}}. You'll be missed." })
                     : t("rsvp.confirmation_declined", { defaultValue: "Thank you for letting us know. You'll be missed." }))}
               </p>
-              {slug && !previewMode && (
+              {slug && !previewMode && !sharedToken && (
                 <a
                   href={`/w/${encodeURIComponent(slug)}`}
                   className="mb-4 inline-flex w-full items-center justify-center rounded-lg px-4 py-3 text-sm font-semibold transition-opacity hover:opacity-90"

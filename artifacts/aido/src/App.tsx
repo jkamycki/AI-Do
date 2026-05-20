@@ -1695,6 +1695,7 @@ function Router() {
       <Route path="/collect/:token" component={GuestCollect} />
       <Route path="/rsvp/shared/:slug" component={SharedRsvp} />
       <Route path="/rsvp/:token" component={Rsvp} />
+      <Route path="/save-the-date/shared-invite/:slug" component={SaveTheDate} />
       <Route path="/save-the-date/shared/:slug" component={SaveTheDate} />
       <Route path="/save-the-date/:token" component={SaveTheDate} />
       <Route path="/w/:slug" component={PublicWebsite} />

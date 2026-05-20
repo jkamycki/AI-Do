@@ -21,25 +21,21 @@ function setMeta(name: string, content: string, isProperty = false) {
 }
 
 export default function SharedRsvp() {
-  const [, params] = useRoute("/rsvp/shared/:slug");
-  const slug = params?.slug ?? "";
+  const [, params] = useRoute("/rsvp/shared/:token");
+  const token = params?.token ?? "";
   const [data, setData] = useState<PublicSitePayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!slug) return;
+    if (!token) return;
     setLoading(true);
     setError(null);
     setData(null);
-    apiFetch(`/api/website/public/${encodeURIComponent(slug)}`)
+    apiFetch(`/api/invitation-shares/${encodeURIComponent(token)}`)
       .then(async (res) => {
-        if (res.status === 401) {
-          setError("This RSVP page is password protected. Please use the wedding website link shared by the couple.");
-          return;
-        }
         if (res.status === 404) {
-          setError("This RSVP page doesn't exist or hasn't been published yet.");
+          setError("This RSVP page doesn't exist or is no longer available.");
           return;
         }
         if (!res.ok) {
@@ -50,7 +46,7 @@ export default function SharedRsvp() {
       })
       .catch(() => setError("Failed to load this RSVP page. Please try again later."))
       .finally(() => setLoading(false));
-  }, [slug]);
+  }, [token]);
 
   useEffect(() => {
     if (!data) {
@@ -91,7 +87,7 @@ export default function SharedRsvp() {
 
   return (
     <main className="min-h-screen" style={{ background: data.customText._rsvpBg || data.colorPalette.background }}>
-      <RsvpFlow data={data} slug={slug} />
+      <RsvpFlow data={data} slug={token} sharedToken={token} />
     </main>
   );
 }

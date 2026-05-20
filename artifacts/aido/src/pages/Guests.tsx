@@ -1839,13 +1839,16 @@ export default function Guests({
   };
 
   const allGuests = (data?.guests ?? []) as Guest[];
-  const { data: weddingWebsite } = useQuery({
-    queryKey: ["wedding-website-share-link"],
+  const { data: invitationShareLinks } = useQuery({
+    queryKey: ["invitation-share-links"],
     queryFn: async () => {
-      const res = await authFetch("/api/website/me");
-      if (res.status === 404) return null;
-      if (!res.ok) throw new Error("Failed to load wedding website");
-      return res.json() as Promise<{ slug?: string; published?: boolean }>;
+      const res = await authFetch("/api/invitation-shares/links");
+      if (!res.ok) throw new Error("Failed to load shared invitation links");
+      return res.json() as Promise<{
+        rsvpUrl: string;
+        reminderUrl: string;
+        saveTheDateUrl: string;
+      }>;
     },
     retry: false,
   });
@@ -2009,14 +2012,15 @@ export default function Guests({
     setBulkLinks([]);
     setBulkLinksLoading(true);
     try {
-      if (!weddingWebsite?.slug || !weddingWebsite.published) {
-        throw new Error("Publish your wedding website first so guests can open this shared link.");
+      if (!invitationShareLinks) {
+        throw new Error("Shared invitation links are still loading. Please try again.");
       }
-      const origin = window.location.origin;
       const url =
         mode === "saveTheDate"
-          ? `${origin}/save-the-date/shared/${encodeURIComponent(weddingWebsite.slug)}`
-          : `${origin}/rsvp/shared/${encodeURIComponent(weddingWebsite.slug)}`;
+          ? invitationShareLinks.saveTheDateUrl
+          : mode === "reminder"
+            ? invitationShareLinks.reminderUrl
+            : invitationShareLinks.rsvpUrl;
       setBulkLinks([{ guestId: 0, name: "Shared guest link", url }]);
     } catch (err) {
       toast({

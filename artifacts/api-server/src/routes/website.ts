@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { scrypt, randomBytes, timingSafeEqual } from "node:crypto";
+import { scrypt, randomBytes, timingSafeEqual, createHmac } from "node:crypto";
 import { promisify } from "node:util";
 import rateLimit from "express-rate-limit";
 import { db, weddingWebsites, weddingProfiles, guests, websiteRsvps, weddingParty, hotelBlocks, invitationCustomizations } from "@workspace/db";
@@ -57,6 +57,39 @@ const router = Router();
 // ---------- helpers ----------
 
 const DEFAULT_WEBSITE_HERO_IMAGE = "/images/default-wedding-couple.jpg";
+const INVITATION_SHARE_SECRET = process.env.INVITATION_SHARE_SECRET || process.env.SESSION_SECRET || process.env.JWT_SECRET || "aido-local-invitation-share-secret";
+
+function buildOrigin(req: import("express").Request): string {
+  const proto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0]?.trim() || req.protocol;
+  const host = (req.headers["x-forwarded-host"] as string)?.split(",")[0]?.trim() || req.get("host") || "";
+  return `${proto}://${host}`;
+}
+
+function buildFrontendOrigin(req: import("express").Request): string {
+  const fromEnv = process.env.FRONTEND_URL?.trim();
+  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  return buildOrigin(req);
+}
+
+function signInvitationShare(profileId: number): string {
+  const payload = Buffer.from(String(profileId), "utf8").toString("base64url");
+  const sig = createHmac("sha256", INVITATION_SHARE_SECRET).update(payload).digest("base64url").slice(0, 32);
+  return `${payload}.${sig}`;
+}
+
+function verifyInvitationShare(token: string): number | null {
+  const [payload, sig] = String(token || "").split(".");
+  if (!payload || !sig) return null;
+  const expected = createHmac("sha256", INVITATION_SHARE_SECRET).update(payload).digest("base64url").slice(0, 32);
+  try {
+    if (!timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+  } catch {
+    return null;
+  }
+  const raw = Buffer.from(payload, "base64url").toString("utf8");
+  const profileId = Number(raw);
+  return Number.isFinite(profileId) && profileId > 0 ? profileId : null;
+}
 
 const SLUG_ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789";
 
@@ -207,6 +240,106 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
       venueState: profile.venueState,
     },
   };
+}
+
+async function buildInvitationSharePayload(profileId: number) {
+  const [profile] = await db
+    .select()
+    .from(weddingProfiles)
+    .where(eq(weddingProfiles.id, profileId))
+    .limit(1);
+  if (!profile) return null;
+
+  const hotelOptions = await db
+    .select({
+      id: hotelBlocks.id,
+      hotelName: hotelBlocks.hotelName,
+      bookingLink: hotelBlocks.bookingLink,
+      discountCode: hotelBlocks.discountCode,
+      groupName: hotelBlocks.groupName,
+      cutoffDate: hotelBlocks.cutoffDate,
+      address: hotelBlocks.address,
+      city: hotelBlocks.city,
+      state: hotelBlocks.state,
+      zip: hotelBlocks.zip,
+    })
+    .from(hotelBlocks)
+    .where(eq(hotelBlocks.profileId, profile.id))
+    .orderBy(hotelBlocks.createdAt);
+
+  const [invitationCustomization] = await db
+    .select({ customColors: invitationCustomizations.customColors })
+    .from(invitationCustomizations)
+    .where(eq(invitationCustomizations.profileId, profile.id))
+    .limit(1);
+  const invitationColors = (invitationCustomization?.customColors ?? {}) as Record<string, unknown>;
+  const customText: Record<string, string> = {
+    rsvp_title: "RSVP",
+    rsvp_subtitle: "Will you be joining us?",
+    rsvp_intro: "Find your name on the guest list and let us know if you can make it.",
+  };
+  if (hotelOptions.length > 0) customText._rsvpAskHotel = "true";
+  if (invitationColors.rsvpHotelBlockId !== undefined && invitationColors.rsvpHotelBlockId !== null) {
+    customText._rsvpHotelBlockId = String(invitationColors.rsvpHotelBlockId);
+  }
+
+  return {
+    slug: signInvitationShare(profile.id),
+    theme: "classic",
+    layoutStyle: "standard",
+    font: "Playfair Display",
+    accentColor: "#8D294D",
+    colorPalette: {
+      primary: "#8D294D",
+      secondary: "#E6A6B7",
+      accent: "#B16C8E",
+      neutral: "#F2E2C6",
+      background: "#FFF7F2",
+      text: "#3B1C2B",
+    },
+    sectionsEnabled: {
+      welcome: false,
+      story: false,
+      schedule: false,
+      travel: false,
+      registry: false,
+      faq: false,
+      gallery: false,
+      weddingParty: false,
+      rsvp: true,
+    },
+    customText,
+    textStyles: {},
+    textPositions: {},
+    galleryImages: [],
+    heroImages: [],
+    heroImage: defaultHeroImageFor(profile),
+    portalParty: [],
+    hotelOptions,
+    mealOptions: normalizeMealOptions(invitationColors.rsvpMealOptions),
+    couple: {
+      partner1Name: profile.partner1Name,
+      partner2Name: profile.partner2Name,
+      weddingDate: profile.weddingDate,
+      ceremonyTime: profile.ceremonyTime,
+      receptionTime: profile.receptionTime,
+      venue: profile.venue,
+      location: profile.location,
+      venueCity: profile.venueCity,
+      venueState: profile.venueState,
+    },
+  };
+}
+
+async function resolveInvitationShare(token: string) {
+  const profileId = verifyInvitationShare(token);
+  if (!profileId) return null;
+  const [profile] = await db
+    .select({ id: weddingProfiles.id })
+    .from(weddingProfiles)
+    .where(eq(weddingProfiles.id, profileId))
+    .limit(1);
+  return profile ?? null;
 }
 
 // ---------- POST /api/website/create ----------
@@ -426,6 +559,217 @@ router.put("/website/slug", requireAuth, async (req, res) => {
   } catch (err) {
     req.log.error(err, "updateSlug failed");
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/invitation-shares/links", requireAuth, async (req, res) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(404).json({ error: "Wedding profile not found" });
+    const origin = buildFrontendOrigin(req);
+    const token = signInvitationShare(profile.id);
+    res.json({
+      token,
+      rsvpUrl: `${origin}/rsvp/shared/${token}`,
+      reminderUrl: `${origin}/rsvp/shared/${token}`,
+      saveTheDateUrl: `${origin}/save-the-date/shared-invite/${token}`,
+    });
+  } catch (err) {
+    req.log.error(err, "invitationShareLinks failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/invitation-shares/:token", async (req, res) => {
+  try {
+    const profile = await resolveInvitationShare(String(req.params.token ?? ""));
+    if (!profile) return res.status(404).json({ error: "Not found" });
+    const payload = await buildInvitationSharePayload(profile.id);
+    if (!payload) return res.status(404).json({ error: "Not found" });
+    res.json(payload);
+  } catch (err) {
+    req.log.error(err, "invitationSharePayload failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/invitation-shares/:token/guests/search", guestSearchLimiter, async (req, res) => {
+  try {
+    const profile = await resolveInvitationShare(String(req.params.token ?? ""));
+    if (!profile) return res.status(404).json({ error: "Not found" });
+    const q = String(req.query.q ?? "").trim();
+    if (q.length < 2) return res.json({ matches: [] });
+    const rows = await db
+      .select({ id: guests.id, name: guests.name })
+      .from(guests)
+      .where(and(eq(guests.profileId, profile.id), ilike(guests.name, `%${q.replace(/[%_]/g, "\\$&")}%`)))
+      .limit(10);
+    res.json({ matches: rows });
+  } catch (err) {
+    req.log.error(err, "invitationShareGuestSearch failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/invitation-shares/:token/guests/:guestId", guestSearchLimiter, async (req, res) => {
+  try {
+    const profile = await resolveInvitationShare(String(req.params.token ?? ""));
+    if (!profile) return res.status(404).json({ error: "Not found" });
+    const guestId = parseInt(String(req.params.guestId), 10);
+    if (!Number.isFinite(guestId)) return res.status(400).json({ error: "Bad guest id" });
+    const [guest] = await db
+      .select()
+      .from(guests)
+      .where(and(eq(guests.id, guestId), eq(guests.profileId, profile.id)))
+      .limit(1);
+    if (!guest) return res.status(404).json({ error: "Guest not found" });
+    if (normalizeGuestLookupName(req.query.name) !== normalizeGuestLookupName(guest.name)) {
+      return res.status(403).json({ error: "Please select your name from the guest search again." });
+    }
+    res.json({
+      id: guest.id,
+      name: guest.name,
+      rsvpStatus: guest.rsvpStatus,
+      mealChoice: guest.mealChoice,
+      dietaryNotes: guest.dietaryNotes,
+      plusOne: guest.plusOne,
+      plusOneName: guest.plusOneName,
+      plusOneMealChoice: guest.plusOneMealChoice,
+      needsHotel: guest.needsHotel,
+      bookedHotelBlockId: guest.bookedHotelBlockId,
+      bookedHotelRoomCount: guest.bookedHotelRoomCount,
+    });
+  } catch (err) {
+    req.log.error(err, "invitationShareGetGuest failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/invitation-shares/:token/rsvp/self-add", publicRsvpLimiter, async (req, res) => {
+  try {
+    const profile = await resolveInvitationShare(String(req.params.token ?? ""));
+    if (!profile) return res.status(404).json({ error: "Not found" });
+    const {
+      name,
+      email,
+      attendance,
+      mealChoice,
+      plusOne,
+      plusOneName,
+      plusOneMealChoice,
+      dietaryRestrictions,
+      hotelNeeded,
+      bookedHotelBlockId,
+      bookedHotelRoomCount,
+      message,
+    } = (req.body ?? {}) as Record<string, any>;
+
+    const cleanName = typeof name === "string" ? name.trim() : "";
+    if (!cleanName) return res.status(400).json({ error: "Please enter your full name." });
+    if (cleanName.length > 120) return res.status(400).json({ error: "Name is too long." });
+    if (attendance !== "attending" && attendance !== "declined") return res.status(400).json({ error: "Please select Attending or Declined." });
+    const cleanEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) return res.status(400).json({ error: "Email address looks invalid." });
+    const normalizeMeal = (val: unknown): string | null => {
+      if (typeof val !== "string") return null;
+      const trimmed = val.trim().toLowerCase();
+      if (!trimmed || trimmed === "none" || trimmed === "no_preference") return null;
+      return val.trim();
+    };
+    const isAttending = attendance === "attending";
+    const wantsPlusOne = isAttending && plusOne === true;
+    const hotelUpdate = await normalizeHotelRsvp(profile.id, attendance, hotelNeeded, bookedHotelBlockId, bookedHotelRoomCount);
+    const [created] = await db.insert(guests).values({
+      profileId: profile.id,
+      name: cleanName,
+      email: cleanEmail || null,
+      rsvpStatus: attendance,
+      mealChoice: isAttending ? normalizeMeal(mealChoice) : null,
+      dietaryNotes: typeof dietaryRestrictions === "string" && dietaryRestrictions.trim() ? dietaryRestrictions.trim() : null,
+      plusOne: wantsPlusOne,
+      plusOneName: wantsPlusOne && typeof plusOneName === "string" && plusOneName.trim() ? plusOneName.trim() : null,
+      plusOneMealChoice: wantsPlusOne ? normalizeMeal(plusOneMealChoice) : null,
+      notes: "Guest used RSVP anyway because they could not find themselves on the guest list. Review before sending future invites.",
+      rsvpMessage: typeof message === "string" && message.trim() ? message.trim().slice(0, 1000) : null,
+      needsHotel: hotelUpdate.needsHotel,
+      bookedHotelBlockId: hotelUpdate.bookedHotelBlockId,
+      bookedHotelRoomCount: hotelUpdate.bookedHotelRoomCount,
+      source: "rsvp_self_add",
+    }).returning();
+    res.json({ success: true, status: attendance, guestId: created.id });
+  } catch (err) {
+    req.log.error(err, "invitationShareSelfAdd failed");
+    res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
+  }
+});
+
+router.post("/invitation-shares/:token/rsvp", publicRsvpLimiter, async (req, res) => {
+  try {
+    const profile = await resolveInvitationShare(String(req.params.token ?? ""));
+    if (!profile) return res.status(404).json({ error: "Not found" });
+    const {
+      guestId,
+      guestName,
+      attendance,
+      mealChoice,
+      plusOne,
+      plusOneName,
+      plusOneMealChoice,
+      dietaryRestrictions,
+      hotelNeeded,
+      bookedHotelBlockId,
+      bookedHotelRoomCount,
+      message,
+    } = (req.body ?? {}) as Record<string, any>;
+    if (!guestId || !Number.isFinite(Number(guestId))) return res.status(400).json({ error: "Missing guestId" });
+    if (attendance !== "attending" && attendance !== "declined") return res.status(400).json({ error: "Please select Attending or Declined." });
+    const [guest] = await db
+      .select()
+      .from(guests)
+      .where(and(eq(guests.id, Number(guestId)), eq(guests.profileId, profile.id)))
+      .limit(1);
+    if (!guest) return res.status(404).json({ error: "Guest not found on this guest list." });
+    if (normalizeGuestLookupName(guestName) !== normalizeGuestLookupName(guest.name)) {
+      return res.status(403).json({ error: "Please select your name from the guest search again." });
+    }
+    const normalizeMeal = (val: unknown): string | null => {
+      if (typeof val !== "string") return null;
+      const trimmed = val.trim().toLowerCase();
+      if (!trimmed || trimmed === "none" || trimmed === "no_preference") return null;
+      return val.trim();
+    };
+    const updateData: Partial<typeof guests.$inferInsert> = {
+      rsvpStatus: attendance,
+      dietaryNotes: typeof dietaryRestrictions === "string" && dietaryRestrictions.trim() ? dietaryRestrictions.trim() : null,
+    };
+    if (typeof message === "string") updateData.rsvpMessage = message.trim().slice(0, 1000) || null;
+    if (attendance === "attending") {
+      updateData.mealChoice = normalizeMeal(mealChoice);
+      if (hotelNeeded !== undefined || bookedHotelBlockId !== undefined) {
+        Object.assign(updateData, await normalizeHotelRsvp(profile.id, attendance, hotelNeeded, bookedHotelBlockId, bookedHotelRoomCount));
+      }
+      if (plusOne !== undefined) {
+        updateData.plusOne = !!plusOne;
+        const finalName = typeof plusOneName === "string" ? plusOneName.trim() : "";
+        updateData.plusOneName = plusOne && finalName ? finalName : null;
+        updateData.plusOneMealChoice = plusOne ? normalizeMeal(plusOneMealChoice) : null;
+      }
+    } else {
+      updateData.plusOne = false;
+      updateData.plusOneName = null;
+      updateData.plusOneMealChoice = null;
+      updateData.mealChoice = null;
+      updateData.needsHotel = false;
+      updateData.bookedHotelBlockId = null;
+      updateData.bookedHotelRoomCount = null;
+    }
+    await db.update(guests).set(updateData).where(and(eq(guests.id, guest.id), eq(guests.profileId, profile.id)));
+    res.json({ success: true, status: attendance });
+  } catch (err) {
+    req.log.error(err, "invitationShareRsvpSubmit failed");
+    res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" });
   }
 });
 
