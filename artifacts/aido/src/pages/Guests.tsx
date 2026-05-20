@@ -2907,15 +2907,15 @@ export default function Guests({
 
       {allGuests.length > 0 && (
         <div className="rounded-xl border border-primary/15 bg-[#FFF8F1]/85 p-3 shadow-sm dark:border-primary/25 dark:bg-card/80">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-3">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-primary/80">
               Bulk email
             </p>
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-3 lg:grid-cols-3">
               <Button
                 variant="outline"
                 size="sm"
-                className="h-10 justify-between gap-3 whitespace-nowrap border-primary/25 bg-white/65 text-[#6F3E54] hover:bg-primary/10 hover:text-primary dark:bg-card dark:text-primary"
+                className="h-12 w-full justify-between gap-4 whitespace-nowrap border-primary/25 bg-white/65 px-4 text-[#6F3E54] hover:bg-primary/10 hover:text-primary dark:bg-card dark:text-primary"
                 disabled={
                   sendingSaveTheDates || saveTheDateEligible.length === 0
                 }
@@ -2935,7 +2935,7 @@ export default function Guests({
               </Button>
               <Button
                 size="sm"
-                className="h-10 justify-between gap-3 whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
+                className="h-12 w-full justify-between gap-4 whitespace-nowrap bg-primary px-4 text-primary-foreground hover:bg-primary/90"
                 disabled={sendingInvitations || invitationEligible.length === 0}
                 onClick={() => setConfirmBulkSend("invitation")}
               >
@@ -2954,7 +2954,7 @@ export default function Guests({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-10 justify-between gap-3 whitespace-nowrap text-primary/70 hover:bg-primary/10 hover:text-primary disabled:bg-transparent disabled:text-muted-foreground/55 sm:col-span-2 xl:col-span-1"
+                className="h-12 w-full justify-between gap-4 whitespace-nowrap px-4 text-primary/70 hover:bg-primary/10 hover:text-primary disabled:bg-transparent disabled:text-muted-foreground/55"
                 disabled={sendingReminders || reminderEligible.length === 0}
                 onClick={() => setConfirmBulkSend("reminder")}
               >
