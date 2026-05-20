@@ -3027,9 +3027,17 @@ export default function Guests({
       {allGuests.length > 0 && (
         <div className="rounded-xl border border-primary/15 bg-[#FFF8F1]/85 p-3 shadow-sm dark:border-primary/25 dark:bg-card/80">
           <div className="flex flex-col gap-3">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-primary/80">
-              Bulk email <span className="text-muted-foreground">({selectedGuestIds.size} selected)</span>
-            </p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-primary/80">
+                Bulk email
+              </p>
+              <Badge
+                variant="secondary"
+                className="w-fit border-primary/15 bg-primary/10 px-3 py-1 text-primary"
+              >
+                {selectedGuestIds.size} selected
+              </Badge>
+            </div>
             <div className="grid gap-3 lg:grid-cols-3">
               <div className="rounded-lg border border-primary/15 bg-white/55 p-2 shadow-sm">
                 <Button
@@ -3134,7 +3142,13 @@ export default function Guests({
                 <p className="text-xs font-semibold text-primary">
                   Selected guests
                 </p>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge
+                    variant="secondary"
+                    className="border-primary/10 bg-primary/10 text-primary"
+                  >
+                    {selectedGuests.length} selected
+                  </Badge>
                   <Button
                     type="button"
                     variant="ghost"
@@ -3484,13 +3498,21 @@ export default function Guests({
         </Card>
       ) : (
         <Card className="border-border/60 shadow-sm">
-          <CardHeader className="pb-0">
-            <CardTitle className="text-base font-medium text-muted-foreground">
-              {filtered.length === 1
-                ? t("guests.guest_count", { count: filtered.length })
-                : t("guests.guests_count", { count: filtered.length })}{" "}
-              {rsvpFilter !== "all" || search ? t("guests.filtered") : ""}
-            </CardTitle>
+          <CardHeader className="border-b border-border/60 bg-[#FFF8F1]/70 px-4 py-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <CardTitle className="text-sm font-semibold text-primary">
+                Guest list
+              </CardTitle>
+              <Badge
+                variant="secondary"
+                className="w-fit border-primary/15 bg-primary/10 px-3 py-1 text-primary"
+              >
+                {filtered.length === 1
+                  ? t("guests.guest_count", { count: filtered.length })
+                  : t("guests.guests_count", { count: filtered.length })}
+                {rsvpFilter !== "all" || search ? ` ${t("guests.filtered")}` : ""}
+              </Badge>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             <div className="sm:hidden space-y-3 p-3">
