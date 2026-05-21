@@ -69,6 +69,7 @@ interface VendorFinancials {
 }
 
 type RecentPaymentUndoMap = Record<string, { run: () => void }>;
+const PAYMENT_UNDO_MS = 15000;
 
 interface ManualExpenseFormState {
   name: string;
@@ -846,7 +847,7 @@ export default function Budget() {
         return next;
       });
       delete undoTimersRef.current[key];
-    }, 15000);
+    }, PAYMENT_UNDO_MS);
   };
 
   const clearPaymentUndo = (key: string) => {
@@ -889,11 +890,19 @@ export default function Budget() {
   };
 
   const showManualUndoToast = (expense: typeof manualExpenses[number], title: string) => {
-    toast({
+    let undoToast: ReturnType<typeof toast> | undefined;
+    undoToast = toast({
       title,
       description: t("budget.toast_undo_hint", { defaultValue: "Clicked by accident? Use Undo payment in this row or the button here." }),
+      duration: PAYMENT_UNDO_MS,
       action: (
-        <ToastAction altText={t("common.undo", { defaultValue: "Undo" })} onClick={() => undoManualExpenseUpdate(expense)}>
+        <ToastAction
+          altText={t("common.undo", { defaultValue: "Undo" })}
+          onClick={() => {
+            undoManualExpenseUpdate(expense);
+            undoToast?.dismiss();
+          }}
+        >
           {t("budget.undo_payment", { defaultValue: "Undo payment" })}
         </ToastAction>
       ),
@@ -951,11 +960,19 @@ export default function Budget() {
   };
 
   const showVendorUndoToast = (title: string, undo: () => void) => {
-    toast({
+    let undoToast: ReturnType<typeof toast> | undefined;
+    undoToast = toast({
       title,
       description: t("budget.toast_undo_hint", { defaultValue: "Clicked by accident? Use Undo payment in this row or the button here." }),
+      duration: PAYMENT_UNDO_MS,
       action: (
-        <ToastAction altText={t("common.undo", { defaultValue: "Undo" })} onClick={undo}>
+        <ToastAction
+          altText={t("common.undo", { defaultValue: "Undo" })}
+          onClick={() => {
+            undo();
+            undoToast?.dismiss();
+          }}
+        >
           {t("budget.undo_payment", { defaultValue: "Undo payment" })}
         </ToastAction>
       ),
