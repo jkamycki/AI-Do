@@ -448,6 +448,7 @@
     "col_paid": "Paid",
     "col_remaining": "Remaining",
     "col_next_payment": "Next payment",
+    "col_payment_actions": "Payment actions",
     "col_progress": "Progress",
     "col_view": "View",
     "col_expense": "Expense",

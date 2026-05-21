@@ -239,7 +239,7 @@ function MarkPaidInFullButton({
       type="button"
       size="sm"
       variant="outline"
-      className="h-9 min-w-[13.5rem] justify-start gap-2 rounded-md border-emerald-500/40 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+      className="h-9 w-full justify-start gap-2 rounded-md border-emerald-500/40 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
       onClick={onClick}
     >
       <Square className="h-4 w-4 shrink-0" />
@@ -248,15 +248,35 @@ function MarkPaidInFullButton({
   );
 }
 
+function PaymentCompleteButton({
+  onClick,
+  t,
+}: {
+  onClick: () => void;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}) {
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      className="h-9 w-full justify-start gap-2 rounded-md border-emerald-500/40 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
+      onClick={onClick}
+      title={t("budget.mark_paid_title", { defaultValue: "Mark this payment complete (adds it to Paid total)" })}
+    >
+      <Square className="h-4 w-4 shrink-0" />
+      {t("budget.mark_paid", { defaultValue: "Payment Complete" })}
+    </Button>
+  );
+}
+
 function BalanceRemainingActions({
   remaining,
   onSchedule,
-  onPaidInFull,
   t,
 }: {
   remaining: number;
   onSchedule: () => void;
-  onPaidInFull: () => void;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
   return (
@@ -275,7 +295,6 @@ function BalanceRemainingActions({
           <Bell className="mr-1 h-3.5 w-3.5" />
           {t("budget.schedule_payment", { defaultValue: "Schedule payment" })}
         </Button>
-        <MarkPaidInFullButton onClick={onPaidInFull} t={t} />
       </div>
     </div>
   );
@@ -404,16 +423,7 @@ function NextPaymentDisplay({
         <div className="flex flex-wrap items-center gap-2 pl-5">
           {amount > 0 && <span className="tabular-nums text-sm font-semibold">{formatMoney(amount)}</span>}
           {onMarkPaid && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-9 min-w-[13.5rem] justify-start gap-2 rounded-md border-emerald-500/40 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
-              onClick={onMarkPaid}
-              title={t("budget.mark_paid_title", { defaultValue: "Mark this payment complete (adds it to Paid total)" })}
-            >
-              <Square className="h-4 w-4 shrink-0" />
-              {t("budget.mark_paid", { defaultValue: "Payment Complete" })}
-            </Button>
+            <PaymentCompleteButton onClick={onMarkPaid} t={t} />
           )}
         </div>
       )}
@@ -1510,6 +1520,7 @@ export default function Budget() {
                     <TableHead className="text-right font-bold">{t("budget.col_paid")}</TableHead>
                     <TableHead className="text-right font-bold">{t("budget.col_remaining")}</TableHead>
                     <TableHead className="font-bold">{t("budget.col_next_payment")}</TableHead>
+                    <TableHead className="min-w-[180px] font-bold">{t("budget.col_payment_actions", { defaultValue: "Payment actions" })}</TableHead>
                     <TableHead className="min-w-[180px] font-bold">{t("budget.col_progress")}</TableHead>
                     <TableHead className="text-right font-bold">{t("budget.col_actions", { defaultValue: "Actions" })}</TableHead>
                   </TableRow>
@@ -1538,26 +1549,38 @@ export default function Budget() {
                                     <NextPaymentDisplay
                                       date={v.nextPaymentDue}
                                       amount={v.nextPaymentAmount ?? remaining}
-                                      onMarkPaid={() => handleVendorPaymentPaid(v.id, {
-                                        id: v.nextPaymentId,
-                                        dueDate: v.nextPaymentDue,
-                                        amount: v.nextPaymentAmount ?? remaining,
-                                      })}
                                       t={t}
                                     />
-                                    <MarkPaidInFullButton onClick={() => handleVendorPaidInFull(v.id)} t={t} />
                                   </>
                                 ) : (
                                   <BalanceRemainingActions
                                     remaining={remaining}
                                     onSchedule={() => openVendorBudgetEdit(v, { scheduleNextPayment: true })}
-                                    onPaidInFull={() => handleVendorPaidInFull(v.id)}
                                     t={t}
                                   />
                                 )}
                               </>
                             )}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {remaining <= 0 ? (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          ) : (
+                            <div className="flex min-w-[180px] flex-col gap-2">
+                              {v.nextPaymentDue && (
+                                <PaymentCompleteButton
+                                  onClick={() => handleVendorPaymentPaid(v.id, {
+                                    id: v.nextPaymentId,
+                                    dueDate: v.nextPaymentDue,
+                                    amount: v.nextPaymentAmount ?? remaining,
+                                  })}
+                                  t={t}
+                                />
+                              )}
+                              <MarkPaidInFullButton onClick={() => handleVendorPaidInFull(v.id)} t={t} />
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">
@@ -1780,6 +1803,7 @@ export default function Budget() {
                     <TableHead className="text-right font-bold">{t("budget.col_paid")}</TableHead>
                     <TableHead className="text-right font-bold">{t("budget.col_remaining")}</TableHead>
                     <TableHead className="font-bold">{t("budget.col_next_payment")}</TableHead>
+                    <TableHead className="min-w-[180px] font-bold">{t("budget.col_payment_actions", { defaultValue: "Payment actions" })}</TableHead>
                     <TableHead className="min-w-[180px] font-bold">{t("budget.col_progress")}</TableHead>
                     <TableHead className="font-bold">{t("budget.receipt_label")}</TableHead>
                     <TableHead className="text-right font-bold">{t("budget.col_actions")}</TableHead>
@@ -1830,16 +1854,6 @@ export default function Budget() {
                                       {amount > 0 && (
                                         <div className="flex items-center gap-1.5">
                                           <span className="text-xs tabular-nums text-foreground">{formatMoney(amount)}</span>
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="h-9 min-w-[13.5rem] justify-start gap-2 rounded-md border-emerald-500/40 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
-                                            onClick={() => handleMarkPaid(m.id)}
-                                            title={t("budget.mark_paid_title", { defaultValue: "Mark this payment complete (adds it to Paid total)" })}
-                                          >
-                                            <Square className="h-4 w-4 shrink-0" />
-                                            {t("budget.mark_paid", { defaultValue: "Payment Complete" })}
-                                          </Button>
                                         </div>
                                       )}
                                     </div>
@@ -1848,14 +1862,22 @@ export default function Budget() {
                                   <BalanceRemainingActions
                                     remaining={remaining}
                                     onSchedule={() => openEdit(m, { scheduleNextPayment: true })}
-                                    onPaidInFull={() => handleManualPaidInFull(m)}
                                     t={t}
                                   />
                                 )}
-                                {m.nextPaymentDue && <MarkPaidInFullButton onClick={() => handleManualPaidInFull(m)} t={t} />}
                               </>
                             )}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {remaining <= 0 ? (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          ) : (
+                            <div className="flex min-w-[180px] flex-col gap-2">
+                              {m.nextPaymentDue && <PaymentCompleteButton onClick={() => handleMarkPaid(m.id)} t={t} />}
+                              <MarkPaidInFullButton onClick={() => handleManualPaidInFull(m)} t={t} />
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">
