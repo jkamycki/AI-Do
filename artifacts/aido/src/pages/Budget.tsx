@@ -30,7 +30,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ToastAction } from "@/components/ui/toast";
-import { DollarSign, Plus, Trash2, Pencil, ArrowUpRight, Sparkles, Paperclip, X, AlertTriangle, Bell, CheckCircle2, FileDown, FileSpreadsheet } from "lucide-react";
+import { DollarSign, Plus, Trash2, Pencil, ArrowUpRight, Sparkles, Paperclip, X, AlertTriangle, Bell, CheckCircle2, SquareCheck, FileDown, FileSpreadsheet } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 const MANUAL_CATEGORIES = [
@@ -239,11 +239,11 @@ function MarkPaidInFullButton({
       type="button"
       size="sm"
       variant="outline"
-      className="h-7 border-emerald-500/40 bg-emerald-50 px-2.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+      className="h-9 gap-2 rounded-md border-emerald-500/40 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
       onClick={onClick}
     >
-      <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-      {t("budget.mark_paid_in_full", { defaultValue: "Mark paid in full" })}
+      <SquareCheck className="h-4 w-4 shrink-0" />
+      {t("budget.mark_paid_in_full", { defaultValue: "Paid in full" })}
     </Button>
   );
 }
@@ -401,16 +401,17 @@ function NextPaymentDisplay({
         </span>
       </div>
       {(amount > 0 || onMarkPaid) && (
-        <div className="flex flex-wrap items-center gap-1.5 pl-5">
-          {amount > 0 && <span className="tabular-nums font-semibold">{formatMoney(amount)}</span>}
+        <div className="flex flex-wrap items-center gap-2 pl-5">
+          {amount > 0 && <span className="tabular-nums text-sm font-semibold">{formatMoney(amount)}</span>}
           {onMarkPaid && (
             <Button
               size="sm"
               variant="outline"
-              className="h-6 px-2 text-[10px] border-emerald-500/40 bg-background/80 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-300"
+              className="h-9 gap-2 rounded-md border-emerald-500/40 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
               onClick={onMarkPaid}
               title={t("budget.mark_paid_title", { defaultValue: "Mark this payment complete (adds it to Paid total)" })}
             >
+              <SquareCheck className="h-4 w-4 shrink-0" />
               {t("budget.mark_paid", { defaultValue: "Payment Complete" })}
             </Button>
           )}
@@ -1832,10 +1833,11 @@ export default function Budget() {
                                           <Button
                                             size="sm"
                                             variant="outline"
-                                            className="h-6 px-2 text-[10px] border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400"
+                                            className="h-9 gap-2 rounded-md border-emerald-500/40 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
                                             onClick={() => handleMarkPaid(m.id)}
                                             title={t("budget.mark_paid_title", { defaultValue: "Mark this payment complete (adds it to Paid total)" })}
                                           >
+                                            <SquareCheck className="h-4 w-4 shrink-0" />
                                             {t("budget.mark_paid", { defaultValue: "Payment Complete" })}
                                           </Button>
                                         </div>

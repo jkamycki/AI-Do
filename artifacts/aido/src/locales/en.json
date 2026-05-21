@@ -413,6 +413,7 @@
     "paid_off": "Paid off",
     "mark_paid": "Payment Complete",
     "mark_paid_title": "Mark this payment complete (adds it to Paid total)",
+    "mark_paid_in_full": "Paid in full",
     "saved_toast": "Expense saved",
     "deleted_toast": "Expense deleted",
     "save_error": "Could not save expense",
