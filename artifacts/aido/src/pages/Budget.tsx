@@ -250,7 +250,7 @@ function MarkPaidInFullButton({
       onClick={onClick}
     >
       <Square className="h-4 w-4 shrink-0" />
-      {t("budget.mark_paid_in_full", { defaultValue: "Paid Remaining" })}
+      {t("budget.mark_paid_in_full", { defaultValue: "Paid Remaining Balance" })}
     </Button>
   );
 }
@@ -275,7 +275,7 @@ function PaymentCompleteButton({
     >
       <Square className="h-4 w-4 shrink-0" />
       {paysRemaining
-        ? t("budget.mark_remaining_paid", { defaultValue: "Paid Remaining" })
+        ? t("budget.mark_remaining_paid", { defaultValue: "Paid Remaining Balance" })
         : t("budget.mark_paid", { defaultValue: "Payment Complete" })}
     </Button>
   );
