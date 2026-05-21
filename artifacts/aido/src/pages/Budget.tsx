@@ -408,25 +408,32 @@ function NextPaymentDisplay({
   if (!date) return <span className="text-muted-foreground text-xs">-</span>;
   const daysUntil = daysUntilDate(date);
   const isOverdue = daysUntil < 0;
-  const tone = toneClass ?? "text-red-700 dark:text-red-300";
+  const isDueSoon = daysUntil >= 0 && daysUntil <= 7;
+  const tone = toneClass ?? (
+    isOverdue
+      ? "text-red-700 dark:text-red-300"
+      : isDueSoon
+        ? "text-amber-700 dark:text-amber-300"
+        : "text-muted-foreground"
+  );
   const dueStatus = isOverdue
     ? t("vendors.payment_overdue_banner", { n: Math.abs(daysUntil), defaultValue: `Payment overdue by ${Math.abs(daysUntil)} day(s)` })
     : daysUntil === 0
       ? t("vendors.payment_due_today_banner", { defaultValue: "Payment due today" })
       : t("vendors.payment_due_in_banner", { n: daysUntil, defaultValue: `Payment in ${daysUntil} day(s)` });
   return (
-    <div className={`inline-flex min-w-[150px] max-w-[220px] flex-col gap-1.5 text-xs ${tone}`}>
-      <div className="flex items-start gap-1.5">
+    <div className={`inline-flex min-w-[150px] max-w-[220px] flex-col gap-2 rounded-md border border-border/70 bg-muted/25 px-2.5 py-2 text-xs ${tone}`}>
+      <div className="flex items-start gap-2">
         {isOverdue
-          ? <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-          : <Bell className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />}
+          ? <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          : <Bell className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
         <span className="min-w-0 leading-tight">
           <span className="block font-semibold">{dueStatus}</span>
-          <span className="block text-[11px] font-medium opacity-85">{formatDate(date)}</span>
+          <span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">{formatDate(date)}</span>
         </span>
       </div>
       {(amount > 0 || onMarkPaid) && (
-        <div className="flex flex-wrap items-center gap-2 pl-5">
+        <div className="flex flex-wrap items-center gap-2 pl-5 text-foreground">
           {amount > 0 && <span className="tabular-nums text-sm font-semibold">{formatMoney(amount)}</span>}
           {onMarkPaid && (
             <PaymentCompleteButton onClick={onMarkPaid} t={t} />
@@ -1840,34 +1847,13 @@ export default function Budget() {
                               <PaidInFullBadge t={t} />
                             ) : (
                               <>
-                                {m.nextPaymentDue ? (() => {
-                                  const daysUntil = daysUntilDate(m.nextPaymentDue);
-                                  const isOverdue = daysUntil < 0;
-                                  const isSoon = daysUntil >= 0 && daysUntil <= 7;
-                                  const tone = isOverdue
-                                    ? "text-red-600 dark:text-red-400 font-semibold"
-                                    : isSoon
-                                      ? "text-amber-600 dark:text-amber-400 font-medium"
-                                      : "text-muted-foreground";
-                                  const dueLabel = isOverdue
-                                    ? t("budget.due_overdue", { n: Math.abs(daysUntil), defaultValue: `${Math.abs(daysUntil)} day(s) overdue` })
-                                    : daysUntil === 0
-                                      ? t("budget.due_today", { defaultValue: "Due today" })
-                                      : isSoon
-                                        ? t("budget.due_in_days", { n: daysUntil, defaultValue: `Due in ${daysUntil} day(s)` })
-                                        : formatDate(m.nextPaymentDue);
-                                  const amount = m.nextPaymentAmount ?? 0;
-                                  return (
-                                    <div className="space-y-1">
-                                      <div className={`text-xs ${tone}`}>{dueLabel}</div>
-                                      {amount > 0 && (
-                                        <div className="flex items-center gap-1.5">
-                                          <span className="text-xs tabular-nums text-foreground">{formatMoney(amount)}</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })() : (
+                                {m.nextPaymentDue ? (
+                                  <NextPaymentDisplay
+                                    date={m.nextPaymentDue}
+                                    amount={m.nextPaymentAmount ?? 0}
+                                    t={t}
+                                  />
+                                ) : (
                                   <BalanceRemainingActions
                                     onSchedule={() => openEdit(m, { scheduleNextPayment: true })}
                                     t={t}
