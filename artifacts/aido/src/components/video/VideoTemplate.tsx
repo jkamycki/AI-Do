@@ -32,11 +32,12 @@ function useTimerPlayer() {
   return currentScene;
 }
 
-export default function VideoTemplate() {
+export default function VideoTemplate({ embedded = false }: { embedded?: boolean }) {
   const currentScene = useTimerPlayer();
+  const rootClass = `relative ${embedded ? "h-full" : "h-screen"} w-full overflow-hidden bg-[#FFF7F2] text-[#3B1C2B]`;
 
   return (
-    <div className="relative h-screen w-full overflow-hidden bg-[#FFF7F2] text-[#3B1C2B]">
+    <div className={rootClass}>
       <div className="absolute inset-0 z-0">
         <motion.div
           className="absolute inset-0 bg-[url('/images/bokeh-bg.png')] bg-cover bg-center opacity-35"

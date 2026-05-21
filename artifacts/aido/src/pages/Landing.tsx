@@ -5,6 +5,7 @@ import { ArrowDown, Calendar, CheckSquare, Clock3, Heart, Mail, ShieldCheck, Spa
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { LanguagePicker } from "@/components/LanguagePicker";
+import VideoTemplate from "@/components/video/VideoTemplate";
 import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 
 const LANG_CODE_TO_NAME: Record<string, string> = Object.fromEntries(
@@ -190,12 +191,7 @@ export default function Landing() {
             </div>
             <div className="relative overflow-hidden rounded-[32px] border border-[#E6A6B7]/55 bg-white/[0.72] p-3 shadow-[0_28px_80px_rgba(141,41,77,0.18)]">
               <div className="relative aspect-[9/16] overflow-hidden rounded-[24px] bg-[#FFF7F2] sm:aspect-video">
-                <iframe
-                  src="/promo"
-                  title="A.IDO feature preview"
-                  className="absolute inset-0 h-full w-full border-0"
-                  allow="autoplay"
-                />
+                <VideoTemplate embedded />
               </div>
             </div>
           </div>

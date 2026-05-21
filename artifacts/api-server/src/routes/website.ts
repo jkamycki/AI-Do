@@ -1,6 +1,7 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { scrypt, randomBytes, timingSafeEqual, createHmac } from "node:crypto";
 import { promisify } from "node:util";
+import { Readable } from "node:stream";
 import rateLimit from "express-rate-limit";
 import { db, weddingWebsites, weddingProfiles, guests, websiteRsvps, weddingParty, hotelBlocks, invitationCustomizations } from "@workspace/db";
 import type { WeddingProfile, WebsiteSectionsEnabled, WebsiteCustomText, WebsiteGalleryImage, WebsiteHeroImage, WebsiteTextStyles, WebsiteTextPositions } from "@workspace/db";
@@ -11,6 +12,7 @@ import { publicRsvpLimiter } from "../middlewares/rateLimiter";
 import { hasMinRole, resolveCallerRole, resolveProfile } from "../lib/workspaceAccess";
 import { sendMaintenanceIfActive } from "../lib/maintenance";
 import { getRequestLanguage } from "../lib/language";
+import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
 
 const scryptAsync = promisify(scrypt);
 
@@ -64,6 +66,7 @@ const DEFAULT_PUBLIC_ORIGIN = "https://aidowedding.net";
 const DEFAULT_API_ORIGIN = "https://api.aidowedding.net";
 const INVITATION_SHARE_SECRET = process.env.INVITATION_SHARE_SECRET || process.env.SESSION_SECRET || process.env.JWT_SECRET || process.env.CLERK_SECRET_KEY || "";
 const LOCAL_INVITATION_SHARE_SECRET = "aido-local-invitation-share-secret";
+const objectStorageService = new ObjectStorageService();
 
 function sanitizeOrigin(raw: string | undefined, fallback: string): string {
   const value = raw?.trim().replace(/\/+$/, "");
@@ -124,6 +127,83 @@ function verifyInvitationShare(token: string): number | null {
   const raw = Buffer.from(payload, "base64url").toString("utf8");
   const profileId = Number(raw);
   return Number.isFinite(profileId) && profileId > 0 ? profileId : null;
+}
+
+function normalizePrivateMediaPath(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.pathname.startsWith("/api/storage/objects/")) {
+      return `/objects/${parsed.pathname.slice("/api/storage/objects/".length)}`;
+    }
+    if (parsed.pathname.startsWith("/storage/objects/")) {
+      return `/objects/${parsed.pathname.slice("/storage/objects/".length)}`;
+    }
+    if (parsed.pathname.startsWith("/objects/")) return parsed.pathname;
+  } catch {
+    // Relative paths are handled below.
+  }
+  if (trimmed.startsWith("/api/storage/objects/")) {
+    return `/objects/${trimmed.slice("/api/storage/objects/".length).split(/[?#]/)[0]}`;
+  }
+  if (trimmed.startsWith("/storage/objects/")) {
+    return `/objects/${trimmed.slice("/storage/objects/".length).split(/[?#]/)[0]}`;
+  }
+  if (trimmed.startsWith("/objects/")) return trimmed.split(/[?#]/)[0];
+  return null;
+}
+
+function signWebsiteMedia(row: typeof weddingWebsites.$inferSelect, objectPath: string): string {
+  const payload = `${row.id}:${row.slug}:${row.password ?? ""}:${objectPath}`;
+  return createHmac("sha256", invitationShareSecret()).update(payload).digest("base64url").slice(0, 32);
+}
+
+function verifyWebsiteMedia(row: typeof weddingWebsites.$inferSelect, objectPath: string, token: unknown): boolean {
+  if (typeof token !== "string" || !token) return false;
+  const expected = signWebsiteMedia(row, objectPath);
+  try {
+    return timingSafeEqual(Buffer.from(token), Buffer.from(expected));
+  } catch {
+    return false;
+  }
+}
+
+function websiteMediaUrl(row: typeof weddingWebsites.$inferSelect, raw: string | null | undefined): string | null {
+  if (!raw) return raw ?? null;
+  const objectPath = normalizePrivateMediaPath(raw);
+  if (!objectPath) return raw;
+  const mediaPath = objectPath.slice("/objects/".length).split("/").map(encodeURIComponent).join("/");
+  const token = signWebsiteMedia(row, objectPath);
+  return `/api/website/public/${encodeURIComponent(row.slug)}/media/${mediaPath}?t=${encodeURIComponent(token)}`;
+}
+
+function mapWebsiteMedia<T extends { url: string }>(
+  row: typeof weddingWebsites.$inferSelect,
+  items: T[] | null | undefined,
+): T[] {
+  if (!Array.isArray(items)) return [];
+  return items.map((item) => ({
+    ...item,
+    url: websiteMediaUrl(row, item.url) ?? item.url,
+  }));
+}
+
+function collectWebsiteMediaPaths(
+  row: typeof weddingWebsites.$inferSelect,
+  party: Array<{ photoUrl: string | null }>,
+): Set<string> {
+  const paths = new Set<string>();
+  const add = (raw: unknown) => {
+    const path = normalizePrivateMediaPath(raw);
+    if (path) paths.add(path);
+  };
+  add(row.heroImage);
+  for (const image of row.heroImages ?? []) add(image.url);
+  for (const image of row.galleryImages ?? []) add(image.url);
+  for (const member of party) add(member.photoUrl);
+  return paths;
 }
 
 const SLUG_ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -284,10 +364,13 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
     customText,
     textStyles: row.textStyles ?? {},
     textPositions: row.textPositions ?? {},
-    galleryImages: row.galleryImages,
-    heroImages: row.heroImages ?? [],
-    heroImage: row.heroImage,
-    portalParty,
+    galleryImages: mapWebsiteMedia(row, row.galleryImages),
+    heroImages: mapWebsiteMedia(row, row.heroImages ?? []),
+    heroImage: websiteMediaUrl(row, row.heroImage) ?? row.heroImage,
+    portalParty: portalParty.map((member) => ({
+      ...member,
+      photoUrl: websiteMediaUrl(row, member.photoUrl) ?? member.photoUrl,
+    })),
     hotelOptions,
     mealOptions: normalizeMealOptions(invitationColors.rsvpMealOptions),
     couple: {
@@ -979,6 +1062,60 @@ router.post("/invitation-shares/:token/rsvp", publicRsvpLimiter, async (req, res
     res.json({ success: true, status: attendance });
   } catch (err) {
     req.log.error(err, "invitationShareRsvpSubmit failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ---------- GET /api/website/public/:slug/media/* ----------
+//
+// Public wedding sites need to show photos to unauthenticated guests, but the
+// original uploads live behind authenticated object storage. This route serves
+// only private objects that are referenced by the published site payload and
+// only with the HMAC token generated by buildPublicWebsitePayload().
+router.get("/website/public/:slug/media/*objectPath", async (req: Request, res: Response) => {
+  try {
+    if (await sendMaintenanceIfActive(res, "wedding-website")) return;
+    const slug = String(req.params.slug ?? "").toLowerCase();
+    const rawPath = req.params.objectPath;
+    const mediaPath = Array.isArray(rawPath) ? rawPath.join("/") : String(rawPath ?? "");
+    const objectPath = normalizePrivateMediaPath(`/objects/${mediaPath}`);
+    if (!slug || !objectPath) return res.status(400).json({ error: "Invalid media path" });
+    if (objectPath.includes("..") || objectPath.includes("\\")) {
+      return res.status(400).json({ error: "Invalid media path" });
+    }
+
+    const [row] = await db
+      .select()
+      .from(weddingWebsites)
+      .where(eq(weddingWebsites.slug, slug))
+      .limit(1);
+    if (!row || !row.published) return res.status(404).json({ error: "Not found" });
+    if (!verifyWebsiteMedia(row, objectPath, req.query.t)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const party = await db
+      .select({ photoUrl: weddingParty.photoUrl })
+      .from(weddingParty)
+      .where(eq(weddingParty.profileId, row.profileId));
+    if (!collectWebsiteMediaPaths(row, party).has(objectPath)) {
+      return res.status(404).json({ error: "Not found" });
+    }
+
+    const file = await objectStorageService.getObjectEntityFile(objectPath);
+    const response = await objectStorageService.downloadObject(file);
+    res.status(response.status);
+    response.headers.forEach((value, key) => res.setHeader(key, value));
+    if (response.body) {
+      Readable.fromWeb(response.body as ReadableStream<Uint8Array>).pipe(res);
+    } else {
+      res.end();
+    }
+  } catch (err) {
+    if (err instanceof ObjectNotFoundError) {
+      return res.status(404).json({ error: "Not found" });
+    }
+    req.log.error(err, "publicWebsiteMedia failed");
     res.status(500).json({ error: "Internal server error" });
   }
 });
