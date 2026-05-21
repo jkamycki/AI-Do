@@ -229,7 +229,7 @@ function PaidInFullBadge({ t }: { t: (key: string, options?: Record<string, unkn
   return (
     <Badge className="flex h-9 w-full justify-center gap-1 rounded-md border-emerald-500/30 bg-emerald-100 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100">
       <CheckCircle2 className="h-3.5 w-3.5" />
-      {t("budget.paid_in_full", { defaultValue: "Paid Remaining" })}
+      {t("budget.paid_in_full", { defaultValue: "Paid in full" })}
     </Badge>
   );
 }
@@ -592,7 +592,7 @@ export default function Budget() {
         remaining: rowRemaining,
         nextPaymentDate: v.nextPaymentDue,
         nextPaymentAmount: v.nextPaymentAmount ?? (v.nextPaymentDue ? rowRemaining : 0),
-        status: rowRemaining <= 0 ? "Paid remaining" : v.nextPaymentDue ? "Payment scheduled" : "Open balance",
+        status: rowRemaining <= 0 ? "Paid in full" : v.nextPaymentDue ? "Payment scheduled" : "Open balance",
       };
     });
     const manualRows = manualExpenses.map((m) => {
@@ -606,7 +606,7 @@ export default function Budget() {
         remaining: rowRemaining,
         nextPaymentDate: m.nextPaymentDue ?? null,
         nextPaymentAmount: m.nextPaymentAmount ?? 0,
-        status: rowRemaining <= 0 ? "Paid remaining" : m.nextPaymentDue ? "Payment scheduled" : "Open balance",
+        status: rowRemaining <= 0 ? "Paid in full" : m.nextPaymentDue ? "Payment scheduled" : "Open balance",
       };
     });
     return [...vendorRows, ...manualRows].sort((a, b) => {
