@@ -1620,12 +1620,19 @@ export default function Budget() {
                         <TableCell className="text-right">
                           <RemainingAmount amount={remaining} />
                         </TableCell>
-                        <TableCell className="text-sm">
-                          <div className="flex min-w-[180px] flex-col items-center gap-2">
-                            {remaining <= 0 ? (
+                        {remaining <= 0 ? (
+                          <TableCell colSpan={2} className="text-sm">
+                            <div className="flex min-w-[360px] flex-col items-center gap-2">
                               <PaidInFullBadge t={t} />
-                            ) : (
-                              <>
+                              {recentPaymentUndo[`vendor-${v.id}`] && (
+                                <UndoPaymentButton onClick={() => runRememberedUndo(`vendor-${v.id}`)} t={t} />
+                              )}
+                            </div>
+                          </TableCell>
+                        ) : (
+                          <>
+                            <TableCell className="text-sm">
+                              <div className="flex min-w-[180px] flex-col items-center gap-2">
                                 {v.nextPaymentDue ? (
                                   <>
                                     <NextPaymentDisplay
@@ -1640,20 +1647,10 @@ export default function Budget() {
                                     t={t}
                                   />
                                 )}
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {remaining <= 0 ? (
-                            <div className="flex min-w-[180px] flex-col items-center gap-2">
-                              <PaidInFullBadge t={t} />
-                              {recentPaymentUndo[`vendor-${v.id}`] && (
-                                <UndoPaymentButton onClick={() => runRememberedUndo(`vendor-${v.id}`)} t={t} />
-                              )}
-                            </div>
-                          ) : (
-                            <div className="flex min-w-[180px] flex-col items-center gap-2">
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex min-w-[180px] flex-col items-center gap-2">
                               {recentPaymentUndo[`vendor-${v.id}`] && (
                                 <UndoPaymentButton onClick={() => runRememberedUndo(`vendor-${v.id}`)} t={t} />
                               )}
@@ -1669,9 +1666,10 @@ export default function Budget() {
                                 />
                               )}
                               {!nextPaymentPaysRemaining && <MarkPaidInFullButton onClick={() => handleVendorPaidInFull(v.id)} t={t} />}
-                            </div>
-                          )}
-                        </TableCell>
+                              </div>
+                            </TableCell>
+                          </>
+                        )}
                         <TableCell>
                           <div className="space-y-1">
                             <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
@@ -1919,12 +1917,19 @@ export default function Budget() {
                         <TableCell className="text-right">
                           <RemainingAmount amount={remaining} />
                         </TableCell>
-                        <TableCell className="text-sm">
-                          <div className="flex min-w-[180px] flex-col items-center gap-2">
-                            {remaining <= 0 ? (
+                        {remaining <= 0 ? (
+                          <TableCell colSpan={2} className="text-sm">
+                            <div className="flex min-w-[360px] flex-col items-center gap-2">
                               <PaidInFullBadge t={t} />
-                            ) : (
-                              <>
+                              {recentPaymentUndo[`manual-${m.id}`] && (
+                                <UndoPaymentButton onClick={() => runRememberedUndo(`manual-${m.id}`)} t={t} />
+                              )}
+                            </div>
+                          </TableCell>
+                        ) : (
+                          <>
+                            <TableCell className="text-sm">
+                              <div className="flex min-w-[180px] flex-col items-center gap-2">
                                 {m.nextPaymentDue ? (
                                   <NextPaymentDisplay
                                     date={m.nextPaymentDue}
@@ -1937,20 +1942,10 @@ export default function Budget() {
                                     t={t}
                                   />
                                 )}
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {remaining <= 0 ? (
-                            <div className="flex min-w-[180px] flex-col items-center gap-2">
-                              <PaidInFullBadge t={t} />
-                              {recentPaymentUndo[`manual-${m.id}`] && (
-                                <UndoPaymentButton onClick={() => runRememberedUndo(`manual-${m.id}`)} t={t} />
-                              )}
-                            </div>
-                          ) : (
-                            <div className="flex min-w-[180px] flex-col items-center gap-2">
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex min-w-[180px] flex-col items-center gap-2">
                               {recentPaymentUndo[`manual-${m.id}`] && (
                                 <UndoPaymentButton onClick={() => runRememberedUndo(`manual-${m.id}`)} t={t} />
                               )}
@@ -1962,9 +1957,10 @@ export default function Budget() {
                                 />
                               )}
                               {!nextPaymentPaysRemaining && <MarkPaidInFullButton onClick={() => handleManualPaidInFull(m)} t={t} />}
-                            </div>
-                          )}
-                        </TableCell>
+                              </div>
+                            </TableCell>
+                          </>
+                        )}
                         <TableCell className="text-center">
                           <div className="space-y-1">
                             <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
