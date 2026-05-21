@@ -316,8 +316,8 @@ function MemberCard({
 
   return (
     <>
-      <Card className="border-border/60 bg-card/95 shadow-sm transition-shadow hover:shadow-md">
-        <CardContent className="relative flex min-h-[260px] flex-col items-center justify-between p-5 text-center">
+      <Card className="h-full border-border/60 bg-card/95 shadow-sm transition-shadow hover:shadow-md">
+        <CardContent className="relative flex h-full min-h-[340px] flex-col items-center p-5 text-center">
           {dragHandle}
           <div className="absolute right-3 top-3 flex gap-1">
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}><Edit2 className="h-3.5 w-3.5" /></Button>
@@ -337,8 +337,8 @@ function MemberCard({
               </AlertDialogContent>
             </AlertDialog>
           </div>
-          <div className="flex flex-col items-center">
-            <div className="mb-4">
+          <div className="flex h-full w-full flex-col items-center">
+            <div className="mb-4 flex h-[184px] flex-col items-center">
               {/* Avatar — click to upload/change headshot */}
               <div
                 className="relative group h-32 w-32 cursor-pointer overflow-hidden rounded-full border border-primary/20 bg-primary/10 shadow-sm sm:h-36 sm:w-36"
@@ -377,8 +377,9 @@ function MemberCard({
                 className="sr-only"
                 onChange={handleFileSelect}
               />
+              <div className="mt-2 flex h-8 items-center justify-center gap-2">
               {member.photoUrl && (
-                <div className="mt-2 flex justify-center gap-2">
+                <>
                   <Button
                     type="button"
                     variant="outline"
@@ -399,11 +400,12 @@ function MemberCard({
                   >
                     Change
                   </Button>
-                </div>
+                </>
               )}
+              </div>
             </div>
 
-              <div className="space-y-1.5">
+              <div className="flex min-h-[104px] w-full flex-col items-center justify-start space-y-1.5">
                 <div className="flex items-center justify-center gap-2">
                   <p className="font-serif text-2xl leading-tight text-primary">{member.name}</p>
                   {(member.role === "Maid of Honor" || member.role === "Best Man") && (
