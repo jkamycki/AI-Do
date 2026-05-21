@@ -124,6 +124,10 @@ function cappedPaid(total: number, paid: number) {
   return Math.min(Math.max(0, paid || 0), Math.max(0, total || 0));
 }
 
+function moneyMatches(a: number, b: number) {
+  return Math.round((a || 0) * 100) === Math.round((b || 0) * 100);
+}
+
 function safeReceiptHref(url: string | null | undefined): string | null {
   if (!url) return null;
   try {
@@ -253,9 +257,11 @@ function MarkPaidInFullButton({
 
 function PaymentCompleteButton({
   onClick,
+  paysRemaining = false,
   t,
 }: {
   onClick: () => void;
+  paysRemaining?: boolean;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
   return (
@@ -268,7 +274,9 @@ function PaymentCompleteButton({
       title={t("budget.mark_paid_title", { defaultValue: "Mark this payment complete (adds it to Paid total)" })}
     >
       <Square className="h-4 w-4 shrink-0" />
-      {t("budget.mark_paid", { defaultValue: "Payment Complete" })}
+      {paysRemaining
+        ? t("budget.mark_remaining_paid", { defaultValue: "Paid Remaining" })
+        : t("budget.mark_paid", { defaultValue: "Payment Complete" })}
     </Button>
   );
 }
@@ -1642,6 +1650,7 @@ export default function Budget() {
                                     dueDate: v.nextPaymentDue,
                                     amount: v.nextPaymentAmount ?? remaining,
                                   })}
+                                  paysRemaining={moneyMatches(v.nextPaymentAmount ?? remaining, remaining)}
                                   t={t}
                                 />
                               )}
@@ -1930,7 +1939,13 @@ export default function Budget() {
                               {recentPaymentUndo[`manual-${m.id}`] && (
                                 <UndoPaymentButton onClick={() => runRememberedUndo(`manual-${m.id}`)} t={t} />
                               )}
-                              {m.nextPaymentDue && <PaymentCompleteButton onClick={() => handleMarkPaid(m.id)} t={t} />}
+                              {m.nextPaymentDue && (
+                                <PaymentCompleteButton
+                                  onClick={() => handleMarkPaid(m.id)}
+                                  paysRemaining={moneyMatches(m.nextPaymentAmount ?? 0, remaining)}
+                                  t={t}
+                                />
+                              )}
                               <MarkPaidInFullButton onClick={() => handleManualPaidInFull(m)} t={t} />
                             </div>
                           )}
