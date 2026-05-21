@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@clerk/react";
 import { useLocation } from "wouter";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -505,6 +505,7 @@ export default function Budget() {
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [recentPaymentUndo, setRecentPaymentUndo] = useState<RecentPaymentUndoMap>({});
+  const undoTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const manualFormCost = Math.max(0, Number(form.cost || 0));
   const manualFormPaid = form.paidInFull ? manualFormCost : Math.max(0, Number(form.amountPaid || 0));
   const manualFormRemaining = Math.max(0, manualFormCost - manualFormPaid);
@@ -518,6 +519,12 @@ export default function Budget() {
     getToken,
     onError: (e) => toast({ title: t("budget.toast_upload_failed"), description: e.message, variant: "destructive" }),
   });
+
+  useEffect(() => {
+    return () => {
+      Object.values(undoTimersRef.current).forEach(clearTimeout);
+    };
+  }, []);
 
   // ── Totals ────────────────────────────────────────────────────────
   const totalBudget = budget?.totalBudget ?? 0;
@@ -780,10 +787,25 @@ export default function Budget() {
   };
 
   const rememberPaymentUndo = (key: string, run: () => void) => {
+    if (undoTimersRef.current[key]) {
+      clearTimeout(undoTimersRef.current[key]);
+    }
     setRecentPaymentUndo((current) => ({ ...current, [key]: { run } }));
+    undoTimersRef.current[key] = setTimeout(() => {
+      setRecentPaymentUndo((current) => {
+        const next = { ...current };
+        delete next[key];
+        return next;
+      });
+      delete undoTimersRef.current[key];
+    }, 15000);
   };
 
   const clearPaymentUndo = (key: string) => {
+    if (undoTimersRef.current[key]) {
+      clearTimeout(undoTimersRef.current[key]);
+      delete undoTimersRef.current[key];
+    }
     setRecentPaymentUndo((current) => {
       const next = { ...current };
       delete next[key];
