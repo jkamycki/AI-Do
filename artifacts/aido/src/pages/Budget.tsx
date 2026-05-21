@@ -1608,6 +1608,7 @@ export default function Budget() {
                   {orderedVendorRows.map((v) => {
                     const remaining = Math.max(0, v.totalCost - v.totalPaid);
                     const pct = v.totalCost > 0 ? Math.min((v.totalPaid / v.totalCost) * 100, 100) : 0;
+                    const nextPaymentPaysRemaining = !!v.nextPaymentDue && moneyMatches(v.nextPaymentAmount ?? remaining, remaining);
                     return (
                       <TableRow key={v.id}>
                         <TableCell className="text-center font-medium">{v.name}</TableCell>
@@ -1663,11 +1664,11 @@ export default function Budget() {
                                     dueDate: v.nextPaymentDue,
                                     amount: v.nextPaymentAmount ?? remaining,
                                   })}
-                                  paysRemaining={moneyMatches(v.nextPaymentAmount ?? remaining, remaining)}
+                                  paysRemaining={nextPaymentPaysRemaining}
                                   t={t}
                                 />
                               )}
-                              <MarkPaidInFullButton onClick={() => handleVendorPaidInFull(v.id)} t={t} />
+                              {!nextPaymentPaysRemaining && <MarkPaidInFullButton onClick={() => handleVendorPaidInFull(v.id)} t={t} />}
                             </div>
                           )}
                         </TableCell>
@@ -1903,6 +1904,7 @@ export default function Budget() {
                     const paid = cappedPaid(m.cost, m.amountPaid);
                     const remaining = Math.max(0, m.cost - paid);
                     const pct = m.cost > 0 ? Math.min((paid / m.cost) * 100, 100) : 0;
+                    const nextPaymentPaysRemaining = !!m.nextPaymentDue && moneyMatches(m.nextPaymentAmount ?? 0, remaining);
                     return (
                       <TableRow key={m.id}>
                         <TableCell className="text-center">
@@ -1955,11 +1957,11 @@ export default function Budget() {
                               {m.nextPaymentDue && (
                                 <PaymentCompleteButton
                                   onClick={() => handleMarkPaid(m.id)}
-                                  paysRemaining={moneyMatches(m.nextPaymentAmount ?? 0, remaining)}
+                                  paysRemaining={nextPaymentPaysRemaining}
                                   t={t}
                                 />
                               )}
-                              <MarkPaidInFullButton onClick={() => handleManualPaidInFull(m)} t={t} />
+                              {!nextPaymentPaysRemaining && <MarkPaidInFullButton onClick={() => handleManualPaidInFull(m)} t={t} />}
                             </div>
                           )}
                         </TableCell>
