@@ -338,7 +338,7 @@ function MemberCard({
             </AlertDialog>
           </div>
           <div className="flex h-full w-full flex-col items-center">
-            <div className="relative mb-4 flex h-[152px] flex-col items-center">
+            <div className="mb-4 flex h-32 flex-col items-center sm:h-36">
               {/* Avatar — click to upload/change headshot */}
               <div
                 className="relative group h-32 w-32 cursor-pointer overflow-hidden rounded-full border border-primary/20 bg-primary/10 shadow-sm sm:h-36 sm:w-36"
@@ -369,22 +369,17 @@ function MemberCard({
                     : <Camera className="h-4 w-4 text-white" />
                   }
                 </div>
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="sr-only"
-                onChange={handleFileSelect}
-              />
-              {member.photoUrl && (
-                <div className="absolute bottom-0 left-1/2 z-10 flex -translate-x-1/2 justify-center gap-2">
+                {member.photoUrl && (
+                  <div className="absolute inset-x-0 bottom-3 z-10 flex justify-center gap-1.5 px-3">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-8 border-background/80 bg-background/90 px-3 text-xs shadow-sm backdrop-blur"
-                    onClick={() => void openExistingPhotoEditor()}
+                    className="h-7 border-background/80 bg-background/90 px-2 text-[11px] shadow-sm backdrop-blur"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void openExistingPhotoEditor();
+                    }}
                     disabled={isBusy}
                   >
                     Adjust
@@ -393,14 +388,25 @@ function MemberCard({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-8 bg-background/80 px-3 text-xs shadow-sm backdrop-blur hover:bg-background"
-                    onClick={() => fileInputRef.current?.click()}
+                    className="h-7 bg-background/85 px-2 text-[11px] shadow-sm backdrop-blur hover:bg-background"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      fileInputRef.current?.click();
+                    }}
                     disabled={isBusy}
                   >
                     Change
                   </Button>
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                onChange={handleFileSelect}
+              />
             </div>
 
               <div className="flex min-h-[104px] w-full flex-col items-center justify-start space-y-1.5">
