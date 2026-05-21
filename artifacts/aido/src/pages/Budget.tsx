@@ -492,6 +492,10 @@ export default function Budget() {
   });
 
   const { data: manualExpenses = [], isLoading: isLoadingManual } = useListManualExpenses();
+  const orderedVendorRows = useMemo(
+    () => [...(vendorFinancials?.vendors ?? [])].sort((a, b) => a.id - b.id),
+    [vendorFinancials?.vendors],
+  );
   const createManual = useCreateManualExpense();
   const updateManual = useUpdateManualExpense();
   const deleteManual = useDeleteManualExpense();
@@ -554,13 +558,13 @@ export default function Budget() {
       current.count += 1;
       byCategory.set(label, current);
     };
-    vendorFinancials?.vendors.forEach((v) => add(v.category, v.totalCost, v.totalPaid));
+    orderedVendorRows.forEach((v) => add(v.category, v.totalCost, v.totalPaid));
     manualExpenses.forEach((m) => add(m.category, m.cost ?? 0, cappedPaid(m.cost ?? 0, m.amountPaid ?? 0)));
     return [...byCategory.values()].sort((a, b) => b.total - a.total);
-  }, [manualExpenses, vendorFinancials?.vendors]);
+  }, [manualExpenses, orderedVendorRows]);
   // ── Handlers ──────────────────────────────────────────────────────
   const reportRows = useMemo(() => {
-    const vendorRows = (vendorFinancials?.vendors ?? []).map((v) => {
+    const vendorRows = orderedVendorRows.map((v) => {
       const rowRemaining = Math.max(0, v.totalCost - v.totalPaid);
       return {
         source: "Vendor",
@@ -592,7 +596,7 @@ export default function Budget() {
       if (a.source !== b.source) return a.source.localeCompare(b.source);
       return a.name.localeCompare(b.name);
     });
-  }, [manualExpenses, vendorFinancials?.vendors]);
+  }, [manualExpenses, orderedVendorRows]);
   const reportDate = new Date().toISOString().slice(0, 10);
   const hasReportData = reportRows.length > 0 || totalBudget > 0 || combinedSpend > 0;
 
@@ -1571,7 +1575,7 @@ export default function Budget() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {vendorFinancials.vendors.map((v) => {
+                  {orderedVendorRows.map((v) => {
                     const remaining = Math.max(0, v.totalCost - v.totalPaid);
                     const pct = v.totalCost > 0 ? Math.min((v.totalPaid / v.totalCost) * 100, 100) : 0;
                     return (
