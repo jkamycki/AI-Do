@@ -229,7 +229,7 @@ function PaidInFullBadge({ t }: { t: (key: string, options?: Record<string, unkn
   return (
     <Badge className="flex h-9 w-full justify-center gap-1 rounded-md border-emerald-500/30 bg-emerald-100 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100">
       <CheckCircle2 className="h-3.5 w-3.5" />
-      {t("budget.paid_in_full", { defaultValue: "Paid in full" })}
+      {t("budget.paid_in_full", { defaultValue: "Paid Remaining" })}
     </Badge>
   );
 }
@@ -250,7 +250,7 @@ function MarkPaidInFullButton({
       onClick={onClick}
     >
       <Square className="h-4 w-4 shrink-0" />
-      {t("budget.mark_paid_in_full", { defaultValue: "Paid in full" })}
+      {t("budget.mark_paid_in_full", { defaultValue: "Paid Remaining" })}
     </Button>
   );
 }
@@ -358,7 +358,7 @@ function PaymentStatusDecision({
     <div className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
       <div className="space-y-1">
         <p className="text-sm font-semibold text-foreground">
-          {t("budget.payment_status_question", { defaultValue: "Is this paid in full?" })}
+          {t("budget.payment_status_question", { defaultValue: "Is the remaining balance paid?" })}
         </p>
         <p className="text-xs text-muted-foreground">
           {t("budget.payment_status_hint", {
@@ -379,7 +379,7 @@ function PaymentStatusDecision({
         >
           <span className="flex items-center gap-2 text-sm font-semibold">
             <CheckCircle2 className="h-4 w-4" />
-            {t("budget.yes_paid_in_full", { defaultValue: "Yes - paid in full" })}
+            {t("budget.yes_paid_in_full", { defaultValue: "Yes - paid remaining" })}
           </span>
           <span className="mt-1 block text-xs opacity-80">{paidHint}</span>
         </button>
@@ -592,7 +592,7 @@ export default function Budget() {
         remaining: rowRemaining,
         nextPaymentDate: v.nextPaymentDue,
         nextPaymentAmount: v.nextPaymentAmount ?? (v.nextPaymentDue ? rowRemaining : 0),
-        status: rowRemaining <= 0 ? "Paid in full" : v.nextPaymentDue ? "Payment scheduled" : "Open balance",
+        status: rowRemaining <= 0 ? "Paid remaining" : v.nextPaymentDue ? "Payment scheduled" : "Open balance",
       };
     });
     const manualRows = manualExpenses.map((m) => {
@@ -606,7 +606,7 @@ export default function Budget() {
         remaining: rowRemaining,
         nextPaymentDate: m.nextPaymentDue ?? null,
         nextPaymentAmount: m.nextPaymentAmount ?? 0,
-        status: rowRemaining <= 0 ? "Paid in full" : m.nextPaymentDue ? "Payment scheduled" : "Open balance",
+        status: rowRemaining <= 0 ? "Paid remaining" : m.nextPaymentDue ? "Payment scheduled" : "Open balance",
       };
     });
     return [...vendorRows, ...manualRows].sort((a, b) => {
@@ -900,7 +900,7 @@ export default function Budget() {
   const handleManualPaidInFull = async (expense: typeof manualExpenses[number]) => {
     const cost = Number(expense.cost ?? 0);
     if (cost <= 0) return;
-    if (!confirm(t("budget.confirm_mark_paid_in_full", { defaultValue: "Mark this item paid in full? This will set Paid to the total cost and clear the next payment date." }))) return;
+    if (!confirm(t("budget.confirm_mark_paid_in_full", { defaultValue: "Mark the remaining balance paid? This will set Paid to the total cost and clear the next payment date." }))) return;
     try {
       const r = await authFetch(`/api/manual-expenses/${expense.id}`, {
         method: "PUT",
@@ -916,7 +916,7 @@ export default function Budget() {
         return;
       }
       rememberPaymentUndo(`manual-${expense.id}`, () => undoManualExpenseUpdate(expense));
-      showManualUndoToast(expense, t("budget.toast_paid_in_full", { defaultValue: "Marked paid in full" }));
+      showManualUndoToast(expense, t("budget.toast_paid_in_full", { defaultValue: "Marked paid remaining" }));
       await refreshBudgetPaymentViews();
     } catch {
       toast({ variant: "destructive", title: t("budget.toast_mark_paid_failed", { defaultValue: "Couldn't mark payment paid. Please try again." }) });
@@ -1026,7 +1026,7 @@ export default function Budget() {
   };
 
   const handleVendorPaidInFull = async (vendorId: number) => {
-    if (!confirm(t("budget.confirm_mark_paid_in_full", { defaultValue: "Mark this item paid in full? This will set Paid to the total cost and clear the next payment date." }))) return;
+    if (!confirm(t("budget.confirm_mark_paid_in_full", { defaultValue: "Mark the remaining balance paid? This will set Paid to the total cost and clear the next payment date." }))) return;
     try {
       const r = await authFetch(`/api/vendors/${vendorId}/payments/mark-paid-in-full`, {
         method: "POST",
@@ -1042,7 +1042,7 @@ export default function Budget() {
       const undo = result?.undo ?? {};
       rememberPaymentUndo(`vendor-${vendorId}`, () => undoVendorPaidInFull(vendorId, undo));
       showVendorUndoToast(
-        t("budget.toast_paid_in_full", { defaultValue: "Marked paid in full" }),
+        t("budget.toast_paid_in_full", { defaultValue: "Marked paid remaining" }),
         () => undoVendorPaidInFull(vendorId, undo),
       );
       await refreshBudgetPaymentViews(vendorId);
@@ -1095,12 +1095,12 @@ export default function Budget() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
         });
-        if (!paidResponse.ok) throw new Error("Paid in full failed");
+        if (!paidResponse.ok) throw new Error("Paid remaining failed");
         const result = await paidResponse.json().catch(() => null) as {
           undo?: { markedPaymentIds?: number[]; createdPaymentId?: number | null; previousNextPaymentDue?: string | null };
         } | null;
         showVendorUndoToast(
-          t("budget.toast_vendor_updated_paid", { defaultValue: "Vendor updated and marked paid in full" }),
+          t("budget.toast_vendor_updated_paid", { defaultValue: "Vendor updated and marked paid remaining" }),
           () => undoVendorPaidInFull(editingVendor.id, result?.undo ?? {}),
         );
       } else if (nextPaymentDue) {
@@ -1777,7 +1777,7 @@ export default function Budget() {
                 remaining={vendorFormRemaining}
                 onPaidInFull={markVendorFormPaidInFull}
                 onSchedulePayment={scheduleVendorFormPayment}
-                paidHint={t("budget.vendor_paid_in_full_hint", { defaultValue: "Marks this vendor fully paid and skips the next payment date." })}
+                paidHint={t("budget.vendor_paid_in_full_hint", { defaultValue: "Marks this vendor's remaining balance paid and skips the next payment date." })}
                 partialHint={t("budget.vendor_partial_next_payment_hint", {
                   defaultValue: "Keeps the vendor open and lets you enter the next amount and due date.",
                 })}

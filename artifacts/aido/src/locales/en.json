@@ -413,7 +413,7 @@
     "paid_off": "Paid off",
     "mark_paid": "Payment Complete",
     "mark_paid_title": "Mark this payment complete (adds it to Paid total)",
-    "mark_paid_in_full": "Paid in full",
+    "mark_paid_in_full": "Paid Remaining",
     "undo_payment": "Undo payment",
     "toast_undo_hint": "Clicked by accident? Use Undo payment in this row or the button here.",
     "saved_toast": "Expense saved",
