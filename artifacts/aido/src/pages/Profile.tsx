@@ -30,6 +30,7 @@ const profileSchema = z.object({
   accountType: z.literal("couple_individual").default("couple_individual"),
   partner1Name: z.string().min(1, "Name is required"),
   partner2Name: z.string().min(1, "Name is required"),
+  sharedLastName: z.string().min(1, "Last name is required"),
   weddingDate: z.string().min(1, "Date is required"),
   ceremonyTime: z.string().min(1, "Time is required"),
   receptionTime: z.string().min(1, "Time is required"),
@@ -62,6 +63,45 @@ const profileSchema = z.object({
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
+
+function splitStoredCoupleNames(partner2Name?: string | null, partner1Name?: string | null) {
+  const brideName = String(partner2Name ?? "").trim();
+  const groomName = String(partner1Name ?? "").trim();
+  const brideParts = brideName.split(/\s+/).filter(Boolean);
+  const groomParts = groomName.split(/\s+/).filter(Boolean);
+  const brideLast = brideParts.length > 1 ? brideParts[brideParts.length - 1] : "";
+  const groomLast = groomParts.length > 1 ? groomParts[groomParts.length - 1] : "";
+  const sharedLastName =
+    brideLast && groomLast && brideLast.toLocaleLowerCase() === groomLast.toLocaleLowerCase()
+      ? groomLast
+      : !brideLast && groomLast
+        ? groomLast
+        : brideLast && !groomLast
+          ? brideLast
+          : "";
+
+  const removeSharedLast = (name: string) => {
+    if (!sharedLastName) return name;
+    const suffix = new RegExp(`\\s+${sharedLastName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i");
+    return name.replace(suffix, "").trim();
+  };
+
+  return {
+    partner2Name: removeSharedLast(brideName),
+    partner1Name: removeSharedLast(groomName),
+    sharedLastName,
+  };
+}
+
+function prepareCoupleNames(values: ProfileFormValues) {
+  const partner2First = values.partner2Name.trim();
+  const partner1First = values.partner1Name.trim();
+  const sharedLastName = values.sharedLastName.trim();
+  return {
+    partner2Name: partner2First,
+    partner1Name: [partner1First, sharedLastName].filter(Boolean).join(" "),
+  };
+}
 
 function normalizeVenueDiscovery(value?: VenueDiscoveryData | null): VenueDiscoveryData {
   const source = value ?? emptyVenueDiscoveryData;
@@ -167,6 +207,7 @@ export default function Profile() {
       partner1Name: "",
       accountType: "couple_individual",
       partner2Name: "",
+      sharedLastName: "",
       weddingDate: "",
       ceremonyTime: "16:00",
       receptionTime: "18:00",
@@ -202,10 +243,12 @@ export default function Profile() {
       };
       const draft = readVenueFlowDraft(venueDraftKey);
       const shouldUseDraft = !!draft && draft.updatedAt > getProfileUpdatedAtMs(profileWithVenueFlow);
+      const coupleNameFields = splitStoredCoupleNames(profile.partner2Name, profile.partner1Name);
       form.reset({
-        partner1Name: profile.partner1Name,
+        partner1Name: coupleNameFields.partner1Name,
         accountType: "couple_individual",
-        partner2Name: profile.partner2Name,
+        partner2Name: coupleNameFields.partner2Name,
+        sharedLastName: coupleNameFields.sharedLastName,
         weddingDate: (profile.weddingDate ?? "").split('T')[0],
         ceremonyTime: profile.ceremonyTime,
         receptionTime: profile.receptionTime,
@@ -296,7 +339,9 @@ export default function Profile() {
   }, [form, venueDraftKey]);
 
   const onSubmit = (data: ProfileFormValues) => {
-    saveProfile.mutate({ data: { ...data, accountType: "couple_individual" } }, {
+    const { sharedLastName, ...profileData } = data;
+    const coupleNamesForSave = prepareCoupleNames({ ...data, sharedLastName });
+    saveProfile.mutate({ data: { ...profileData, ...coupleNamesForSave, accountType: "couple_individual" } }, {
       onSuccess: () => {
         clearVenueFlowDraft(venueDraftKey);
         toast({
@@ -318,7 +363,13 @@ export default function Profile() {
   };
 
   const venueStatus = form.watch("venueStatus");
-  const coupleNames = [form.watch("partner2Name"), form.watch("partner1Name")].filter(Boolean).join(" & ");
+  const brideFirstName = form.watch("partner2Name");
+  const groomFirstName = form.watch("partner1Name");
+  const sharedLastName = form.watch("sharedLastName");
+  const coupleNames = [
+    brideFirstName.trim(),
+    [groomFirstName.trim(), sharedLastName.trim()].filter(Boolean).join(" "),
+  ].filter(Boolean).join(" & ");
 
   // Only show the error screen for real errors (network/500). A 404 is the
   // expected "first-time user" state — fall through to render the empty form.
@@ -386,9 +437,9 @@ export default function Profile() {
                   name="partner2Name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t("profile.bride_name")}</FormLabel>
+                      <FormLabel>{t("profile.bride_first_name", { defaultValue: "Bride's First Name" })}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Sophia Anderson" {...field} data-testid="input-partner2" className="bg-background" />
+                        <Input placeholder="Gabriela" {...field} data-testid="input-partner2" className="bg-background" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -399,15 +450,32 @@ export default function Profile() {
                   name="partner1Name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t("profile.groom_name")}</FormLabel>
+                      <FormLabel>{t("profile.groom_first_name", { defaultValue: "Groom's First Name" })}</FormLabel>
                       <FormControl>
-                        <Input placeholder="James Carter" {...field} data-testid="input-partner1" className="bg-background" />
+                        <Input placeholder="Joey" {...field} data-testid="input-partner1" className="bg-background" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
+
+              <FormField
+                control={form.control}
+                name="sharedLastName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("profile.shared_last_name", { defaultValue: "Last Name Using" })}</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Kamycki" {...field} data-testid="input-shared-last-name" className="bg-background" />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      {t("profile.shared_last_name_hint", { defaultValue: "This displays like Gabriela & Joey Kamycki across your website and invitations." })}
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <div className="grid md:grid-cols-3 gap-6">
                 <FormField
@@ -760,6 +828,7 @@ export default function Profile() {
                       accountType: "couple_individual",
                       partner1Name: "",
                       partner2Name: "",
+                      sharedLastName: "",
                       weddingDate: "",
                       ceremonyTime: "",
                       receptionTime: "",

@@ -27,6 +27,7 @@ const schema = z.object({
   accountType: z.literal("couple_individual").default("couple_individual"),
   partner1Name: z.string().default(""),
   partner2Name: z.string().default(""),
+  sharedLastName: z.string().default(""),
   weddingDate: z.string().default(""),
   ceremonyTime: z.string().default("16:00"),
   receptionTime: z.string().default("18:00"),
@@ -37,7 +38,7 @@ const schema = z.object({
   weddingVibe: z.string().default("Not set"),
   preferredLanguage: z.string().default("English"),
 }).superRefine((values, ctx) => {
-  for (const field of ["partner1Name", "partner2Name", "weddingDate", "ceremonyTime", "receptionTime", "venue"] as const) {
+  for (const field of ["partner1Name", "partner2Name", "sharedLastName", "weddingDate", "ceremonyTime", "receptionTime", "venue"] as const) {
     if (!String(values[field] ?? "").trim()) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: [field], message: "Required" });
     }
@@ -45,6 +46,14 @@ const schema = z.object({
 });
 
 type WizardValues = z.infer<typeof schema>;
+
+function prepareCoupleNames(values: WizardValues) {
+  const sharedLastName = values.sharedLastName.trim();
+  return {
+    partner2Name: values.partner2Name.trim(),
+    partner1Name: [values.partner1Name.trim(), sharedLastName].filter(Boolean).join(" "),
+  };
+}
 
 const STEP_DEFS = [
   { id: 1, icon: Heart, titleKey: "onboarding.step1_title", titleDefault: "Welcome to A.IDO", descKey: "onboarding.step1_desc", descDefault: "Let's start with the happy couple." },
@@ -65,6 +74,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
       accountType: "couple_individual",
       partner1Name: "",
       partner2Name: "",
+      sharedLastName: "",
       weddingDate: "",
       ceremonyTime: "16:00",
       receptionTime: "18:00",
@@ -89,7 +99,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
 
   async function handleNext() {
     let fields: (keyof WizardValues)[] = [];
-    if (step === 1) fields = ["partner1Name", "partner2Name"];
+    if (step === 1) fields = ["partner1Name", "partner2Name", "sharedLastName"];
     if (step === 2) fields = ["weddingDate", "ceremonyTime", "receptionTime", "venue"];
     const valid = fields.length === 0 ? true : await form.trigger(fields);
     if (!valid) return;
@@ -97,7 +107,8 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
   }
 
   function handleSubmit(values: WizardValues) {
-    saveProfile.mutate({ data: { ...values, accountType: "couple_individual" } }, {
+    const { sharedLastName, ...profileValues } = values;
+    saveProfile.mutate({ data: { ...profileValues, ...prepareCoupleNames({ ...values, sharedLastName }), accountType: "couple_individual" } }, {
       onSuccess: () => {
         const code = LANG_NAME_TO_CODE[values.preferredLanguage] ?? "en";
         i18n.changeLanguage(code);
@@ -156,15 +167,25 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                 </div>
                 <FormField control={form.control} name="partner2Name" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("profile.bride_name", { defaultValue: "Bride's Full Name" })}</FormLabel>
-                    <FormControl><Input placeholder="e.g. Sophia Anderson" {...field} /></FormControl>
+                    <FormLabel>{t("profile.bride_first_name", { defaultValue: "Bride's First Name" })}</FormLabel>
+                    <FormControl><Input placeholder="e.g. Gabriela" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="partner1Name" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("profile.groom_name", { defaultValue: "Groom's Full Name" })}</FormLabel>
-                    <FormControl><Input placeholder="e.g. James Carter" {...field} /></FormControl>
+                    <FormLabel>{t("profile.groom_first_name", { defaultValue: "Groom's First Name" })}</FormLabel>
+                    <FormControl><Input placeholder="e.g. Joey" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="sharedLastName" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("profile.shared_last_name", { defaultValue: "Last Name Using" })}</FormLabel>
+                    <FormControl><Input placeholder="e.g. Kamycki" {...field} /></FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      {t("profile.shared_last_name_hint", { defaultValue: "This displays like Gabriela & Joey Kamycki across your website and invitations." })}
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )} />
