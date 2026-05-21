@@ -239,7 +239,7 @@ function MarkPaidInFullButton({
       type="button"
       size="sm"
       variant="outline"
-      className="h-9 gap-2 rounded-md border-emerald-500/40 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+      className="h-9 min-w-[13.5rem] justify-start gap-2 rounded-md border-emerald-500/40 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
       onClick={onClick}
     >
       <Square className="h-4 w-4 shrink-0" />
@@ -407,7 +407,7 @@ function NextPaymentDisplay({
             <Button
               size="sm"
               variant="outline"
-              className="h-9 gap-2 rounded-md border-emerald-500/40 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
+              className="h-9 min-w-[13.5rem] justify-start gap-2 rounded-md border-emerald-500/40 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
               onClick={onMarkPaid}
               title={t("budget.mark_paid_title", { defaultValue: "Mark this payment complete (adds it to Paid total)" })}
             >
@@ -1833,7 +1833,7 @@ export default function Budget() {
                                           <Button
                                             size="sm"
                                             variant="outline"
-                                            className="h-9 gap-2 rounded-md border-emerald-500/40 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
+                                            className="h-9 min-w-[13.5rem] justify-start gap-2 rounded-md border-emerald-500/40 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
                                             onClick={() => handleMarkPaid(m.id)}
                                             title={t("budget.mark_paid_title", { defaultValue: "Mark this payment complete (adds it to Paid total)" })}
                                           >
