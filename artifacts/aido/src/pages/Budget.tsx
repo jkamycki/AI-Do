@@ -525,6 +525,7 @@ export default function Budget() {
   const [editingVendor, setEditingVendor] = useState<VendorRow | null>(null);
   const [vendorForm, setVendorForm] = useState<VendorBudgetFormState>(emptyVendorBudgetForm());
   const [isSavingVendorBudget, setIsSavingVendorBudget] = useState(false);
+  const [isResettingPaymentStatus, setIsResettingPaymentStatus] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [recentPaymentUndo, setRecentPaymentUndo] = useState<RecentPaymentUndoMap>({});
@@ -1070,6 +1071,48 @@ export default function Budget() {
       await refreshBudgetPaymentViews(vendorId);
     } catch {
       toast({ variant: "destructive", title: t("budget.toast_mark_paid_failed", { defaultValue: "Couldn't mark payment paid. Please try again." }) });
+    }
+  };
+
+  const handleResetVendorPaymentStatus = async () => {
+    if (!editingVendor) return;
+    if (!confirm(t("budget.confirm_reset_payment_status", { defaultValue: "Reset this vendor's payment status? Paid milestones will be reopened and any auto-created paid-in-full balance will be removed." }))) return;
+    setIsResettingPaymentStatus(true);
+    try {
+      const r = await authFetch(`/api/vendors/${editingVendor.id}/payments/reset-completion`, { method: "POST" });
+      if (!r.ok) throw new Error("Reset vendor payment status failed");
+      toast({ title: t("budget.toast_payment_status_reset", { defaultValue: "Payment status reset" }) });
+      setEditingVendor(null);
+      setVendorForm(emptyVendorBudgetForm());
+      await refreshBudgetPaymentViews(editingVendor.id);
+    } catch {
+      toast({ variant: "destructive", title: t("budget.toast_payment_status_reset_failed", { defaultValue: "Couldn't reset payment status. Please try again." }) });
+    } finally {
+      setIsResettingPaymentStatus(false);
+    }
+  };
+
+  const handleResetManualPaymentStatus = async () => {
+    if (editingId == null) return;
+    if (!confirm(t("budget.confirm_reset_payment_status", { defaultValue: "Reset this payment status? The paid amount will go back to $0 and the item will no longer be marked paid in full." }))) return;
+    setIsResettingPaymentStatus(true);
+    try {
+      const r = await authFetch(`/api/manual-expenses/${editingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amountPaid: 0, nextPaymentDue: null, nextPaymentAmount: null }),
+      });
+      if (!r.ok) throw new Error("Reset manual payment status failed");
+      toast({ title: t("budget.toast_payment_status_reset", { defaultValue: "Payment status reset" }) });
+      queryClient.invalidateQueries({ queryKey: getListManualExpensesQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+      setIsAdding(false);
+      setEditingId(null);
+      setForm(emptyManualForm());
+    } catch {
+      toast({ variant: "destructive", title: t("budget.toast_payment_status_reset_failed", { defaultValue: "Couldn't reset payment status. Please try again." }) });
+    } finally {
+      setIsResettingPaymentStatus(false);
     }
   };
 
@@ -1845,12 +1888,24 @@ export default function Budget() {
               {t("common.cancel")}
             </Button>
             {editingVendor && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleResetVendorPaymentStatus}
+                disabled={isSavingVendorBudget || isResettingPaymentStatus || editingVendor.totalPaid <= 0}
+              >
+                {isResettingPaymentStatus
+                  ? t("common.saving", { defaultValue: "Saving..." })
+                  : t("budget.reset_payment_status", { defaultValue: "Reset payment status" })}
+              </Button>
+            )}
+            {editingVendor && (
               <Button variant="ghost" onClick={() => setLocation(`/vendors?vendorId=${editingVendor.id}`)} className="gap-1">
                 {t("budget.open_vendor_profile", { defaultValue: "Open vendor profile" })}
                 <ArrowUpRight className="h-3.5 w-3.5" />
               </Button>
             )}
-            <Button onClick={submitVendorBudgetForm} disabled={isSavingVendorBudget}>
+            <Button onClick={submitVendorBudgetForm} disabled={isSavingVendorBudget || isResettingPaymentStatus}>
               {isSavingVendorBudget
                 ? t("common.saving", { defaultValue: "Saving..." })
                 : t("budget.save_vendor_budget", { defaultValue: "Save synced details" })}
@@ -2204,7 +2259,19 @@ export default function Budget() {
             <Button variant="outline" onClick={() => { setIsAdding(false); setEditingId(null); }}>
               {t("common.cancel")}
             </Button>
-            <Button onClick={submitForm} disabled={createManual.isPending || updateManual.isPending}>
+            {editingId != null && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleResetManualPaymentStatus}
+                disabled={createManual.isPending || updateManual.isPending || isResettingPaymentStatus || Number(form.amountPaid || 0) <= 0}
+              >
+                {isResettingPaymentStatus
+                  ? t("common.saving", { defaultValue: "Saving..." })
+                  : t("budget.reset_payment_status", { defaultValue: "Reset payment status" })}
+              </Button>
+            )}
+            <Button onClick={submitForm} disabled={createManual.isPending || updateManual.isPending || isResettingPaymentStatus}>
               {editingId != null ? t("budget.save_changes") : t("budget.add_expense_label")}
             </Button>
           </DialogFooter>

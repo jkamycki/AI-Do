@@ -931,6 +931,54 @@ router.put("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) => 
   }
 });
 
+router.post("/vendors/:id/payments/reset-completion", requireAuth, async (req, res) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      return res.status(404).json({ error: "Vendor not found" });
+    }
+    const vendorId = parseInt(String(req.params.id), 10);
+    const [vendor] = await db
+      .select({ id: vendors.id })
+      .from(vendors)
+      .where(and(eq(vendors.id, vendorId), eq(vendors.profileId, profile.id)))
+      .limit(1);
+    if (!vendor) {
+      return res.status(404).json({ error: "Vendor not found" });
+    }
+
+    const payments = await db.select().from(vendorPayments).where(eq(vendorPayments.vendorId, vendorId));
+    const paidPayments = payments.filter((p) => p.isPaid);
+    const autoPaidInFullIds = paidPayments
+      .filter((p) => p.label.toLowerCase() === "paid in full")
+      .map((p) => p.id);
+    const paidMilestoneIds = paidPayments
+      .filter((p) => p.label.toLowerCase() !== "deposit" && !autoPaidInFullIds.includes(p.id))
+      .map((p) => p.id);
+
+    if (autoPaidInFullIds.length > 0) {
+      await db.delete(vendorPayments).where(inArray(vendorPayments.id, autoPaidInFullIds));
+    }
+    if (paidMilestoneIds.length > 0) {
+      await db
+        .update(vendorPayments)
+        .set({ isPaid: false, paidAt: null })
+        .where(inArray(vendorPayments.id, paidMilestoneIds));
+    }
+
+    await syncNextPaymentDue(vendorId);
+    res.json({ success: true, resetPaymentIds: paidMilestoneIds, deletedPaymentIds: autoPaidInFullIds });
+  } catch (err) {
+    req.log.error(err, "Failed to reset vendor payment completion");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.delete("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) => {
   try {
     const callerRole = await resolveCallerRole(req);
