@@ -540,7 +540,7 @@ export default function Budget() {
   const manualFormPaid = form.paidInFull ? manualFormCost : Math.max(0, Number(form.amountPaid || 0));
   const manualFormRemaining = Math.max(0, manualFormCost - manualFormPaid);
   const vendorFormCost = Math.max(0, Number(vendorForm.totalCost || 0));
-  const vendorExistingPaid = editingVendor?.totalPaid ?? 0;
+  const vendorExistingPaid = editingVendor ? cappedPaid(editingVendor.totalCost, editingVendor.totalPaid) : 0;
   const vendorFormDeposit = Math.max(0, Number(vendorForm.depositAmount || 0));
   const vendorFormPaid = vendorForm.paidInFull ? vendorFormCost : Math.max(vendorExistingPaid, vendorFormDeposit);
   const vendorFormRemaining = Math.max(0, vendorFormCost - vendorFormPaid);
@@ -567,7 +567,10 @@ export default function Budget() {
   // ── Totals ────────────────────────────────────────────────────────
   const totalBudget = budget?.totalBudget ?? 0;
   const vendorCommitted = vendorFinancials?.totalCommitted ?? 0;
-  const vendorPaid = vendorFinancials?.totalPaid ?? 0;
+  const vendorPaid = useMemo(
+    () => orderedVendorRows.reduce((s, v) => s + cappedPaid(v.totalCost, v.totalPaid), 0),
+    [orderedVendorRows],
+  );
   const manualCommitted = useMemo(
     () => manualExpenses.reduce((s, m) => s + (m.cost ?? 0), 0),
     [manualExpenses],
@@ -592,20 +595,21 @@ export default function Budget() {
       current.count += 1;
       byCategory.set(label, current);
     };
-    orderedVendorRows.forEach((v) => add(v.category, v.totalCost, v.totalPaid));
+    orderedVendorRows.forEach((v) => add(v.category, v.totalCost, cappedPaid(v.totalCost, v.totalPaid)));
     manualExpenses.forEach((m) => add(m.category, m.cost ?? 0, cappedPaid(m.cost ?? 0, m.amountPaid ?? 0)));
     return [...byCategory.values()].sort((a, b) => b.total - a.total);
   }, [manualExpenses, orderedVendorRows]);
   // ── Handlers ──────────────────────────────────────────────────────
   const reportRows = useMemo(() => {
     const vendorRows = orderedVendorRows.map((v) => {
-      const rowRemaining = Math.max(0, v.totalCost - v.totalPaid);
+      const paid = cappedPaid(v.totalCost, v.totalPaid);
+      const rowRemaining = Math.max(0, v.totalCost - paid);
       return {
         source: "Vendor",
         name: v.name,
         category: displayCategoryLabel(v.category),
         total: v.totalCost,
-        paid: v.totalPaid,
+        paid,
         remaining: rowRemaining,
         nextPaymentDate: v.nextPaymentDue,
         nextPaymentAmount: v.nextPaymentAmount ?? (v.nextPaymentDue ? rowRemaining : 0),
@@ -613,13 +617,14 @@ export default function Budget() {
       };
     });
     const manualRows = manualExpenses.map((m) => {
-      const rowRemaining = Math.max(0, (m.cost ?? 0) - (m.amountPaid ?? 0));
+      const paid = cappedPaid(m.cost ?? 0, m.amountPaid ?? 0);
+      const rowRemaining = Math.max(0, (m.cost ?? 0) - paid);
       return {
         source: "Manual",
         name: m.name,
         category: displayCategoryLabel(m.category),
         total: m.cost ?? 0,
-        paid: cappedPaid(m.cost ?? 0, m.amountPaid ?? 0),
+        paid,
         remaining: rowRemaining,
         nextPaymentDate: m.nextPaymentDue ?? null,
         nextPaymentAmount: m.nextPaymentAmount ?? 0,
@@ -682,7 +687,8 @@ export default function Budget() {
     setIsAdding(true);
   };
   const openVendorBudgetEdit = (vendor: VendorRow, options?: { scheduleNextPayment?: boolean }) => {
-    const remaining = Math.max(0, vendor.totalCost - vendor.totalPaid);
+    const paid = cappedPaid(vendor.totalCost, vendor.totalPaid);
+    const remaining = Math.max(0, vendor.totalCost - paid);
     setEditingVendor(vendor);
     setVendorForm({
       name: vendor.name,
@@ -691,7 +697,7 @@ export default function Budget() {
       depositAmount: vendor.depositAmount > 0 ? String(vendor.depositAmount) : "",
       nextPaymentDue: vendor.nextPaymentDue ?? "",
       nextPaymentAmount: vendor.nextPaymentAmount != null ? String(vendor.nextPaymentAmount) : options?.scheduleNextPayment && remaining > 0 ? String(remaining) : "",
-      paidInFull: vendor.totalCost > 0 && vendor.totalPaid >= vendor.totalCost,
+      paidInFull: vendor.totalCost > 0 && paid >= vendor.totalCost,
     });
   };
 
@@ -733,7 +739,7 @@ export default function Budget() {
   const scheduleVendorFormPayment = () => {
     setVendorForm((f) => {
       const cost = Math.max(0, Number(f.totalCost || 0));
-      const paid = Math.max(editingVendor?.totalPaid ?? 0, Math.max(0, Number(f.depositAmount || 0)));
+      const paid = Math.max(vendorExistingPaid, Math.max(0, Number(f.depositAmount || 0)));
       const existingNext = Math.max(0, Number(f.nextPaymentAmount || 0));
       const balance = Math.max(0, cost - paid);
       const nextAmount = existingNext > 0 ? existingNext : balance > 0 ? balance : cost > 0 ? cost : 0;
@@ -1214,7 +1220,7 @@ export default function Budget() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               dueDate: nextPaymentDue,
-              amount: nextPaymentAmount || editingVendor.nextPaymentAmount || Math.max(0, totalCost - editingVendor.totalPaid),
+              amount: nextPaymentAmount || editingVendor.nextPaymentAmount || Math.max(0, totalCost - vendorExistingPaid),
               reopenBalance: true,
             }),
           });
@@ -1699,8 +1705,9 @@ export default function Budget() {
                 </TableHeader>
                 <TableBody>
                   {orderedVendorRows.map((v) => {
-                    const remaining = Math.max(0, v.totalCost - v.totalPaid);
-                    const pct = v.totalCost > 0 ? Math.min((v.totalPaid / v.totalCost) * 100, 100) : 0;
+                    const paid = cappedPaid(v.totalCost, v.totalPaid);
+                    const remaining = Math.max(0, v.totalCost - paid);
+                    const pct = v.totalCost > 0 ? Math.min((paid / v.totalCost) * 100, 100) : 0;
                     const nextPaymentPaysRemaining = !!v.nextPaymentDue && moneyMatches(v.nextPaymentAmount ?? remaining, remaining);
                     return (
                       <TableRow key={v.id}>
@@ -1711,7 +1718,7 @@ export default function Budget() {
                           <CategoryBadge category={v.category} />
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{formatMoney(v.totalCost)}</TableCell>
-                        <TableCell className="text-right tabular-nums">{formatMoney(v.totalPaid)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{formatMoney(paid)}</TableCell>
                         <TableCell className="text-right">
                           <RemainingAmount amount={remaining} />
                         </TableCell>
