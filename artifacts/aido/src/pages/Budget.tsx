@@ -378,18 +378,18 @@ function PaymentStatusDecision({
           })}
         </p>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <button
           type="button"
           onClick={onPaidInFull}
-          className={`rounded-lg border p-3 text-left transition ${
+          className={`min-w-0 rounded-lg border p-3 text-left transition ${
             paidInFull
               ? "border-emerald-500/45 bg-emerald-50 text-emerald-900 shadow-sm"
               : "border-border bg-background hover:border-emerald-500/35 hover:bg-emerald-50/60"
           }`}
         >
-          <span className="flex items-center gap-2 text-sm font-semibold">
-            <CheckCircle2 className="h-4 w-4" />
+          <span className="flex min-w-0 items-start gap-2 text-sm font-semibold leading-snug">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
             {t("budget.yes_paid_in_full", { defaultValue: "Yes - paid remaining" })}
           </span>
           <span className="mt-1 block text-xs opacity-80">{paidHint}</span>
@@ -397,14 +397,14 @@ function PaymentStatusDecision({
         <button
           type="button"
           onClick={onSchedulePayment}
-          className={`rounded-lg border p-3 text-left transition ${
+          className={`min-w-0 rounded-lg border p-3 text-left transition ${
             !paidInFull
               ? "border-primary/45 bg-background text-primary shadow-sm"
               : "border-border bg-background hover:border-primary/35 hover:bg-primary/5"
           }`}
         >
-          <span className="flex items-center gap-2 text-sm font-semibold">
-            <Bell className="h-4 w-4" />
+          <span className="flex min-w-0 items-start gap-2 text-sm font-semibold leading-snug">
+            <Bell className="mt-0.5 h-4 w-4 shrink-0" />
             {t("budget.no_schedule_payment", { defaultValue: "No - schedule next payment" })}
           </span>
           <span className="mt-1 block text-xs text-muted-foreground">{partialHint}</span>
@@ -1765,7 +1765,7 @@ export default function Budget() {
       </Card>
 
       <Dialog open={!!editingVendor} onOpenChange={(open) => { if (!open) { setEditingVendor(null); setVendorForm(emptyVendorBudgetForm()); } }}>
-        <DialogContent className="sm:max-w-[560px]">
+        <DialogContent className="w-[calc(100vw-2rem)] overflow-hidden sm:max-w-[760px]">
           <DialogHeader>
             <DialogTitle className="font-serif text-2xl text-primary">
               {t("budget.edit_vendor_budget_title", { defaultValue: "Edit Vendor Budget Details" })}
@@ -1877,7 +1877,7 @@ export default function Budget() {
               </div>
             )}
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="flex-wrap gap-2 sm:gap-2">
             <Button
               variant="outline"
               onClick={() => {
