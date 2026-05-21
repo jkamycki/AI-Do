@@ -3793,28 +3793,38 @@ export default function Guests({
                 return (
                   <div
                     key={`mobile-${g.id}`}
-                    className={`rounded-lg border p-3 space-y-3 ${isDuplicate ? "bg-orange-50/60 dark:bg-orange-900/15 border-orange-300 dark:border-orange-700" : isNew ? (isRsvpSelfAdded ? "bg-orange-50/60 dark:bg-orange-900/15 border-orange-300 dark:border-orange-700" : "bg-amber-50/40 dark:bg-amber-900/10 border-amber-300 dark:border-amber-700") : "bg-background"}`}
+                    className={`rounded-xl border p-3 shadow-sm ${isDuplicate ? "bg-orange-50/60 dark:bg-orange-900/15 border-orange-300 dark:border-orange-700" : isNew ? (isRsvpSelfAdded ? "bg-orange-50/60 dark:bg-orange-900/15 border-orange-300 dark:border-orange-700" : "bg-amber-50/40 dark:bg-amber-900/10 border-amber-300 dark:border-amber-700") : "bg-background"}`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex min-w-0 items-start gap-2">
-                        <label className="mt-0.5 inline-flex shrink-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-primary/80">
+                      <div className="flex min-w-0 flex-1 items-start gap-2">
+                        <label className="mt-0.5 inline-flex shrink-0 items-center">
                           <Checkbox
                             checked={selectedGuestIds.has(g.id)}
                             onCheckedChange={(checked) => toggleGuestSelected(g.id, checked === true)}
                             aria-label={`Select or deselect ${g.name}`}
                           />
-                          <span>Select / Deselect</span>
                         </label>
-                        <div className="min-w-0">
-                          <p className="flex items-center gap-1.5 font-medium leading-tight break-words">
+                        <div className="min-w-0 flex-1">
+                          <p className="flex items-start gap-1.5 text-base font-semibold leading-tight text-foreground break-words">
                             {isWeddingPartyGuest && (
                               <Star
-                                className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-500"
+                                className="mt-0.5 h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-500"
                                 aria-label="Wedding party member"
                               />
                             )}
                             {g.name}
                           </p>
+                          {g.plusOne && (
+                            <div className="mt-2 flex items-start gap-2 rounded-lg border border-primary/15 bg-primary/5 px-2.5 py-2 text-sm">
+                              <Heart className="mt-0.5 h-3.5 w-3.5 shrink-0 fill-primary/20 text-primary" />
+                              <div className="min-w-0">
+                                <p className="text-[10px] font-bold uppercase tracking-wide text-primary/70">Plus one</p>
+                                <p className="break-words font-semibold leading-snug text-primary">
+                                  {g.plusOneName || t("guests.plus_one_yes")}
+                                </p>
+                              </div>
+                            </div>
+                          )}
                         {isNew && (
                           <button
                             type="button"
@@ -3867,22 +3877,34 @@ export default function Guests({
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div>
-                        <p className="text-muted-foreground">Invite</p>
-                        <p className="font-medium">
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                      <div className="rounded-lg border border-border/50 bg-muted/20 px-2.5 py-2">
+                        <p className="font-semibold uppercase tracking-wide text-muted-foreground">Invite</p>
+                        <p className="mt-0.5 font-medium">
                           {g.invitationStatus === "sent" ? "Sent" : "Not sent"}
                         </p>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">Table</p>
-                        <p className="font-medium truncate">
+                      <div className="rounded-lg border border-border/50 bg-muted/20 px-2.5 py-2">
+                        <p className="font-semibold uppercase tracking-wide text-muted-foreground">Table</p>
+                        <p className="mt-0.5 font-medium truncate">
                           {g.tableAssignment || "—"}
                         </p>
                       </div>
+                      <div className="rounded-lg border border-border/50 bg-muted/20 px-2.5 py-2">
+                        <p className="font-semibold uppercase tracking-wide text-muted-foreground">Meal</p>
+                        <p className="mt-0.5 truncate font-medium capitalize">
+                          {g.mealChoice ? g.mealChoice.replace(/_/g, " ") : "None"}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-border/50 bg-muted/20 px-2.5 py-2">
+                        <p className="font-semibold uppercase tracking-wide text-muted-foreground">Group</p>
+                        <p className="mt-0.5 truncate font-medium">
+                          {g.guestGroup || "None"}
+                        </p>
+                      </div>
                     </div>
-                    <div className="pt-1">
-                      <p className="text-xs text-muted-foreground mb-1">Booked Hotel</p>
+                    <div className="mt-3 rounded-lg border border-border/50 bg-muted/10 p-2.5">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Booked Hotel</p>
                       <Select
                         value={(g as any).bookedHotelBlockId ? String((g as any).bookedHotelBlockId) : (g as any).needsHotel ? "pending" : "na"}
                         onValueChange={(value) => handleBookedHotelChange(g, value)}
@@ -3918,7 +3940,12 @@ export default function Guests({
                         </div>
                       )}
                     </div>
-                    <div className="flex items-center gap-1 pt-1 border-t">
+                    {g.notes && (
+                      <div className="mt-3 rounded-lg border border-border/50 bg-muted/10 px-2.5 py-2 text-xs italic text-muted-foreground">
+                        {g.notes}
+                      </div>
+                    )}
+                    <div className="mt-3 flex items-center justify-end gap-1 border-t pt-2">
                       <Button
                         variant="ghost"
                         size="icon"
