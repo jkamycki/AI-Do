@@ -98,6 +98,7 @@ router.post("/manual-expenses", requireAuth, async (req, res) => {
       res.status(400).json({ error: "cost and amountPaid must be valid numbers" });
       return;
     }
+    const cappedPaidNum = Math.min(paidNum, costNum);
     const [created] = await db
       .insert(manualExpenses)
       .values({
@@ -106,7 +107,7 @@ router.post("/manual-expenses", requireAuth, async (req, res) => {
         name: name.trim().slice(0, 200),
         category: String(category ?? "Other").slice(0, 80),
         cost: String(costNum),
-        amountPaid: String(paidNum),
+        amountPaid: String(cappedPaidNum),
         nextPaymentDue: sanitizeNextPaymentDue(nextPaymentDue),
         nextPaymentAmount: sanitizeNextPaymentAmount(nextPaymentAmount),
         notes: typeof notes === "string" ? notes.slice(0, 2000) : null,
@@ -135,6 +136,15 @@ router.put("/manual-expenses/:id", requireAuth, async (req, res) => {
     }
     const id = parseInt(String(req.params.id), 10);
     const { name, category, cost, amountPaid, nextPaymentDue, nextPaymentAmount, notes, receiptUrl, receiptName } = req.body ?? {};
+    const [existing] = await db
+      .select()
+      .from(manualExpenses)
+      .where(and(eq(manualExpenses.id, id), eq(manualExpenses.profileId, profile.id)))
+      .limit(1);
+    if (!existing) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
     const updates: Partial<typeof manualExpenses.$inferInsert> = {};
     if (name !== undefined) {
       const trimmed = String(name).trim();
@@ -153,13 +163,14 @@ router.put("/manual-expenses/:id", requireAuth, async (req, res) => {
       }
       updates.cost = String(n);
     }
-    if (amountPaid !== undefined) {
-      const n = Math.max(0, Number(amountPaid));
+    if (amountPaid !== undefined || cost !== undefined) {
+      const n = Math.max(0, Number(amountPaid !== undefined ? amountPaid : existing.amountPaid));
       if (!Number.isFinite(n)) {
         res.status(400).json({ error: "amountPaid must be a valid number" });
         return;
       }
-      updates.amountPaid = String(n);
+      const costForCap = cost !== undefined ? Math.max(0, Number(cost)) : Number(existing?.cost ?? 0);
+      updates.amountPaid = String(Math.min(n, costForCap));
     }
     if (nextPaymentDue !== undefined) updates.nextPaymentDue = sanitizeNextPaymentDue(nextPaymentDue);
     if (nextPaymentAmount !== undefined) updates.nextPaymentAmount = sanitizeNextPaymentAmount(nextPaymentAmount);
@@ -209,7 +220,12 @@ router.post("/manual-expenses/:id/mark-paid", requireAuth, async (req, res) => {
       return;
     }
     const addAmount = existing.nextPaymentAmount != null ? Number(existing.nextPaymentAmount) : 0;
-    const newPaid = Number(existing.amountPaid) + (Number.isFinite(addAmount) ? addAmount : 0);
+    const currentPaid = Number(existing.amountPaid);
+    const totalCost = Number(existing.cost);
+    const newPaid = Math.min(
+      Number.isFinite(totalCost) ? Math.max(0, totalCost) : Number.POSITIVE_INFINITY,
+      currentPaid + (Number.isFinite(addAmount) ? Math.max(0, addAmount) : 0),
+    );
     const [updated] = await db
       .update(manualExpenses)
       .set({

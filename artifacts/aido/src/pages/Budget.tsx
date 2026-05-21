@@ -119,6 +119,11 @@ const emptyVendorBudgetForm = (): VendorBudgetFormState => ({
 function formatMoney(n: number) {
   return `$${Math.round(n).toLocaleString()}`;
 }
+
+function cappedPaid(total: number, paid: number) {
+  return Math.min(Math.max(0, paid || 0), Math.max(0, total || 0));
+}
+
 function safeReceiptHref(url: string | null | undefined): string | null {
   if (!url) return null;
   try {
@@ -523,7 +528,7 @@ export default function Budget() {
     [manualExpenses],
   );
   const manualPaid = useMemo(
-    () => manualExpenses.reduce((s, m) => s + (m.amountPaid ?? 0), 0),
+    () => manualExpenses.reduce((s, m) => s + cappedPaid(m.cost ?? 0, m.amountPaid ?? 0), 0),
     [manualExpenses],
   );
   const combinedSpend = vendorCommitted + manualCommitted;
@@ -543,7 +548,7 @@ export default function Budget() {
       byCategory.set(label, current);
     };
     vendorFinancials?.vendors.forEach((v) => add(v.category, v.totalCost, v.totalPaid));
-    manualExpenses.forEach((m) => add(m.category, m.cost ?? 0, m.amountPaid ?? 0));
+    manualExpenses.forEach((m) => add(m.category, m.cost ?? 0, cappedPaid(m.cost ?? 0, m.amountPaid ?? 0)));
     return [...byCategory.values()].sort((a, b) => b.total - a.total);
   }, [manualExpenses, vendorFinancials?.vendors]);
   // ── Handlers ──────────────────────────────────────────────────────
@@ -569,7 +574,7 @@ export default function Budget() {
         name: m.name,
         category: displayCategoryLabel(m.category),
         total: m.cost ?? 0,
-        paid: m.amountPaid ?? 0,
+        paid: cappedPaid(m.cost ?? 0, m.amountPaid ?? 0),
         remaining: rowRemaining,
         nextPaymentDate: m.nextPaymentDue ?? null,
         nextPaymentAmount: m.nextPaymentAmount ?? 0,
@@ -712,7 +717,7 @@ export default function Budget() {
       name: form.name.trim(),
       category: form.category || "Other",
       cost: costNum,
-      amountPaid: paidInFull ? costNum : parseFloat(form.amountPaid) || 0,
+      amountPaid: paidInFull ? costNum : cappedPaid(costNum, parseFloat(form.amountPaid) || 0),
       nextPaymentDue: paidInFull ? null : form.nextPaymentDue.trim() || null,
       nextPaymentAmount: paidInFull ? null : parseFloat(form.nextPaymentAmount) || null,
       notes: form.notes.trim() || null,
@@ -1838,8 +1843,9 @@ export default function Budget() {
                 </TableHeader>
                 <TableBody>
                   {manualExpenses.map((m) => {
-                    const remaining = Math.max(0, m.cost - m.amountPaid);
-                    const pct = m.cost > 0 ? Math.min((m.amountPaid / m.cost) * 100, 100) : 0;
+                    const paid = cappedPaid(m.cost, m.amountPaid);
+                    const remaining = Math.max(0, m.cost - paid);
+                    const pct = m.cost > 0 ? Math.min((paid / m.cost) * 100, 100) : 0;
                     return (
                       <TableRow key={m.id}>
                         <TableCell>
@@ -1850,7 +1856,7 @@ export default function Budget() {
                           <CategoryBadge category={m.category} />
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{formatMoney(m.cost)}</TableCell>
-                        <TableCell className="text-right tabular-nums">{formatMoney(m.amountPaid)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{formatMoney(paid)}</TableCell>
                         <TableCell className="text-right">
                           <RemainingAmount amount={remaining} />
                         </TableCell>
@@ -1965,7 +1971,7 @@ export default function Budget() {
               label={t("budget.total_paid_out")}
               value={combinedPaid}
               good={combinedPaid > 0}
-              sub={combinedSpend > 0 ? t("budget.percent_used", { pct: ((combinedPaid / combinedSpend) * 100).toFixed(0) }) : undefined}
+              sub={combinedSpend > 0 ? t("budget.percent_used", { pct: Math.min((combinedPaid / combinedSpend) * 100, 100).toFixed(0) }) : undefined}
             />
             <SummaryStat
               label={t("budget.remaining_to_pay")}
