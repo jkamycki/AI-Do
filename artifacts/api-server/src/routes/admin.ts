@@ -56,6 +56,7 @@ function asRecord(value: unknown): Record<string, unknown> {
 }
 
 function publicSessionRef(sessionId: string): string {
+  if (/^[a-f0-9]{16}$/i.test(sessionId)) return sessionId;
   return crypto.createHash("sha256").update(sessionId).digest("hex").slice(0, 16);
 }
 

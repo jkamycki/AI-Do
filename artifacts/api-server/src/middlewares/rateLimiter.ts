@@ -108,6 +108,15 @@ export const publicRsvpLimiter = rateLimit({
   message: { error: "Too many RSVP attempts. Please wait a few minutes and try again." },
 });
 
+export const analyticsLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 120,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+  message: { error: "Too many analytics events. Please slow down and try again later." },
+});
+
 const DAILY_SUPPORT_LIMIT = 120;
 const DAILY_ARIA_LIMIT = 60;
 

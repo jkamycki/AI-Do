@@ -6,6 +6,8 @@ const SENSITIVE_METADATA_KEY = /(password|token|secret|authorization|cookie|sess
 const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
 const BEARER_LIKE_RE = /\b(?:Bearer\s+)?[A-Za-z0-9_-]{24,}\.[A-Za-z0-9._-]{12,}\b/g;
 const UUID_PATH_TOKEN_RE = /\/(?:rsvp|collect|invite|save-the-date)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
+const SENSITIVE_PATH_SEGMENT_RE =
+  /\/(?:api\/)?(?:guest-collect|preview\/rsvp|preview\/save-the-date|rsvp|collect|invite|save-the-date|save-the-date\/shared-invite|invitation-shares)\/[^/?#\s]+/gi;
 const MAX_METADATA_BYTES = 12_000;
 const MAX_STRING_LENGTH = 1_000;
 
@@ -15,6 +17,10 @@ function sanitizeMetadataValue(value: unknown, depth = 0): unknown {
     return value
       .replace(EMAIL_RE, "[Redacted email]")
       .replace(BEARER_LIKE_RE, "[Redacted token]")
+      .replace(SENSITIVE_PATH_SEGMENT_RE, (match) => {
+        const cut = match.lastIndexOf("/");
+        return `${match.slice(0, cut + 1)}[Redacted token]`;
+      })
       .replace(UUID_PATH_TOKEN_RE, (match) => match.replace(/\/[^/]+$/, "/[Redacted token]"))
       .slice(0, MAX_STRING_LENGTH);
   }

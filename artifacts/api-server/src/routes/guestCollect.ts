@@ -358,7 +358,10 @@ router.post("/guest-collect/:token", publicRsvpLimiter, async (req, res) => {
       .where(and(eq(guests.profileId, profileId), or(...dupConditions)));
 
     if (existing.length > 0) {
-      return res.status(409).json({ error: "It looks like your info is already in the system — no need to submit again!" });
+      // Do not reveal whether a guest name/email exists to anyone holding the
+      // public collector link. Treat duplicates as a successful no-op so real
+      // guests get a friendly finish while attackers cannot enumerate records.
+      return res.status(200).json({ success: true });
     }
 
     const plusOneName = plusOne

@@ -2,9 +2,10 @@ import express, { type Express } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import pinoHttp from "pino-http";
+import crypto from "crypto";
 import { clerkMiddleware } from "@clerk/express";
 import { CLERK_PROXY_PATH, clerkProxyMiddleware } from "./middlewares/clerkProxyMiddleware";
-import { generalLimiter } from "./middlewares/rateLimiter";
+import { analyticsLimiter, generalLimiter } from "./middlewares/rateLimiter";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { isAllowedOrigin } from "./lib/allowedOrigins";
@@ -28,6 +29,19 @@ function isDevelopmentOrigin(origin: string) {
   } catch {
     return false;
   }
+}
+
+function redactUrlPath(rawUrl: string | undefined): string | undefined {
+  if (!rawUrl) return rawUrl;
+  const path = rawUrl.split("?")[0];
+  return path
+    .replace(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?=\/|$)/gi, "/[Redacted token]")
+    .replace(/\/[A-Za-z0-9_-]{24,}\.[A-Za-z0-9._-]{12,}(?=\/|$)/g, "/[Redacted token]")
+    .replace(/\/[A-Za-z0-9_-]{32,}(?=\/|$)/g, "/[Redacted token]");
+}
+
+function publicVisitorRef(visitorId: string): string {
+  return crypto.createHash("sha256").update(visitorId).digest("hex").slice(0, 16);
 }
 
 // ─── Security headers ─────────────────────────────────────────────────────────
@@ -59,7 +73,7 @@ app.use(
         return {
           id: req.id,
           method: req.method,
-          url: req.url?.split("?")[0],
+          url: redactUrlPath(req.url),
         };
       },
       res(res) {
@@ -405,18 +419,19 @@ app.use((err: unknown, _req: express.Request, res: express.Response, next: expre
 });
 
 import { db, analyticsEvents } from "@workspace/db";
-app.post("/api/analytics/pageview", async (req, res) => {
+app.post("/api/analytics/pageview", analyticsLimiter, async (req, res) => {
   try {
     const { visitorId, path: pagePath } = req.body ?? {};
     if (typeof visitorId === "string" && visitorId.length > 0) {
+      const visitorRef = publicVisitorRef(visitorId);
       const ua = req.headers["user-agent"] ?? "";
       const device = /mobile|android|iphone|ipad/i.test(ua) ? "mobile" : "desktop";
       await db.insert(analyticsEvents).values({
-        userId: `visitor_${visitorId.slice(0, 36)}`,
+        userId: `visitor_${visitorRef}`,
         eventType: "page_view",
         metadata: sanitizeAnalyticsMetadata({ path: typeof pagePath === "string" ? pagePath : "/", device }),
       });
-      await pruneAnalyticsEvents(`visitor_${visitorId.slice(0, 36)}`);
+      await pruneAnalyticsEvents(`visitor_${visitorRef}`);
     }
     res.json({ ok: true });
   } catch {

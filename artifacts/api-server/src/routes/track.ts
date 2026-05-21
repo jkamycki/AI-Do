@@ -30,8 +30,10 @@ router.post("/track", async (req, res) => {
       return res.status(400).json({ error: "sessionId and event are required." });
     }
 
+    const safeSessionRef = sessionRef(sessionId);
+
     await db.insert(anonymousSessions).values({
-      sessionId,
+      sessionId: safeSessionRef,
       testMode,
       event,
       metadata,
@@ -41,7 +43,6 @@ router.post("/track", async (req, res) => {
     });
 
     const auth = getAuth(req);
-    const safeSessionRef = sessionRef(sessionId);
     const userId =
       (typeof req.userId === "string" && req.userId) ||
       (typeof auth?.userId === "string" && auth.userId) ||
