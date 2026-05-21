@@ -858,8 +858,8 @@ ${analysisRaw.slice(0, 12000)}`;
           summary: asText(analysis.summary, "Contract Analyzer reviewed this contract. Open Extract Info for payment terms, cancellation policy, deliverables, and vendor contact details."),
           extractedFields: contractAnalysisToDocumentFields(analysis, selectedVendor, selectedHotel),
           tags: selectedHotel
-            ? ["Contract", "Contract Analyzer", "Hotel Block"]
-            : ["Contract", "Contract Analyzer"],
+            ? ["Contract", "Hotel Block"]
+            : ["Contract"],
           folder: "Contracts",
           visibility: [],
           extractedText: extractedText.slice(0, 40000),

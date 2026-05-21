@@ -117,7 +117,8 @@ function cleanFileName(fileName: string): string {
 }
 
 function cleanFolderName(folder: string): string {
-  return folder.replace(/[^\w.\- &()]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80) || "General";
+  const cleaned = folder.replace(/[^\w.\- &()]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80) || "General";
+  return cleaned.toLowerCase() === "contract analyzer" ? "Contracts" : cleaned;
 }
 
 async function extractDocxText(buffer: Buffer): Promise<string> {
@@ -319,7 +320,7 @@ async function findMatchingVendor(profileId: number, fields: ExtractedFields, fi
 
 function normalizeTags(value: unknown): string[] {
   return Array.isArray(value)
-    ? Array.from(new Set(value.map((item) => asText(item)).filter(Boolean))).slice(0, 20)
+    ? Array.from(new Set(value.map((item) => asText(item)).filter((item) => item && item.toLowerCase() !== "contract analyzer"))).slice(0, 20)
     : [];
 }
 
@@ -362,7 +363,13 @@ router.get("/documents", requireAuth, async (req, res) => {
     .where(eq(documents.profileId, profile.id))
     .orderBy(desc(documents.createdAt));
 
-  res.json({ documents: rows });
+  res.json({
+    documents: rows.map((row) => ({
+      ...row,
+      folder: cleanFolderName(row.folder || "General"),
+      tags: normalizeTags(row.tags),
+    })),
+  });
 });
 
 router.get("/documents/:id", requireAuth, async (req, res) => {
@@ -395,7 +402,13 @@ router.get("/documents/:id", requireAuth, async (req, res) => {
     .where(and(eq(documents.id, id), eq(documents.profileId, profile.id)))
     .limit(1);
   if (!rows[0]) return res.status(404).json({ error: "Document not found" });
-  res.json({ document: rows[0] });
+  res.json({
+    document: {
+      ...rows[0],
+      folder: cleanFolderName(rows[0].folder || "General"),
+      tags: normalizeTags(rows[0].tags),
+    },
+  });
 });
 
 router.post("/documents/upload", requireAuth, upload.single("file"), async (req, res) => {
