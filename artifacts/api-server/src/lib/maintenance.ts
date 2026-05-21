@@ -6,7 +6,7 @@ export const PUBLIC_MAINTENANCE_SECTION = "public-guest-experience";
 export const PORTAL_MAINTENANCE_SECTION = "portal-experience";
 
 export const DEFAULT_MAINTENANCE_MESSAGE =
-  "We'll be right back. We're making updates and improvements to this page. Thank you for your patience!";
+  "This experience is temporarily unavailable. Please check back soon.";
 
 export const PUBLIC_MAINTENANCE_SECTIONS = [
   "guest-collector",

@@ -2,11 +2,9 @@ import { useState, lazy, Suspense, Component } from "react";
 import type { ReactNode } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
 import { useRoute, Link } from "wouter";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useGetProfile } from "@workspace/api-client-react";
-import { Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 const Guests = lazy(() => import("./Guests"));
@@ -60,31 +58,18 @@ class TabErrorBoundary extends Component<{ children: ReactNode; tabName: string 
       const message = this.state.error?.message || "Unknown error";
       const stack = this.state.error?.stack || "";
       const isStale = isStaleChunkError(message);
+      if (isStale) {
+        return <div className="min-h-[240px] bg-background" aria-hidden="true" />;
+      }
       return (
         <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-6 space-y-3">
           <div className="text-center space-y-2">
             <p className="font-semibold text-destructive">
-              {isStale ? "This page needs to be refreshed" : "This tab failed to load"}
+              This tab failed to load
             </p>
-            {isStale ? (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  We just shipped an update and your browser still has the old version cached. A quick refresh will load the new files.
-                </p>
-                <div className="flex flex-col items-center gap-2 pt-2">
-                  <Button onClick={() => window.location.reload()} className="gap-2">
-                    <Sparkles className="h-4 w-4" /> Refresh now
-                  </Button>
-                  <p className="text-xs text-muted-foreground">
-                    Or press <kbd className="px-1.5 py-0.5 rounded border border-border bg-background font-mono text-[11px]">{refreshShortcutHint()}</kbd> for a hard refresh.
-                  </p>
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Try a hard refresh — press <kbd className="px-1.5 py-0.5 rounded border border-border bg-background font-mono text-[11px]">{refreshShortcutHint()}</kbd> — to reload the page. If the issue persists, share the details below with support.
-              </p>
-            )}
+            <p className="text-sm text-muted-foreground">
+              Try a hard refresh - press <kbd className="px-1.5 py-0.5 rounded border border-border bg-background font-mono text-[11px]">{refreshShortcutHint()}</kbd> - to reload the page. If the issue persists, share the details below with support.
+            </p>
           </div>
           <details className="text-xs bg-background/50 rounded p-3 border border-border/40">
             <summary className="cursor-pointer text-muted-foreground hover:text-foreground">

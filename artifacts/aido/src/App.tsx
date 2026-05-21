@@ -2019,17 +2019,18 @@ class AppErrorBoundary extends Component<
         return <RouteLoading />;
       }
       const isStale = isChunkLoadError(this.state.message);
+      if (isStale) {
+        return <RouteLoading />;
+      }
       return (
         <div className="flex min-h-screen items-center justify-center bg-[#FFF7F2] bg-[radial-gradient(circle_at_18%_4%,rgba(141,41,77,0.10),transparent_52%)] p-8 text-center text-[#2D1B22]">
           <div className="w-full max-w-xl rounded-[20px] border border-[#8D294D]/20 bg-white/85 px-7 py-9 shadow-[0_20px_60px_rgba(91,15,42,0.12)]">
             <p className="mb-3 text-xs font-extrabold uppercase tracking-[0.16em] text-[#8D294D]">A.IDO</p>
             <h1 className="font-serif text-4xl font-semibold leading-none text-[#5B0F2A] sm:text-5xl">
-              {isStale ? "This page needs to be refreshed" : "Please refresh the page"}
+              Please refresh the page
             </h1>
             <p className="mx-auto mt-5 max-w-md text-sm leading-7 text-[#6F3E54] sm:text-base">
-              {isStale
-                ? "We just shipped an update and your browser is still running the old version. A quick refresh will load the new files."
-                : "Something interrupted this page while it was loading. Refreshing will try again."}
+              Something interrupted this page while it was loading. Refreshing will try again.
             </p>
             <button
               onClick={() => window.location.reload()}
