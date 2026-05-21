@@ -98,6 +98,49 @@ async function syncNextPaymentDue(vendorId: number) {
   await db.update(vendors).set({ nextPaymentDue: nextDate }).where(eq(vendors.id, vendorId));
 }
 
+async function reopenVendorBalanceForScheduledPayment(vendorId: number, scheduledAmount: number) {
+  const amountToReopen = Math.max(0, Number(scheduledAmount || 0));
+  if (!Number.isFinite(amountToReopen) || amountToReopen <= 0) return;
+
+  const [vendor] = await db.select().from(vendors).where(eq(vendors.id, vendorId)).limit(1);
+  if (!vendor) return;
+
+  const payments = await db.select().from(vendorPayments).where(eq(vendorPayments.vendorId, vendorId));
+  const hasDepositMilestone = payments.some((p) => p.label.toLowerCase() === "deposit");
+  const paidPayments = payments.filter((p) => p.isPaid);
+  const paidFromPayments = paidPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+  const currentPaidTotal = (hasDepositMilestone ? 0 : Number(vendor.depositAmount)) + paidFromPayments;
+  const targetPaidTotal = Math.max(0, Number(vendor.totalCost) - amountToReopen);
+  let excessPaid = Math.max(0, currentPaidTotal - targetPaidTotal);
+  if (excessPaid <= 0) return;
+
+  const candidates = [...paidPayments].sort((a, b) => {
+    const aAuto = a.label.toLowerCase() === "paid in full" ? 0 : 1;
+    const bAuto = b.label.toLowerCase() === "paid in full" ? 0 : 1;
+    if (aAuto !== bAuto) return aAuto - bAuto;
+    const aPaidAt = a.paidAt ? a.paidAt.getTime() : 0;
+    const bPaidAt = b.paidAt ? b.paidAt.getTime() : 0;
+    if (aPaidAt !== bPaidAt) return bPaidAt - aPaidAt;
+    return b.id - a.id;
+  });
+
+  for (const payment of candidates) {
+    if (excessPaid <= 0) break;
+    const paymentAmount = Number(payment.amount);
+    if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) continue;
+    if (paymentAmount <= excessPaid + 0.005) {
+      await db.delete(vendorPayments).where(eq(vendorPayments.id, payment.id));
+      excessPaid -= paymentAmount;
+    } else {
+      await db
+        .update(vendorPayments)
+        .set({ amount: String(Math.max(0, paymentAmount - excessPaid)) })
+        .where(eq(vendorPayments.id, payment.id));
+      excessPaid = 0;
+    }
+  }
+}
+
 router.get("/vendor-contacts", requireAuth, async (req, res) => {
   try {
     const callerRole = await resolveCallerRole(req);
@@ -673,7 +716,7 @@ router.post("/vendors/:id/payments", requireAuth, async (req, res) => {
     if (!vendor) {
       return res.status(404).json({ error: "Vendor not found" });
     }
-    const { label, amount, dueDate, isPaid } = req.body;
+    const { label, amount, dueDate, isPaid, reopenBalance } = req.body;
     const [payment] = await db.insert(vendorPayments).values({
       vendorId,
       label,
@@ -681,6 +724,9 @@ router.post("/vendors/:id/payments", requireAuth, async (req, res) => {
       dueDate,
       isPaid: isPaid ?? false,
     }).returning();
+    if (reopenBalance && !(isPaid ?? false)) {
+      await reopenVendorBalanceForScheduledPayment(vendorId, Number(amount));
+    }
     await syncNextPaymentDue(vendorId);
     res.status(201).json(formatPayment(payment));
   } catch (err) {
@@ -857,7 +903,7 @@ router.put("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) => 
     if (!vendor) {
       return res.status(404).json({ error: "Payment not found" });
     }
-    const { label, amount, dueDate, isPaid } = req.body;
+    const { label, amount, dueDate, isPaid, reopenBalance } = req.body;
     const updates: Partial<typeof vendorPayments.$inferInsert> = {};
     if (label !== undefined) updates.label = label;
     if (amount !== undefined) updates.amount = String(amount);
@@ -873,6 +919,9 @@ router.put("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) => 
       .returning();
     if (!updated) {
       return res.status(404).json({ error: "Payment not found" });
+    }
+    if (reopenBalance && !updated.isPaid) {
+      await reopenVendorBalanceForScheduledPayment(vendorId, Number(updated.amount));
     }
     await syncNextPaymentDue(vendorId);
     res.json(formatPayment(updated));

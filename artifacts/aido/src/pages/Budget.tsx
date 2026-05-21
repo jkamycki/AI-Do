@@ -692,11 +692,14 @@ export default function Budget() {
     setForm((f) => {
       const cost = Math.max(0, Number(f.cost || 0));
       const paid = Math.max(0, Number(f.amountPaid || 0));
+      const existingNext = Math.max(0, Number(f.nextPaymentAmount || 0));
       const balance = Math.max(0, cost - paid);
+      const nextAmount = existingNext > 0 ? existingNext : balance > 0 ? balance : cost > 0 ? cost : 0;
       return {
         ...f,
         paidInFull: false,
-        nextPaymentAmount: f.nextPaymentAmount || (balance > 0 ? String(balance) : ""),
+        amountPaid: paid >= cost && nextAmount > 0 ? String(Math.max(0, cost - nextAmount)) : f.amountPaid,
+        nextPaymentAmount: f.nextPaymentAmount || (nextAmount > 0 ? String(nextAmount) : ""),
       };
     });
   };
@@ -714,11 +717,13 @@ export default function Budget() {
     setVendorForm((f) => {
       const cost = Math.max(0, Number(f.totalCost || 0));
       const paid = Math.max(editingVendor?.totalPaid ?? 0, Math.max(0, Number(f.depositAmount || 0)));
+      const existingNext = Math.max(0, Number(f.nextPaymentAmount || 0));
       const balance = Math.max(0, cost - paid);
+      const nextAmount = existingNext > 0 ? existingNext : balance > 0 ? balance : cost > 0 ? cost : 0;
       return {
         ...f,
         paidInFull: false,
-        nextPaymentAmount: f.nextPaymentAmount || (balance > 0 ? String(balance) : ""),
+        nextPaymentAmount: f.nextPaymentAmount || (nextAmount > 0 ? String(nextAmount) : ""),
       };
     });
   };
@@ -741,13 +746,19 @@ export default function Budget() {
     }
     const costNum = parseFloat(form.cost) || 0;
     const paidInFull = form.paidInFull && costNum > 0;
+    const scheduledAmount = Math.max(0, parseFloat(form.nextPaymentAmount) || 0);
+    const rawPaidAmount = cappedPaid(costNum, parseFloat(form.amountPaid) || 0);
     const payload = {
       name: form.name.trim(),
       category: form.category || "Other",
       cost: costNum,
-      amountPaid: paidInFull ? costNum : cappedPaid(costNum, parseFloat(form.amountPaid) || 0),
+      amountPaid: paidInFull
+        ? costNum
+        : form.nextPaymentDue.trim() && scheduledAmount > 0
+          ? Math.min(rawPaidAmount, Math.max(0, costNum - scheduledAmount))
+          : rawPaidAmount,
       nextPaymentDue: paidInFull ? null : form.nextPaymentDue.trim() || null,
-      nextPaymentAmount: paidInFull ? null : parseFloat(form.nextPaymentAmount) || null,
+      nextPaymentAmount: paidInFull ? null : scheduledAmount || null,
       notes: form.notes.trim() || null,
       receiptUrl: form.receiptUrl,
       receiptName: form.receiptName,
@@ -1111,6 +1122,7 @@ export default function Budget() {
             body: JSON.stringify({
               dueDate: nextPaymentDue,
               amount: nextPaymentAmount || editingVendor.nextPaymentAmount || Math.max(0, totalCost - editingVendor.totalPaid),
+              reopenBalance: true,
             }),
           });
           if (!paymentResponse.ok) throw new Error("Payment update failed");
@@ -1123,6 +1135,7 @@ export default function Budget() {
               dueDate: nextPaymentDue,
               amount: nextPaymentAmount,
               isPaid: false,
+              reopenBalance: true,
             }),
           });
           if (!paymentResponse.ok) throw new Error("Payment create failed");
