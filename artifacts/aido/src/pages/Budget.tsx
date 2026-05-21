@@ -239,7 +239,7 @@ function MarkPaidInFullButton({
       type="button"
       size="sm"
       variant="outline"
-      className="h-9 w-full justify-start gap-2 rounded-md border-emerald-500/40 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+      className="h-9 w-full justify-start gap-2 rounded-md border-border bg-background px-3 text-sm font-semibold text-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
       onClick={onClick}
     >
       <Square className="h-4 w-4 shrink-0" />
@@ -260,7 +260,7 @@ function PaymentCompleteButton({
       type="button"
       size="sm"
       variant="outline"
-      className="h-9 w-full justify-start gap-2 rounded-md border-emerald-500/40 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
+      className="h-9 w-full justify-start gap-2 rounded-md border-border bg-background px-3 text-sm font-semibold text-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
       onClick={onClick}
       title={t("budget.mark_paid_title", { defaultValue: "Mark this payment complete (adds it to Paid total)" })}
     >
