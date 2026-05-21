@@ -30,7 +30,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ToastAction } from "@/components/ui/toast";
-import { DollarSign, Plus, Trash2, Pencil, ArrowUpRight, Sparkles, Paperclip, X, AlertTriangle, Bell, CheckCircle2, SquareCheck, FileDown, FileSpreadsheet } from "lucide-react";
+import { DollarSign, Plus, Trash2, Pencil, ArrowUpRight, Sparkles, Paperclip, X, AlertTriangle, Bell, CheckCircle2, Square, FileDown, FileSpreadsheet } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 const MANUAL_CATEGORIES = [
@@ -242,7 +242,7 @@ function MarkPaidInFullButton({
       className="h-9 gap-2 rounded-md border-emerald-500/40 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
       onClick={onClick}
     >
-      <SquareCheck className="h-4 w-4 shrink-0" />
+      <Square className="h-4 w-4 shrink-0" />
       {t("budget.mark_paid_in_full", { defaultValue: "Paid in full" })}
     </Button>
   );
@@ -411,7 +411,7 @@ function NextPaymentDisplay({
               onClick={onMarkPaid}
               title={t("budget.mark_paid_title", { defaultValue: "Mark this payment complete (adds it to Paid total)" })}
             >
-              <SquareCheck className="h-4 w-4 shrink-0" />
+              <Square className="h-4 w-4 shrink-0" />
               {t("budget.mark_paid", { defaultValue: "Payment Complete" })}
             </Button>
           )}
@@ -1837,7 +1837,7 @@ export default function Budget() {
                                             onClick={() => handleMarkPaid(m.id)}
                                             title={t("budget.mark_paid_title", { defaultValue: "Mark this payment complete (adds it to Paid total)" })}
                                           >
-                                            <SquareCheck className="h-4 w-4 shrink-0" />
+                                            <Square className="h-4 w-4 shrink-0" />
                                             {t("budget.mark_paid", { defaultValue: "Payment Complete" })}
                                           </Button>
                                         </div>
