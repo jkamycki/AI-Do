@@ -9,6 +9,8 @@ import { logActivity, resolveProfile, resolveCallerRole, hasMinRole } from "../.
 import { getRequestLanguage } from "../../lib/language";
 
 const router = Router();
+const DEFAULT_TIMELINE_AI_TIMEOUT_MS = 8_000;
+const MAX_TIMELINE_AI_TIMEOUT_MS = 15_000;
 
 type TimelineBlock = {
   id: string;
@@ -20,6 +22,12 @@ type TimelineBlock = {
   location: string;
   notes: string;
 };
+
+function timelineAiTimeoutMs(): number {
+  const raw = Number(process.env.TIMELINE_AI_TIMEOUT_MS);
+  if (!Number.isFinite(raw) || raw <= 0) return DEFAULT_TIMELINE_AI_TIMEOUT_MS;
+  return Math.min(MAX_TIMELINE_AI_TIMEOUT_MS, Math.max(3_000, Math.round(raw)));
+}
 
 function normalizeTimelineBlocks(value: unknown): TimelineBlock[] {
   if (!Array.isArray(value)) return [];
@@ -441,9 +449,13 @@ router.post("/timeline", requireAuth, async (req, res) => {
     }
 
     const { dayVision } = req.body as { dayVision?: string };
+    const trimmedDayVision = typeof dayVision === "string" ? dayVision.trim() : "";
 
     const requestLanguage = getRequestLanguage(req, profile.preferredLanguage);
     const lang = requestLanguage !== "English" ? requestLanguage : null;
+    let events: TimelineBlock[] = [];
+    let usedFallback = false;
+    const shouldUseAi = !!trimmedDayVision || !!lang;
     // Important: tell the model to keep JSON structural fields (keys + the
     // category enum + time format) in English while only translating the
     // human-readable strings (title, description, location, notes). Small
@@ -458,7 +470,8 @@ router.post("/timeline", requireAuth, async (req, res) => {
 - Do NOT include any text outside the JSON array. Output ONLY the array.`
       : "";
 
-    const prompt = `Create a detailed wedding day timeline for the following wedding:
+    if (shouldUseAi) {
+      const prompt = `Create a concise wedding day timeline for the following wedding:
 - Couple: ${profile.partner2Name} & ${profile.partner1Name}
 - Date: ${profile.weddingDate}
 - Ceremony Time: ${profile.ceremonyTime}
@@ -466,9 +479,9 @@ router.post("/timeline", requireAuth, async (req, res) => {
 - Saved Profile Venue: ${profile.venue}
 - Location: ${profile.location}
 - Guest Count: ${profile.guestCount}
-- Wedding Style: ${profile.weddingVibe}${dayVision ? `\n- Couple's Vision for the Day: ${dayVision}` : ""}
+- Wedding Style: ${profile.weddingVibe}${trimmedDayVision ? `\n- Couple's Vision for the Day: ${trimmedDayVision}` : ""}
 
-Generate a complete wedding day schedule from early morning preparation through the end of the reception. Include:
+Generate 10 to 13 schedule blocks from preparation through send-off. Include:
 - Bridal party / couple getting ready (preparation)
 - Vendor arrival blocks (photographer, florist, DJ, caterer, etc.) — category: vendors
 - First look or couple portraits — category: photos
@@ -479,7 +492,7 @@ Generate a complete wedding day schedule from early morning preparation through 
 - First dance, toasts, cake cutting, dancing — category: dancing
 - Departure
 
-Include realistic buffer time between events. Use specific locations where applicable.
+Keep descriptions under 18 words. Include realistic buffer time between events. Use specific locations where applicable.
 If a Couple's Vision for the Day is provided, it is the user's latest instruction and must override saved profile details when they conflict. If the vision names a venue, location, estate, manor, hotel, or place, use that place in event locations and descriptions instead of the saved profile venue. If the vision says not to put hair, makeup, glam, or getting-ready first, do not make that the first block; start with another appropriate preparation/vendor/setup block and place hair/makeup later. Make the timeline visibly reflect the request. Add or adjust timing, notes, categories, locations, and descriptions for those priorities instead of returning a generic wedding schedule.
 
 Return ONLY a valid JSON array (no markdown, no explanation) with this exact structure:
@@ -498,33 +511,34 @@ Return ONLY a valid JSON array (no markdown, no explanation) with this exact str
 
 Use 24-hour HH:MM format for startTime and endTime. Use sequential IDs like block-1, block-2, etc.${langInstruction}`;
 
-    const completion = await openai.chat.completions.create({
-      model: getModel(),
-      // Keep output bounded for lower latency while still covering a full day.
-      max_completion_tokens: 1800,
-      messages: [{ role: "user", content: prompt }],
-    }, { signal: AbortSignal.timeout(45_000) });
+      const completion = await openai.chat.completions.create({
+        model: getModel(),
+        // Keep output bounded for lower latency while still covering a full day.
+        max_completion_tokens: 1100,
+        messages: [{ role: "user", content: prompt }],
+      }, { signal: AbortSignal.timeout(timelineAiTimeoutMs()) });
 
-    const content = completion.choices[0]?.message?.content ?? "[]";
-    let events: TimelineBlock[] = [];
+      const content = completion.choices[0]?.message?.content ?? "[]";
 
-    try {
+      try {
       // Strip common preamble/postamble text the model adds in non-English
       // responses ("Aquí tienes el cronograma:..."). We greedy-match the
       // outermost array.
       const jsonMatch = content.match(/\[[\s\S]*\]/);
       events = JSON.parse(jsonMatch ? jsonMatch[0] : content);
       if (!Array.isArray(events)) events = [];
-    } catch (parseErr) {
-      req.log.warn({ err: String(parseErr), preview: content.slice(0, 500) }, "Timeline JSON parse failed");
-      events = [];
+      } catch (parseErr) {
+        req.log.warn({ err: String(parseErr), preview: content.slice(0, 500) }, "Timeline JSON parse failed");
+        events = [];
+      }
     }
 
     if (events.length === 0) {
-      events = buildFallbackTimeline(profile, dayVision);
-      req.log.warn("Timeline AI returned no usable events; using fallback timeline");
+      events = buildFallbackTimeline(profile, trimmedDayVision);
+      usedFallback = true;
+      if (shouldUseAi) req.log.warn("Timeline AI returned no usable events; using fallback timeline");
     } else {
-      events = applyDayVisionToTimeline(events, dayVision, profile.venue);
+      events = applyDayVisionToTimeline(events, trimmedDayVision, profile.venue);
     }
 
     // Replace any existing timelines for this profile so regenerate doesn't pile up duplicate rows.
@@ -539,8 +553,8 @@ Use 24-hour HH:MM format for startTime and endTime. Use sequential IDs like bloc
       return row;
     });
 
-    trackEvent(req.userId!, "timeline_generated", { eventCount: events.length });
-    logActivity(profile.id, req.userId!, `Generated day-of timeline (${events.length} events)`, "timeline", { eventCount: events.length });
+    trackEvent(req.userId!, "timeline_generated", { eventCount: events.length, fallback: usedFallback, aiSkipped: !shouldUseAi });
+    logActivity(profile.id, req.userId!, `Generated day-of timeline (${events.length} events)`, "timeline", { eventCount: events.length, fallback: usedFallback, aiSkipped: !shouldUseAi });
     res.json({
       id: created.id,
       events: created.events,

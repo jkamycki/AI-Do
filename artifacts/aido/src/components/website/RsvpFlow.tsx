@@ -371,7 +371,7 @@ export function RsvpFlow({
               {data.customText.rsvp_subtitle || t("rsvp.subtitle_default", { defaultValue: "Will you be joining us?" })}
             </h2>
             <p className="text-center text-sm sm:text-base font-medium mb-8" style={{ color: text }}>
-              {data.customText.rsvp_intro || t("rsvp.intro_default", { defaultValue: "Find your name on the guest list and let us know if you can make it." })}
+              {data.customText.rsvp_intro || t("rsvp.intro_default", { defaultValue: "Find your name on the guest list. Your response will be saved for the couple to review." })}
             </p>
             <form onSubmit={handleSearch} className="flex flex-col gap-3 max-w-md mx-auto">
               <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: text }}>{t("rsvp.your_name", { defaultValue: "Your name" })}</label>
@@ -519,7 +519,10 @@ export function RsvpFlow({
             <h2 className="text-center text-3xl sm:text-4xl mb-2" style={{ fontFamily: fontStack(data.font), color: text }}>
               {t("rsvp.greeting", { name: guest.name.split(" ")[0], defaultValue: "Hi {{name}}!" })}
             </h2>
-            <p className="text-center text-sm font-medium mb-10" style={{ color: text }}>{t("rsvp.subtitle_default", { defaultValue: "Will you be joining us?" })}</p>
+            <p className="text-center text-sm font-medium mb-3" style={{ color: text }}>{t("rsvp.subtitle_default", { defaultValue: "Will you be joining us?" })}</p>
+            <p className="text-center text-xs font-medium opacity-80 mb-10" style={{ color: text }}>
+              {t("rsvp.response_saved_note", { defaultValue: "When you send this, the couple will see it in their A.IDO guest list." })}
+            </p>
 
             <form onSubmit={handleSubmit} className="space-y-6 max-w-md mx-auto">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -704,7 +707,7 @@ export function RsvpFlow({
                 style={{ background: accent, color: "#fff" }}
               >
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                {submitting ? t("rsvp.sending", { defaultValue: "Sending..." }) : t("rsvp.send_response", { defaultValue: "Send response" })}
+                {submitting ? t("rsvp.sending", { defaultValue: "Sending..." }) : t("rsvp.send_response", { defaultValue: "Send response to couple" })}
               </button>
 
               <button
@@ -943,7 +946,7 @@ export function RsvpFlow({
                 style={{ background: accent, color: "#fff" }}
               >
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                {submitting ? t("rsvp.sending", { defaultValue: "Sending..." }) : t("rsvp.send_response", { defaultValue: "Send response" })}
+                {submitting ? t("rsvp.sending", { defaultValue: "Sending..." }) : t("rsvp.send_response", { defaultValue: "Send response to couple" })}
               </button>
 
               <button
@@ -981,11 +984,11 @@ export function RsvpFlow({
               <p className="text-sm sm:text-base opacity-80 mb-8" style={{ color: text }}>
                 {attendance === "attending"
                   ? (replyName
-                    ? t("rsvp.confirmation_attending_named", { name: replyName, defaultValue: "Your response has been received, {{name}}. We'll be in touch with more details closer to the day." })
-                    : t("rsvp.confirmation_attending", { defaultValue: "Your response has been received. We'll be in touch with more details closer to the day." }))
+                    ? t("rsvp.confirmation_attending_named", { name: replyName, defaultValue: "Your response has been received, {{name}}. The couple can now see it in their guest list." })
+                    : t("rsvp.confirmation_attending", { defaultValue: "Your response has been received. The couple can now see it in their guest list." }))
                   : (replyName
-                    ? t("rsvp.confirmation_declined_named", { name: replyName, defaultValue: "Thank you for letting us know, {{name}}. You'll be missed." })
-                    : t("rsvp.confirmation_declined", { defaultValue: "Thank you for letting us know. You'll be missed." }))}
+                    ? t("rsvp.confirmation_declined_named", { name: replyName, defaultValue: "Thank you for letting us know, {{name}}. The couple can now see it in their guest list." })
+                    : t("rsvp.confirmation_declined", { defaultValue: "Thank you for letting us know. The couple can now see it in their guest list." }))}
               </p>
               {!previewMode && data.publicWebsiteUrl && (
                 <a

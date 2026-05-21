@@ -499,6 +499,11 @@ export default function Checklist() {
               {t("checklist.focus_title", { defaultValue: "Checklist Focus" })}
             </p>
           </div>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            {t("checklist.focus_desc", {
+              defaultValue: "Optional: tell A.IDO what kind of tasks you need next. Leave it blank to generate a balanced wedding checklist.",
+            })}
+          </p>
           <div className="relative">
             <Textarea
               placeholder={t("checklist.focus_placeholder", {
@@ -530,6 +535,13 @@ export default function Checklist() {
                 : <Wand2 className="h-4 w-4" />}
             </Button>
           </div>
+          {generateChecklistWithFocus.isPending && (
+            <div className="rounded-md border border-primary/15 bg-primary/5 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+              {t("checklist.generation_wait_note", {
+                defaultValue: "This may take a moment. A.IDO is matching tasks to your date and keeping completed items intact.",
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 

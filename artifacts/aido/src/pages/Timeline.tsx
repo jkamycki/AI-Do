@@ -992,7 +992,15 @@ export default function Timeline() {
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary flex-shrink-0" />
             <p className="text-sm font-medium text-primary">{t("timeline.vision_card_title")}</p>
+            <Badge variant="outline" className="ml-auto bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800">
+              {t("timeline.fast_draft_badge", { defaultValue: "Fast draft" })}
+            </Badge>
           </div>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            {t("timeline.vision_card_desc", {
+              defaultValue: "Add anything that should shape the schedule. A.IDO will use your ceremony time, venue details, and notes here to build the first draft.",
+            })}
+          </p>
           <div className="relative">
             <Textarea
               placeholder={t("timeline.vision_placeholder")}
@@ -1022,8 +1030,36 @@ export default function Timeline() {
                 : <ArrowUp className="h-4 w-4" />}
             </Button>
           </div>
+          {generateTimeline.isPending && (
+            <div className="rounded-md border border-primary/15 bg-primary/5 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+              {t("timeline.generation_wait_note", {
+                defaultValue: "This should only take a few seconds. If AI is slow, A.IDO will still return a solid first draft.",
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      <div className="rounded-lg border border-primary/15 bg-primary/5 p-4">
+        <div className="flex items-center gap-2 text-sm font-medium text-primary">
+          <Clock className="h-4 w-4" />
+          {t("timeline.quick_tips_title", { defaultValue: "Quick tips" })}
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+            <Wand2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+            <span>{t("timeline.tip_generate", { defaultValue: "Generate a first draft, then adjust the order and wording." })}</span>
+          </div>
+          <div className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+            <GripVertical className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+            <span>{t("timeline.tip_reorder", { defaultValue: "Drag blocks to reorder the day as plans change." })}</span>
+          </div>
+          <div className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+            <span>{t("timeline.tip_status", { defaultValue: "Use statuses to mark what is finalized, pending, or not started." })}</span>
+          </div>
+        </div>
+      </div>
 
       {!hasTimeline ? (
         <Card className="border-none shadow-sm bg-card text-center py-16 px-6">
@@ -1042,7 +1078,7 @@ export default function Timeline() {
         </Card>
       ) : (
         <>
-          <div className="flex items-center justify-end gap-4 flex-wrap">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-3">
               {conflicts.length > 0 && (
                 <div className="flex items-center gap-1.5 text-xs text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/20 rounded-lg px-3 py-1.5 border border-orange-200 dark:border-orange-700">
