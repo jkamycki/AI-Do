@@ -271,32 +271,31 @@ function PaymentCompleteButton({
 }
 
 function BalanceRemainingActions({
-  remaining,
   onSchedule,
   t,
 }: {
-  remaining: number;
   onSchedule: () => void;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
   return (
-    <div className="flex min-w-[190px] flex-col items-start gap-1.5">
-      <div className="rounded-md border border-amber-500/25 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
-        {t("budget.balance_remaining", { amount: formatMoney(remaining), defaultValue: `Balance remaining ${formatMoney(remaining)}` })}
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="h-7 border-primary/35 px-2.5 text-xs font-semibold text-primary hover:bg-primary/10"
-          onClick={onSchedule}
-        >
-          <Bell className="mr-1 h-3.5 w-3.5" />
-          {t("budget.schedule_payment", { defaultValue: "Schedule payment" })}
-        </Button>
-      </div>
-    </div>
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      className="h-7 border-primary/35 px-2.5 text-xs font-semibold text-primary hover:bg-primary/10"
+      onClick={onSchedule}
+    >
+      <Bell className="mr-1 h-3.5 w-3.5" />
+      {t("budget.schedule_payment", { defaultValue: "Schedule payment" })}
+    </Button>
+  );
+}
+
+function RemainingAmount({ amount }: { amount: number }) {
+  return (
+    <span className="inline-flex rounded-md border border-amber-500/25 bg-amber-50 px-2.5 py-1 text-xs font-semibold tabular-nums text-amber-800">
+      {formatMoney(amount)}
+    </span>
   );
 }
 
@@ -1537,7 +1536,9 @@ export default function Budget() {
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{formatMoney(v.totalCost)}</TableCell>
                         <TableCell className="text-right tabular-nums">{formatMoney(v.totalPaid)}</TableCell>
-                        <TableCell className="text-right tabular-nums">{formatMoney(remaining)}</TableCell>
+                        <TableCell className="text-right">
+                          <RemainingAmount amount={remaining} />
+                        </TableCell>
                         <TableCell className="text-sm">
                           <div className="flex min-w-[180px] flex-col items-start gap-2">
                             {remaining <= 0 ? (
@@ -1554,7 +1555,6 @@ export default function Budget() {
                                   </>
                                 ) : (
                                   <BalanceRemainingActions
-                                    remaining={remaining}
                                     onSchedule={() => openVendorBudgetEdit(v, { scheduleNextPayment: true })}
                                     t={t}
                                   />
@@ -1824,7 +1824,9 @@ export default function Budget() {
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{formatMoney(m.cost)}</TableCell>
                         <TableCell className="text-right tabular-nums">{formatMoney(m.amountPaid)}</TableCell>
-                        <TableCell className="text-right tabular-nums">{formatMoney(remaining)}</TableCell>
+                        <TableCell className="text-right">
+                          <RemainingAmount amount={remaining} />
+                        </TableCell>
                         <TableCell className="text-sm">
                           <div className="flex min-w-[180px] flex-col items-start gap-2">
                             {remaining <= 0 ? (
@@ -1860,7 +1862,6 @@ export default function Budget() {
                                   );
                                 })() : (
                                   <BalanceRemainingActions
-                                    remaining={remaining}
                                     onSchedule={() => openEdit(m, { scheduleNextPayment: true })}
                                     t={t}
                                   />
