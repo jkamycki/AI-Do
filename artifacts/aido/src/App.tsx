@@ -1397,6 +1397,7 @@ function ProtectedRoute({
   const { isLoaded, isSignedIn } = useAuth();
   const { activeWorkspace } = useWorkspace();
   const [location] = useLocation();
+  const [maintenanceVerified, setMaintenanceVerified] = useState(!maintenanceSection);
   const { data: adminCheck, isLoading: isLoadingAdminCheck } = useQuery({
     queryKey: ["admin-check"],
     queryFn: async () => {
@@ -1408,7 +1409,7 @@ function ProtectedRoute({
     staleTime: 30_000,
     retry: false,
   });
-  const { data: maintenance, isLoading: isLoadingMaintenance } = useQuery({
+  const { data: maintenance, isLoading: isLoadingMaintenance, isFetching: isFetchingMaintenance } = useQuery({
     queryKey: ["maintenance", maintenanceSection],
     queryFn: async () => {
       const r = await authFetch(`/api/maintenance/public?section=${encodeURIComponent(maintenanceSection!)}`);
@@ -1416,10 +1417,22 @@ function ProtectedRoute({
       return r.json() as Promise<{ active: boolean; message: string }>;
     },
     enabled: isLoaded && !!isSignedIn && !!maintenanceSection,
-    staleTime: 15_000,
+    staleTime: 0,
+    refetchOnMount: "always",
     refetchInterval: 15_000,
     retry: false,
   });
+
+  useEffect(() => {
+    setMaintenanceVerified(!maintenanceSection);
+  }, [location, maintenanceSection]);
+
+  useEffect(() => {
+    if (!maintenanceSection) return;
+    if (!isLoaded || !isSignedIn) return;
+    if (isLoadingAdminCheck || isLoadingMaintenance || isFetchingMaintenance) return;
+    setMaintenanceVerified(true);
+  }, [isLoaded, isSignedIn, isLoadingAdminCheck, isLoadingMaintenance, isFetchingMaintenance, maintenanceSection]);
 
   if (!isLoaded) {
     return <RouteLoading />;
@@ -1433,7 +1446,7 @@ function ProtectedRoute({
     return <Redirect to={`/workspace/${activeWorkspace.profileId}`} />;
   }
 
-  if (maintenanceSection && (isLoadingAdminCheck || isLoadingMaintenance)) {
+  if (maintenanceSection && (!maintenanceVerified || isLoadingAdminCheck || isLoadingMaintenance)) {
     return <RouteLoading />;
   }
 
@@ -1916,6 +1929,7 @@ function ClerkProviderWithRoutes() {
 
 const chunkErrorPattern = /Failed to fetch dynamically imported module|Loading chunk \d+ failed|Importing a module script failed|ChunkLoadError/i;
 const chunkReloadFlag = "aido_chunk_reload_attempted";
+const nonStaleErrorRevealDelayMs = 7000;
 
 function isChunkLoadError(message: string) {
   return chunkErrorPattern.test(message);
@@ -1965,6 +1979,8 @@ class AppErrorBoundary extends Component<
   }
   componentDidCatch(error: Error, info: { componentStack?: string | null }) {
     console.error("[AppErrorBoundary]", error, info);
+    const errorRoute = this.props.resetKey;
+    const errorMessage = error?.message || String(error);
     this.setState({ componentStack: info?.componentStack || "" });
     // Auto-reload once on stale-chunk errors after a deploy.
     const msg = error?.message || "";
@@ -1977,13 +1993,18 @@ class AppErrorBoundary extends Component<
 
     this.clearRevealTimer();
     this.revealTimer = window.setTimeout(() => {
-      this.setState((state) => state.hasError ? { showError: true } : null);
-    }, 2500);
+      this.setState((state) => (
+        state.hasError &&
+        state.resetKey === errorRoute &&
+        state.message === errorMessage
+          ? { showError: true }
+          : null
+      ));
+    }, isChunkLoadError(errorMessage) ? 2500 : nonStaleErrorRevealDelayMs);
   }
   componentDidUpdate(prevProps: { resetKey: string }) {
-    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
+    if (prevProps.resetKey !== this.props.resetKey) {
       this.clearRevealTimer();
-      this.setState({ hasError: false, message: "", stack: "", componentStack: "", autoRecoveringChunk: false, showError: false, resetKey: this.props.resetKey });
     }
   }
   componentWillUnmount() {
