@@ -472,7 +472,7 @@ export default function Budget() {
   const { toast } = useToast();
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
 
   const { data: budget, isLoading: isLoadingBudget } = useGetBudget();
   const saveBudget = useSaveBudget();
@@ -509,6 +509,7 @@ export default function Budget() {
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [recentPaymentUndo, setRecentPaymentUndo] = useState<RecentPaymentUndoMap>({});
+  const summaryRef = useRef<HTMLDivElement | null>(null);
   const undoTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const manualFormCost = Math.max(0, Number(form.cost || 0));
   const manualFormPaid = form.paidInFull ? manualFormCost : Math.max(0, Number(form.amountPaid || 0));
@@ -529,6 +530,14 @@ export default function Budget() {
       Object.values(undoTimersRef.current).forEach(clearTimeout);
     };
   }, []);
+
+  useEffect(() => {
+    if (location !== "/budget/summary") return;
+    if (isLoadingBudget || isLoadingVendors || isLoadingManual) return;
+    window.requestAnimationFrame(() => {
+      summaryRef.current?.scrollIntoView({ block: "start" });
+    });
+  }, [isLoadingBudget, isLoadingManual, isLoadingVendors, location]);
 
   // ── Totals ────────────────────────────────────────────────────────
   const totalBudget = budget?.totalBudget ?? 0;
@@ -1983,7 +1992,7 @@ export default function Budget() {
       </Card>
 
       {/* ── Totals Summary ───────────────────────────────────────── */}
-      <Card className="bg-muted/30">
+      <Card id="budget-summary" ref={summaryRef} className="scroll-mt-24 bg-muted/30">
         <CardHeader>
           <CardTitle className="font-serif text-2xl text-primary">{t("budget.summary_title")}</CardTitle>
           <CardDescription>{t("budget.summary_desc")}</CardDescription>

@@ -1506,7 +1506,7 @@ const PORTAL_TRACKING_ROUTES: Array<{ pattern: RegExp } & PortalTrackingContext>
   { pattern: /^\/dashboard\/?$/, feature: "Dashboard", section: "Planning", tool: "Dashboard", step: "Viewed dashboard" },
   { pattern: /^\/profile\/?$/, feature: "Wedding Profile", section: "Planning", tool: "Profile Builder", step: "Viewed wedding profile" },
   { pattern: /^\/timeline\/?$/, feature: "Timeline", section: "Planning", tool: "Timeline", step: "Viewed timeline" },
-  { pattern: /^\/budget\/?$/, feature: "Budget & Payments", section: "Budget & Vendors", tool: "Budget & Payments", step: "Viewed budget and payments" },
+  { pattern: /^\/budget(?:\/summary)?\/?$/, feature: "Budget & Payments", section: "Budget & Vendors", tool: "Budget & Payments", step: "Viewed budget and payments" },
   { pattern: /^\/checklist\/?$/, feature: "Checklist", section: "Planning", tool: "Checklist Manager", step: "Viewed checklist" },
   { pattern: /^\/vendors\/?$/, feature: "Vendor Tracking", section: "Budget & Vendors", tool: "Vendor Tracking", step: "Viewed vendor tracking" },
   { pattern: /^\/contracts\/?$/, feature: "Contract Analyzer", section: "Budget & Vendors", tool: "Contract Analyzer", step: "Viewed contract analyzer" },
@@ -1847,6 +1847,7 @@ function Router() {
         <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} maintenanceSection="portal-dashboard" />} />
         <Route path="/profile" component={() => <ProtectedRoute component={Profile} maintenanceSection="portal-profile" />} />
         <Route path="/timeline" component={() => <ProtectedRoute component={Timeline} maintenanceSection="portal-timeline" />} />
+        <Route path="/budget/summary" component={() => <ProtectedRoute component={Budget} maintenanceSection="portal-budget" />} />
         <Route path="/budget" component={() => <ProtectedRoute component={Budget} maintenanceSection="portal-budget" />} />
         <Route path="/checklist" component={() => <ProtectedRoute component={Checklist} maintenanceSection="portal-checklist" />} />
         <Route path="/vendors" component={() => <ProtectedRoute component={Vendors} maintenanceSection="portal-vendors" />} />
