@@ -366,7 +366,7 @@ function PaymentStatusDecision({
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
   return (
-    <div className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
+    <div className="min-w-0 space-y-3 overflow-hidden rounded-lg border border-primary/20 bg-primary/5 p-3">
       <div className="space-y-1">
         <p className="text-sm font-semibold text-foreground">
           {t("budget.payment_status_question", { defaultValue: "Is the remaining balance paid?" })}
@@ -378,17 +378,17 @@ function PaymentStatusDecision({
           })}
         </p>
       </div>
-      <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="grid min-w-0 grid-cols-1 gap-2">
         <button
           type="button"
           onClick={onPaidInFull}
-          className={`min-w-0 rounded-lg border p-3 text-left transition ${
+          className={`w-full min-w-0 rounded-lg border p-3 text-left transition ${
             paidInFull
               ? "border-emerald-500/45 bg-emerald-50 text-emerald-900 shadow-sm"
               : "border-border bg-background hover:border-emerald-500/35 hover:bg-emerald-50/60"
           }`}
         >
-          <span className="flex min-w-0 items-start gap-2 text-sm font-semibold leading-snug">
+          <span className="flex min-w-0 items-start gap-2 break-words text-sm font-semibold leading-snug">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
             {t("budget.yes_paid_in_full", { defaultValue: "Yes - paid remaining" })}
           </span>
@@ -397,13 +397,13 @@ function PaymentStatusDecision({
         <button
           type="button"
           onClick={onSchedulePayment}
-          className={`min-w-0 rounded-lg border p-3 text-left transition ${
+          className={`w-full min-w-0 rounded-lg border p-3 text-left transition ${
             !paidInFull
               ? "border-primary/45 bg-background text-primary shadow-sm"
               : "border-border bg-background hover:border-primary/35 hover:bg-primary/5"
           }`}
         >
-          <span className="flex min-w-0 items-start gap-2 text-sm font-semibold leading-snug">
+          <span className="flex min-w-0 items-start gap-2 break-words text-sm font-semibold leading-snug">
             <Bell className="mt-0.5 h-4 w-4 shrink-0" />
             {t("budget.no_schedule_payment", { defaultValue: "No - schedule next payment" })}
           </span>
@@ -1765,7 +1765,7 @@ export default function Budget() {
       </Card>
 
       <Dialog open={!!editingVendor} onOpenChange={(open) => { if (!open) { setEditingVendor(null); setVendorForm(emptyVendorBudgetForm()); } }}>
-        <DialogContent className="w-[calc(100vw-2rem)] overflow-hidden sm:max-w-[760px]">
+        <DialogContent className="!w-[calc(100vw-2rem)] !max-w-[760px] max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="font-serif text-2xl text-primary">
               {t("budget.edit_vendor_budget_title", { defaultValue: "Edit Vendor Budget Details" })}
@@ -1776,14 +1776,14 @@ export default function Budget() {
               })}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="min-w-0 space-y-4 py-2">
             <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
               {t("budget.vendor_sync_note", {
                 defaultValue: "Use Budget for money updates. Use Vendor List for contact info, files, contracts, and notes.",
               })}
             </div>
-            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_180px]">
-              <div className="space-y-1.5">
+            <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(0,1fr)_180px]">
+              <div className="min-w-0 space-y-1.5">
                 <label className="text-sm font-medium">{t("budget.vendor_name_label", { defaultValue: "Vendor name" })}</label>
                 <Input
                   value={vendorForm.name}
@@ -1792,7 +1792,7 @@ export default function Budget() {
                   autoFocus
                 />
               </div>
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-1.5">
                 <label className="text-sm font-medium">{t("budget.col_category")}</label>
                 <Select value={vendorForm.category} onValueChange={(v) => setVendorForm((f) => ({ ...f, category: v }))}>
                   <SelectTrigger>
@@ -1810,8 +1810,8 @@ export default function Budget() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
+            <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="min-w-0 space-y-1.5">
                 <label className="text-sm font-medium">{t("budget.col_total_cost")}</label>
                 <MoneyInput
                   value={vendorForm.totalCost}
@@ -1819,7 +1819,7 @@ export default function Budget() {
                   placeholder="0"
                 />
               </div>
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-1.5">
                 <label className="text-sm font-medium">{t("budget.deposit_label", { defaultValue: "Deposit" })}</label>
                 <MoneyInput
                   value={vendorForm.depositAmount}
