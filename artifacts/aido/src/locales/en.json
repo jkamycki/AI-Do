@@ -411,6 +411,8 @@
     "no_expenses": "No manual expenses yet",
     "next_payment_due": "Next payment due",
     "paid_off": "Paid off",
+    "mark_paid": "Payment Complete",
+    "mark_paid_title": "Mark this payment complete (adds it to Paid total)",
     "saved_toast": "Expense saved",
     "deleted_toast": "Expense deleted",
     "save_error": "Could not save expense",

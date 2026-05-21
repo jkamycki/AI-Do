@@ -409,9 +409,9 @@ function NextPaymentDisplay({
               variant="outline"
               className="h-6 px-2 text-[10px] border-emerald-500/40 bg-background/80 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-300"
               onClick={onMarkPaid}
-              title={t("budget.mark_paid_title", { defaultValue: "Mark this payment paid (rolls into Paid total)" })}
+              title={t("budget.mark_paid_title", { defaultValue: "Mark this payment complete (adds it to Paid total)" })}
             >
-              {t("budget.mark_paid", { defaultValue: "Mark Paid" })}
+              {t("budget.mark_paid", { defaultValue: "Payment Complete" })}
             </Button>
           )}
         </div>
@@ -1834,9 +1834,9 @@ export default function Budget() {
                                             variant="outline"
                                             className="h-6 px-2 text-[10px] border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400"
                                             onClick={() => handleMarkPaid(m.id)}
-                                            title={t("budget.mark_paid_title", { defaultValue: "Mark this payment paid (rolls into Paid total)" })}
+                                            title={t("budget.mark_paid_title", { defaultValue: "Mark this payment complete (adds it to Paid total)" })}
                                           >
-                                            {t("budget.mark_paid", { defaultValue: "Mark Paid" })}
+                                            {t("budget.mark_paid", { defaultValue: "Payment Complete" })}
                                           </Button>
                                         </div>
                                       )}
