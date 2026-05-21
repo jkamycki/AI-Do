@@ -69,7 +69,7 @@ interface VendorFinancials {
 }
 
 type RecentPaymentUndoMap = Record<string, { run: () => void }>;
-const PAYMENT_UNDO_MS = 15000;
+const PAYMENT_UNDO_MS = 8000;
 
 interface ManualExpenseFormState {
   name: string;
