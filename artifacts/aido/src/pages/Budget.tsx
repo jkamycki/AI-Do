@@ -292,8 +292,15 @@ function BalanceRemainingActions({
 }
 
 function RemainingAmount({ amount }: { amount: number }) {
+  const isPaid = amount <= 0;
   return (
-    <span className="inline-flex rounded-md border border-amber-500/25 bg-amber-50 px-2.5 py-1 text-xs font-semibold tabular-nums text-amber-800">
+    <span
+      className={`inline-flex rounded-md border px-2.5 py-1 text-xs font-semibold tabular-nums ${
+        isPaid
+          ? "border-emerald-500/30 bg-emerald-50 text-emerald-800"
+          : "border-amber-500/25 bg-amber-50 text-amber-800"
+      }`}
+    >
       {formatMoney(amount)}
     </span>
   );
@@ -1565,7 +1572,7 @@ export default function Budget() {
                         </TableCell>
                         <TableCell>
                           {remaining <= 0 ? (
-                            <span className="text-xs text-muted-foreground">-</span>
+                            <PaidInFullBadge t={t} />
                           ) : (
                             <div className="flex min-w-[180px] flex-col gap-2">
                               {v.nextPaymentDue && (
@@ -1872,7 +1879,7 @@ export default function Budget() {
                         </TableCell>
                         <TableCell>
                           {remaining <= 0 ? (
-                            <span className="text-xs text-muted-foreground">-</span>
+                            <PaidInFullBadge t={t} />
                           ) : (
                             <div className="flex min-w-[180px] flex-col gap-2">
                               {m.nextPaymentDue && <PaymentCompleteButton onClick={() => handleMarkPaid(m.id)} t={t} />}
