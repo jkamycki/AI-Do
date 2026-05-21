@@ -467,10 +467,10 @@ export default function Profile() {
                   <FormItem>
                     <FormLabel>{t("profile.shared_last_name", { defaultValue: "Last Name Using" })}</FormLabel>
                     <FormControl>
-                      <Input placeholder="Kamycki" {...field} data-testid="input-shared-last-name" className="bg-background" />
+                      <Input placeholder="Rivera" {...field} data-testid="input-shared-last-name" className="bg-background" />
                     </FormControl>
                     <p className="text-xs text-muted-foreground">
-                      {t("profile.shared_last_name_hint", { defaultValue: "This displays like Gabriela & Joey Kamycki across your website and invitations." })}
+                      {t("profile.shared_last_name_hint", { defaultValue: "This displays like Gabriela & Joey Rivera across your website and invitations." })}
                     </p>
                     <FormMessage />
                   </FormItem>

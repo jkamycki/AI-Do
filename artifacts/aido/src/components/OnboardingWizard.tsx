@@ -182,9 +182,9 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                 <FormField control={form.control} name="sharedLastName" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t("profile.shared_last_name", { defaultValue: "Last Name Using" })}</FormLabel>
-                    <FormControl><Input placeholder="e.g. Kamycki" {...field} /></FormControl>
+                    <FormControl><Input placeholder="e.g. Rivera" {...field} /></FormControl>
                     <p className="text-xs text-muted-foreground">
-                      {t("profile.shared_last_name_hint", { defaultValue: "This displays like Gabriela & Joey Kamycki across your website and invitations." })}
+                      {t("profile.shared_last_name_hint", { defaultValue: "This displays like Gabriela & Joey Rivera across your website and invitations." })}
                     </p>
                     <FormMessage />
                   </FormItem>
