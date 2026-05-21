@@ -223,7 +223,7 @@ function CategoryBadge({ category }: { category: string }) {
 
 function PaidInFullBadge({ t }: { t: (key: string, options?: Record<string, unknown>) => string }) {
   return (
-    <Badge className="gap-1 rounded-full border-emerald-500/30 bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
+    <Badge className="flex h-9 w-full justify-center gap-1 rounded-md border-emerald-500/30 bg-emerald-100 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100">
       <CheckCircle2 className="h-3.5 w-3.5" />
       {t("budget.paid_in_full", { defaultValue: "Paid in full" })}
     </Badge>
