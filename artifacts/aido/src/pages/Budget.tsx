@@ -1687,7 +1687,21 @@ export default function Budget() {
                     const nextPaymentPaysRemaining = !!v.nextPaymentDue && moneyMatches(v.nextPaymentAmount ?? remaining, remaining);
                     return (
                       <TableRow key={v.id}>
-                        <TableCell className="text-center font-medium">{v.name}</TableCell>
+                        <TableCell className="text-center font-medium">
+                          <div className="flex min-w-[180px] items-center justify-center gap-2">
+                            <span className="min-w-0 truncate">{v.name}</span>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteSyncedVendor(v)}
+                              className="h-8 w-8 shrink-0 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              title={t("budget.delete_synced_vendor", { defaultValue: "Delete synced vendor" })}
+                              aria-label={t("budget.delete_synced_vendor", { defaultValue: "Delete synced vendor" })}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
                         <TableCell className="text-center">
                           <CategoryBadge category={v.category} />
                         </TableCell>
@@ -1778,11 +1792,12 @@ export default function Budget() {
                               size="sm"
                               variant="ghost"
                               onClick={() => handleDeleteSyncedVendor(v)}
-                              className="h-9 w-9 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              className="gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
                               title={t("budget.delete_synced_vendor", { defaultValue: "Delete synced vendor" })}
                               aria-label={t("budget.delete_synced_vendor", { defaultValue: "Delete synced vendor" })}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
+                              {t("common.delete", { defaultValue: "Delete" })}
                             </Button>
                           </div>
                         </TableCell>
