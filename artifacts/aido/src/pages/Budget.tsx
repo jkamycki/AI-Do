@@ -1078,6 +1078,24 @@ export default function Budget() {
     }
   };
 
+  const handleDeleteSyncedVendor = async (vendor: VendorRow) => {
+    if (!confirm(t("budget.confirm_delete_synced_vendor", {
+      defaultValue: `Delete ${vendor.name} from Budget and Vendor List? This also removes synced vendor payment details.`,
+    }))) return;
+    try {
+      const r = await authFetch(`/api/vendors/${vendor.id}`, { method: "DELETE" });
+      if (!r.ok) throw new Error("Delete vendor failed");
+      clearPaymentUndo(`vendor-${vendor.id}`);
+      toast({ title: t("budget.toast_vendor_deleted", { defaultValue: "Vendor deleted" }) });
+      await refreshBudgetPaymentViews(vendor.id);
+    } catch {
+      toast({
+        variant: "destructive",
+        title: t("budget.toast_vendor_delete_failed", { defaultValue: "Couldn't delete vendor. Please try again." }),
+      });
+    }
+  };
+
   const handleResetVendorPaymentStatus = async () => {
     if (!editingVendor) return;
     if (!confirm(t("budget.confirm_reset_payment_status", { defaultValue: "Reset this vendor's payment status? Paid milestones will be reopened and any auto-created paid-in-full balance will be removed." }))) return;
@@ -1755,6 +1773,16 @@ export default function Budget() {
                               className="gap-1"
                             >
                               {t("budget.col_view")} <ArrowUpRight className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteSyncedVendor(v)}
+                              className="h-9 w-9 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              title={t("budget.delete_synced_vendor", { defaultValue: "Delete synced vendor" })}
+                              aria-label={t("budget.delete_synced_vendor", { defaultValue: "Delete synced vendor" })}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         </TableCell>
