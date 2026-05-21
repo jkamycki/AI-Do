@@ -1378,11 +1378,7 @@ type PortalMaintenanceSection =
 type LazyRouteComponent = ComponentType | LazyExoticComponent<ComponentType>;
 
 function RouteLoading() {
-  return (
-    <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
-      Loading...
-    </div>
-  );
+  return <div className="min-h-screen bg-background" aria-hidden="true" />;
 }
 
 function ProtectedRoute({
@@ -2028,14 +2024,13 @@ class AppErrorBoundary extends Component<
           <div className="w-full max-w-xl rounded-[20px] border border-[#8D294D]/20 bg-white/85 px-7 py-9 shadow-[0_20px_60px_rgba(91,15,42,0.12)]">
             <p className="mb-3 text-xs font-extrabold uppercase tracking-[0.16em] text-[#8D294D]">A.IDO</p>
             <h1 className="font-serif text-4xl font-semibold leading-none text-[#5B0F2A] sm:text-5xl">
-              {isStale ? "This page needs to be refreshed" : "We're working on it"}
+              {isStale ? "This page needs to be refreshed" : "Please refresh the page"}
             </h1>
             <p className="mx-auto mt-5 max-w-md text-sm leading-7 text-[#6F3E54] sm:text-base">
               {isStale
                 ? "We just shipped an update and your browser is still running the old version. A quick refresh will load the new files."
-                : "A.IDO is having trouble loading right now. Our team is aware of the issue and is working to get everything back up and running as quickly as possible."}
+                : "Something interrupted this page while it was loading. Refreshing will try again."}
             </p>
-            <p className="mt-3 text-sm font-bold text-[#8D294D]">Thank you for your patience.</p>
             <button
               onClick={() => window.location.reload()}
               className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-[#8D294D] px-6 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-[#762140]"
