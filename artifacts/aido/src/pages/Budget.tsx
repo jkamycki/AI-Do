@@ -1563,14 +1563,14 @@ export default function Budget() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="font-bold">{t("budget.col_vendor")}</TableHead>
-                    <TableHead className="font-bold">{t("budget.col_category")}</TableHead>
-                    <TableHead className="text-right font-bold">{t("budget.col_total_cost")}</TableHead>
-                    <TableHead className="text-right font-bold">{t("budget.col_paid")}</TableHead>
-                    <TableHead className="text-right font-bold">{t("budget.col_remaining")}</TableHead>
-                    <TableHead className="font-bold">{t("budget.col_next_payment")}</TableHead>
-                    <TableHead className="min-w-[180px] font-bold">{t("budget.col_payment_actions", { defaultValue: "Payment actions" })}</TableHead>
-                    <TableHead className="min-w-[180px] font-bold">{t("budget.col_progress")}</TableHead>
+                    <TableHead className="text-center font-bold">{t("budget.col_vendor")}</TableHead>
+                    <TableHead className="text-center font-bold">{t("budget.col_category")}</TableHead>
+                    <TableHead className="text-center font-bold">{t("budget.col_total_cost")}</TableHead>
+                    <TableHead className="text-center font-bold">{t("budget.col_paid")}</TableHead>
+                    <TableHead className="text-center font-bold">{t("budget.col_remaining")}</TableHead>
+                    <TableHead className="text-center font-bold">{t("budget.col_next_payment")}</TableHead>
+                    <TableHead className="min-w-[180px] text-center font-bold">{t("budget.col_payment_actions", { defaultValue: "Payment actions" })}</TableHead>
+                    <TableHead className="min-w-[180px] text-center font-bold">{t("budget.col_progress")}</TableHead>
                     <TableHead className="text-right font-bold">{t("budget.col_actions", { defaultValue: "Actions" })}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1580,8 +1580,8 @@ export default function Budget() {
                     const pct = v.totalCost > 0 ? Math.min((v.totalPaid / v.totalCost) * 100, 100) : 0;
                     return (
                       <TableRow key={v.id}>
-                        <TableCell className="font-medium">{v.name}</TableCell>
-                        <TableCell>
+                        <TableCell className="text-center font-medium">{v.name}</TableCell>
+                        <TableCell className="text-center">
                           <CategoryBadge category={v.category} />
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{formatMoney(v.totalCost)}</TableCell>
@@ -1590,7 +1590,7 @@ export default function Budget() {
                           <RemainingAmount amount={remaining} />
                         </TableCell>
                         <TableCell className="text-sm">
-                          <div className="flex min-w-[180px] flex-col items-start gap-2">
+                          <div className="flex min-w-[180px] flex-col items-center gap-2">
                             {remaining <= 0 ? (
                               <PaidInFullBadge t={t} />
                             ) : (
@@ -1615,14 +1615,14 @@ export default function Budget() {
                         </TableCell>
                         <TableCell>
                           {remaining <= 0 ? (
-                            <div className="flex min-w-[180px] flex-col gap-2">
+                            <div className="flex min-w-[180px] flex-col items-center gap-2">
                               <PaidInFullBadge t={t} />
                               {recentPaymentUndo[`vendor-${v.id}`] && (
                                 <UndoPaymentButton onClick={() => runRememberedUndo(`vendor-${v.id}`)} t={t} />
                               )}
                             </div>
                           ) : (
-                            <div className="flex min-w-[180px] flex-col gap-2">
+                            <div className="flex min-w-[180px] flex-col items-center gap-2">
                               {recentPaymentUndo[`vendor-${v.id}`] && (
                                 <UndoPaymentButton onClick={() => runRememberedUndo(`vendor-${v.id}`)} t={t} />
                               )}
@@ -1855,15 +1855,15 @@ export default function Budget() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="font-bold">{t("budget.col_expense")}</TableHead>
-                    <TableHead className="font-bold">{t("budget.col_category")}</TableHead>
-                    <TableHead className="text-right font-bold">{t("budget.col_cost")}</TableHead>
-                    <TableHead className="text-right font-bold">{t("budget.col_paid")}</TableHead>
-                    <TableHead className="text-right font-bold">{t("budget.col_remaining")}</TableHead>
-                    <TableHead className="font-bold">{t("budget.col_next_payment")}</TableHead>
-                    <TableHead className="min-w-[180px] font-bold">{t("budget.col_payment_actions", { defaultValue: "Payment actions" })}</TableHead>
-                    <TableHead className="min-w-[180px] font-bold">{t("budget.col_progress")}</TableHead>
-                    <TableHead className="font-bold">{t("budget.receipt_label")}</TableHead>
+                    <TableHead className="text-center font-bold">{t("budget.col_expense")}</TableHead>
+                    <TableHead className="text-center font-bold">{t("budget.col_category")}</TableHead>
+                    <TableHead className="text-center font-bold">{t("budget.col_cost")}</TableHead>
+                    <TableHead className="text-center font-bold">{t("budget.col_paid")}</TableHead>
+                    <TableHead className="text-center font-bold">{t("budget.col_remaining")}</TableHead>
+                    <TableHead className="text-center font-bold">{t("budget.col_next_payment")}</TableHead>
+                    <TableHead className="min-w-[180px] text-center font-bold">{t("budget.col_payment_actions", { defaultValue: "Payment actions" })}</TableHead>
+                    <TableHead className="min-w-[180px] text-center font-bold">{t("budget.col_progress")}</TableHead>
+                    <TableHead className="text-center font-bold">{t("budget.receipt_label")}</TableHead>
                     <TableHead className="text-right font-bold">{t("budget.col_actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1874,11 +1874,11 @@ export default function Budget() {
                     const pct = m.cost > 0 ? Math.min((paid / m.cost) * 100, 100) : 0;
                     return (
                       <TableRow key={m.id}>
-                        <TableCell>
+                        <TableCell className="text-center">
                           <div className="font-medium">{m.name}</div>
                           {m.notes && <div className="text-xs text-muted-foreground line-clamp-1">{m.notes}</div>}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-center">
                           <CategoryBadge category={m.category} />
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{formatMoney(m.cost)}</TableCell>
@@ -1887,7 +1887,7 @@ export default function Budget() {
                           <RemainingAmount amount={remaining} />
                         </TableCell>
                         <TableCell className="text-sm">
-                          <div className="flex min-w-[180px] flex-col items-start gap-2">
+                          <div className="flex min-w-[180px] flex-col items-center gap-2">
                             {remaining <= 0 ? (
                               <PaidInFullBadge t={t} />
                             ) : (
@@ -1910,14 +1910,14 @@ export default function Budget() {
                         </TableCell>
                         <TableCell>
                           {remaining <= 0 ? (
-                            <div className="flex min-w-[180px] flex-col gap-2">
+                            <div className="flex min-w-[180px] flex-col items-center gap-2">
                               <PaidInFullBadge t={t} />
                               {recentPaymentUndo[`manual-${m.id}`] && (
                                 <UndoPaymentButton onClick={() => runRememberedUndo(`manual-${m.id}`)} t={t} />
                               )}
                             </div>
                           ) : (
-                            <div className="flex min-w-[180px] flex-col gap-2">
+                            <div className="flex min-w-[180px] flex-col items-center gap-2">
                               {recentPaymentUndo[`manual-${m.id}`] && (
                                 <UndoPaymentButton onClick={() => runRememberedUndo(`manual-${m.id}`)} t={t} />
                               )}
@@ -1926,7 +1926,7 @@ export default function Budget() {
                             </div>
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-center">
                           <div className="space-y-1">
                             <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
                               <div
