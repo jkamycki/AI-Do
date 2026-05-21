@@ -68,6 +68,8 @@ interface VendorFinancials {
   vendors: VendorRow[];
 }
 
+type RecentPaymentUndoMap = Record<string, { run: () => void }>;
+
 interface ManualExpenseFormState {
   name: string;
   category: string;
@@ -266,6 +268,26 @@ function PaymentCompleteButton({
     >
       <Square className="h-4 w-4 shrink-0" />
       {t("budget.mark_paid", { defaultValue: "Payment Complete" })}
+    </Button>
+  );
+}
+
+function UndoPaymentButton({
+  onClick,
+  t,
+}: {
+  onClick: () => void;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}) {
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="ghost"
+      className="h-8 w-full justify-start px-3 text-xs font-semibold text-primary hover:bg-primary/10 hover:text-primary"
+      onClick={onClick}
+    >
+      {t("budget.undo_payment", { defaultValue: "Undo payment" })}
     </Button>
   );
 }
@@ -481,6 +503,7 @@ export default function Budget() {
   const [isSavingVendorBudget, setIsSavingVendorBudget] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const [recentPaymentUndo, setRecentPaymentUndo] = useState<RecentPaymentUndoMap>({});
   const manualFormCost = Math.max(0, Number(form.cost || 0));
   const manualFormPaid = form.paidInFull ? manualFormCost : Math.max(0, Number(form.amountPaid || 0));
   const manualFormRemaining = Math.max(0, manualFormCost - manualFormPaid);
@@ -799,6 +822,25 @@ export default function Budget() {
     ]);
   };
 
+  const rememberPaymentUndo = (key: string, run: () => void) => {
+    setRecentPaymentUndo((current) => ({ ...current, [key]: { run } }));
+  };
+
+  const clearPaymentUndo = (key: string) => {
+    setRecentPaymentUndo((current) => {
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const runRememberedUndo = (key: string) => {
+    const undo = recentPaymentUndo[key];
+    if (!undo) return;
+    clearPaymentUndo(key);
+    undo.run();
+  };
+
   const undoManualExpenseUpdate = async (expense: typeof manualExpenses[number]) => {
     try {
       const r = await authFetch(`/api/manual-expenses/${expense.id}`, {
@@ -811,6 +853,7 @@ export default function Budget() {
         }),
       });
       if (!r.ok) throw new Error("Undo failed");
+      clearPaymentUndo(`manual-${expense.id}`);
       toast({ title: t("budget.toast_payment_undone", { defaultValue: "Payment change undone" }) });
       await refreshBudgetPaymentViews();
     } catch {
@@ -821,9 +864,10 @@ export default function Budget() {
   const showManualUndoToast = (expense: typeof manualExpenses[number], title: string) => {
     toast({
       title,
+      description: t("budget.toast_undo_hint", { defaultValue: "Clicked by accident? Use Undo payment in this row or the button here." }),
       action: (
         <ToastAction altText={t("common.undo", { defaultValue: "Undo" })} onClick={() => undoManualExpenseUpdate(expense)}>
-          {t("common.undo", { defaultValue: "Undo" })}
+          {t("budget.undo_payment", { defaultValue: "Undo payment" })}
         </ToastAction>
       ),
     });
@@ -845,6 +889,7 @@ export default function Budget() {
         toast({ variant: "destructive", title: t("budget.toast_mark_paid_failed", { defaultValue: "Couldn't mark payment paid. Please try again." }) });
         return;
       }
+      rememberPaymentUndo(`manual-${expense.id}`, () => undoManualExpenseUpdate(expense));
       showManualUndoToast(expense, t("budget.toast_payment_recorded", { defaultValue: "Payment recorded" }));
       await refreshBudgetPaymentViews();
     } catch {
@@ -870,6 +915,7 @@ export default function Budget() {
         toast({ variant: "destructive", title: t("budget.toast_mark_paid_failed", { defaultValue: "Couldn't mark payment paid. Please try again." }) });
         return;
       }
+      rememberPaymentUndo(`manual-${expense.id}`, () => undoManualExpenseUpdate(expense));
       showManualUndoToast(expense, t("budget.toast_paid_in_full", { defaultValue: "Marked paid in full" }));
       await refreshBudgetPaymentViews();
     } catch {
@@ -880,9 +926,10 @@ export default function Budget() {
   const showVendorUndoToast = (title: string, undo: () => void) => {
     toast({
       title,
+      description: t("budget.toast_undo_hint", { defaultValue: "Clicked by accident? Use Undo payment in this row or the button here." }),
       action: (
         <ToastAction altText={t("common.undo", { defaultValue: "Undo" })} onClick={undo}>
-          {t("common.undo", { defaultValue: "Undo" })}
+          {t("budget.undo_payment", { defaultValue: "Undo payment" })}
         </ToastAction>
       ),
     });
@@ -902,6 +949,7 @@ export default function Budget() {
             body: JSON.stringify({ isPaid: false }),
           });
       if (!r.ok) throw new Error("Undo failed");
+      clearPaymentUndo(`vendor-${vendorId}`);
       toast({ title: t("budget.toast_payment_undone", { defaultValue: "Payment change undone" }) });
       await refreshBudgetPaymentViews(vendorId);
     } catch {
@@ -931,12 +979,14 @@ export default function Budget() {
         return;
       }
       const result = await r.json().catch(() => null) as { id?: number; createdForMarkPaid?: boolean } | null;
+      const undoPayment = {
+        id: result?.id ?? payment?.id ?? null,
+        createdForMarkPaid: result?.createdForMarkPaid ?? (!payment?.id && r.status === 201),
+      };
+      rememberPaymentUndo(`vendor-${vendorId}`, () => undoVendorNextPayment(vendorId, undoPayment));
       showVendorUndoToast(
         t("budget.toast_payment_recorded", { defaultValue: "Payment recorded" }),
-        () => undoVendorNextPayment(vendorId, {
-          id: result?.id ?? payment?.id ?? null,
-          createdForMarkPaid: result?.createdForMarkPaid ?? (!payment?.id && r.status === 201),
-        }),
+        () => undoVendorNextPayment(vendorId, undoPayment),
       );
       await refreshBudgetPaymentViews(vendorId);
     } catch {
@@ -967,6 +1017,7 @@ export default function Budget() {
       }));
       const results = await Promise.all(requests);
       if (results.some((r) => !r.ok)) throw new Error("Undo failed");
+      clearPaymentUndo(`vendor-${vendorId}`);
       toast({ title: t("budget.toast_payment_undone", { defaultValue: "Payment change undone" }) });
       await refreshBudgetPaymentViews(vendorId);
     } catch {
@@ -988,9 +1039,11 @@ export default function Budget() {
       const result = await r.json().catch(() => null) as {
         undo?: { markedPaymentIds?: number[]; createdPaymentId?: number | null; previousNextPaymentDue?: string | null };
       } | null;
+      const undo = result?.undo ?? {};
+      rememberPaymentUndo(`vendor-${vendorId}`, () => undoVendorPaidInFull(vendorId, undo));
       showVendorUndoToast(
         t("budget.toast_paid_in_full", { defaultValue: "Marked paid in full" }),
-        () => undoVendorPaidInFull(vendorId, result?.undo ?? {}),
+        () => undoVendorPaidInFull(vendorId, undo),
       );
       await refreshBudgetPaymentViews(vendorId);
     } catch {
@@ -1579,9 +1632,17 @@ export default function Budget() {
                         </TableCell>
                         <TableCell>
                           {remaining <= 0 ? (
-                            <PaidInFullBadge t={t} />
+                            <div className="flex min-w-[180px] flex-col gap-2">
+                              <PaidInFullBadge t={t} />
+                              {recentPaymentUndo[`vendor-${v.id}`] && (
+                                <UndoPaymentButton onClick={() => runRememberedUndo(`vendor-${v.id}`)} t={t} />
+                              )}
+                            </div>
                           ) : (
                             <div className="flex min-w-[180px] flex-col gap-2">
+                              {recentPaymentUndo[`vendor-${v.id}`] && (
+                                <UndoPaymentButton onClick={() => runRememberedUndo(`vendor-${v.id}`)} t={t} />
+                              )}
                               {v.nextPaymentDue && (
                                 <PaymentCompleteButton
                                   onClick={() => handleVendorPaymentPaid(v.id, {
@@ -1865,9 +1926,17 @@ export default function Budget() {
                         </TableCell>
                         <TableCell>
                           {remaining <= 0 ? (
-                            <PaidInFullBadge t={t} />
+                            <div className="flex min-w-[180px] flex-col gap-2">
+                              <PaidInFullBadge t={t} />
+                              {recentPaymentUndo[`manual-${m.id}`] && (
+                                <UndoPaymentButton onClick={() => runRememberedUndo(`manual-${m.id}`)} t={t} />
+                              )}
+                            </div>
                           ) : (
                             <div className="flex min-w-[180px] flex-col gap-2">
+                              {recentPaymentUndo[`manual-${m.id}`] && (
+                                <UndoPaymentButton onClick={() => runRememberedUndo(`manual-${m.id}`)} t={t} />
+                              )}
                               {m.nextPaymentDue && <PaymentCompleteButton onClick={() => handleMarkPaid(m.id)} t={t} />}
                               <MarkPaidInFullButton onClick={() => handleManualPaidInFull(m)} t={t} />
                             </div>
