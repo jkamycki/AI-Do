@@ -2,6 +2,7 @@ import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db, anonymousSessions, analyticsEvents } from "@workspace/db";
 import { pruneAnalyticsEvents, sanitizeAnalyticsMetadata } from "../lib/trackEvent";
+import crypto from "crypto";
 
 const router = Router();
 
@@ -10,6 +11,10 @@ function cleanSessionId(value: unknown): string | null {
   const trimmed = value.trim();
   if (!/^(test_anon|anon)_[A-Za-z0-9_-]{8,80}$/.test(trimmed)) return null;
   return trimmed;
+}
+
+function sessionRef(sessionId: string): string {
+  return crypto.createHash("sha256").update(sessionId).digest("hex").slice(0, 16);
 }
 
 router.post("/track", async (req, res) => {
@@ -36,10 +41,11 @@ router.post("/track", async (req, res) => {
     });
 
     const auth = getAuth(req);
+    const safeSessionRef = sessionRef(sessionId);
     const userId =
       (typeof req.userId === "string" && req.userId) ||
       (typeof auth?.userId === "string" && auth.userId) ||
-      `anonymous:${sessionId}`;
+      `anonymous:${safeSessionRef}`;
 
     await db.insert(analyticsEvents).values({
       userId,
@@ -47,7 +53,7 @@ router.post("/track", async (req, res) => {
       timestamp: safeTimestamp,
       metadata: {
         ...metadata,
-        sessionId,
+        sessionRef: safeSessionRef,
         testMode,
         clientTimestamp: safeTimestamp.toISOString(),
         source: "portal_tracker",

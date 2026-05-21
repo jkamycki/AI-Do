@@ -796,7 +796,7 @@ router.get("/invitation-shares/:token/guests/search", guestSearchLimiter, async 
     const q = String(req.query.q ?? "").trim();
     if (q.length < 2) return res.json({ matches: [] });
     const rows = await db
-      .select({ id: guests.id, name: guests.name, rsvpStatus: guests.rsvpStatus })
+      .select({ id: guests.id, name: guests.name })
       .from(guests)
       .where(and(eq(guests.profileId, profile.id), ilike(guests.name, `%${q.replace(/[%_]/g, "\\$&")}%`)))
       .limit(10);
@@ -823,6 +823,14 @@ router.get("/invitation-shares/:token/guests/:guestId", guestSearchLimiter, asyn
     if (normalizeGuestLookupName(req.query.name) !== normalizeGuestLookupName(guest.name)) {
       return res.status(403).json({ error: "Please select your name from the guest search again." });
     }
+    if (guest.rsvpStatus && guest.rsvpStatus !== "pending") {
+      return res.json({
+        id: guest.id,
+        name: guest.name,
+        rsvpStatus: guest.rsvpStatus,
+      });
+    }
+
     res.json({
       id: guest.id,
       name: guest.name,
@@ -1220,6 +1228,14 @@ router.get("/website/public/:slug/guests/:guestId", guestSearchLimiter, async (r
     if (!guest) return res.status(404).json({ error: "Guest not found" });
     if (normalizeGuestLookupName(req.query.name) !== normalizeGuestLookupName(guest.name)) {
       return res.status(403).json({ error: "Please select your name from the guest search again." });
+    }
+
+    if (guest.rsvpStatus && guest.rsvpStatus !== "pending") {
+      return res.json({
+        id: guest.id,
+        name: guest.name,
+        rsvpStatus: guest.rsvpStatus,
+      });
     }
 
     res.json({

@@ -90,11 +90,11 @@ export async function canAccessObject({
   requestedPermission: ObjectPermission;
 }): Promise<boolean> {
   const aclPolicy = await getObjectAclPolicy(objectFile);
-  // Objects uploaded via presigned URL before the claim step was added have no
-  // ACL metadata. Treat them as private-but-accessible by any authenticated
-  // user: the random UUID in the path makes enumeration impractical, and the
-  // app's data model (workspace scoping) is the real security boundary.
-  if (!aclPolicy) return !!userId;
+  // Fail closed when ACL metadata is missing. Presigned browser uploads should
+  // be claimed immediately after upload, and server-side uploads pass ACL data
+  // at creation time. Returning true here would let any signed-in user fetch a
+  // private object if its random path leaked through a log, email, or export.
+  if (!aclPolicy) return false;
 
   if (
     aclPolicy.visibility === "public" &&

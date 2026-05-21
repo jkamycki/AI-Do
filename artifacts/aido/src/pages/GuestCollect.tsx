@@ -73,8 +73,6 @@ export default function GuestCollect() {
       return res.json() as Promise<{
         partner1Name: string;
         partner2Name: string;
-        weddingDate: string;
-        venue: string;
       }>;
     },
     enabled: !!token,

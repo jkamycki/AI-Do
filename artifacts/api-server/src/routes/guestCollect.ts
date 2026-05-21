@@ -310,8 +310,6 @@ router.get("/guest-collect/:token", async (req, res) => {
     res.json({
       partner1Name: p.partner1Name,
       partner2Name: p.partner2Name,
-      weddingDate: p.weddingDate,
-      venue: p.venue,
     });
   } catch (err) {
     req.log.error(err, "Failed to get guest collect info");

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
 import { clerkClient } from "@clerk/express";
+import crypto from "crypto";
 import {
   db, analyticsEvents, adminUsers, weddingProfiles, deletedUserArchive,
   timelines, budgets, budgetItems, budgetPaymentLogs,
@@ -52,6 +53,10 @@ function getLaunchPlanRecipientEmails(email: string) {
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function publicSessionRef(sessionId: string): string {
+  return crypto.createHash("sha256").update(sessionId).digest("hex").slice(0, 16);
 }
 
 function isAllowedLaunchPlanRecipient(email: string) {
@@ -517,7 +522,7 @@ router.get("/admin/test-sessions", requireAuth, requireAdmin, async (req, res) =
       invitation_visits: number;
       website_visits: number;
     }>).map((row) => ({
-      sessionId: row.session_id,
+      sessionId: publicSessionRef(row.session_id),
       testMode: row.test_mode,
       createdAt: new Date(row.created_at).toISOString(),
       lastActiveAt: new Date(row.last_active_at).toISOString(),
