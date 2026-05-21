@@ -207,10 +207,6 @@ function categoryBadgeClass(category: string) {
   return ALL_CATEGORY_BADGE_STYLES[normalizeCategoryLabel(category)] ?? VENDOR_CATEGORY_BADGE_STYLES.Other;
 }
 
-function categoryHighlightClass(category: string | null | undefined) {
-  return `rounded-lg border p-4 ${categoryBadgeClass(normalizeCategoryLabel(category)).replace(/\bborder-transparent\b/g, "")}`;
-}
-
 function CategoryBadge({ category }: { category: string }) {
   const label = displayCategoryLabel(category);
   return (
@@ -550,50 +546,6 @@ export default function Budget() {
     manualExpenses.forEach((m) => add(m.category, m.cost ?? 0, m.amountPaid ?? 0));
     return [...byCategory.values()].sort((a, b) => b.total - a.total);
   }, [manualExpenses, vendorFinancials?.vendors]);
-  const nextPayment = useMemo(() => {
-    const payments: Array<{
-      id: string;
-      label: string;
-      category: string;
-      date: string;
-      amount: number;
-      source: "manual" | "vendor";
-      manualId?: number;
-      vendorId?: number;
-      paymentId?: number;
-    }> = [];
-    vendorFinancials?.vendors.forEach((v) => {
-      const remaining = Math.max(0, v.totalCost - v.totalPaid);
-      const nextAmount = Math.max(0, v.nextPaymentAmount ?? remaining);
-      if (v.nextPaymentDue && remaining > 0) {
-        payments.push({
-          id: `vendor-${v.id}-${v.nextPaymentId ?? "due"}`,
-          label: v.name,
-          category: v.category,
-          date: v.nextPaymentDue,
-          amount: nextAmount,
-          source: "vendor",
-          vendorId: v.id,
-          paymentId: v.nextPaymentId ?? undefined,
-        });
-      }
-    });
-    manualExpenses.forEach((m) => {
-      if (m.nextPaymentDue && Math.max(0, (m.cost ?? 0) - (m.amountPaid ?? 0)) > 0) {
-        payments.push({
-          id: `manual-${m.id}`,
-          label: m.name,
-          category: m.category || "Other",
-          date: m.nextPaymentDue,
-          amount: m.nextPaymentAmount ?? 0,
-          source: "manual",
-          manualId: m.id,
-        });
-      }
-    });
-    return payments.sort((a, b) => dateTimeValue(a.date) - dateTimeValue(b.date))[0] ?? null;
-  }, [manualExpenses, vendorFinancials?.vendors]);
-
   // ── Handlers ──────────────────────────────────────────────────────
   const reportRows = useMemo(() => {
     const vendorRows = (vendorFinancials?.vendors ?? []).map((v) => {
@@ -2033,60 +1985,6 @@ export default function Budget() {
               sub={t("budget.percent_used", { pct: usedPct.toFixed(0) })}
             />
           </div>
-          {(categoryBreakdown.length > 0 || nextPayment) && (
-            <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-              {categoryBreakdown.length > 0 && (
-                <div className="rounded-lg border border-border/70 bg-background/70 p-4">
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                    {t("budget.category_breakdown", { defaultValue: "Category breakdown" })}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {categoryBreakdown.map((item) => (
-                      <div
-                        key={item.category}
-                        className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs shadow-sm ${categoryBadgeClass(item.category)}`}
-                      >
-                        <span className="font-semibold">{displayCategoryLabel(item.category)}</span>
-                        <span className="tabular-nums opacity-90">{formatMoney(item.total)}</span>
-                        <span className="text-[10px] opacity-75">
-                          {t("budget.category_item_count", { count: item.count, defaultValue: `${item.count} item(s)` })}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {nextPayment && (
-                <div className={categoryHighlightClass(nextPayment.category)}>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-widest opacity-85">
-                    {t("budget.next_payment_highlight", { defaultValue: "Next payment" })}
-                  </p>
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <CategoryBadge category={nextPayment.category} />
-                      <span className="font-medium text-foreground">{nextPayment.label}</span>
-                    </div>
-                    <NextPaymentDisplay
-                      date={nextPayment.date}
-                      amount={nextPayment.amount}
-                      onMarkPaid={
-                        nextPayment.source === "manual" && nextPayment.manualId && nextPayment.amount > 0
-                          ? () => handleMarkPaid(nextPayment.manualId!)
-                          : nextPayment.source === "vendor" && nextPayment.vendorId && nextPayment.amount > 0
-                            ? () => handleVendorPaymentPaid(nextPayment.vendorId!, {
-                                id: nextPayment.paymentId,
-                                dueDate: nextPayment.date,
-                                amount: nextPayment.amount,
-                              })
-                            : undefined
-                      }
-                      t={t}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </CardContent>
       </Card>
 
