@@ -531,9 +531,15 @@ export default function Budget() {
   const [form, setForm] = useState<ManualExpenseFormState>(emptyManualForm());
   const [editingVendor, setEditingVendor] = useState<VendorRow | null>(null);
   const [isAddingSyncedVendor, setIsAddingSyncedVendor] = useState(false);
+  const [selectedBudgetVendorId, setSelectedBudgetVendorId] = useState<string>("new");
   const [vendorForm, setVendorForm] = useState<VendorBudgetFormState>(emptyVendorBudgetForm());
   const [isSavingVendorBudget, setIsSavingVendorBudget] = useState(false);
   const [isResettingPaymentStatus, setIsResettingPaymentStatus] = useState(false);
+  const selectedBudgetVendor = useMemo(
+    () => orderedVendorRows.find((vendor) => String(vendor.id) === selectedBudgetVendorId) ?? null,
+    [orderedVendorRows, selectedBudgetVendorId],
+  );
+  const activeVendorBudgetRow = editingVendor ?? selectedBudgetVendor;
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [recentPaymentUndo, setRecentPaymentUndo] = useState<RecentPaymentUndoMap>({});
@@ -543,7 +549,7 @@ export default function Budget() {
   const manualFormPaid = form.paidInFull ? manualFormCost : Math.max(0, Number(form.amountPaid || 0));
   const manualFormRemaining = Math.max(0, manualFormCost - manualFormPaid);
   const vendorFormCost = Math.max(0, Number(vendorForm.totalCost || 0));
-  const vendorExistingPaid = editingVendor ? cappedPaid(editingVendor.totalCost, editingVendor.totalPaid) : 0;
+  const vendorExistingPaid = activeVendorBudgetRow ? cappedPaid(activeVendorBudgetRow.totalCost, activeVendorBudgetRow.totalPaid) : 0;
   const vendorFormDeposit = Math.max(0, Number(vendorForm.depositAmount || 0));
   const vendorFormPaid = vendorForm.paidInFull ? vendorFormCost : Math.max(vendorExistingPaid, vendorFormDeposit);
   const vendorFormRemaining = Math.max(0, vendorFormCost - vendorFormPaid);
@@ -693,6 +699,7 @@ export default function Budget() {
     const paid = cappedPaid(vendor.totalCost, vendor.totalPaid);
     const remaining = Math.max(0, vendor.totalCost - paid);
     setEditingVendor(vendor);
+    setSelectedBudgetVendorId(String(vendor.id));
     setVendorForm({
       name: vendor.name,
       category: normalizeCategoryLabel(vendor.category),
@@ -705,8 +712,31 @@ export default function Budget() {
   };
   const openAddSyncedVendor = () => {
     setEditingVendor(null);
+    setSelectedBudgetVendorId("new");
     setVendorForm(emptyVendorBudgetForm());
     setIsAddingSyncedVendor(true);
+  };
+
+  const applyVendorSelectionToBudgetForm = (vendorId: string) => {
+    setSelectedBudgetVendorId(vendorId);
+    if (vendorId === "new") {
+      setVendorForm(emptyVendorBudgetForm());
+      return;
+    }
+
+    const vendor = orderedVendorRows.find((row) => String(row.id) === vendorId);
+    if (!vendor) return;
+
+    const paid = cappedPaid(vendor.totalCost, vendor.totalPaid);
+    setVendorForm({
+      name: vendor.name,
+      category: normalizeCategoryLabel(vendor.category),
+      totalCost: vendor.totalCost > 0 ? String(vendor.totalCost) : "",
+      depositAmount: vendor.depositAmount > 0 ? String(vendor.depositAmount) : "",
+      nextPaymentDue: vendor.nextPaymentDue ?? "",
+      nextPaymentAmount: vendor.nextPaymentAmount != null ? String(vendor.nextPaymentAmount) : "",
+      paidInFull: vendor.totalCost > 0 && paid >= vendor.totalCost,
+    });
   };
 
   const markManualFormPaidInFull = () => {
@@ -1128,16 +1158,18 @@ export default function Budget() {
   };
 
   const handleResetVendorPaymentStatus = async () => {
-    if (!editingVendor) return;
+    if (!activeVendorBudgetRow) return;
     if (!confirm(t("budget.confirm_reset_payment_status", { defaultValue: "Reset this vendor's payment status? Paid milestones will be reopened and any auto-created paid-in-full balance will be removed." }))) return;
     setIsResettingPaymentStatus(true);
     try {
-      const r = await authFetch(`/api/vendors/${editingVendor.id}/payments/reset-completion`, { method: "POST" });
+      const vendorId = activeVendorBudgetRow.id;
+      const r = await authFetch(`/api/vendors/${vendorId}/payments/reset-completion`, { method: "POST" });
       if (!r.ok) throw new Error("Reset vendor payment status failed");
       toast({ title: t("budget.toast_payment_status_reset", { defaultValue: "Payment status reset" }) });
       setEditingVendor(null);
+      setSelectedBudgetVendorId("new");
       setVendorForm(emptyVendorBudgetForm());
-      await refreshBudgetPaymentViews(editingVendor.id);
+      await refreshBudgetPaymentViews(vendorId);
     } catch {
       toast({ variant: "destructive", title: t("budget.toast_payment_status_reset_failed", { defaultValue: "Couldn't reset payment status. Please try again." }) });
     } finally {
@@ -1171,6 +1203,8 @@ export default function Budget() {
 
   const submitVendorBudgetForm = async () => {
     if (!editingVendor && !isAddingSyncedVendor) return;
+    const selectedVendorId = !editingVendor && selectedBudgetVendorId !== "new" ? Number(selectedBudgetVendorId) : null;
+    const vendorBeingUpdated = editingVendor ?? selectedBudgetVendor;
     const name = vendorForm.name.trim();
     const category = vendorForm.category.trim();
     const totalCost = Math.max(0, Number(vendorForm.totalCost || 0));
@@ -1195,7 +1229,8 @@ export default function Budget() {
 
     setIsSavingVendorBudget(true);
     try {
-      const vendorId = editingVendor?.id;
+      const vendorId = editingVendor?.id ?? selectedVendorId ?? undefined;
+      const isNewVendorLineItem = !vendorId;
       const vendorResponse = await authFetch(vendorId ? `/api/vendors/${vendorId}` : "/api/vendors", {
         method: vendorId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -1227,13 +1262,13 @@ export default function Budget() {
           () => undoVendorPaidInFull(savedVendorId, result?.undo ?? {}),
         );
       } else if (nextPaymentDue) {
-        if (editingVendor?.nextPaymentId) {
-          const paymentResponse = await authFetch(`/api/vendors/${savedVendorId}/payments/${editingVendor.nextPaymentId}`, {
+        if (vendorBeingUpdated?.nextPaymentId) {
+          const paymentResponse = await authFetch(`/api/vendors/${savedVendorId}/payments/${vendorBeingUpdated.nextPaymentId}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               dueDate: nextPaymentDue,
-              amount: nextPaymentAmount || editingVendor.nextPaymentAmount || Math.max(0, totalCost - vendorExistingPaid),
+              amount: nextPaymentAmount || vendorBeingUpdated.nextPaymentAmount || Math.max(0, totalCost - vendorExistingPaid),
               reopenBalance: true,
             }),
           });
@@ -1252,19 +1287,20 @@ export default function Budget() {
           });
           if (!paymentResponse.ok) throw new Error("Payment create failed");
         }
-        toast({ title: isAddingSyncedVendor ? t("budget.toast_vendor_added", { defaultValue: "Vendor added to Vendor Expenses" }) : t("budget.toast_vendor_budget_updated", { defaultValue: "Vendor budget details updated" }) });
+        toast({ title: isNewVendorLineItem ? t("budget.toast_vendor_added", { defaultValue: "Vendor added to Vendor Expenses" }) : t("budget.toast_vendor_budget_updated", { defaultValue: "Vendor budget details updated" }) });
       } else {
-        if (editingVendor?.nextPaymentId) {
-          const paymentResponse = await authFetch(`/api/vendors/${savedVendorId}/payments/${editingVendor.nextPaymentId}`, {
+        if (vendorBeingUpdated?.nextPaymentId) {
+          const paymentResponse = await authFetch(`/api/vendors/${savedVendorId}/payments/${vendorBeingUpdated.nextPaymentId}`, {
             method: "DELETE",
           });
           if (!paymentResponse.ok) throw new Error("Payment delete failed");
         }
-        toast({ title: isAddingSyncedVendor ? t("budget.toast_vendor_added", { defaultValue: "Vendor added to Vendor Expenses" }) : t("budget.toast_vendor_budget_updated", { defaultValue: "Vendor budget details updated" }) });
+        toast({ title: isNewVendorLineItem ? t("budget.toast_vendor_added", { defaultValue: "Vendor added to Vendor Expenses" }) : t("budget.toast_vendor_budget_updated", { defaultValue: "Vendor budget details updated" }) });
       }
 
       setEditingVendor(null);
       setIsAddingSyncedVendor(false);
+      setSelectedBudgetVendorId("new");
       setVendorForm(emptyVendorBudgetForm());
       await refreshBudgetPaymentViews(savedVendorId);
     } catch {
@@ -1861,7 +1897,7 @@ export default function Budget() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!editingVendor || isAddingSyncedVendor} onOpenChange={(open) => { if (!open) { setEditingVendor(null); setIsAddingSyncedVendor(false); setVendorForm(emptyVendorBudgetForm()); } }}>
+      <Dialog open={!!editingVendor || isAddingSyncedVendor} onOpenChange={(open) => { if (!open) { setEditingVendor(null); setIsAddingSyncedVendor(false); setSelectedBudgetVendorId("new"); setVendorForm(emptyVendorBudgetForm()); } }}>
         <DialogContent
           className="max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden"
           style={{ width: "min(calc(100vw - 2rem), 760px)", maxWidth: "calc(100vw - 2rem)" }}
@@ -1875,7 +1911,7 @@ export default function Budget() {
             <DialogDescription>
               {isAddingSyncedVendor
                 ? t("budget.add_synced_vendor_desc", {
-                  defaultValue: "This creates a Vendor List record and adds it to your Budget Summary.",
+                  defaultValue: "Pick a vendor from your Vendor List, or create a new vendor line item here.",
                 })
                 : t("budget.edit_vendor_budget_desc", {
                   defaultValue: "These fields update the Vendor List so you only enter vendor payment details once.",
@@ -1888,6 +1924,28 @@ export default function Budget() {
                 defaultValue: "Use Budget for money updates. Use Vendor List for contact info, files, contracts, and notes.",
               })}
             </div>
+            {isAddingSyncedVendor && (
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">
+                  {t("budget.vendor_picker_label", { defaultValue: "Vendor" })}
+                </label>
+                <Select value={selectedBudgetVendorId} onValueChange={applyVendorSelectionToBudgetForm}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("budget.vendor_picker_placeholder", { defaultValue: "Choose a vendor" })} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new">
+                      {t("budget.vendor_picker_new", { defaultValue: "Add new vendor" })}
+                    </SelectItem>
+                    {orderedVendorRows.map((vendor) => (
+                      <SelectItem key={vendor.id} value={String(vendor.id)}>
+                        {vendor.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(0,1fr)_180px]">
               <div className="min-w-0 space-y-1.5">
                 <label className="text-sm font-medium">{t("budget.vendor_name_label", { defaultValue: "Vendor name" })}</label>
@@ -1895,12 +1953,17 @@ export default function Budget() {
                   value={vendorForm.name}
                   onChange={(e) => setVendorForm((f) => ({ ...f, name: e.target.value }))}
                   placeholder={t("budget.vendor_name_placeholder", { defaultValue: "Vendor name" })}
+                  disabled={isAddingSyncedVendor && selectedBudgetVendorId !== "new"}
                   autoFocus
                 />
               </div>
               <div className="min-w-0 space-y-1.5">
                 <label className="text-sm font-medium">{t("budget.col_category")}</label>
-                <Select value={vendorForm.category} onValueChange={(v) => setVendorForm((f) => ({ ...f, category: v }))}>
+                <Select
+                  value={vendorForm.category}
+                  onValueChange={(v) => setVendorForm((f) => ({ ...f, category: v }))}
+                  disabled={isAddingSyncedVendor && selectedBudgetVendorId !== "new"}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -1989,25 +2052,26 @@ export default function Budget() {
               onClick={() => {
                 setEditingVendor(null);
                 setIsAddingSyncedVendor(false);
+                setSelectedBudgetVendorId("new");
                 setVendorForm(emptyVendorBudgetForm());
               }}
             >
               {t("common.cancel")}
             </Button>
-            {editingVendor && (
+            {activeVendorBudgetRow && (
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleResetVendorPaymentStatus}
-                disabled={isSavingVendorBudget || isResettingPaymentStatus || editingVendor.totalPaid <= 0}
+                disabled={isSavingVendorBudget || isResettingPaymentStatus || activeVendorBudgetRow.totalPaid <= 0}
               >
                 {isResettingPaymentStatus
                   ? t("common.saving", { defaultValue: "Saving..." })
                   : t("budget.reset_payment_status", { defaultValue: "Reset payment status" })}
               </Button>
             )}
-            {editingVendor && (
-              <Button variant="ghost" onClick={() => setLocation(`/vendors?vendorId=${editingVendor.id}`)} className="gap-1">
+            {activeVendorBudgetRow && (
+              <Button variant="ghost" onClick={() => setLocation(`/vendors?vendorId=${activeVendorBudgetRow.id}`)} className="gap-1">
                 {t("budget.open_vendor_profile", { defaultValue: "Open vendor profile" })}
                 <ArrowUpRight className="h-3.5 w-3.5" />
               </Button>

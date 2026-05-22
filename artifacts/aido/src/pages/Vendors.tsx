@@ -1040,33 +1040,15 @@ function VendorDetailDialog({
   vendorId: number;
   onClose: () => void;
   onEdit: () => void;
-  initialTab?: "overview" | "messages" | "payments" | "files";
+  initialTab?: "overview" | "messages" | "files";
 }) {
-  const { toast } = useToast();
-  const qc = useQueryClient();
   const { data: vendor, isLoading } = useGetVendor(vendorId);
   const [activeTab, setActiveTab] = useState(initialTab);
-  const [showAddPayment, setShowAddPayment] = useState(false);
-  const [deletingPaymentId, setDeletingPaymentId] = useState<number | null>(null);
 
   const { t } = useTranslation();
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab, vendorId]);
-
-  const deletePaymentMutation = useDeleteVendorPayment({
-    mutation: {
-      onSuccess: () => {
-        qc.invalidateQueries({ queryKey: getGetVendorQueryKey(vendorId) });
-        qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
-        qc.invalidateQueries({ queryKey: ["vendor-financials"] });
-        qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
-        setDeletingPaymentId(null);
-        toast({ title: t("vendors.payment_removed") });
-      },
-      onError: () => toast({ title: t("vendors.failed_remove_payment"), variant: "destructive" }),
-    },
-  });
 
   if (isLoading || !vendor) {
     return (
@@ -1119,13 +1101,10 @@ function VendorDetailDialog({
             </div>
           </DialogHeader>
 
-          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "overview" | "messages" | "payments" | "files")}>
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "overview" | "messages" | "files")}>
             <TabsList className="w-full">
               <TabsTrigger value="overview" className="flex-1">{t("vendors.tab_overview")}</TabsTrigger>
               <TabsTrigger value="messages" className="flex-1">{t("vendors.tab_messages")}</TabsTrigger>
-              <TabsTrigger value="payments" className="flex-1">
-                {t("vendors.tab_payments")} {vendor.payments.length > 0 && `(${vendor.payments.length})`}
-              </TabsTrigger>
               <TabsTrigger value="files" className="flex-1">
                 {t("vendors.tab_files")} {vendor.files.length > 0 && `(${vendor.files.length})`}
               </TabsTrigger>
@@ -1212,94 +1191,12 @@ function VendorDetailDialog({
 
             </TabsContent>
 
-            <TabsContent value="payments" className="space-y-4 mt-4">
-              {vendor.payments.length === 0 && !showAddPayment && (
-                <p className="text-sm text-muted-foreground text-center py-4">{t("vendors.no_payments_yet")}</p>
-              )}
-
-              {(vendor.payments.length > 0 || vendor.depositAmount > 0) && (
-                <div className="rounded-xl border bg-muted/20 p-4 space-y-2.5">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground font-medium">{t("vendors.total_paid_label")}</span>
-                    <span className={`font-bold tabular-nums ${totalForProgress > 0 && paidAmount >= totalForProgress ? "text-green-600 dark:text-green-400" : "text-foreground"}`}>
-                      {formatCurrency(paidAmount)}
-                      <span className="font-normal text-muted-foreground"> / {formatCurrency(totalForProgress)}</span>
-                    </span>
-                  </div>
-                  <Progress
-                    value={totalForProgress > 0 ? Math.min((paidAmount / totalForProgress) * 100, 100) : 0}
-                    className="h-2.5"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>
-                      {vendor.depositAmount > 0 && (
-                        <span>{t("vendors.deposit_included", { amount: formatCurrency(vendor.depositAmount) })}</span>
-                      )}
-                      {t("vendors.milestones_paid", { paid: vendor.payments.filter(p => p.isPaid).length, total: vendor.payments.length })}
-                    </span>
-                    {totalForProgress > 0 && paidAmount < totalForProgress && (
-                      <span>{t("vendors.remaining_label", { amount: formatCurrency(totalForProgress - paidAmount) })}</span>
-                    )}
-                    {totalForProgress > 0 && paidAmount >= totalForProgress && (
-                      <span className="text-green-600 dark:text-green-400 font-medium">{t("vendors.all_paid")}</span>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                {vendor.payments.map((payment) => (
-                  <PaymentRow
-                    key={payment.id}
-                    payment={payment}
-                    vendorId={vendorId}
-                    onDelete={() => setDeletingPaymentId(payment.id)}
-                  />
-                ))}
-              </div>
-              {showAddPayment ? (
-                <AddPaymentForm vendorId={vendorId} onDone={() => setShowAddPayment(false)} />
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAddPayment(true)}
-                  className="w-full"
-                  data-testid="btn-add-payment"
-                >
-                  <Plus className="h-3.5 w-3.5 mr-1.5" /> {t("vendors.add_payment_milestone")}
-                </Button>
-              )}
-            </TabsContent>
-
             <TabsContent value="files" className="mt-4">
               <FileUploadSection vendor={vendor} />
             </TabsContent>
           </Tabs>
         </DialogContent>
       </Dialog>
-
-      <AlertDialog open={deletingPaymentId !== null} onOpenChange={() => setDeletingPaymentId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("vendors.remove_payment_title")}</AlertDialogTitle>
-            <AlertDialogDescription>{t("vendors.remove_payment_desc")}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("vendors.cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => {
-                if (deletingPaymentId) {
-                  deletePaymentMutation.mutate({ id: vendorId, paymentId: deletingPaymentId });
-                }
-              }}
-            >
-              {t("vendors.payment_removed")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }
@@ -2036,7 +1933,7 @@ export default function Vendors() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [viewingVendorId, setViewingVendorId] = useState<number | null>(null);
-  const [detailInitialTab, setDetailInitialTab] = useState<"overview" | "messages" | "payments" | "files">("overview");
+  const [detailInitialTab, setDetailInitialTab] = useState<"overview" | "messages" | "files">("overview");
   const [deletingVendorId, setDeletingVendorId] = useState<number | null>(null);
   const [showSummarize, setShowSummarize] = useState(false);
   const [activeManagementTab, setActiveManagementTab] = useState<"vendors" | "contacts">("vendors");
@@ -2084,7 +1981,7 @@ export default function Vendors() {
   useEffect(() => {
     if (isLoading || !requestedVendorId) return;
     setDetailInitialTab(
-      requestedTab === "messages" || requestedTab === "payments" || requestedTab === "files"
+      requestedTab === "messages" || requestedTab === "files"
         ? requestedTab
         : "overview"
     );
