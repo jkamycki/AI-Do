@@ -5,7 +5,7 @@ import { ClerkProvider, useClerk, useAuth, useUser, useSignIn, useSignUp, Show, 
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react/custom-fetch";
+import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
 import { setFetchTokenGetter, setAuthFetchBaseUrl, authFetch } from "@/lib/authFetch";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ApiHealthBanner } from "@/components/ApiHealthBanner";
