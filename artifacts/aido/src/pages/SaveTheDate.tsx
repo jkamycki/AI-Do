@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { apiFetch } from "@/lib/authFetch";
 import { useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -41,6 +41,9 @@ interface SaveTheDateInfo {
   photoEffect?: string | null;
   customColorPalette: Record<string, string> | null;
   customLayout: string | null;
+  needsHotel?: boolean;
+  bookedHotelBlockId?: number | null;
+  bookedHotelRoomCount?: number | null;
   hotelOptions?: Array<{
     id: number;
     hotelName: string;
@@ -125,6 +128,12 @@ export default function SaveTheDate() {
       ? `/api/save-the-date/shared-invite/${encodeURIComponent(sharedInviteToken)}/photo`
     : `/api/save-the-date/${token}/photo`;
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [hotelResponse, setHotelResponse] = useState<"no" | "yes" | "booked">("no");
+  const [hotelBlockId, setHotelBlockId] = useState("");
+  const [hotelRoomCount, setHotelRoomCount] = useState("1");
+  const [savingHotel, setSavingHotel] = useState(false);
+  const [hotelSaveMessage, setHotelSaveMessage] = useState<string | null>(null);
+  const [hotelSaveError, setHotelSaveError] = useState<string | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const maintenance = usePublicMaintenance("save-the-date");
 
@@ -138,10 +147,6 @@ export default function SaveTheDate() {
     enabled: !!token || !!slug || !!sharedInviteToken,
     retry: false,
   });
-
-  if (maintenance.data?.active) {
-    return <MaintenanceNotice message={maintenance.data.message} />;
-  }
 
   const couple = [info?.partner2Name, info?.partner1Name].filter(Boolean).join(" & ") || "The Couple";
 
@@ -203,6 +208,50 @@ export default function SaveTheDate() {
   const brideFirst = String(info?.partner2Name || "").trim().split(/\s+/)[0] || "Partner";
   const hotelOptions = info?.hotelOptions ?? [];
   const hotelSummary = hotelOptions.filter((hotel) => hotel.hotelName || hotel.bookingLink || hotel.discountCode || hotel.groupName);
+  const canSyncHotelToGuest = !!token && !slug && !sharedInviteToken && hotelSummary.length > 0;
+  const selectedHotel = hotelOptions.find((hotel) => String(hotel.id) === hotelBlockId) ?? null;
+
+  useEffect(() => {
+    if (!info) return;
+    const hasHotel = !!info.needsHotel || !!info.bookedHotelBlockId;
+    setHotelResponse(hasHotel ? "yes" : "no");
+    setHotelBlockId(info.bookedHotelBlockId ? String(info.bookedHotelBlockId) : "");
+    setHotelRoomCount(info.bookedHotelRoomCount === 2 ? "2" : "1");
+  }, [info]);
+
+  if (maintenance.data?.active) {
+    return <MaintenanceNotice message={maintenance.data.message} />;
+  }
+
+  const submitHotelSync = async () => {
+    if (!token || !canSyncHotelToGuest) return;
+    setSavingHotel(true);
+    setHotelSaveMessage(null);
+    setHotelSaveError(null);
+    try {
+      const needsHotel = hotelResponse !== "no";
+      const res = await apiFetch(`/api/save-the-date/${encodeURIComponent(token)}/hotel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hotelNeeded: needsHotel,
+          bookedHotelBlockId: needsHotel && hotelBlockId ? Number(hotelBlockId) : null,
+          bookedHotelRoomCount: needsHotel ? Number(hotelRoomCount) : null,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setHotelSaveError(body?.error ?? "Could not save hotel response.");
+        return;
+      }
+      setHotelSaveMessage("Hotel response saved.");
+    } catch {
+      setHotelSaveError("Could not save hotel response.");
+    } finally {
+      setSavingHotel(false);
+    }
+  };
+
   const renderHotelInfo = (variant: "overlay" | "card") => {
     if (hotelSummary.length === 0) return null;
     const isOverlay = variant === "overlay";
@@ -236,6 +285,107 @@ export default function SaveTheDate() {
             )}
           </div>
         ))}
+        {canSyncHotelToGuest && (
+          <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${isOverlay ? "rgba(255,255,255,.24)" : CARD_BDR}` }}>
+            <label style={{ display: "block", marginBottom: 5, fontSize: 10 * sc, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              Will you need a hotel room?
+            </label>
+            <select
+              value={hotelResponse}
+              onChange={(event) => {
+                const value = event.target.value as "no" | "yes" | "booked";
+                setHotelResponse(value);
+                setHotelSaveMessage(null);
+                setHotelSaveError(null);
+                if (value === "no") setHotelBlockId("");
+              }}
+              style={{
+                width: "100%",
+                border: `1px solid ${isOverlay ? "rgba(255,255,255,.28)" : CARD_BDR}`,
+                borderRadius: 8,
+                background: isOverlay ? "rgba(255,255,255,.12)" : "rgba(255,255,255,.78)",
+                color: WHITE,
+                padding: "8px 9px",
+                fontFamily: LABEL_FONT,
+                fontSize: 11 * sc,
+              }}
+            >
+              <option value="no">No</option>
+              <option value="yes">Yes, I need a room</option>
+              <option value="booked">I've already booked</option>
+            </select>
+            {hotelResponse !== "no" && (
+              <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
+                <select
+                  value={hotelBlockId}
+                  onChange={(event) => setHotelBlockId(event.target.value)}
+                  style={{
+                    width: "100%",
+                    border: `1px solid ${isOverlay ? "rgba(255,255,255,.28)" : CARD_BDR}`,
+                    borderRadius: 8,
+                    background: isOverlay ? "rgba(255,255,255,.12)" : "rgba(255,255,255,.78)",
+                    color: WHITE,
+                    padding: "8px 9px",
+                    fontFamily: LABEL_FONT,
+                    fontSize: 11 * sc,
+                  }}
+                >
+                  <option value="">{hotelResponse === "booked" ? "Booked outside the block / not listed" : "Decide later"}</option>
+                  {hotelOptions.map((hotel) => (
+                    <option key={hotel.id} value={String(hotel.id)}>
+                      {hotel.hotelName || "Hotel block"}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={hotelRoomCount}
+                  onChange={(event) => setHotelRoomCount(event.target.value)}
+                  style={{
+                    width: "100%",
+                    border: `1px solid ${isOverlay ? "rgba(255,255,255,.28)" : CARD_BDR}`,
+                    borderRadius: 8,
+                    background: isOverlay ? "rgba(255,255,255,.12)" : "rgba(255,255,255,.78)",
+                    color: WHITE,
+                    padding: "8px 9px",
+                    fontFamily: LABEL_FONT,
+                    fontSize: 11 * sc,
+                  }}
+                >
+                  <option value="1">1 room</option>
+                  <option value="2">2 rooms</option>
+                </select>
+                {selectedHotel && (
+                  <p style={{ margin: 0, fontSize: 9.5 * sc, opacity: 0.78 }}>
+                    This will sync to {selectedHotel.hotelName || "the selected hotel block"} in the guest list.
+                  </p>
+                )}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={submitHotelSync}
+              disabled={savingHotel}
+              style={{
+                marginTop: 9,
+                width: "100%",
+                border: 0,
+                borderRadius: 8,
+                background: GOLD,
+                color: isLight ? "#fff" : BG,
+                cursor: savingHotel ? "default" : "pointer",
+                fontFamily: LABEL_FONT,
+                fontSize: 10.5 * sc,
+                fontWeight: 800,
+                padding: "9px 10px",
+                opacity: savingHotel ? 0.65 : 1,
+              }}
+            >
+              {savingHotel ? "Saving..." : "Save hotel response"}
+            </button>
+            {hotelSaveMessage && <p style={{ margin: "7px 0 0", fontSize: 9.5 * sc, color: GOLD }}>{hotelSaveMessage}</p>}
+            {hotelSaveError && <p style={{ margin: "7px 0 0", fontSize: 9.5 * sc, color: "#b91c1c" }}>{hotelSaveError}</p>}
+          </div>
+        )}
       </div>
     );
   };

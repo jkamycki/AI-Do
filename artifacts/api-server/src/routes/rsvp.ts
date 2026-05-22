@@ -2519,10 +2519,53 @@ router.get("/save-the-date/:token", async (req, res) => {
       photoEffect: customizationData.photoEffect,
       customColorPalette: customizationData.colorPalette,
       customLayout: customizationData.layout,
+      needsHotel: guest.needsHotel,
+      bookedHotelBlockId: guest.bookedHotelBlockId,
+      bookedHotelRoomCount: guest.bookedHotelRoomCount,
       hotelOptions: saveTheDateHotelOptions,
     });
   } catch (err) {
     req.log.error(err, "Failed to get save-the-date info");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/save-the-date/:token/hotel", async (req, res) => {
+  try {
+    if (await sendMaintenanceIfActive(res, "save-the-date")) return;
+    const { token } = req.params;
+    const [guest] = await db.select().from(guests).where(eq(guests.rsvpToken, token)).limit(1);
+    if (!guest) return res.status(404).json({ error: "Not found" });
+
+    const { hotelNeeded, bookedHotelBlockId, bookedHotelRoomCount } = req.body ?? {};
+    const wantsHotel = hotelNeeded === true || hotelNeeded === "true";
+    const roomCount = Number(bookedHotelRoomCount);
+    const updateData: Partial<typeof guests.$inferInsert> = {
+      needsHotel: wantsHotel,
+      bookedHotelBlockId: null,
+      bookedHotelRoomCount: wantsHotel && Number.isInteger(roomCount) && roomCount >= 1 && roomCount <= 2 ? roomCount : wantsHotel ? 1 : null,
+    };
+
+    if (wantsHotel && bookedHotelBlockId !== undefined && bookedHotelBlockId !== null && bookedHotelBlockId !== "") {
+      const hotelId = Number(bookedHotelBlockId);
+      if (!Number.isInteger(hotelId) || hotelId <= 0) {
+        return res.status(400).json({ error: "Invalid hotel block selection." });
+      }
+      const [hotel] = await db
+        .select({ id: hotelBlocks.id })
+        .from(hotelBlocks)
+        .where(and(eq(hotelBlocks.id, hotelId), eq(hotelBlocks.profileId, guest.profileId)))
+        .limit(1);
+      if (!hotel) {
+        return res.status(400).json({ error: "That hotel block is not available for this save-the-date." });
+      }
+      updateData.bookedHotelBlockId = hotel.id;
+    }
+
+    await db.update(guests).set(updateData).where(and(eq(guests.id, guest.id), eq(guests.profileId, guest.profileId)));
+    res.json({ success: true, ...updateData });
+  } catch (err) {
+    req.log.error(err, "Failed to save save-the-date hotel response");
     res.status(500).json({ error: "Internal server error" });
   }
 });
