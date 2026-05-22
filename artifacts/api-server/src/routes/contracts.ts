@@ -642,13 +642,13 @@ router.post(
     // contract; the middle is usually scope-of-work boilerplate. Keeping
     // 4K head + 3K tail preserves both. This was the single biggest TPD
     // waste before — 12-page PDFs were sending 8-10K input tokens per call.
-    const HEAD_CHARS = 4000;
-    const TAIL_CHARS = 3000;
+    const HEAD_CHARS = 2800;
+    const TAIL_CHARS = 1700;
     const trimmedContractText = extractedText.length > HEAD_CHARS + TAIL_CHARS + 200
       ? `${extractedText.slice(0, HEAD_CHARS)}\n\n[…middle of contract omitted for length; full text kept on file…]\n\n${extractedText.slice(-TAIL_CHARS)}`
       : extractedText;
 
-    const prompt = `You are a wedding contract attorney. Analyze this vendor contract for a couple planning their wedding.
+    const prompt = `You are a wedding contract attorney. Quickly analyze this vendor contract for a couple planning their wedding.
 
 CONTRACT_TEXT_START
 ${trimmedContractText}
@@ -656,11 +656,11 @@ CONTRACT_TEXT_END
 
 Important: if there is text between CONTRACT_TEXT_START and CONTRACT_TEXT_END, you received contract text. Do not say no contract text was provided.
 
-Return ONLY this tagged report format. Do not use markdown, bullets, numbering, or JSON.
+Return ONLY this compact tagged report. Keep every field short and practical. Do not use markdown, bullets, numbering, or JSON.
 
 OVERALL_RISK: low OR medium OR high
 VENDOR_TYPE: short vendor type
-SUMMARY: 2-3 sentences for the couple
+SUMMARY: 1-2 sentences for the couple
 CANCELLATION_POLICY: exact practical summary or Not specified
 PAYMENT_TERMS: exact practical summary or Not specified
 LIABILITY_NOTES: exact practical summary or Not specified
@@ -678,22 +678,26 @@ NEGOTIATION_TIP: specific suggested ask
 For KEY_TERM rows, do not use generic labels like "Important clause" or "Contract term". Use the exact labels above when applicable and put the practical contract detail in the value.
 Focus on clauses that could financially harm the couple or cause day-of issues.`;
 
-    const completion = await openai.chat.completions.create({
-      model: getModel(),
-      messages: [{ role: "user", content: prompt }],
-      max_completion_tokens: 2048,
-    }, { signal: AbortSignal.timeout(90_000) });
-
-    const analysisRaw = completion.choices[0]?.message?.content ?? "{}";
+    let analysisRaw = "";
+    try {
+      const completion = await openai.chat.completions.create({
+        model: getModel(),
+        messages: [{ role: "user", content: prompt }],
+        max_completion_tokens: 950,
+      }, { signal: AbortSignal.timeout(22_000) });
+      analysisRaw = completion.choices[0]?.message?.content ?? "";
+    } catch (err) {
+      req.log.warn({ err, fileName: originalname }, "Contract AI timed out; using fast fallback analysis");
+    }
     let parsedAnalysis = parseAnalysisResponse(analysisRaw);
     if (!parsedAnalysis) {
       req.log.warn({ preview: analysisRaw.slice(0, 500) }, "Contract AI returned unstructured analysis");
-      try {
+      if (analysisRaw.trim()) try {
         const repairPrompt = `Convert the following contract analysis response into ONLY the tagged report format below. Do not use markdown, bullets, numbering, or JSON.
 
 OVERALL_RISK: low OR medium OR high
 VENDOR_TYPE: short vendor type
-SUMMARY: 2-3 sentences for the couple
+SUMMARY: 1-2 sentences for the couple
 CANCELLATION_POLICY: exact practical summary or Not specified
 PAYMENT_TERMS: exact practical summary or Not specified
 LIABILITY_NOTES: exact practical summary or Not specified
@@ -712,8 +716,8 @@ ${analysisRaw.slice(0, 12000)}`;
         const repairCompletion = await openai.chat.completions.create({
           model: getModel(),
           messages: [{ role: "user", content: repairPrompt }],
-          max_completion_tokens: 1600,
-        }, { signal: AbortSignal.timeout(45_000) });
+          max_completion_tokens: 800,
+        }, { signal: AbortSignal.timeout(10_000) });
         parsedAnalysis = parseAnalysisResponse(repairCompletion.choices[0]?.message?.content ?? "{}");
       } catch (err) {
         req.log.warn({ err }, "Contract AI repair attempt failed");

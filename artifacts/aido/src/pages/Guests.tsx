@@ -361,6 +361,17 @@ function GuestForm({
       ...defaultValues,
     },
   });
+  const selectedGuestCountry = form.watch("guestCountry");
+
+  useEffect(() => {
+    const fmt = getAddressFormat(selectedGuestCountry);
+    if (!fmt.showState && form.getValues("guestState")) {
+      form.setValue("guestState", "", { shouldDirty: true });
+    }
+    if (!fmt.showZip && form.getValues("guestZip")) {
+      form.setValue("guestZip", "", { shouldDirty: true });
+    }
+  }, [selectedGuestCountry, form]);
 
   const plusOne = form.watch("plusOne");
   const meal = form.watch("mealChoice");
@@ -805,13 +816,13 @@ function GuestForm({
                   <AddressAutocomplete
                     value={field.value ?? ""}
                     onChange={field.onChange}
+                    country={selectedGuestCountry}
                     onSelect={(s) => {
                       field.onChange(s.street);
                       form.setValue("guestCity", s.city, { shouldDirty: true });
-                      form.setValue("guestState", s.state, {
-                        shouldDirty: true,
-                      });
-                      form.setValue("guestZip", s.zip, { shouldDirty: true });
+                      const fmt = getAddressFormat(selectedGuestCountry);
+                      form.setValue("guestState", fmt.showState ? s.state : "", { shouldDirty: true });
+                      form.setValue("guestZip", fmt.showZip ? s.zip : "", { shouldDirty: true });
                     }}
                     placeholder="123 Main St"
                   />
@@ -834,9 +845,11 @@ function GuestForm({
             )}
           />
           {(() => {
-            const fmt = getAddressFormat(form.watch("guestCountry"));
+            const fmt = getAddressFormat(selectedGuestCountry);
+            const visible = 1 + (fmt.showState ? 1 : 0) + (fmt.showZip ? 1 : 0);
+            const gridCls = visible >= 3 ? "col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4" : visible === 2 ? "col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4" : "col-span-2 grid gap-4";
             return (
-              <>
+              <div className={gridCls}>
                 {fmt.showState && (
                   <FormField
                     control={form.control}
@@ -883,7 +896,7 @@ function GuestForm({
                     )}
                   />
                 )}
-              </>
+              </div>
             );
           })()}
         </div>
@@ -2853,6 +2866,12 @@ export default function Guests({
           <p className="text-base sm:text-lg text-muted-foreground mt-2">
             {t("guests.subtitle")}
           </p>
+          <div className="mt-3 flex max-w-2xl items-start gap-2 rounded-lg border border-primary/15 bg-primary/5 px-3 py-2 text-sm text-muted-foreground">
+            <Mail className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <p>
+              RSVP responses are also sent to your account email as a backup copy.
+            </p>
+          </div>
         </div>
         <div className="grid grid-cols-1 sm:flex sm:flex-wrap gap-2">
           {allGuests.length > 0 && (

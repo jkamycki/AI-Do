@@ -13,6 +13,7 @@ import { hasMinRole, resolveCallerRole, resolveProfile } from "../lib/workspaceA
 import { sendMaintenanceIfActive } from "../lib/maintenance";
 import { getRequestLanguage } from "../lib/language";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
+import { sendGuestRsvpBackupEmail, sendWebsiteRsvpBackupEmail } from "../lib/rsvpBackupEmail";
 
 const scryptAsync = promisify(scrypt);
 
@@ -970,6 +971,7 @@ router.post("/invitation-shares/:token/rsvp/self-add", publicRsvpLimiter, async 
       rsvpStatus: attendance,
       mealChoice: isAttending ? normalizeMeal(mealChoice) : null,
       dietaryNotes: typeof dietaryRestrictions === "string" && dietaryRestrictions.trim() ? dietaryRestrictions.trim() : null,
+      rsvpRespondedAt: new Date(),
       plusOne: wantsPlusOne,
       plusOneName: wantsPlusOne && typeof plusOneName === "string" && plusOneName.trim() ? plusOneName.trim() : null,
       plusOneMealChoice: wantsPlusOne ? normalizeMeal(plusOneMealChoice) : null,
@@ -980,6 +982,12 @@ router.post("/invitation-shares/:token/rsvp/self-add", publicRsvpLimiter, async 
       bookedHotelRoomCount: null,
       source: "rsvp_self_add",
     }).returning();
+    void sendGuestRsvpBackupEmail({
+      profileId: profile.id,
+      guest: created,
+      source: "shared_invitation_self_add",
+      logger: req.log,
+    });
     res.json({ success: true, status: attendance, guestId: created.id });
   } catch (err) {
     req.log.error(err, "invitationShareSelfAdd failed");
@@ -1025,6 +1033,7 @@ router.post("/invitation-shares/:token/rsvp", publicRsvpLimiter, async (req, res
     };
     const updateData: Partial<typeof guests.$inferInsert> = {
       rsvpStatus: attendance,
+      rsvpRespondedAt: new Date(),
       dietaryNotes: typeof dietaryRestrictions === "string" && dietaryRestrictions.trim() ? dietaryRestrictions.trim() : null,
     };
     if (typeof message === "string") updateData.rsvpMessage = message.trim().slice(0, 1000) || null;
@@ -1048,7 +1057,19 @@ router.post("/invitation-shares/:token/rsvp", publicRsvpLimiter, async (req, res
       updateData.bookedHotelBlockId = null;
       updateData.bookedHotelRoomCount = null;
     }
-    await db.update(guests).set(updateData).where(and(eq(guests.id, guest.id), eq(guests.profileId, profile.id)));
+    const [updated] = await db
+      .update(guests)
+      .set(updateData)
+      .where(and(eq(guests.id, guest.id), eq(guests.profileId, profile.id)))
+      .returning();
+    if (updated) {
+      void sendGuestRsvpBackupEmail({
+        profileId: profile.id,
+        guest: updated,
+        source: "shared_invitation_rsvp",
+        logger: req.log,
+      });
+    }
     res.json({ success: true, status: attendance });
   } catch (err) {
     req.log.error(err, "invitationShareRsvpSubmit failed");
@@ -1527,6 +1548,7 @@ router.post("/website/public/:slug/rsvp/self-add", publicRsvpLimiter, async (req
       rsvpStatus: attendance,
       mealChoice: isAttending ? normalizeMeal(mealChoice) : null,
       dietaryNotes: dietaryClean,
+      rsvpRespondedAt: new Date(),
       plusOne: wantsPlusOne,
       plusOneName: wantsPlusOne && cleanPlusOneName ? cleanPlusOneName : null,
       plusOneMealChoice: wantsPlusOne ? normalizeMeal(plusOneMealChoice) : null,
@@ -1540,6 +1562,12 @@ router.post("/website/public/:slug/rsvp/self-add", publicRsvpLimiter, async (req
       bookedHotelRoomCount: null,
       source: "rsvp_self_add",
     }).returning();
+    void sendGuestRsvpBackupEmail({
+      profileId: r.site.profileId,
+      guest: created,
+      source: "website_self_add",
+      logger: req.log,
+    });
 
     res.json({ success: true, status: attendance, guestId: created.id });
   } catch (err) {
@@ -1610,6 +1638,7 @@ router.post("/website/public/:slug/rsvp", publicRsvpLimiter, async (req, res) =>
 
     const updateData: Partial<typeof guests.$inferInsert> = {
       rsvpStatus: attendance,
+      rsvpRespondedAt: new Date(),
       dietaryNotes: typeof dietaryRestrictions === "string" && dietaryRestrictions.trim()
         ? dietaryRestrictions.trim()
         : null,
@@ -1640,7 +1669,19 @@ router.post("/website/public/:slug/rsvp", publicRsvpLimiter, async (req, res) =>
       updateData.bookedHotelRoomCount = null;
     }
 
-    await db.update(guests).set(updateData).where(and(eq(guests.id, guest.id), eq(guests.profileId, r.site.profileId)));
+    const [updated] = await db
+      .update(guests)
+      .set(updateData)
+      .where(and(eq(guests.id, guest.id), eq(guests.profileId, r.site.profileId)))
+      .returning();
+    if (updated) {
+      void sendGuestRsvpBackupEmail({
+        profileId: r.site.profileId,
+        guest: updated,
+        source: "website_guest_rsvp",
+        logger: req.log,
+      });
+    }
 
     res.json({ success: true, status: attendance });
   } catch (err) {
@@ -1692,6 +1733,19 @@ router.post("/website/rsvp/:slug", publicRsvpLimiter, async (req, res) => {
         message: message?.trim().slice(0, 1000) || null,
       })
       .returning({ id: websiteRsvps.id });
+    void sendWebsiteRsvpBackupEmail({
+      profileId: row.profileId,
+      rsvp: {
+        name: name.trim().slice(0, 120),
+        email: cleanEmail || null,
+        attending: att,
+        plusOneCount: Math.max(0, Math.min(10, Number(plusOneCount) || 0)),
+        dietaryRestrictions: dietaryRestrictions?.trim().slice(0, 500) || null,
+        message: message?.trim().slice(0, 1000) || null,
+      },
+      source: "website_form_rsvp",
+      logger: req.log,
+    });
 
     res.status(201).json({ success: true, id: created.id });
   } catch (err) {

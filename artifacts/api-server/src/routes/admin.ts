@@ -8,6 +8,7 @@ import {
   checklistItems, vendors, guests, vendorContracts, seatingCharts,
   hotelBlocks, weddingParty, manualExpenses, vendorPayments,
   workspaceCollaborators, adminLaunchPlanItems,
+  weddingWebsites, websiteRsvps,
 } from "@workspace/db";
 import { eq, gte, desc, sql, and, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -1610,7 +1611,10 @@ router.post("/admin/archive/:id/restore", requireAuth, requireAdmin, async (req,
           plusOneMealChoice: g.plusOneMealChoice as string | null ?? null,
           tableAssignment: g.tableAssignment as string | null ?? null,
           needsHotel: Boolean(g.needsHotel ?? false),
+          bookedHotelBlockId: g.bookedHotelBlockId == null ? null : Number(g.bookedHotelBlockId),
+          bookedHotelRoomCount: g.bookedHotelRoomCount == null ? null : Number(g.bookedHotelRoomCount),
           notes: g.notes as string | null ?? null,
+          rsvpMessage: g.rsvpMessage as string | null ?? null,
           phone: g.phone as string | null ?? null,
           address: g.address as string | null ?? null,
           aptUnit: g.aptUnit as string | null ?? null,
@@ -1618,10 +1622,57 @@ router.post("/admin/archive/:id/restore", requireAuth, requireAdmin, async (req,
           guestState: g.guestState as string | null ?? null,
           guestZip: g.guestZip as string | null ?? null,
           guestCountry: g.guestCountry as string | null ?? null,
+          rsvpToken: g.rsvpToken as string | null ?? null,
+          rsvpSentAt: g.rsvpSentAt ? new Date(String(g.rsvpSentAt)) : null,
+          rsvpRespondedAt: g.rsvpRespondedAt ? new Date(String(g.rsvpRespondedAt)) : null,
+          saveTheDateStatus: String(g.saveTheDateStatus ?? "not_sent"),
+          rsvpReminderStatus: String(g.rsvpReminderStatus ?? "not_sent"),
           source: String(g.source ?? "manual"),
+          acknowledgedAt: g.acknowledgedAt ? new Date(String(g.acknowledgedAt)) : null,
         });
       }
       restored.guests = ((data.guests as unknown[]) ?? []).length;
+
+      const websiteIdMap = new Map<number, number>();
+      for (const site of ((data.weddingWebsites as Array<Record<string, unknown>>) ?? [])) {
+        const originalSlug = String(site.slug ?? "restored-site").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || "restored-site";
+        const [createdSite] = await db.insert(weddingWebsites).values({
+          profileId: newProfileId,
+          slug: `${originalSlug}-restored-${id}`,
+          theme: String(site.theme ?? "classic"),
+          layoutStyle: String(site.layoutStyle ?? "standard"),
+          font: String(site.font ?? "Playfair Display"),
+          accentColor: String(site.accentColor ?? "#8D294D"),
+          colorPalette: (site.colorPalette ?? undefined) as never,
+          sectionsEnabled: (site.sectionsEnabled ?? undefined) as never,
+          customText: (site.customText ?? {}) as never,
+          textStyles: (site.textStyles ?? {}) as never,
+          textPositions: (site.textPositions ?? {}) as never,
+          galleryImages: (site.galleryImages ?? []) as never,
+          heroImages: (site.heroImages ?? []) as never,
+          heroImage: site.heroImage as string | null ?? null,
+          password: site.password as string | null ?? null,
+          published: Boolean(site.published ?? false),
+          publishedAt: site.publishedAt ? new Date(String(site.publishedAt)) : null,
+        }).returning({ id: weddingWebsites.id });
+        if (site.id != null) websiteIdMap.set(Number(site.id), createdSite.id);
+      }
+      for (const rsvp of ((data.websiteRsvps as Array<Record<string, unknown>>) ?? [])) {
+        const newWebsiteId = websiteIdMap.get(Number(rsvp.websiteId));
+        if (!newWebsiteId) continue;
+        await db.insert(websiteRsvps).values({
+          websiteId: newWebsiteId,
+          name: String(rsvp.name ?? "Guest"),
+          email: rsvp.email as string | null ?? null,
+          attending: String(rsvp.attending ?? "yes"),
+          plusOneCount: Number(rsvp.plusOneCount ?? 0),
+          dietaryRestrictions: rsvp.dietaryRestrictions as string | null ?? null,
+          message: rsvp.message as string | null ?? null,
+          submittedAt: rsvp.submittedAt ? new Date(String(rsvp.submittedAt)) : new Date(),
+        });
+      }
+      restored.weddingWebsites = websiteIdMap.size;
+      restored.websiteRsvps = ((data.websiteRsvps as unknown[]) ?? []).length;
 
       for (const ci of ((data.checklistItems as Array<Record<string, unknown>>) ?? [])) {
         await db.insert(checklistItems).values({
@@ -1795,6 +1846,16 @@ router.post("/admin/archive/:id/restore", requireAuth, requireAdmin, async (req,
       }
       restored.seatingCharts = ((data.seatingCharts as unknown[]) ?? []).length;
 
+      for (const event of ((data.analyticsEvents as Array<Record<string, unknown>>) ?? [])) {
+        await db.insert(analyticsEvents).values({
+          userId: newUserId.trim(),
+          eventType: String(event.eventType ?? "restored_event"),
+          timestamp: event.timestamp ? new Date(String(event.timestamp)) : new Date(),
+          metadata: (event.metadata ?? {}) as never,
+        });
+      }
+      restored.analyticsEvents = ((data.analyticsEvents as unknown[]) ?? []).length;
+
       await db.update(deletedUserArchive)
         .set({ restoredAt: new Date(), restoredBy: req.userId ?? "admin", restoredToUserId: newUserId.trim() })
         .where(eq(deletedUserArchive.id, id));
@@ -1857,16 +1918,71 @@ router.post("/admin/archive/:id/restore", requireAuth, requireAdmin, async (req,
             phone: g.phone as string | null ?? null,
             rsvpStatus: (g.rsvpStatus as string) ?? "pending",
             mealChoice: g.mealChoice as string | null ?? null,
+            dietaryNotes: (g.dietaryRestrictions ?? g.dietaryNotes) as string | null ?? null,
             plusOne: Boolean(g.plusOne ?? false),
             plusOneName: g.plusOneName as string | null ?? null,
-            dietaryNotes: (g.dietaryRestrictions ?? g.dietaryNotes) as string | null ?? null,
+            plusOneMealChoice: g.plusOneMealChoice as string | null ?? null,
             tableAssignment: g.tableNumber != null ? String(g.tableNumber) : (g.tableAssignment as string | null ?? null),
+            needsHotel: Boolean(g.needsHotel ?? false),
+            bookedHotelBlockId: g.bookedHotelBlockId == null ? null : Number(g.bookedHotelBlockId),
+            bookedHotelRoomCount: g.bookedHotelRoomCount == null ? null : Number(g.bookedHotelRoomCount),
             notes: g.notes as string | null ?? null,
+            rsvpMessage: g.rsvpMessage as string | null ?? null,
             guestGroup: (g.group ?? g.guestGroup) as string | null ?? null,
+            source: String(g.source ?? "manual"),
+            rsvpToken: g.rsvpToken as string | null ?? null,
+            rsvpSentAt: g.rsvpSentAt ? new Date(String(g.rsvpSentAt)) : null,
+            rsvpRespondedAt: g.rsvpRespondedAt ? new Date(String(g.rsvpRespondedAt)) : null,
+            saveTheDateStatus: String(g.saveTheDateStatus ?? "not_sent"),
+            rsvpReminderStatus: String(g.rsvpReminderStatus ?? "not_sent"),
+            acknowledgedAt: g.acknowledgedAt ? new Date(String(g.acknowledgedAt)) : null,
           });
         }
         restored.guests = guestRows.length;
       }
+
+      const websiteRows = (data.weddingWebsites as Array<Record<string, unknown>>) ?? [];
+      const websiteIdMap = new Map<number, number>();
+      for (const site of websiteRows) {
+        const originalSlug = String(site.slug ?? "restored-site").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || "restored-site";
+        const [createdSite] = await db.insert(weddingWebsites).values({
+          profileId: newProfileId,
+          slug: `${originalSlug}-restored-${id}`,
+          theme: String(site.theme ?? "classic"),
+          layoutStyle: String(site.layoutStyle ?? "standard"),
+          font: String(site.font ?? "Playfair Display"),
+          accentColor: String(site.accentColor ?? "#8D294D"),
+          colorPalette: (site.colorPalette ?? undefined) as never,
+          sectionsEnabled: (site.sectionsEnabled ?? undefined) as never,
+          customText: (site.customText ?? {}) as never,
+          textStyles: (site.textStyles ?? {}) as never,
+          textPositions: (site.textPositions ?? {}) as never,
+          galleryImages: (site.galleryImages ?? []) as never,
+          heroImages: (site.heroImages ?? []) as never,
+          heroImage: site.heroImage as string | null ?? null,
+          password: site.password as string | null ?? null,
+          published: Boolean(site.published ?? false),
+          publishedAt: site.publishedAt ? new Date(String(site.publishedAt)) : null,
+        }).returning({ id: weddingWebsites.id });
+        if (site.id != null) websiteIdMap.set(Number(site.id), createdSite.id);
+      }
+      const websiteRsvpRows = (data.websiteRsvps as Array<Record<string, unknown>>) ?? [];
+      for (const rsvp of websiteRsvpRows) {
+        const newWebsiteId = websiteIdMap.get(Number(rsvp.websiteId));
+        if (!newWebsiteId) continue;
+        await db.insert(websiteRsvps).values({
+          websiteId: newWebsiteId,
+          name: String(rsvp.name ?? "Guest"),
+          email: rsvp.email as string | null ?? null,
+          attending: String(rsvp.attending ?? "yes"),
+          plusOneCount: Number(rsvp.plusOneCount ?? 0),
+          dietaryRestrictions: rsvp.dietaryRestrictions as string | null ?? null,
+          message: rsvp.message as string | null ?? null,
+          submittedAt: rsvp.submittedAt ? new Date(String(rsvp.submittedAt)) : new Date(),
+        });
+      }
+      restored.weddingWebsites = websiteIdMap.size;
+      restored.websiteRsvps = websiteRsvpRows.length;
 
       const ciRows = (data.checklistItems as Array<Record<string, unknown>>) ?? [];
       if (ciRows.length > 0) {
@@ -1953,6 +2069,19 @@ router.post("/admin/archive/:id/restore", requireAuth, requireAdmin, async (req,
         });
       }
       restored.weddingPartyMembers = wpRows.length;
+    }
+
+    const analyticsRows = (data.analyticsEvents as Array<Record<string, unknown>>) ?? [];
+    if (analyticsRows.length > 0) {
+      for (const event of analyticsRows) {
+        await db.insert(analyticsEvents).values({
+          userId: newUserId.trim(),
+          eventType: String(event.eventType ?? "restored_event"),
+          timestamp: event.timestamp ? new Date(String(event.timestamp)) : new Date(),
+          metadata: (event.metadata ?? {}) as never,
+        });
+      }
+      restored.analyticsEvents = analyticsRows.length;
     }
 
     await db.update(deletedUserArchive)

@@ -85,6 +85,11 @@ function formatSize(bytes?: number | null) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+function pdfDownloadName(fileName: string) {
+  const base = fileName.replace(/\.[^.]+$/, "").replace(/[^\w.\- ]+/g, " ").replace(/\s+/g, "-").toLowerCase();
+  return `${base || "wedding-document"}.pdf`;
+}
+
 function DocumentIcon({ type }: { type: string }) {
   const isImage = ["JPG", "PNG"].includes(type.toUpperCase());
   return isImage ? <FileImage className="h-5 w-5" /> : <FileText className="h-5 w-5" />;
@@ -160,6 +165,7 @@ export default function DocumentLibrary() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const downloadInFlightRef = useRef<number | null>(null);
   const [folderFilter, setFolderFilter] = useState("All");
   const [tagFilter, setTagFilter] = useState("All");
   const [customFolders, setCustomFolders] = useState<string[]>([]);
@@ -174,6 +180,7 @@ export default function DocumentLibrary() {
   const [renameValue, setRenameValue] = useState("");
   const [activeTab, setActiveTab] = useState("library");
   const [editState, setEditState] = useState({ fileName: "", folder: "General", tags: "", visibility: "" });
+  const [downloadingDocumentId, setDownloadingDocumentId] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery<{ documents: DocumentRecord[] }>({
     queryKey: ["documents"],
@@ -360,6 +367,37 @@ export default function DocumentLibrary() {
 
   function linkVendor(doc: DocumentRecord, vendorId: string) {
     actionMutation.mutate({ id: doc.id, action: "link-vendor", body: { vendorId: Number(vendorId) } });
+  }
+
+  async function downloadDocumentPdf(doc: DocumentRecord) {
+    if (downloadInFlightRef.current) return;
+    downloadInFlightRef.current = doc.id;
+    setDownloadingDocumentId(doc.id);
+    try {
+      const res = await authFetch(`${API}/api/documents/${doc.id}/download-pdf`);
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload.error ?? "Could not download PDF");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = pdfDownloadName(doc.fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      toast({
+        title: "Download failed",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      downloadInFlightRef.current = null;
+      setDownloadingDocumentId(null);
+    }
   }
 
   const copyMutation = useMutation({
@@ -810,8 +848,16 @@ export default function DocumentLibrary() {
                             {actionMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckSquare className="h-4 w-4" />}
                             Tasks
                           </Button>
-                          <Button variant="ghost" size="sm" className="gap-2" asChild>
-                            <a href={fileUrl(doc.fileUrl)} download><Download className="h-4 w-4" /> Download</a>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => downloadDocumentPdf(doc)}
+                            disabled={downloadingDocumentId === doc.id}
+                          >
+                            {downloadingDocumentId === doc.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                            Download PDF
                           </Button>
                         </div>
                         {!doc.linkedVendorId && vendorList.length > 0 && (

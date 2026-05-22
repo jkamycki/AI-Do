@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useClerk, useUser, useAuth } from "@clerk/react";
 import { useQuery } from "@tanstack/react-query";
@@ -38,9 +38,45 @@ import {
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { AvatarCropDialog } from "@/components/AvatarCropDialog";
 import { authFetch } from "@/lib/authFetch";
 import { useTracking } from "@/hooks/useTracking";
+
+const AvatarCropDialog = lazy(() =>
+  import("@/components/AvatarCropDialog").then((mod) => ({ default: mod.AvatarCropDialog })),
+);
+
+const routePrefetchers: Record<string, () => Promise<unknown>> = {
+  "/dashboard": () => import("@/pages/Dashboard"),
+  "/profile": () => import("@/pages/Profile"),
+  "/mood-board": () => import("@/pages/MoodBoard"),
+  "/timeline": () => import("@/pages/Timeline"),
+  "/checklist": () => import("@/pages/Checklist"),
+  "/vendors": () => import("@/pages/Vendors"),
+  "/budget": () => import("@/pages/Budget"),
+  "/documents": () => import("@/pages/DocumentLibrary"),
+  "/guests": () => import("@/pages/GuestListAndInvitations"),
+  "/wedding-party": () => import("@/pages/WeddingParty"),
+  "/seating-chart": () => import("@/pages/SeatingChart"),
+  "/hotels": () => import("@/pages/Hotels"),
+  "/aria": () => import("@/pages/Aria"),
+  "/day-of": () => import("@/pages/DayOf"),
+  "/website-editor": () => import("@/pages/WebsiteEditor"),
+  "/settings": () => import("@/pages/Settings"),
+  "/help": () => import("@/pages/Help"),
+  "/help/updates-improvements": () => import("@/pages/UpdatesImprovements"),
+  "/operations-center": () => import("@/pages/OperationsCenter"),
+};
+
+const prefetchedRoutes = new Set<string>();
+
+function prefetchSidebarRoute(href: string) {
+  if (prefetchedRoutes.has(href)) return;
+  if (typeof navigator !== "undefined" && navigator.connection?.saveData) return;
+  const load = routePrefetchers[href];
+  if (!load) return;
+  prefetchedRoutes.add(href);
+  void load().catch(() => prefetchedRoutes.delete(href));
+}
 
 const navSections = [
   {
@@ -331,6 +367,23 @@ export function Sidebar() {
 
   const sidebarScrollRef = useRef<HTMLDivElement | null>(null);
 
+  useEffect(() => {
+    if (!isSignedIn) return;
+    const warmRoutes = ["/dashboard", "/profile", "/budget", "/vendors", "/guests", "/timeline", "/checklist"];
+    const warm = () => warmRoutes.forEach(prefetchSidebarRoute);
+    const idleId =
+      "requestIdleCallback" in window
+        ? window.requestIdleCallback(warm, { timeout: 5000 })
+        : window.setTimeout(warm, 1800);
+    return () => {
+      if ("cancelIdleCallback" in window && typeof idleId === "number") {
+        window.cancelIdleCallback(idleId);
+      } else {
+        window.clearTimeout(idleId);
+      }
+    };
+  }, [isSignedIn]);
+
   // Restore sidebar scroll position whenever the route changes,
   // so clicking a nav link doesn't snap the menu back to the top.
   useEffect(() => {
@@ -372,6 +425,8 @@ export function Sidebar() {
     return (
       <Link
         href={href}
+        onPointerEnter={() => prefetchSidebarRoute(href)}
+        onFocus={() => prefetchSidebarRoute(href)}
         className={`
           flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group
           ${
@@ -385,15 +440,8 @@ export function Sidebar() {
           }
         `}
         onClick={() => {
+          prefetchSidebarRoute(href);
           void track("tab_bar_feature_used", {
-            feature: label,
-            tool: label,
-            section: sectionLabel,
-            path: href,
-            fromPath: location,
-            source: "sidebar_tab_bar",
-          });
-          void track("feature_accessed", {
             feature: label,
             tool: label,
             section: sectionLabel,
@@ -427,11 +475,13 @@ export function Sidebar() {
   return (
     <>
       {cropSrc && (
-        <AvatarCropDialog
-          imageSrc={cropSrc}
-          onConfirm={handleCropConfirm}
-          onCancel={() => setCropSrc(null)}
-        />
+        <Suspense fallback={null}>
+          <AvatarCropDialog
+            imageSrc={cropSrc}
+            onConfirm={handleCropConfirm}
+            onCancel={() => setCropSrc(null)}
+          />
+        </Suspense>
       )}
       <input
         ref={picInputRef}

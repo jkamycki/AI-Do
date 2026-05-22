@@ -1458,7 +1458,9 @@ function ProtectedRoute({
 
   return (
     <AppLayout fullWidth={fullWidth}>
-      <Component />
+      <Suspense fallback={<RouteLoading />}>
+        <Component />
+      </Suspense>
     </AppLayout>
   );
 }

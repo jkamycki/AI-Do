@@ -1,9 +1,14 @@
-import { Component, type ReactNode } from "react";
+import { Component, lazy, Suspense, type ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
-import { SupportChat } from "@/components/SupportChat";
-import { VendorReplyNotifier } from "@/components/VendorReplyNotifier";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { Heart } from "lucide-react";
+
+const SupportChat = lazy(() =>
+  import("@/components/SupportChat").then((mod) => ({ default: mod.SupportChat })),
+);
+const VendorReplyNotifier = lazy(() =>
+  import("@/components/VendorReplyNotifier").then((mod) => ({ default: mod.VendorReplyNotifier })),
+);
 
 class SilentErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   constructor(props: { children: ReactNode }) {
@@ -73,14 +78,14 @@ export function AppLayout({ children, fullWidth = false }: AppLayoutProps) {
         )}
       </main>
       {!isVendorWorkspace && (
-        <>
+        <Suspense fallback={null}>
           <SilentErrorBoundary>
             <SupportChat />
           </SilentErrorBoundary>
           <SilentErrorBoundary>
             <VendorReplyNotifier />
           </SilentErrorBoundary>
-        </>
+        </Suspense>
       )}
     </div>
   );

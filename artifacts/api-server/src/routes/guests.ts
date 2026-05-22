@@ -3,6 +3,7 @@ import { db, guests } from "@workspace/db";
 import { eq, and, or, ilike, not } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
+import { sendGuestRsvpBackupEmail, shouldSendManualRsvpBackupEmail } from "../lib/rsvpBackupEmail";
 
 const router = Router();
 const INVITATION_STATUSES = new Set(["pending", "sent"]);
@@ -160,6 +161,13 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Invalid RSVP reminder status" });
     }
 
+    const [existingGuest] = await db
+      .select()
+      .from(guests)
+      .where(and(eq(guests.id, id), eq(guests.profileId, profileId)))
+      .limit(1);
+    if (!existingGuest) return res.status(404).json({ error: "Guest not found" });
+
     if (name !== undefined || email !== undefined) {
       const checkName = (name ?? "").trim();
       const checkEmail = (email ?? "").trim() || null;
@@ -185,6 +193,9 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
     if (email !== undefined) updateData.email = email || null;
     if (invitationStatus !== undefined) updateData.invitationStatus = invitationStatus;
     if (rsvpStatus !== undefined) updateData.rsvpStatus = rsvpStatus;
+    if (rsvpStatus !== undefined && rsvpStatus !== "pending" && existingGuest.rsvpStatus === "pending") {
+      updateData.rsvpRespondedAt = new Date();
+    }
     if (mealChoice !== undefined) updateData.mealChoice = mealChoice || null;
     if (dietaryNotes !== undefined) updateData.dietaryNotes = dietaryNotes || null;
     if (guestGroup !== undefined) updateData.guestGroup = guestGroup || null;
@@ -219,6 +230,14 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
       .returning();
 
     if (!updated) return res.status(404).json({ error: "Guest not found" });
+    if (shouldSendManualRsvpBackupEmail(existingGuest, updated)) {
+      void sendGuestRsvpBackupEmail({
+        profileId,
+        guest: updated,
+        source: "manual_guest_update",
+        logger: req.log,
+      });
+    }
     res.json(updated);
     return;
   } catch (err) {

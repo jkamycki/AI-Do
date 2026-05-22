@@ -7,6 +7,7 @@ import {
   manualExpenses, vendorConversations, vendorMessages, vendorContacts,
   contactMessages, feedbackSubmissions, adminUsers,
   deletedAccountEmails, deletedUserArchive,
+  weddingWebsites, websiteRsvps,
 } from "@workspace/db";
 import { eq, inArray, or, sql } from "drizzle-orm";
 import { logger } from "./logger";
@@ -50,6 +51,13 @@ export async function snapshotUserData(
       snapshot.timelines = await db.select().from(timelines).where(eq(timelines.profileId, profileId));
       snapshot.checklistItems = await db.select().from(checklistItems).where(eq(checklistItems.profileId, profileId));
       snapshot.guests = await db.select().from(guests).where(eq(guests.profileId, profileId));
+      snapshot.weddingWebsites = await db.select().from(weddingWebsites).where(eq(weddingWebsites.profileId, profileId));
+      const siteRows = snapshot.weddingWebsites as Array<typeof weddingWebsites.$inferSelect>;
+      if (siteRows.length > 0) {
+        snapshot.websiteRsvps = await db.select().from(websiteRsvps).where(inArray(websiteRsvps.websiteId, siteRows.map(site => site.id)));
+      } else {
+        snapshot.websiteRsvps = [];
+      }
 
       const userBudgets = await db.select().from(budgets).where(eq(budgets.profileId, profileId));
       snapshot.budgets = userBudgets;
@@ -73,6 +81,8 @@ export async function snapshotUserData(
       snapshot.timelines = [];
       snapshot.checklistItems = [];
       snapshot.guests = [];
+      snapshot.weddingWebsites = [];
+      snapshot.websiteRsvps = [];
       snapshot.budgets = [];
       snapshot.budgetItems = [];
       snapshot.budgetPaymentLogs = [];
@@ -184,6 +194,11 @@ export async function purgeUserData(
     await db.delete(checklistItems).where(eq(checklistItems.profileId, profileId));
     await db.delete(documents).where(eq(documents.profileId, profileId));
     await db.delete(guests).where(eq(guests.profileId, profileId));
+    const siteRows = await db.select({ id: weddingWebsites.id }).from(weddingWebsites).where(eq(weddingWebsites.profileId, profileId));
+    if (siteRows.length > 0) {
+      await db.delete(websiteRsvps).where(inArray(websiteRsvps.websiteId, siteRows.map(site => site.id)));
+    }
+    await db.delete(weddingWebsites).where(eq(weddingWebsites.profileId, profileId));
   }
 
   const userConvRows = await db

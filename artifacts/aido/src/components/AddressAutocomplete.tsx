@@ -17,6 +17,7 @@ interface Props {
   onChange: (value: string) => void;
   onSelect: (s: AddressSuggestion) => void;
   placeholder?: string;
+  country?: string | null;
   className?: string;
   id?: string;
 }
@@ -65,7 +66,7 @@ function parseResult(result: Record<string, unknown>): AddressSuggestion | null 
   return { display, street, city, state, zip };
 }
 
-export function AddressAutocomplete({ value, onChange, onSelect, placeholder, className, id }: Props) {
+export function AddressAutocomplete({ value, onChange, onSelect, placeholder, country, className, id }: Props) {
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -78,11 +79,12 @@ export function AddressAutocomplete({ value, onChange, onSelect, placeholder, cl
       setOpen(false);
       return;
     }
+    const scopedQuery = country?.trim() ? `${q}, ${country.trim()}` : q;
     setLoading(true);
     try {
       const url =
         `https://nominatim.openstreetmap.org/search` +
-        `?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=1`;
+        `?q=${encodeURIComponent(scopedQuery)}&format=json&limit=5&addressdetails=1`;
       const res = await fetch(url, {
         headers: { "Accept-Language": "en-US,en;q=0.9" },
       });
@@ -96,7 +98,7 @@ export function AddressAutocomplete({ value, onChange, onSelect, placeholder, cl
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [country]);
 
   function handleChange(val: string) {
     onChange(val);

@@ -593,11 +593,13 @@ export default function Profile() {
                       <AddressAutocomplete
                         value={field.value ?? ""}
                         onChange={field.onChange}
+                        country={form.watch("venueCountry")}
                         onSelect={(s) => {
                           field.onChange(s.street);
+                          const fmt = getAddressFormat(form.watch("venueCountry"));
                           form.setValue("venueCity", s.city, { shouldDirty: true });
-                          form.setValue("venueState", s.state, { shouldDirty: true });
-                          form.setValue("venueZip", s.zip, { shouldDirty: true });
+                          form.setValue("venueState", fmt.showState ? s.state : "", { shouldDirty: true });
+                          form.setValue("venueZip", fmt.showZip ? s.zip : "", { shouldDirty: true });
                         }}
                         placeholder="123 Magnolia Lane"
                         id="input-location"
@@ -711,11 +713,13 @@ export default function Profile() {
                             <AddressAutocomplete
                               value={field.value ?? ""}
                               onChange={field.onChange}
+                              country={form.watch("venueCountry")}
                               onSelect={(s) => {
                                 field.onChange(s.street);
+                                const fmt = getAddressFormat(form.watch("venueCountry"));
                                 form.setValue("ceremonyCity", s.city, { shouldDirty: true });
-                                form.setValue("ceremonyState", s.state, { shouldDirty: true });
-                                form.setValue("ceremonyZip", s.zip, { shouldDirty: true });
+                                form.setValue("ceremonyState", fmt.showState ? s.state : "", { shouldDirty: true });
+                                form.setValue("ceremonyZip", fmt.showZip ? s.zip : "", { shouldDirty: true });
                               }}
                               placeholder="200 Broad Street"
                               id="input-ceremony-address"

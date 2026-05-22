@@ -528,6 +528,7 @@ export default function Budget() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<ManualExpenseFormState>(emptyManualForm());
   const [editingVendor, setEditingVendor] = useState<VendorRow | null>(null);
+  const [isAddingSyncedVendor, setIsAddingSyncedVendor] = useState(false);
   const [vendorForm, setVendorForm] = useState<VendorBudgetFormState>(emptyVendorBudgetForm());
   const [isSavingVendorBudget, setIsSavingVendorBudget] = useState(false);
   const [isResettingPaymentStatus, setIsResettingPaymentStatus] = useState(false);
@@ -699,6 +700,11 @@ export default function Budget() {
       nextPaymentAmount: vendor.nextPaymentAmount != null ? String(vendor.nextPaymentAmount) : options?.scheduleNextPayment && remaining > 0 ? String(remaining) : "",
       paidInFull: vendor.totalCost > 0 && paid >= vendor.totalCost,
     });
+  };
+  const openAddSyncedVendor = () => {
+    setEditingVendor(null);
+    setVendorForm(emptyVendorBudgetForm());
+    setIsAddingSyncedVendor(true);
   };
 
   const markManualFormPaidInFull = () => {
@@ -1162,7 +1168,7 @@ export default function Budget() {
   };
 
   const submitVendorBudgetForm = async () => {
-    if (!editingVendor) return;
+    if (!editingVendor && !isAddingSyncedVendor) return;
     const name = vendorForm.name.trim();
     const category = vendorForm.category.trim();
     const totalCost = Math.max(0, Number(vendorForm.totalCost || 0));
@@ -1187,8 +1193,9 @@ export default function Budget() {
 
     setIsSavingVendorBudget(true);
     try {
-      const vendorResponse = await authFetch(`/api/vendors/${editingVendor.id}`, {
-        method: "PUT",
+      const vendorId = editingVendor?.id;
+      const vendorResponse = await authFetch(vendorId ? `/api/vendors/${vendorId}` : "/api/vendors", {
+        method: vendorId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
@@ -1199,9 +1206,12 @@ export default function Budget() {
         }),
       });
       if (!vendorResponse.ok) throw new Error("Vendor update failed");
+      const savedVendor = await vendorResponse.json().catch(() => null) as { id?: number } | null;
+      const savedVendorId = vendorId ?? savedVendor?.id;
+      if (!savedVendorId) throw new Error("Vendor save failed");
 
       if (vendorForm.paidInFull) {
-        const paidResponse = await authFetch(`/api/vendors/${editingVendor.id}/payments/mark-paid-in-full`, {
+        const paidResponse = await authFetch(`/api/vendors/${savedVendorId}/payments/mark-paid-in-full`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
         });
@@ -1209,13 +1219,14 @@ export default function Budget() {
         const result = await paidResponse.json().catch(() => null) as {
           undo?: { markedPaymentIds?: number[]; createdPaymentId?: number | null; previousNextPaymentDue?: string | null };
         } | null;
+        rememberPaymentUndo(`vendor-${savedVendorId}`, () => undoVendorPaidInFull(savedVendorId, result?.undo ?? {}));
         showVendorUndoToast(
           t("budget.toast_vendor_updated_paid", { defaultValue: "Vendor updated and marked paid remaining" }),
-          () => undoVendorPaidInFull(editingVendor.id, result?.undo ?? {}),
+          () => undoVendorPaidInFull(savedVendorId, result?.undo ?? {}),
         );
       } else if (nextPaymentDue) {
-        if (editingVendor.nextPaymentId) {
-          const paymentResponse = await authFetch(`/api/vendors/${editingVendor.id}/payments/${editingVendor.nextPaymentId}`, {
+        if (editingVendor?.nextPaymentId) {
+          const paymentResponse = await authFetch(`/api/vendors/${savedVendorId}/payments/${editingVendor.nextPaymentId}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -1226,7 +1237,7 @@ export default function Budget() {
           });
           if (!paymentResponse.ok) throw new Error("Payment update failed");
         } else if (nextPaymentAmount > 0) {
-          const paymentResponse = await authFetch(`/api/vendors/${editingVendor.id}/payments`, {
+          const paymentResponse = await authFetch(`/api/vendors/${savedVendorId}/payments`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -1239,24 +1250,27 @@ export default function Budget() {
           });
           if (!paymentResponse.ok) throw new Error("Payment create failed");
         }
-        toast({ title: t("budget.toast_vendor_budget_updated", { defaultValue: "Vendor budget details updated" }) });
+        toast({ title: isAddingSyncedVendor ? t("budget.toast_vendor_added", { defaultValue: "Vendor added to synced expenses" }) : t("budget.toast_vendor_budget_updated", { defaultValue: "Vendor budget details updated" }) });
       } else {
-        if (editingVendor.nextPaymentId) {
-          const paymentResponse = await authFetch(`/api/vendors/${editingVendor.id}/payments/${editingVendor.nextPaymentId}`, {
+        if (editingVendor?.nextPaymentId) {
+          const paymentResponse = await authFetch(`/api/vendors/${savedVendorId}/payments/${editingVendor.nextPaymentId}`, {
             method: "DELETE",
           });
           if (!paymentResponse.ok) throw new Error("Payment delete failed");
         }
-        toast({ title: t("budget.toast_vendor_budget_updated", { defaultValue: "Vendor budget details updated" }) });
+        toast({ title: isAddingSyncedVendor ? t("budget.toast_vendor_added", { defaultValue: "Vendor added to synced expenses" }) : t("budget.toast_vendor_budget_updated", { defaultValue: "Vendor budget details updated" }) });
       }
 
       setEditingVendor(null);
+      setIsAddingSyncedVendor(false);
       setVendorForm(emptyVendorBudgetForm());
-      await refreshBudgetPaymentViews(editingVendor.id);
+      await refreshBudgetPaymentViews(savedVendorId);
     } catch {
       toast({
         variant: "destructive",
-        title: t("budget.toast_vendor_budget_failed", { defaultValue: "Couldn't update vendor budget details. Please try again." }),
+        title: isAddingSyncedVendor
+          ? t("budget.toast_vendor_add_failed", { defaultValue: "Couldn't add vendor. Please try again." })
+          : t("budget.toast_vendor_budget_failed", { defaultValue: "Couldn't update vendor budget details. Please try again." }),
       });
     } finally {
       setIsSavingVendorBudget(false);
@@ -1672,9 +1686,15 @@ export default function Budget() {
                 })}
               </CardDescription>
             </div>
-            <Badge variant="secondary" className="gap-1 shrink-0 bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
-              <Sparkles className="h-3 w-3" /> {t("budget.synced_badge", { defaultValue: "Synced" })}
-            </Badge>
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+              <Button type="button" variant="outline" size="sm" className="gap-2" onClick={openAddSyncedVendor}>
+                <Plus className="h-4 w-4" />
+                {t("budget.add_synced_vendor", { defaultValue: "Add vendor line item" })}
+              </Button>
+              <Badge variant="secondary" className="gap-1 bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
+                <Sparkles className="h-3 w-3" /> {t("budget.synced_badge", { defaultValue: "Synced" })}
+              </Badge>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -1683,9 +1703,15 @@ export default function Budget() {
           ) : !vendorFinancials || vendorFinancials.vendors.length === 0 ? (
             <div className="text-center py-10 border-2 border-dashed border-border rounded-lg">
               <p className="text-muted-foreground mb-3">{t("budget.no_vendors")}</p>
-              <Button variant="outline" onClick={() => setLocation("/vendors")}>
-                {t("budget.go_to_vendors")}
-              </Button>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Button variant="outline" onClick={openAddSyncedVendor}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t("budget.add_synced_vendor", { defaultValue: "Add vendor line item" })}
+                </Button>
+                <Button variant="ghost" onClick={() => setLocation("/vendors")}>
+                  {t("budget.go_to_vendors")}
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -1822,19 +1848,25 @@ export default function Budget() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!editingVendor} onOpenChange={(open) => { if (!open) { setEditingVendor(null); setVendorForm(emptyVendorBudgetForm()); } }}>
+      <Dialog open={!!editingVendor || isAddingSyncedVendor} onOpenChange={(open) => { if (!open) { setEditingVendor(null); setIsAddingSyncedVendor(false); setVendorForm(emptyVendorBudgetForm()); } }}>
         <DialogContent
           className="max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden"
           style={{ width: "min(calc(100vw - 2rem), 760px)", maxWidth: "calc(100vw - 2rem)" }}
         >
           <DialogHeader>
             <DialogTitle className="font-serif text-2xl text-primary">
-              {t("budget.edit_vendor_budget_title", { defaultValue: "Edit Vendor Budget Details" })}
+              {isAddingSyncedVendor
+                ? t("budget.add_synced_vendor_title", { defaultValue: "Add Vendor Line Item" })
+                : t("budget.edit_vendor_budget_title", { defaultValue: "Edit Vendor Budget Details" })}
             </DialogTitle>
             <DialogDescription>
-              {t("budget.edit_vendor_budget_desc", {
-                defaultValue: "These fields sync with the Vendor List so you only enter vendor payment details once.",
-              })}
+              {isAddingSyncedVendor
+                ? t("budget.add_synced_vendor_desc", {
+                  defaultValue: "This creates a synced Vendor List record and adds it to your Budget Summary.",
+                })
+                : t("budget.edit_vendor_budget_desc", {
+                  defaultValue: "These fields sync with the Vendor List so you only enter vendor payment details once.",
+                })}
             </DialogDescription>
           </DialogHeader>
           <div className="min-w-0 space-y-4 py-2">
@@ -1938,11 +1970,12 @@ export default function Budget() {
               </div>
             )}
           </div>
-          <DialogFooter className="flex-wrap gap-2 sm:gap-2">
+          <DialogFooter className="sticky bottom-0 -mx-6 -mb-6 flex-wrap gap-2 border-t bg-background px-6 py-4 sm:gap-2">
             <Button
               variant="outline"
               onClick={() => {
                 setEditingVendor(null);
+                setIsAddingSyncedVendor(false);
                 setVendorForm(emptyVendorBudgetForm());
               }}
             >
@@ -1969,7 +2002,9 @@ export default function Budget() {
             <Button onClick={submitVendorBudgetForm} disabled={isSavingVendorBudget || isResettingPaymentStatus}>
               {isSavingVendorBudget
                 ? t("common.saving", { defaultValue: "Saving..." })
-                : t("budget.save_vendor_budget", { defaultValue: "Save synced details" })}
+                : isAddingSyncedVendor
+                  ? t("budget.add_synced_vendor", { defaultValue: "Add vendor line item" })
+                  : t("budget.save_vendor_budget", { defaultValue: "Save synced details" })}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2176,7 +2211,7 @@ export default function Budget() {
 
       {/* ── Add/Edit Manual Expense Dialog ──────────────────────── */}
       <Dialog open={isAdding} onOpenChange={(open) => { if (!open) { setIsAdding(false); setEditingId(null); } }}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="font-serif text-2xl text-primary">
               {editingId != null ? t("budget.edit_expense_label") : t("budget.add_expense_label")}
@@ -2316,7 +2351,7 @@ export default function Budget() {
               )}
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="sticky bottom-0 -mx-6 -mb-6 flex-wrap gap-2 border-t bg-background px-6 py-4 sm:gap-2">
             <Button variant="outline" onClick={() => { setIsAdding(false); setEditingId(null); }}>
               {t("common.cancel")}
             </Button>

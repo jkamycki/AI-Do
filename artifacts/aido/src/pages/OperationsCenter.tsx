@@ -31,6 +31,9 @@ import {
   CheckCircle2,
   Eye,
   Trash2,
+  Shield,
+  RotateCcw,
+  FileDown,
   Inbox,
   Ticket,
   FlaskConical,
@@ -154,6 +157,36 @@ type AdminUsersResponse = {
     sharedWorkspace: number;
     deleted: number;
   };
+};
+
+type ArchiveEntry = {
+  id: number;
+  userId: string;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  deletedAt: string;
+  restoredAt: string | null;
+  restoredToUserId: string | null;
+};
+
+type ArchiveSummary = {
+  archiveType: string;
+  profile: boolean;
+  guests: number;
+  rsvps: number;
+  websiteRsvps: number;
+  analyticsEvents: number;
+  vendors: number;
+  timelines: number;
+  checklistItems: number;
+  budgets: boolean;
+  budgetItems: number;
+  vendorContracts: number;
+  weddingParty: number;
+  seatingCharts: number;
+  hotelBlocks: number;
+  manualExpenses: number;
 };
 
 type MaintenanceSection =
@@ -454,6 +487,29 @@ const maintenanceSections: Array<{
 const defaultMaintenanceMessage =
   "This experience is temporarily unavailable. Please check back soon.";
 
+function archiveSummary(archivedData: Record<string, unknown>): ArchiveSummary {
+  const count = (key: string) => Array.isArray(archivedData[key]) ? (archivedData[key] as unknown[]).length : 0;
+  const guestRows = Array.isArray(archivedData.guests) ? archivedData.guests as Array<Record<string, unknown>> : [];
+  return {
+    archiveType: String(archivedData.archiveType ?? "user"),
+    profile: !!archivedData.profile,
+    guests: guestRows.length,
+    rsvps: guestRows.filter((guest) => typeof guest.rsvpStatus === "string" && guest.rsvpStatus !== "pending").length,
+    websiteRsvps: count("websiteRsvps"),
+    analyticsEvents: count("analyticsEvents"),
+    vendors: count("vendors"),
+    timelines: count("timelines"),
+    checklistItems: count("checklistItems"),
+    budgets: count("budgets") > 0,
+    budgetItems: count("budgetItems"),
+    vendorContracts: count("vendorContracts"),
+    weddingParty: count("weddingParty"),
+    seatingCharts: count("seatingCharts"),
+    hotelBlocks: count("hotelBlocks"),
+    manualExpenses: count("manualExpenses"),
+  };
+}
+
 export default function OperationsCenterPage() {
   const { getToken } = useAuth();
   const { toast } = useToast();
@@ -462,11 +518,16 @@ export default function OperationsCenterPage() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [expandedTicketIds, setExpandedTicketIds] = useState<Set<number | string>>(new Set());
-  const [activeTab, setActiveTab] = useState<"tickets" | "messages" | "users" | "workflow" | "testActivity" | "launchPlan" | "maintenance">("tickets");
+  const [activeTab, setActiveTab] = useState<"tickets" | "messages" | "users" | "recovery" | "workflow" | "testActivity" | "launchPlan" | "maintenance">("tickets");
   const [workflowFilter, setWorkflowFilter] = useState<"all" | "completed" | "in_progress" | "not_started">("all");
   const [testSessionFilter, setTestSessionFilter] = useState<"test" | "all" | "real">("test");
   const [userSearch, setUserSearch] = useState("");
   const [userToDelete, setUserToDelete] = useState<SignedUpUser | null>(null);
+  const [expandedArchiveId, setExpandedArchiveId] = useState<number | null>(null);
+  const [archiveDetails, setArchiveDetails] = useState<Record<number, Record<string, unknown>>>({});
+  const [archiveDetailLoadingId, setArchiveDetailLoadingId] = useState<number | null>(null);
+  const [restoreArchiveId, setRestoreArchiveId] = useState<number | null>(null);
+  const [restoreUserId, setRestoreUserId] = useState("");
   const [launchPlanPrompt, setLaunchPlanPrompt] = useState("");
   const [hasLoadedLaunchPlan, setHasLoadedLaunchPlan] = useState(false);
   const launchPlanItemsRef = useRef<LaunchPlanItem[]>([]);
@@ -605,6 +666,78 @@ export default function OperationsCenterPage() {
   const signedUpUsers = signedUpUsersData?.activeUsers ?? signedUpUsersData?.users?.filter(user => !user.isDeleted) ?? [];
   const deletedSignedUpUsers = signedUpUsersData?.deletedUsers ?? signedUpUsersData?.users?.filter(user => user.isDeleted) ?? [];
 
+  const { data: archiveData, isLoading: isLoadingArchive } = useQuery<{ archives: ArchiveEntry[] }>({
+    queryKey: ["admin-archive"],
+    queryFn: async () => {
+      const r = await authedFetch("/api/admin/archive");
+      if (!r.ok) throw new Error("Failed to load recovery archive");
+      return r.json();
+    },
+    enabled: activeTab === "recovery",
+    refetchInterval: activeTab === "recovery" ? 30000 : false,
+  });
+  const archiveRows = archiveData?.archives ?? [];
+  const openArchiveCount = archiveRows.filter(entry => !entry.restoredAt).length;
+
+  const loadArchiveDetail = async (archiveId: number) => {
+    if (archiveDetails[archiveId]) return;
+    setArchiveDetailLoadingId(archiveId);
+    try {
+      const r = await authedFetch(`/api/admin/archive/${archiveId}`);
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error ?? "Failed to load archive detail");
+      const archivedData = (j.archive?.archivedData ?? {}) as Record<string, unknown>;
+      setArchiveDetails(current => ({ ...current, [archiveId]: archivedData }));
+    } catch (error) {
+      toast({
+        title: "Could not load archive",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setArchiveDetailLoadingId(null);
+    }
+  };
+
+  const restoreArchiveMutation = useMutation({
+    mutationFn: async ({ archiveId, newUserId }: { archiveId: number; newUserId: string }) => {
+      const r = await authedFetch(`/api/admin/archive/${archiveId}/restore`, {
+        method: "POST",
+        body: JSON.stringify({ newUserId }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error ?? "Restore failed");
+      return j as { ok: boolean; restored: Record<string, number> };
+    },
+    onSuccess: (result) => {
+      toast({
+        title: "Archive restored",
+        description: Object.entries(result.restored ?? {}).map(([key, value]) => `${value} ${key}`).join(", "),
+      });
+      setRestoreArchiveId(null);
+      setRestoreUserId("");
+      queryClient.invalidateQueries({ queryKey: ["admin-archive"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-signed-up-users"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Restore failed",
+        description: error instanceof Error ? error.message : "Please check the target Clerk user ID.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const exportArchiveJson = (entry: ArchiveEntry, archivedData: Record<string, unknown>) => {
+    const blob = new Blob([JSON.stringify({ ...entry, archivedData }, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `aido-recovery-${entry.userId}-${entry.deletedAt.slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const deleteUserMutation = useMutation({
     mutationFn: async (user: SignedUpUser) => {
       const r = await authedFetch(`/api/admin/users/${encodeURIComponent(user.id)}`, { method: "DELETE" });
@@ -619,6 +752,7 @@ export default function OperationsCenterPage() {
       setUserToDelete(null);
       queryClient.invalidateQueries({ queryKey: ["admin-signed-up-users"] });
       queryClient.invalidateQueries({ queryKey: ["admin-workflow-progress"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-archive"] });
     },
     onError: (error) => {
       toast({
@@ -1159,6 +1293,19 @@ export default function OperationsCenterPage() {
           Users & Sharing
         </button>
         <button
+          onClick={() => setActiveTab("recovery")}
+          className={`flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
+            ${activeTab === "recovery" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
+        >
+          <Shield className="h-4 w-4" />
+          Recovery Center
+          {openArchiveCount > 0 && (
+            <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-amber-600 text-white text-xs font-bold">
+              {openArchiveCount}
+            </span>
+          )}
+        </button>
+        <button
           onClick={() => setActiveTab("workflow")}
           className={`flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
             ${activeTab === "workflow" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
@@ -1536,6 +1683,165 @@ export default function OperationsCenterPage() {
                   );
                 })}
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "recovery" && (
+        <div className="space-y-5">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 font-serif text-xl text-[#24171D]">
+                  <Shield className="h-5 w-5 text-primary" />
+                  Recovery Center
+                </CardTitle>
+                <p className="text-sm font-medium text-[#4A3941]">
+                  Deleted accounts are archived before purge so Operations can restore guest lists, RSVP responses, planning records, and tracking events to a new Clerk account.
+                </p>
+              </CardHeader>
+            </Card>
+            <Card className="border-amber-200 bg-amber-50/70">
+              <CardContent className="py-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-amber-900">Restore coverage</p>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-semibold text-amber-900">
+                  <span className="rounded-md bg-white/70 px-2 py-1">Guest list</span>
+                  <span className="rounded-md bg-white/70 px-2 py-1">RSVP details</span>
+                  <span className="rounded-md bg-white/70 px-2 py-1">Analytics events</span>
+                  <span className="rounded-md bg-white/70 px-2 py-1">Budgets/vendors</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {isLoadingArchive ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-28 rounded-lg" />)}
+            </div>
+          ) : archiveRows.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Shield className="mx-auto mb-4 h-12 w-12 text-muted-foreground/40" />
+                <p className="font-medium text-[#4A3941]">No deleted account archives yet.</p>
+                <p className="mt-1 text-sm text-[#7A5062]">When a user is deleted, their recovery snapshot will appear here.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {archiveRows.map(entry => {
+                const archivedData = archiveDetails[entry.id];
+                const summary = archivedData ? archiveSummary(archivedData) : null;
+                const isExpanded = expandedArchiveId === entry.id;
+                const isRestored = !!entry.restoredAt;
+                const displayName = [entry.firstName, entry.lastName].filter(Boolean).join(" ") || entry.email || entry.userId;
+                const restoringThis = restoreArchiveId === entry.id;
+
+                return (
+                  <Card key={entry.id} className={isRestored ? "border-emerald-200 bg-emerald-50/30" : "border-[#E6C7D2]"}>
+                    <CardContent className="py-4">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-semibold text-[#24171D]">{displayName}</h3>
+                            <Badge className={isRestored ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}>
+                              {isRestored ? "Restored" : "Recovery snapshot"}
+                            </Badge>
+                            {summary?.archiveType === "workspace" && <Badge variant="outline">Workstation</Badge>}
+                          </div>
+                          <p className="mt-1 break-all text-sm font-medium text-[#4A3941]">{entry.email ?? entry.userId}</p>
+                          <p className="mt-1 text-xs font-medium text-[#7A5062]">
+                            Deleted {new Date(entry.deletedAt).toLocaleString()}
+                            {entry.restoredAt ? ` | Restored ${new Date(entry.restoredAt).toLocaleString()}` : ""}
+                          </p>
+
+                          {summary && (
+                            <div className="mt-4 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4 lg:grid-cols-6">
+                              {[
+                                { label: "Guests", value: summary.guests },
+                                { label: "Guest RSVPs", value: summary.rsvps },
+                                { label: "Website RSVPs", value: summary.websiteRsvps },
+                                { label: "Tracking", value: summary.analyticsEvents },
+                                { label: "Vendors", value: summary.vendors },
+                                { label: "Budget items", value: summary.budgetItems },
+                                { label: "Hotels", value: summary.hotelBlocks },
+                              ].map(item => (
+                                <div key={item.label} className="rounded-lg border border-[#F0D7E0] bg-white/75 px-3 py-2">
+                                  <p className="text-lg font-bold text-[#9A2E5C]">{item.value}</p>
+                                  <p className="font-semibold text-[#7A5062]">{item.label}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {restoringThis && !isRestored && (
+                            <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                              <p className="text-sm font-semibold text-primary">Restore this archive to a Clerk user ID</p>
+                              <p className="mt-1 text-xs font-medium text-[#6F3E54]">
+                                Use the user's new account ID, usually starting with user_. Restore recreates the archived rows under that account.
+                              </p>
+                              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                                <Input
+                                  value={restoreUserId}
+                                  onChange={(event) => setRestoreUserId(event.target.value)}
+                                  placeholder="user_..."
+                                  className="bg-white font-mono"
+                                />
+                                <Button
+                                  disabled={!restoreUserId.trim() || restoreArchiveMutation.isPending}
+                                  onClick={() => restoreArchiveMutation.mutate({ archiveId: entry.id, newUserId: restoreUserId.trim() })}
+                                  className="gap-2 bg-primary hover:bg-primary/90"
+                                >
+                                  <RotateCcw className="h-4 w-4" />
+                                  {restoreArchiveMutation.isPending ? "Restoring..." : "Restore"}
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 lg:w-56 lg:flex-col">
+                          <Button
+                            variant="outline"
+                            className="gap-2"
+                            onClick={async () => {
+                              const nextExpanded = isExpanded ? null : entry.id;
+                              setExpandedArchiveId(nextExpanded);
+                              if (nextExpanded) await loadArchiveDetail(entry.id);
+                            }}
+                          >
+                            <Eye className="h-4 w-4" />
+                            {archiveDetailLoadingId === entry.id ? "Loading..." : isExpanded ? "Hide details" : "View details"}
+                          </Button>
+                          {archivedData && (
+                            <Button variant="outline" className="gap-2" onClick={() => exportArchiveJson(entry, archivedData)}>
+                              <FileDown className="h-4 w-4" />
+                              Export JSON
+                            </Button>
+                          )}
+                          {!isRestored && (
+                            <Button
+                              className="gap-2 bg-primary hover:bg-primary/90"
+                              onClick={() => {
+                                setRestoreArchiveId(restoringThis ? null : entry.id);
+                                setRestoreUserId("");
+                              }}
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                              Restore
+                            </Button>
+                          )}
+                          {isRestored && entry.restoredToUserId && (
+                            <div className="rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-medium text-emerald-800">
+                              Restored to <span className="font-mono">{entry.restoredToUserId}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>

@@ -11,6 +11,7 @@ import { isAllowedOrigin } from "../lib/allowedOrigins";
 import { aiLimiter, incrementDailyAria } from "../middlewares/rateLimiter";
 import { resolveProfile, resolveScopeUserId, resolveWorkspaceRole, resolveCallerRole, hasMinRole, logActivity } from "../lib/workspaceAccess";
 import { getRequestLanguage } from "../lib/language";
+import { sendGuestRsvpBackupEmail, shouldSendManualRsvpBackupEmail } from "../lib/rsvpBackupEmail";
 import { getAuth } from "@clerk/express";
 import type { Request } from "express";
 
@@ -3935,15 +3936,29 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         await db.delete(guests).where(and(eq(guests.id, guest.id), eq(guests.profileId, profile.id)));
         return { ok: true, data: { deleted: guest.name } };
       }
+      const [existingGuest] = await db.select().from(guests)
+        .where(and(eq(guests.id, guest.id), eq(guests.profileId, profile.id))).limit(1);
+      if (!existingGuest) return { ok: false, error: "Guest not found" };
       const updates: Partial<typeof guests.$inferInsert> = {};
       const stringFields = ["name","email","phone","rsvpStatus","mealChoice","dietaryNotes","guestGroup","plusOneName","tableAssignment","notes","address","guestCity","guestState","guestZip","guestCountry"] as const;
       for (const f of stringFields) {
         if (args[f] !== undefined) (updates as Record<string, unknown>)[f] = args[f] === null || args[f] === "" ? null : String(args[f]);
       }
       if (args.plusOne !== undefined) updates.plusOne = Boolean(args.plusOne);
+      if (updates.rsvpStatus && updates.rsvpStatus !== "pending" && existingGuest.rsvpStatus === "pending") {
+        updates.rsvpRespondedAt = new Date();
+      }
       if (Object.keys(updates).length === 0) return { ok: false, error: "Nothing to update" };
       const [updated] = await db.update(guests).set(updates)
         .where(and(eq(guests.id, guest.id), eq(guests.profileId, profile.id))).returning();
+      if (updated && shouldSendManualRsvpBackupEmail(existingGuest, updated)) {
+        void sendGuestRsvpBackupEmail({
+          profileId: profile.id,
+          guest: updated,
+          source: "manual_guest_update",
+          logger: req.log,
+        });
+      }
       return { ok: true, data: { id: updated.id, name: updated.name, rsvpStatus: updated.rsvpStatus } };
     }
 
