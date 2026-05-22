@@ -455,28 +455,13 @@ export default function SaveTheDate() {
     setDownloadingPdf(true);
     const pdfTarget = cloneCardForPdf(cardRef.current);
     try {
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-        import("html2canvas"),
-        import("jspdf"),
-      ]);
-
-      const canvas = await html2canvas(pdfTarget.element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: BG,
-        logging: false,
-      });
-
-      const imgData = canvas.toDataURL("image/jpeg", 0.95);
-      const PAGE_W = 595;
-      const imgW = PAGE_W;
-      const imgH = (canvas.height / canvas.width) * imgW;
-
-      const doc = new jsPDF({ orientation: "p", unit: "pt", format: [PAGE_W, imgH + 1] });
-      doc.addImage(imgData, "JPEG", 0, 0, imgW, imgH);
-
+      const { exportElementToPdf } = await import("@/lib/pdfExport");
       const safeCouple = couple.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "_") || "wedding";
-      doc.save(`${safeCouple}_save_the_date.pdf`);
+      await exportElementToPdf({
+        element: pdfTarget.element,
+        backgroundColor: BG,
+        filename: `${safeCouple}_save_the_date.pdf`,
+      });
     } catch (err) {
       console.error("PDF generation failed", err);
     } finally {

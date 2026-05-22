@@ -48,9 +48,11 @@ export default defineConfig({
     emptyOutDir: true,
     sourcemap: false,
     chunkSizeWarningLimit: 3000,
+    modulePreload: false,
     rollupOptions: {
       output: {
         manualChunks(id) {
+          if (id.includes("vite/preload-helper")) return "preload-helper";
           if (!id.includes("node_modules")) return;
           if (id.includes("@clerk")) return "vendor-auth";
           if (id.includes("@tanstack/react-query")) return "vendor-query";
