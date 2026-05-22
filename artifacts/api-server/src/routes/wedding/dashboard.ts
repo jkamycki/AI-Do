@@ -28,15 +28,91 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
 
     const profileId = hasProfile ? profiles[0].id : -1;
 
-    const timelineRows = hasProfile
-      ? await db.select().from(timelines).where(eq(timelines.profileId, profileId)).orderBy(desc(timelines.id)).limit(1)
-      : [];
+    const summaryRows = hasProfile
+      ? await Promise.all([
+          db
+            .select({ events: timelines.events })
+            .from(timelines)
+            .where(eq(timelines.profileId, profileId))
+            .orderBy(desc(timelines.id))
+            .limit(1),
+          db
+            .select({ totalBudget: budgets.totalBudget })
+            .from(budgets)
+            .where(eq(budgets.profileId, profileId))
+            .orderBy(desc(budgets.id))
+            .limit(1),
+          db
+            .select({ totalCost: vendors.totalCost })
+            .from(vendors)
+            .where(eq(vendors.profileId, profileId)),
+          db
+            .select({
+              id: checklistItems.id,
+              task: checklistItems.task,
+              month: checklistItems.month,
+              isCompleted: checklistItems.isCompleted,
+            })
+            .from(checklistItems)
+            .where(eq(checklistItems.profileId, profileId)),
+          db
+            .select({
+              rsvpStatus: guests.rsvpStatus,
+              plusOne: guests.plusOne,
+              tableAssignment: guests.tableAssignment,
+            })
+            .from(guests)
+            .where(eq(guests.profileId, profileId)),
+          db
+            .select({ id: weddingParty.id })
+            .from(weddingParty)
+            .where(eq(weddingParty.profileId, profileId)),
+          db
+            .select({
+              id: seatingCharts.id,
+              tableCount: seatingCharts.tableCount,
+              seatsPerTable: seatingCharts.seatsPerTable,
+              updatedAt: seatingCharts.updatedAt,
+              createdAt: seatingCharts.createdAt,
+            })
+            .from(seatingCharts)
+            .where(eq(seatingCharts.profileId, profileId))
+            .orderBy(desc(seatingCharts.createdAt))
+            .limit(1),
+          db
+            .select({ id: weddingWebsites.id, published: weddingWebsites.published })
+            .from(weddingWebsites)
+            .where(eq(weddingWebsites.profileId, profileId))
+            .limit(1),
+        ])
+      : [[], [], [], [], [], [], [], []];
+    const timelineRows = summaryRows[0] as Array<{ events: Array<unknown> }>;
+    const budgetRows = summaryRows[1] as Array<{ totalBudget: string }>;
+    const userVendors = summaryRows[2] as Array<{ totalCost: string }>;
+    const allChecklistItems = summaryRows[3] as Array<{
+      id: number;
+      task: string;
+      month: string;
+      isCompleted: boolean;
+    }>;
+    const guestRows = summaryRows[4] as Array<{
+      rsvpStatus: string;
+      plusOne: boolean;
+      tableAssignment: string | null;
+    }>;
+    const weddingPartyRows = summaryRows[5] as Array<{ id: number }>;
+    const latestChartRows = summaryRows[6] as Array<{
+      id: number;
+      tableCount: number;
+      seatsPerTable: number;
+      updatedAt: Date;
+      createdAt: Date;
+    }>;
+    const websiteRows = summaryRows[7] as Array<{ id: number; published: boolean }>;
+
     const hasTimeline = timelineRows.length > 0;
     const timelineEventCount = hasTimeline ? (timelineRows[0].events as Array<unknown>).length : 0;
 
-    const budgetRows = hasProfile
-      ? await db.select().from(budgets).where(eq(budgets.profileId, profileId)).orderBy(desc(budgets.id)).limit(1)
-      : [];
     let budgetTotal = 0;
     if (budgetRows.length) {
       budgetTotal = parseFloat(budgetRows[0].totalBudget as string);
@@ -47,25 +123,16 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
     // full Budget page and are intentionally excluded here so the dashboard
     // tile only reflects formally committed vendor spend. With no vendors
     // added, "spent" should be $0.
-    const userVendors = hasProfile
-      ? await db.select({ totalCost: vendors.totalCost }).from(vendors).where(eq(vendors.profileId, profileId))
-      : [];
     const budgetSpent = (userVendors as { totalCost: string }[]).reduce(
       (sum, v) => sum + Number(v.totalCost),
       0,
     );
 
-    const allChecklistItems = hasProfile
-      ? await db.select().from(checklistItems).where(eq(checklistItems.profileId, profileId))
-      : [];
     const hasChecklist = allChecklistItems.length > 0;
     const checklistTotal = allChecklistItems.length;
     const checklistCompleted = allChecklistItems.filter(item => item.isCompleted).length;
     const checklistProgress = checklistTotal > 0 ? (checklistCompleted / checklistTotal) * 100 : 0;
 
-    const guestRows = hasProfile
-      ? await db.select().from(guests).where(eq(guests.profileId, profileId))
-      : [];
     const plusOneCount = guestRows.filter(g => g.plusOne).length;
     const guestCount = guestRows.length + plusOneCount;
     const guestRsvpSummary = {
@@ -78,9 +145,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
 
     // Wedding party count is keyed by userId (not profileId) — same scope the
     // /api/wedding-party route uses, so the dashboard tile and the page agree.
-    const weddingPartyCount = hasProfile
-      ? (await db.select({ id: weddingParty.id }).from(weddingParty).where(eq(weddingParty.profileId, profileId))).length
-      : 0;
+    const weddingPartyCount = weddingPartyRows.length;
 
     // Seating summary — most recent chart for the workspace (if any) plus how
     // many attending guests already have a tableAssignment. The dashboard tile
@@ -93,20 +158,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
     // *generated* chart, regardless of edits to older charts. The seating
     // page's saved-charts list uses the same order — the dashboard and the
     // page agree on which chart is "the latest".
-    const [latestChart] = hasProfile
-      ? await db
-          .select({
-            id: seatingCharts.id,
-            tableCount: seatingCharts.tableCount,
-            seatsPerTable: seatingCharts.seatsPerTable,
-            updatedAt: seatingCharts.updatedAt,
-            createdAt: seatingCharts.createdAt,
-          })
-          .from(seatingCharts)
-          .where(eq(seatingCharts.profileId, profileId))
-          .orderBy(desc(seatingCharts.createdAt))
-          .limit(1)
-      : [];
+    const [latestChart] = latestChartRows;
     const seatingSummary = {
       hasChart: !!latestChart,
       tableCount: latestChart?.tableCount ?? 0,
@@ -119,9 +171,6 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
     // Has the couple created their guest-facing wedding website yet? Used to
     // append a "Create your wedding website" nudge as the final item in the
     // dashboard's "Needs attention" box.
-    const websiteRows = hasProfile
-      ? await db.select({ id: weddingWebsites.id, published: weddingWebsites.published }).from(weddingWebsites).where(eq(weddingWebsites.profileId, profileId)).limit(1)
-      : [];
     const hasWebsite = websiteRows.length > 0;
     const websitePublished = !!websiteRows[0]?.published;
 
@@ -169,7 +218,9 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
       accountType: profiles[0].accountType,
     } : null;
 
-    trackEvent(req.userId!, "user_login");
+    if (req.headers["x-aido-load-test"] !== "true") {
+      void trackEvent(req.userId!, "user_login");
+    }
     res.json({
       daysUntilWedding,
       checklistProgress,
