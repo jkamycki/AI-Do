@@ -30,8 +30,6 @@ import { publishedWebsiteUrl } from "@/lib/publicUrls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import {
   Calendar,
   Loader2,
@@ -500,8 +498,8 @@ export default function InvitationCustomizationPage({
         digitalInvitationPhotoEffect: v.digitalInvitationPhotoEffect,
         saveTheDatePhotoZoom: v.saveTheDatePhotoZoom,
         digitalInvitationPhotoZoom: v.digitalInvitationPhotoZoom,
-        rsvpAskHotel: v.rsvpAskHotel,
-        rsvpHotelBlockId: v.rsvpHotelBlockId === "all" ? null : Number(v.rsvpHotelBlockId),
+        rsvpAskHotel: false,
+        rsvpHotelBlockId: null,
         rsvpMealOptions: normalizeMealOptions(v.rsvpMealOptions),
       };
       const body = JSON.stringify({
@@ -959,8 +957,8 @@ export default function InvitationCustomizationPage({
       digitalInvitationPhotoEffect,
       saveTheDatePhotoZoom,
       digitalInvitationPhotoZoom,
-      rsvpAskHotel,
-      rsvpHotelBlockId: rsvpHotelBlockId === "all" ? null : Number(rsvpHotelBlockId),
+      rsvpAskHotel: false,
+      rsvpHotelBlockId: null,
       rsvpMealOptions: normalizeMealOptions(rsvpMealOptions),
     };
     return {
@@ -1084,8 +1082,8 @@ export default function InvitationCustomizationPage({
           ...(v.customColors ?? {}),
           saveTheDatePhotoEffect: v.saveTheDatePhotoEffect,
           digitalInvitationPhotoEffect: v.digitalInvitationPhotoEffect,
-          rsvpAskHotel: v.rsvpAskHotel,
-          rsvpHotelBlockId: v.rsvpHotelBlockId === "all" ? null : Number(v.rsvpHotelBlockId),
+          rsvpAskHotel: false,
+          rsvpHotelBlockId: null,
           rsvpMealOptions: normalizeMealOptions(v.rsvpMealOptions),
         },
       };
@@ -1140,6 +1138,7 @@ export default function InvitationCustomizationPage({
     photoZoom: isSTD ? saveTheDatePhotoZoom : digitalInvitationPhotoZoom,
     customStyle: activeCustomStyle,
     rsvpByDate,
+    hotelOptions: hotelBlocks,
   });
   const websiteUrl =
     websiteRecord?.slug && websiteRecord?.published
@@ -1756,50 +1755,6 @@ export default function InvitationCustomizationPage({
                 </div>
 
                 <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-medium">Ask about hotel needs</p>
-                      <p className="text-xs text-muted-foreground">
-                        Adds a hotel question to the RSVP form when at least one hotel block exists. If guests choose yes, their guest-list hotel status updates automatically.
-                      </p>
-                    </div>
-                    <Switch
-                      checked={rsvpAskHotel}
-                      onCheckedChange={(checked) => setRsvpAskHotel(checked)}
-                      aria-label="Ask guests if they need a hotel while RSVPing"
-                    />
-                  </div>
-                  {rsvpAskHotel && hotelBlocks.length > 0 && (
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium text-muted-foreground">
-                        Hotel booking link shown to guests
-                      </label>
-                      <Select value={rsvpHotelBlockId} onValueChange={setRsvpHotelBlockId}>
-                        <SelectTrigger className="h-9 text-sm">
-                          <SelectValue placeholder="Choose hotel block" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Let guests choose from all hotel blocks</SelectItem>
-                          {hotelBlocks.map((hotel) => (
-                            <SelectItem key={hotel.id} value={String(hotel.id)}>
-                              {hotel.hotelName || "Unnamed Hotel"}{hotel.bookingLink ? " - booking link" : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground">
-                        Add or edit hotel booking links in the Hotels tab. Guests can still RSVP if no booking link is available yet.
-                      </p>
-                    </div>
-                  )}
-                  {rsvpAskHotel && hotelBlocks.length === 0 && (
-                    <p className="text-xs text-amber-700 dark:text-amber-300">
-                      This is turned on, but guests will not see the hotel question until you add a hotel block in the Hotels tab.
-                    </p>
-                  )}
-                </div>
-
-                <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
                   <div>
                     <p className="text-sm font-medium">Meal choices</p>
                     <p className="text-xs text-muted-foreground">
@@ -2183,9 +2138,9 @@ export default function InvitationCustomizationPage({
                         photoUrl={digitalInvitationPhotoUrl}
                         photoPosition={digitalInvitationPhotoPosition}
                         onPhotoPositionChange={setDigitalInvitationPhotoPosition}
-                        hotelOptions={hotelBlocks}
-                        selectedHotelBlockId={rsvpHotelBlockId}
-                        askHotel={rsvpAskHotel}
+                        hotelOptions={[]}
+                        selectedHotelBlockId="all"
+                        askHotel={false}
                         mealOptions={normalizeMealOptions(rsvpMealOptions)}
                         scale={flowScale}
                       />

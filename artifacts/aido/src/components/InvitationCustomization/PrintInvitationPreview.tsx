@@ -56,6 +56,22 @@ function locationLines(design: InvitationDesignDocument): string[] {
   ].filter(Boolean);
 }
 
+function formatHotelCutoffDate(value: string | null | undefined) {
+  if (!value) return "";
+  const [yy, mm, dd] = value.split("-").map(Number);
+  const date = yy && mm && dd ? new Date(yy, mm - 1, dd) : new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function hotelAddressLine(hotel: NonNullable<InvitationDesignDocument["fields"]["hotelOptions"]>[number]) {
+  return [
+    hotel.address,
+    [hotel.city, hotel.state].filter(Boolean).join(", "),
+    hotel.zip,
+  ].filter(Boolean).join(" ");
+}
+
 function RealQrCode({ url, accent }: { url: string; accent: string }) {
   return (
     <div
@@ -144,6 +160,8 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
       design.fields.receptionTime && `Reception ${formatTime(design.fields.receptionTime)}`,
     ].filter((line): line is string => Boolean(line));
     const rsvpDate = formatShortDate(design.fields.rsvpByDate);
+    const saveTheDateHotels = isSaveTheDate ? (design.fields.hotelOptions ?? []).filter((hotel) => hotel.hotelName || hotel.bookingLink || hotel.discountCode || hotel.groupName) : [];
+    const hotelSummary = saveTheDateHotels.slice(0, 2);
 
     return (
       <div
@@ -214,6 +232,19 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
                 <p style={{ margin: "6px 0 0", fontFamily: sans, fontSize: 11, color: text }}>
                   {saveTheDateLocation}
                 </p>
+              )}
+              {isSaveTheDate && hotelSummary.length > 0 && (
+                <div style={{ margin: "10px auto 0", padding: "8px 10px", width: "100%", borderTop: `1px solid ${accent}55`, borderBottom: `1px solid ${accent}55`, fontFamily: sans, color: text }}>
+                  <p style={{ margin: "0 0 5px", fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 800, color: accent }}>Hotel Info</p>
+                  {hotelSummary.map((hotel) => (
+                    <p key={hotel.id} style={{ margin: "2px 0", fontSize: 8.2, lineHeight: 1.35 }}>
+                      <strong>{hotel.hotelName || "Hotel block"}</strong>
+                      {hotelAddressLine(hotel) ? ` - ${hotelAddressLine(hotel)}` : ""}
+                      {hotel.discountCode ? ` - Code ${hotel.discountCode}` : ""}
+                      {hotel.cutoffDate ? ` - Book by ${formatHotelCutoffDate(hotel.cutoffDate)}` : ""}
+                    </p>
+                  ))}
+                </div>
               )}
               {!isSaveTheDate && (locLines.length > 0 || timeLines.length > 0 || rsvpDate) && (
                 <div style={{ margin: "12px auto 0", padding: "10px 12px", width: "100%", borderTop: `1px solid ${accent}55`, borderBottom: `1px solid ${accent}55`, background: "rgba(255,255,255,0.035)" }}>
@@ -291,6 +322,19 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
               {isSaveTheDate && saveTheDateLocation && (
                 <div style={{ margin: "16px auto 0", maxWidth: 360, fontFamily: font, fontSize: 20, lineHeight: 1.4 }}>
                   <p style={{ margin: 0 }}>{saveTheDateLocation}</p>
+                </div>
+              )}
+              {isSaveTheDate && hotelSummary.length > 0 && (
+                <div style={{ margin: "14px auto 0", maxWidth: 360, padding: "10px 12px", borderTop: `1px solid ${accent}55`, borderBottom: `1px solid ${accent}55`, fontFamily: sans }}>
+                  <p style={{ margin: "0 0 6px", fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 800, color: accent }}>Hotel Info</p>
+                  {hotelSummary.map((hotel) => (
+                    <p key={hotel.id} style={{ margin: "3px 0", fontSize: 9.5, lineHeight: 1.4 }}>
+                      <strong>{hotel.hotelName || "Hotel block"}</strong>
+                      {hotelAddressLine(hotel) ? ` - ${hotelAddressLine(hotel)}` : ""}
+                      {hotel.discountCode ? ` - Code ${hotel.discountCode}` : ""}
+                      {hotel.cutoffDate ? ` - Book by ${formatHotelCutoffDate(hotel.cutoffDate)}` : ""}
+                    </p>
+                  ))}
                 </div>
               )}
               {!isSaveTheDate && (locLines.length > 0 || timeLines.length > 0 || rsvpDate) && (

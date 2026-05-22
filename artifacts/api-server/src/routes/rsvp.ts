@@ -1697,9 +1697,9 @@ router.get("/rsvp/:token", async (req, res) => {
       // null = not in custom mode, fall back to the A.IDO AI palette.
       accentColor: !useGenerated ? (c?.digitalInvitationAccentColor ?? null) : null,
       fontColor: !useGenerated ? (c?.digitalInvitationFontColor ?? null) : null,
-      askHotelOnRsvp: rsvpAskHotel,
-      preferredHotelBlockId,
-      hotelOptions: sortedHotelRows,
+      askHotelOnRsvp: false,
+      preferredHotelBlockId: null,
+      hotelOptions: [],
       mealOptions: normalizeMealOptions((c?.customColors as Record<string, unknown> | null)?.rsvpMealOptions),
     });
   } catch (err) {
@@ -1766,28 +1766,9 @@ router.post("/rsvp/:token", async (req, res) => {
     if (attendance === "attending") {
       // Always set mealChoice (including null for "none") so guests can clear it.
       updateData.mealChoice = normalizeMeal(mealChoice);
-      if (hotelNeeded !== undefined) {
-        const wantsHotel = hotelNeeded === true || hotelNeeded === "true";
-        const roomCount = Number(bookedHotelRoomCount);
-        updateData.needsHotel = wantsHotel;
-        updateData.bookedHotelBlockId = null;
-        updateData.bookedHotelRoomCount = wantsHotel && Number.isInteger(roomCount) && roomCount >= 1 && roomCount <= 2 ? roomCount : wantsHotel ? 1 : null;
-        if (wantsHotel && bookedHotelBlockId !== undefined && bookedHotelBlockId !== null && bookedHotelBlockId !== "") {
-          const hotelId = Number(bookedHotelBlockId);
-          if (!Number.isInteger(hotelId) || hotelId <= 0) {
-            return res.status(400).json({ error: "Invalid hotel block selection." });
-          }
-          const [hotel] = await db
-            .select({ id: hotelBlocks.id })
-            .from(hotelBlocks)
-            .where(and(eq(hotelBlocks.id, hotelId), eq(hotelBlocks.profileId, guest.profileId)))
-            .limit(1);
-          if (!hotel) {
-            return res.status(400).json({ error: "That hotel block is not available for this RSVP." });
-          }
-          updateData.bookedHotelBlockId = hotel.id;
-        }
-      }
+      updateData.needsHotel = false;
+      updateData.bookedHotelBlockId = null;
+      updateData.bookedHotelRoomCount = null;
       if (plusOne !== undefined) {
         updateData.plusOne = !!plusOne;
         // Prefer split first/last when provided; fall back to combined plusOneName.
@@ -2236,6 +2217,21 @@ async function buildSharedSaveTheDateInfo(profile: typeof weddingProfiles.$infer
   } catch {
     // best-effort - fall back to AI defaults
   }
+  const saveTheDateHotelOptions = await db
+    .select({
+      id: hotelBlocks.id,
+      hotelName: hotelBlocks.hotelName,
+      bookingLink: hotelBlocks.bookingLink,
+      discountCode: hotelBlocks.discountCode,
+      groupName: hotelBlocks.groupName,
+      cutoffDate: hotelBlocks.cutoffDate,
+      address: hotelBlocks.address,
+      city: hotelBlocks.city,
+      state: hotelBlocks.state,
+      zip: hotelBlocks.zip,
+    })
+    .from(hotelBlocks)
+    .where(eq(hotelBlocks.profileId, profile.id));
 
   return {
     guestName,
@@ -2272,6 +2268,7 @@ async function buildSharedSaveTheDateInfo(profile: typeof weddingProfiles.$infer
     photoEffect: customizationData.photoEffect,
     customColorPalette: customizationData.colorPalette,
     customLayout: customizationData.layout,
+    hotelOptions: saveTheDateHotelOptions,
   };
 }
 
@@ -2522,6 +2519,7 @@ router.get("/save-the-date/:token", async (req, res) => {
       photoEffect: customizationData.photoEffect,
       customColorPalette: customizationData.colorPalette,
       customLayout: customizationData.layout,
+      hotelOptions: saveTheDateHotelOptions,
     });
   } catch (err) {
     req.log.error(err, "Failed to get save-the-date info");

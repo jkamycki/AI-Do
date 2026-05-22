@@ -41,6 +41,18 @@ interface SaveTheDateInfo {
   photoEffect?: string | null;
   customColorPalette: Record<string, string> | null;
   customLayout: string | null;
+  hotelOptions?: Array<{
+    id: number;
+    hotelName: string;
+    bookingLink?: string | null;
+    discountCode?: string | null;
+    groupName?: string | null;
+    cutoffDate?: string | null;
+    address?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zip?: string | null;
+  }>;
 }
 
 const AI_BG    = "#FFF7F2";
@@ -77,6 +89,22 @@ function cloneCardForPdf(element: HTMLElement) {
     element: clone,
     cleanup: () => clone.remove(),
   };
+}
+
+function formatHotelCutoffDate(value: string | null | undefined) {
+  if (!value) return "";
+  const [yy, mm, dd] = value.split("-").map(Number);
+  const date = yy && mm && dd ? new Date(yy, mm - 1, dd) : new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
+function hotelAddressLine(hotel: NonNullable<SaveTheDateInfo["hotelOptions"]>[number]) {
+  return [
+    hotel.address,
+    [hotel.city, hotel.state].filter(Boolean).join(", "),
+    hotel.zip,
+  ].filter(Boolean).join(" ");
 }
 
 export default function SaveTheDate() {
@@ -173,6 +201,44 @@ export default function SaveTheDate() {
   const isFullPhotoLayout = false;
   const groomFirst = String(info?.partner1Name || "").trim().split(/\s+/)[0] || "Partner";
   const brideFirst = String(info?.partner2Name || "").trim().split(/\s+/)[0] || "Partner";
+  const hotelOptions = info?.hotelOptions ?? [];
+  const hotelSummary = hotelOptions.filter((hotel) => hotel.hotelName || hotel.bookingLink || hotel.discountCode || hotel.groupName);
+  const renderHotelInfo = (variant: "overlay" | "card") => {
+    if (hotelSummary.length === 0) return null;
+    const isOverlay = variant === "overlay";
+    return (
+      <div
+        style={{
+          margin: isOverlay ? "16px 0 0" : "16px 0 0",
+          padding: isOverlay ? "10px 12px" : "12px 14px",
+          border: `1px solid ${isOverlay ? "rgba(255,255,255,.28)" : CARD_BDR}`,
+          borderRadius: 10,
+          background: isOverlay ? "rgba(0,0,0,.24)" : `${GOLD}10`,
+          color: WHITE,
+          fontFamily: LABEL_FONT,
+          textAlign: "left",
+        }}
+      >
+        <p style={{ margin: "0 0 7px", fontSize: 10 * sc, fontWeight: 800, letterSpacing: "0.18em", textTransform: "uppercase", color: GOLD }}>
+          Hotel Info
+        </p>
+        {hotelSummary.map((hotel) => (
+          <div key={hotel.id} style={{ marginTop: 8, fontSize: 10.5 * sc, lineHeight: 1.45 }}>
+            <p style={{ margin: 0, fontWeight: 800 }}>{hotel.hotelName || "Hotel block"}</p>
+            {hotelAddressLine(hotel) && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>{hotelAddressLine(hotel)}</p>}
+            {hotel.groupName && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>Block: {hotel.groupName}</p>}
+            {hotel.discountCode && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>Group code: {hotel.discountCode}</p>}
+            {hotel.cutoffDate && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>Book by: {formatHotelCutoffDate(hotel.cutoffDate)}</p>}
+            {hotel.bookingLink && (
+              <a href={hotel.bookingLink} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 6, color: GOLD, fontWeight: 800, textDecoration: "none" }}>
+                Open booking link
+              </a>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   const downloadPdf = async () => {
     if (!info || !cardRef.current) return;
@@ -312,6 +378,7 @@ export default function SaveTheDate() {
                 &ldquo;{msgText}&rdquo;
               </p>
             )}
+            {renderHotelInfo("overlay")}
             <div style={{ marginTop: 18 }}>
               <button
                 onClick={downloadPdf}
@@ -398,6 +465,8 @@ export default function SaveTheDate() {
               &ldquo;{msgText}&rdquo;
             </p>
           )}
+
+          {renderHotelInfo("card")}
 
           {/* Formal invitation to follow */}
           <p style={{ fontFamily: SERIF, fontSize: 13 * sc, fontStyle: "italic", color: MUTED, margin: "14px 0 0" }}>

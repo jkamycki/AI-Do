@@ -208,7 +208,7 @@ export default function Rsvp() {
   const selectedHotelBlockId = form.watch("bookedHotelBlockId");
   const selectedHotelRoomCount = form.watch("bookedHotelRoomCount");
   const selectedHotel = info?.hotelOptions?.find((hotel) => String(hotel.id) === selectedHotelBlockId) ?? null;
-  const showHotelQuestion = !!info?.askHotelOnRsvp && (info.hotelOptions?.length ?? 0) > 0;
+  const showHotelQuestion = false;
   const mealOptions = normalizeMealOptions(info?.mealOptions ?? DEFAULT_RSVP_MEAL_OPTIONS);
 
   useEffect(() => {
@@ -249,9 +249,9 @@ export default function Rsvp() {
         plusOneLastName: data.plusOneLastName?.trim() || "",
         plusOneMealChoice: data.plusOneMealChoice,
         dietaryRestrictions: data.dietaryRestrictions,
-        hotelNeeded: data.hotelNeeded,
-        bookedHotelBlockId: data.hotelNeeded && data.bookedHotelBlockId ? Number(data.bookedHotelBlockId) : null,
-        bookedHotelRoomCount: data.hotelNeeded ? Number(data.bookedHotelRoomCount || "1") : null,
+        hotelNeeded: false,
+        bookedHotelBlockId: null,
+        bookedHotelRoomCount: null,
       };
       const res = await apiFetch(`/api/rsvp/${token}`, {
         method: "POST",

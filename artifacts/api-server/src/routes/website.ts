@@ -345,9 +345,6 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
     .limit(1);
   const invitationColors = (invitationCustomization?.customColors ?? {}) as Record<string, unknown>;
   const customText = { ...(row.customText as Record<string, string>) };
-  if (hotelOptions.length > 0) {
-    customText._rsvpAskHotel = "true";
-  }
   if (invitationColors.rsvpHotelBlockId !== undefined && invitationColors.rsvpHotelBlockId !== null) {
     customText._rsvpHotelBlockId = String(invitationColors.rsvpHotelBlockId);
   }
@@ -440,7 +437,6 @@ async function buildInvitationSharePayload(profileId: number, frontendOrigin: st
     rsvp_subtitle: "Will you be joining us?",
     rsvp_intro: "Find your name on the guest list and let us know if you can make it.",
   };
-  if (hotelOptions.length > 0) customText._rsvpAskHotel = "true";
   if (invitationColors.rsvpHotelBlockId !== undefined && invitationColors.rsvpHotelBlockId !== null) {
     customText._rsvpHotelBlockId = String(invitationColors.rsvpHotelBlockId);
   }
@@ -967,12 +963,6 @@ router.post("/invitation-shares/:token/rsvp/self-add", publicRsvpLimiter, async 
     };
     const isAttending = attendance === "attending";
     const wantsPlusOne = isAttending && plusOne === true;
-    let hotelUpdate: Pick<typeof guests.$inferInsert, "needsHotel" | "bookedHotelBlockId" | "bookedHotelRoomCount">;
-    try {
-      hotelUpdate = await normalizeHotelRsvp(profile.id, attendance, hotelNeeded, bookedHotelBlockId, bookedHotelRoomCount);
-    } catch (err) {
-      return res.status(400).json({ error: err instanceof Error ? err.message : "Invalid hotel block selection." });
-    }
     const [created] = await db.insert(guests).values({
       profileId: profile.id,
       name: cleanName,
@@ -985,9 +975,9 @@ router.post("/invitation-shares/:token/rsvp/self-add", publicRsvpLimiter, async 
       plusOneMealChoice: wantsPlusOne ? normalizeMeal(plusOneMealChoice) : null,
       notes: "Guest used RSVP anyway because they could not find themselves on the guest list. Review before sending future invites.",
       rsvpMessage: typeof message === "string" && message.trim() ? message.trim().slice(0, 1000) : null,
-      needsHotel: hotelUpdate.needsHotel,
-      bookedHotelBlockId: hotelUpdate.bookedHotelBlockId,
-      bookedHotelRoomCount: hotelUpdate.bookedHotelRoomCount,
+      needsHotel: false,
+      bookedHotelBlockId: null,
+      bookedHotelRoomCount: null,
       source: "rsvp_self_add",
     }).returning();
     res.json({ success: true, status: attendance, guestId: created.id });
@@ -1040,9 +1030,9 @@ router.post("/invitation-shares/:token/rsvp", publicRsvpLimiter, async (req, res
     if (typeof message === "string") updateData.rsvpMessage = message.trim().slice(0, 1000) || null;
     if (attendance === "attending") {
       updateData.mealChoice = normalizeMeal(mealChoice);
-      if (hotelNeeded !== undefined || bookedHotelBlockId !== undefined) {
-        Object.assign(updateData, await normalizeHotelRsvp(profile.id, attendance, hotelNeeded, bookedHotelBlockId, bookedHotelRoomCount));
-      }
+      updateData.needsHotel = false;
+      updateData.bookedHotelBlockId = null;
+      updateData.bookedHotelRoomCount = null;
       if (plusOne !== undefined) {
         updateData.plusOne = !!plusOne;
         const finalName = typeof plusOneName === "string" ? plusOneName.trim() : "";
@@ -1530,13 +1520,6 @@ router.post("/website/public/:slug/rsvp/self-add", publicRsvpLimiter, async (req
     const isAttending = attendance === "attending";
     const wantsPlusOne = isAttending && plusOne === true;
     const cleanPlusOneName = typeof plusOneName === "string" ? plusOneName.trim() : "";
-    let hotelUpdate: Pick<typeof guests.$inferInsert, "needsHotel" | "bookedHotelBlockId" | "bookedHotelRoomCount">;
-    try {
-      hotelUpdate = await normalizeHotelRsvp(r.site.profileId, attendance, hotelNeeded, bookedHotelBlockId, bookedHotelRoomCount);
-    } catch (err) {
-      return res.status(400).json({ error: err instanceof Error ? err.message : "Invalid hotel block selection." });
-    }
-
     const [created] = await db.insert(guests).values({
       profileId: r.site.profileId,
       name: cleanName,
@@ -1552,9 +1535,9 @@ router.post("/website/public/:slug/rsvp/self-add", publicRsvpLimiter, async (req
       // column on the guest list page.
       notes: "Guest used RSVP anyway because they could not find themselves on the guest list. Review before sending future invites.",
       rsvpMessage: messageClean || null,
-      needsHotel: hotelUpdate.needsHotel,
-      bookedHotelBlockId: hotelUpdate.bookedHotelBlockId,
-      bookedHotelRoomCount: hotelUpdate.bookedHotelRoomCount,
+      needsHotel: false,
+      bookedHotelBlockId: null,
+      bookedHotelRoomCount: null,
       source: "rsvp_self_add",
     }).returning();
 
@@ -1638,13 +1621,9 @@ router.post("/website/public/:slug/rsvp", publicRsvpLimiter, async (req, res) =>
 
     if (attendance === "attending") {
       updateData.mealChoice = normalizeMeal(mealChoice);
-      if (hotelNeeded !== undefined || bookedHotelBlockId !== undefined) {
-        try {
-          Object.assign(updateData, await normalizeHotelRsvp(r.site.profileId, attendance, hotelNeeded, bookedHotelBlockId, bookedHotelRoomCount));
-        } catch (err) {
-          return res.status(400).json({ error: err instanceof Error ? err.message : "Invalid hotel block selection." });
-        }
-      }
+      updateData.needsHotel = false;
+      updateData.bookedHotelBlockId = null;
+      updateData.bookedHotelRoomCount = null;
       if (plusOne !== undefined) {
         updateData.plusOne = !!plusOne;
         const finalName = typeof plusOneName === "string" ? plusOneName.trim() : "";

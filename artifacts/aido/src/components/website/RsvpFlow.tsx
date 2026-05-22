@@ -103,7 +103,7 @@ export function RsvpFlow({
   const hotelOptions = preferredHotelId
     ? [...allHotelOptions].sort((a, b) => (String(a.id) === preferredHotelId ? -1 : String(b.id) === preferredHotelId ? 1 : 0))
     : allHotelOptions;
-  const showHotelQuestion = hotelOptions.length > 0;
+  const showHotelQuestion = false;
   const selectedHotel = hotelOptions.find((hotel) => String(hotel.id) === hotelBlockId) ?? null;
   const renderHotelDetails = () => selectedHotel ? (
     <div className="rounded-lg p-3 space-y-2 text-sm" style={{ border: `1px solid ${accent}33`, background: `${accent}10`, color: text }}>
@@ -274,11 +274,9 @@ export function RsvpFlow({
           plusOneName: plusOne ? plusOneName : undefined,
           plusOneMealChoice: plusOne ? plusOneMeal : undefined,
           dietaryRestrictions: dietary || undefined,
-          ...(showHotelQuestion ? {
-            hotelNeeded: attendance === "attending" ? hotelNeeded : false,
-            bookedHotelBlockId: hotelNeeded && hotelBlockId ? Number(hotelBlockId) : null,
-            bookedHotelRoomCount: hotelNeeded ? Number(hotelRoomCount) : null,
-          } : {}),
+          hotelNeeded: false,
+          bookedHotelBlockId: null,
+          bookedHotelRoomCount: null,
           message: selfMessage.trim() || undefined,
           ...(password ? { password } : {}),
         }),
@@ -324,11 +322,9 @@ export function RsvpFlow({
           plusOneName: plusOne ? plusOneName : undefined,
           plusOneMealChoice: plusOne ? plusOneMeal : undefined,
           dietaryRestrictions: dietary || undefined,
-          ...(showHotelQuestion ? {
-            hotelNeeded: attendance === "attending" ? hotelNeeded : false,
-            bookedHotelBlockId: hotelNeeded && hotelBlockId ? Number(hotelBlockId) : null,
-            bookedHotelRoomCount: hotelNeeded ? Number(hotelRoomCount) : null,
-          } : {}),
+          hotelNeeded: false,
+          bookedHotelBlockId: null,
+          bookedHotelRoomCount: null,
           message: selfMessage.trim() || undefined,
           ...(password ? { password } : {}),
         }),

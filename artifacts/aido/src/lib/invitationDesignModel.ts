@@ -33,6 +33,18 @@ export interface InvitationDesignDocument {
     ceremonyTime: string | null;
     receptionTime: string | null;
     rsvpByDate: string | null;
+    hotelOptions?: Array<{
+      id: number;
+      hotelName: string;
+      bookingLink?: string | null;
+      discountCode?: string | null;
+      groupName?: string | null;
+      cutoffDate?: string | null;
+      address?: string | null;
+      city?: string | null;
+      state?: string | null;
+      zip?: string | null;
+    }>;
   };
 }
 
@@ -54,6 +66,7 @@ interface BuildInvitationDesignDocumentInput {
     fontSize: string;
   };
   rsvpByDate?: string | null;
+  hotelOptions?: InvitationDesignDocument["fields"]["hotelOptions"];
 }
 
 export function buildInvitationDesignDocument({
@@ -68,6 +81,7 @@ export function buildInvitationDesignDocument({
   photoZoom = 1,
   customStyle,
   rsvpByDate,
+  hotelOptions = [],
 }: BuildInvitationDesignDocumentInput): InvitationDesignDocument {
   const couple = [profile.partner2Name, profile.partner1Name].filter(Boolean).join(" & ") || "The Couple";
   const isSaveTheDate = kind === "saveTheDate";
@@ -116,6 +130,7 @@ export function buildInvitationDesignDocument({
       ceremonyTime: profile.ceremonyTime || null,
       receptionTime: profile.receptionTime || null,
       rsvpByDate: rsvpByDate || customization?.rsvpByDate || null,
+      hotelOptions,
     },
   };
 }
