@@ -53,9 +53,11 @@ export const authLimiter = rateLimit({
 // /auth/test-signin mints a Clerk sign-in ticket for a fixed test user. When
 // ENABLE_TEST_ACCOUNT=true this is effectively public, so cap it tightly per
 // IP to stop anyone spamming Clerk's Backend API and burning the quota.
+// LOAD_TEST_MODE raises the cap only in controlled environments so k6 setup can
+// mint tokens without production weakening its brute-force protection.
 export const testSigninLimiter = rateLimit({
   windowMs: 60 * 1000,
-  limit: 5,
+  limit: process.env.LOAD_TEST_MODE === "true" ? 120 : 5,
   standardHeaders: "draft-8",
   legacyHeaders: false,
   validate: { xForwardedForHeader: false },
