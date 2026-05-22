@@ -45,6 +45,7 @@ const MANUAL_CATEGORIES = [
   "Beauty",
   "Stationery",
   "Honeymoon",
+  "License/Certification",
   "Other",
 ];
 
@@ -194,6 +195,7 @@ const MANUAL_CATEGORY_BADGE_STYLES: Record<string, string> = {
   "Beauty": "border-transparent bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300",
   "Stationery": "border-transparent bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
   "Honeymoon": "border-transparent bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300",
+  "License/Certification": "border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
 };
 const ALL_CATEGORY_BADGE_STYLES: Record<string, string> = {
   ...VENDOR_CATEGORY_BADGE_STYLES,
@@ -1687,9 +1689,16 @@ export default function Budget() {
               </CardDescription>
             </div>
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-              <Button type="button" variant="outline" size="sm" className="gap-2" onClick={openAddSyncedVendor}>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={openAddSyncedVendor}
+                title={t("budget.add_synced_vendor", { defaultValue: "Add vendor line item" })}
+                aria-label={t("budget.add_synced_vendor", { defaultValue: "Add vendor line item" })}
+              >
                 <Plus className="h-4 w-4" />
-                {t("budget.add_synced_vendor", { defaultValue: "Add vendor line item" })}
               </Button>
               <Badge variant="secondary" className="gap-1 bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
                 <Sparkles className="h-3 w-3" /> {t("budget.synced_badge", { defaultValue: "Synced" })}
@@ -1704,9 +1713,16 @@ export default function Budget() {
             <div className="text-center py-10 border-2 border-dashed border-border rounded-lg">
               <p className="text-muted-foreground mb-3">{t("budget.no_vendors")}</p>
               <div className="flex flex-wrap items-center justify-center gap-2">
-                <Button variant="outline" onClick={openAddSyncedVendor}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t("budget.add_synced_vendor", { defaultValue: "Add vendor line item" })}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10"
+                  onClick={openAddSyncedVendor}
+                  title={t("budget.add_synced_vendor", { defaultValue: "Add vendor line item" })}
+                  aria-label={t("budget.add_synced_vendor", { defaultValue: "Add vendor line item" })}
+                >
+                  <Plus className="h-4 w-4" />
                 </Button>
                 <Button variant="ghost" onClick={() => setLocation("/vendors")}>
                   {t("budget.go_to_vendors")}
@@ -1714,13 +1730,7 @@ export default function Budget() {
               </div>
             </div>
           ) : (
-            <div className="space-y-3">
-              <div className="flex justify-end">
-                <Button type="button" variant="outline" className="gap-2" onClick={openAddSyncedVendor}>
-                  <Plus className="h-4 w-4" />
-                  {t("budget.add_synced_vendor", { defaultValue: "Add vendor line item" })}
-                </Button>
-              </div>
+            <div>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
