@@ -1847,11 +1847,13 @@ function VendorCard({
   onClick,
   onEdit,
   onDelete,
+  onViewBudget,
 }: {
   vendor: Vendor;
   onClick: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onViewBudget: () => void;
 }) {
   const { t } = useTranslation();
   const payments = vendor.payments ?? [];
@@ -1860,7 +1862,18 @@ function VendorCard({
   const paidAmount = (hasDepositMilestone ? 0 : vendor.depositAmount) + paidFromPayments;
   const totalScheduled = payments.reduce((s, p) => s + p.amount, 0);
   const totalForProgress = vendor.totalCost > 0 ? vendor.totalCost : totalScheduled;
+  const remainingBalance = Math.max(0, totalForProgress - paidAmount);
   const isFullyPaid = totalForProgress > 0 && paidAmount >= totalForProgress;
+  const nextPaymentDays = vendor.nextPaymentDue ? daysUntil(vendor.nextPaymentDue) : null;
+  const paymentStatus = isFullyPaid
+    ? t("vendors.fully_paid")
+    : vendor.nextPaymentDue
+      ? nextPaymentDays != null && nextPaymentDays < 0
+        ? t("vendors.payment_overdue_banner", { n: Math.abs(nextPaymentDays) })
+        : nextPaymentDays === 0
+          ? t("vendors.payment_due_today_banner")
+          : t("vendors.payment_due_in_banner", { n: nextPaymentDays ?? 0 })
+      : t("vendors.remaining_label", { amount: formatCurrency(remainingBalance) });
   return (
     <div
       className="bg-card border border-border/60 rounded-2xl p-5 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer group relative"
@@ -1941,30 +1954,43 @@ function VendorCard({
         )}
       </div>
 
-      {vendor.nextPaymentDue && (() => {
-        const days = daysUntil(vendor.nextPaymentDue);
-        const isOverdue = days < 0;
-        if (isOverdue) {
-          return (
-            <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 rounded-lg">
-              <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400 flex-shrink-0" />
-              <span className="text-xs font-medium text-red-700 dark:text-red-300">
-                {t("vendors.payment_overdue_banner", { n: Math.abs(days) })} - {formatDate(vendor.nextPaymentDue)}
-              </span>
+      <div className={`mb-3 rounded-lg border px-2.5 py-2 ${
+        isFullyPaid
+          ? "border-emerald-200 bg-emerald-50 dark:border-emerald-800/50 dark:bg-emerald-950/30"
+          : vendor.nextPaymentDue
+            ? "border-amber-200 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-950/30"
+            : "border-border/70 bg-muted/30"
+      }`}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className={`flex items-center gap-1.5 text-xs font-semibold ${
+              isFullyPaid
+                ? "text-emerald-800 dark:text-emerald-300"
+                : vendor.nextPaymentDue
+                  ? "text-amber-800 dark:text-amber-300"
+                  : "text-muted-foreground"
+            }`}>
+              {isFullyPaid ? <CheckCircle2 className="h-3.5 w-3.5" /> : vendor.nextPaymentDue ? <Bell className="h-3.5 w-3.5" /> : <DollarSign className="h-3.5 w-3.5" />}
+              <span className="truncate">{paymentStatus}</span>
             </div>
-          );
-        }
-        return (
-          <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 rounded-lg">
-            <Bell className="h-3.5 w-3.5 text-red-600 dark:text-red-400 flex-shrink-0" />
-            <span className="text-xs font-medium text-red-700 dark:text-red-300">
-              {days === 0
-                ? `${t("vendors.payment_due_today_banner")} - ${formatDate(vendor.nextPaymentDue)}`
-                : `${t("vendors.payment_due_in_banner", { n: days })} - ${formatDate(vendor.nextPaymentDue)}`}
-            </span>
+            {vendor.nextPaymentDue && !isFullyPaid && (
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                {formatDate(vendor.nextPaymentDue)} · {t("vendors.remaining_label", { amount: formatCurrency(remainingBalance) })}
+              </p>
+            )}
           </div>
-        );
-      })()}
+          <button
+            type="button"
+            className="shrink-0 rounded-md border border-border/60 bg-background px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/5"
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewBudget();
+            }}
+          >
+            {t("vendors.view_in_budget", { defaultValue: "View in Budget" })}
+          </button>
+        </div>
+      </div>
 
       <div className="flex items-center justify-between">
         <div>
@@ -1976,12 +2002,6 @@ function VendorCard({
           )}
         </div>
         <div className="flex items-center gap-1.5 flex-wrap justify-end">
-          {isFullyPaid && (
-            <div className="flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700/50 px-2 py-0.5 rounded-full font-medium">
-              <CheckCircle2 className="h-3 w-3" />
-              <span>{t("vendors.fully_paid")}</span>
-            </div>
-          )}
           {vendor.contractSigned && (
             <div className="flex items-center gap-1 text-xs text-green-700 bg-green-50 dark:bg-green-900/30 dark:text-green-300 px-2 py-0.5 rounded-full">
               <CheckCircle2 className="h-3 w-3" />
@@ -2173,6 +2193,7 @@ export default function Vendors() {
                   }}
                   onEdit={() => setEditingVendor(vendor)}
                   onDelete={() => setDeletingVendorId(vendor.id)}
+                  onViewBudget={() => setLocation("/budget/summary")}
                 />
               ))}
               <button

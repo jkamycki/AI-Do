@@ -195,7 +195,7 @@ const MANUAL_CATEGORY_BADGE_STYLES: Record<string, string> = {
   "Beauty": "border-transparent bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300",
   "Stationery": "border-transparent bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
   "Honeymoon": "border-transparent bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300",
-  "License/Certification": "border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
+  "License/Certification": "border-transparent bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200",
 };
 const ALL_CATEGORY_BADGE_STYLES: Record<string, string> = {
   ...VENDOR_CATEGORY_BADGE_STYLES,
@@ -1111,7 +1111,7 @@ export default function Budget() {
 
   const handleDeleteSyncedVendor = async (vendor: VendorRow) => {
     if (!confirm(t("budget.confirm_delete_synced_vendor", {
-      defaultValue: `Delete ${vendor.name} from Budget and Vendor List? This also removes synced vendor payment details.`,
+      defaultValue: `Delete ${vendor.name} from Budget and Vendor List? This also removes vendor payment details.`,
     }))) return;
     try {
       const r = await authFetch(`/api/vendors/${vendor.id}`, { method: "DELETE" });
@@ -1252,7 +1252,7 @@ export default function Budget() {
           });
           if (!paymentResponse.ok) throw new Error("Payment create failed");
         }
-        toast({ title: isAddingSyncedVendor ? t("budget.toast_vendor_added", { defaultValue: "Vendor added to synced expenses" }) : t("budget.toast_vendor_budget_updated", { defaultValue: "Vendor budget details updated" }) });
+        toast({ title: isAddingSyncedVendor ? t("budget.toast_vendor_added", { defaultValue: "Vendor added to Vendor Expenses" }) : t("budget.toast_vendor_budget_updated", { defaultValue: "Vendor budget details updated" }) });
       } else {
         if (editingVendor?.nextPaymentId) {
           const paymentResponse = await authFetch(`/api/vendors/${savedVendorId}/payments/${editingVendor.nextPaymentId}`, {
@@ -1260,7 +1260,7 @@ export default function Budget() {
           });
           if (!paymentResponse.ok) throw new Error("Payment delete failed");
         }
-        toast({ title: isAddingSyncedVendor ? t("budget.toast_vendor_added", { defaultValue: "Vendor added to synced expenses" }) : t("budget.toast_vendor_budget_updated", { defaultValue: "Vendor budget details updated" }) });
+        toast({ title: isAddingSyncedVendor ? t("budget.toast_vendor_added", { defaultValue: "Vendor added to Vendor Expenses" }) : t("budget.toast_vendor_budget_updated", { defaultValue: "Vendor budget details updated" }) });
       }
 
       setEditingVendor(null);
@@ -1475,8 +1475,8 @@ export default function Budget() {
         ["Total Budget", totalBudget, "Budget Used", usedPct / 100],
         ["Committed Spend", combinedSpend, "Paid Out", combinedPaid],
         ["Remaining To Pay", remainingToPay, overBudget ? "Over Budget" : "Budget Remaining", Math.abs(remaining)],
-        ["Vendor Spend", vendorCommitted, "Manual Spend", manualCommitted],
-        ["Vendor Paid", vendorPaid, "Manual Paid", manualPaid],
+        ["Vendor Spend", vendorCommitted, "Miscellaneous Spend", manualCommitted],
+        ["Vendor Paid", vendorPaid, "Miscellaneous Paid", manualPaid],
       ]);
       [4].forEach((rowNumber) => {
         summary.getRow(rowNumber).font = { bold: true, color: { argb: "FFFFFFFF" } };
@@ -1673,7 +1673,7 @@ export default function Budget() {
         </CardContent>
       </Card>
 
-      {/* ── Vendor-Synced Expenses ───────────────────────────────── */}
+      {/* Vendor Expenses */}
       <Card>
         <CardHeader>
           <div className="flex items-start justify-between gap-4">
@@ -1683,12 +1683,10 @@ export default function Budget() {
                 {t("budget.vendor_synced_title")}
               </CardTitle>
               <CardDescription>
-                {t("budget.vendor_synced_editable_desc", {
-                  defaultValue: "Synced with your Vendor List. Edit payment details here, or open the vendor for contacts, files, and notes.",
-                })}
+                {t("budget.vendor_synced_desc")}
               </CardDescription>
             </div>
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            <div className="flex shrink-0 items-center justify-end">
               <Button
                 type="button"
                 variant="outline"
@@ -1700,9 +1698,6 @@ export default function Budget() {
               >
                 <Plus className="h-4 w-4" />
               </Button>
-              <Badge variant="secondary" className="gap-1 bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
-                <Sparkles className="h-3 w-3" /> {t("budget.synced_badge", { defaultValue: "Synced" })}
-              </Badge>
             </div>
           </div>
         </CardHeader>
@@ -1848,8 +1843,8 @@ export default function Budget() {
                               variant="ghost"
                               onClick={() => handleDeleteSyncedVendor(v)}
                               className="h-9 w-9 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                              title={t("budget.delete_synced_vendor", { defaultValue: "Delete synced vendor" })}
-                              aria-label={t("budget.delete_synced_vendor", { defaultValue: "Delete synced vendor" })}
+                              title={t("budget.delete_synced_vendor", { defaultValue: "Delete vendor" })}
+                              aria-label={t("budget.delete_synced_vendor", { defaultValue: "Delete vendor" })}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
@@ -1880,10 +1875,10 @@ export default function Budget() {
             <DialogDescription>
               {isAddingSyncedVendor
                 ? t("budget.add_synced_vendor_desc", {
-                  defaultValue: "This creates a synced Vendor List record and adds it to your Budget Summary.",
+                  defaultValue: "This creates a Vendor List record and adds it to your Budget Summary.",
                 })
                 : t("budget.edit_vendor_budget_desc", {
-                  defaultValue: "These fields sync with the Vendor List so you only enter vendor payment details once.",
+                  defaultValue: "These fields update the Vendor List so you only enter vendor payment details once.",
                 })}
             </DialogDescription>
           </DialogHeader>
@@ -2022,13 +2017,13 @@ export default function Budget() {
                 ? t("common.saving", { defaultValue: "Saving..." })
                 : isAddingSyncedVendor
                   ? t("budget.add_synced_vendor", { defaultValue: "Add vendor line item" })
-                  : t("budget.save_vendor_budget", { defaultValue: "Save synced details" })}
+                  : t("budget.save_vendor_budget", { defaultValue: "Save vendor details" })}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ── Manual Expenses ──────────────────────────────────────── */}
+      {/* Miscellaneous Expenses */}
       <Card>
         <CardHeader>
           <div className="flex items-start justify-between gap-4">
