@@ -29,8 +29,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ToastAction } from "@/components/ui/toast";
-import { DollarSign, Plus, Trash2, Pencil, ArrowUpRight, Sparkles, Paperclip, X, AlertTriangle, Bell, CheckCircle2, Square, FileDown, FileSpreadsheet } from "lucide-react";
+import { DollarSign, Plus, Trash2, Pencil, ArrowUpRight, Sparkles, Paperclip, X, AlertTriangle, Bell, CheckCircle2, Square, FileDown, FileSpreadsheet, ChevronDown, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 const MANUAL_CATEGORIES = [
@@ -248,50 +249,59 @@ function PaidInFullMergedCell({
   );
 }
 
-function MarkPaidInFullButton({
-  onClick,
-  t,
-}: {
-  onClick: () => void;
-  t: (key: string, options?: Record<string, unknown>) => string;
-}) {
-  return (
-    <Button
-      type="button"
-      size="sm"
-      variant="outline"
-      className="h-9 w-full justify-start gap-2 rounded-md border-border bg-background px-3 text-sm font-semibold text-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
-      onClick={onClick}
-    >
-      <Square className="h-4 w-4 shrink-0" />
-      {t("budget.mark_paid_in_full", { defaultValue: "Paid full balance" })}
-    </Button>
-  );
-}
-
-function PaymentCompleteButton({
-  onClick,
+function PaymentActionsDropdown({
+  onUndo,
+  onMarkScheduledPaid,
+  onMarkFullBalancePaid,
   paysRemaining = false,
   t,
 }: {
-  onClick: () => void;
+  onUndo?: () => void;
+  onMarkScheduledPaid?: () => void;
+  onMarkFullBalancePaid?: () => void;
   paysRemaining?: boolean;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
   return (
-    <Button
-      type="button"
-      size="sm"
-      variant="outline"
-      className="h-9 w-full justify-start gap-2 rounded-md border-border bg-background px-3 text-sm font-semibold text-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
-      onClick={onClick}
-      title={t("budget.mark_paid_title", { defaultValue: "Mark this scheduled payment paid (adds it to Paid total)" })}
-    >
-      <Square className="h-4 w-4 shrink-0" />
-      {paysRemaining
-        ? t("budget.mark_remaining_paid", { defaultValue: "Paid full balance" })
-        : t("budget.mark_paid", { defaultValue: "Paid scheduled payment" })}
-    </Button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-9 w-full justify-between gap-2 rounded-md border-border bg-background px-3 text-sm font-semibold text-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+          title={t("budget.col_payment_actions", { defaultValue: "Payment actions" })}
+        >
+          <span>{t("budget.col_payment_actions", { defaultValue: "Payment actions" })}</span>
+          <ChevronDown className="h-4 w-4 shrink-0" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        {onUndo && (
+          <>
+            <DropdownMenuItem onSelect={onUndo} className="gap-2">
+              <RotateCcw className="h-4 w-4" />
+              {t("budget.undo_payment", { defaultValue: "Undo payment" })}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
+        {onMarkScheduledPaid && (
+          <DropdownMenuItem onSelect={onMarkScheduledPaid} className="gap-2">
+            <Square className="h-4 w-4" />
+            {paysRemaining
+              ? t("budget.mark_remaining_paid", { defaultValue: "Paid full balance" })
+              : t("budget.mark_paid", { defaultValue: "Paid scheduled payment" })}
+          </DropdownMenuItem>
+        )}
+        {onMarkFullBalancePaid && (
+          <DropdownMenuItem onSelect={onMarkFullBalancePaid} className="gap-2">
+            <Square className="h-4 w-4" />
+            {t("budget.mark_paid_in_full", { defaultValue: "Paid full balance" })}
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -444,13 +454,11 @@ function dateTimeValue(d: string | null | undefined): number {
 function NextPaymentDisplay({
   date,
   amount = 0,
-  onMarkPaid,
   toneClass,
   t,
 }: {
   date: string | null | undefined;
   amount?: number;
-  onMarkPaid?: () => void;
   toneClass?: string;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
@@ -481,12 +489,9 @@ function NextPaymentDisplay({
           <span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">{formatDate(date)}</span>
         </span>
       </div>
-      {(amount > 0 || onMarkPaid) && (
+      {amount > 0 && (
         <div className="flex flex-wrap items-center gap-2 pl-5 text-foreground">
-          {amount > 0 && <span className="tabular-nums text-sm font-semibold">{formatMoney(amount)}</span>}
-          {onMarkPaid && (
-            <PaymentCompleteButton onClick={onMarkPaid} t={t} />
-          )}
+          <span className="tabular-nums text-sm font-semibold">{formatMoney(amount)}</span>
         </div>
       )}
     </div>
@@ -1822,22 +1827,18 @@ export default function Budget() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="flex min-w-[180px] flex-col items-center gap-2">
-                              {recentPaymentUndo[`vendor-${v.id}`] && (
-                                <UndoPaymentButton onClick={() => runRememberedUndo(`vendor-${v.id}`)} t={t} />
-                              )}
-                              {v.nextPaymentDue && (
-                                <PaymentCompleteButton
-                                  onClick={() => handleVendorPaymentPaid(v.id, {
+                              <div className="flex min-w-[180px] justify-center">
+                                <PaymentActionsDropdown
+                                  onUndo={recentPaymentUndo[`vendor-${v.id}`] ? () => runRememberedUndo(`vendor-${v.id}`) : undefined}
+                                  onMarkScheduledPaid={v.nextPaymentDue ? () => handleVendorPaymentPaid(v.id, {
                                     id: v.nextPaymentId,
                                     dueDate: v.nextPaymentDue,
                                     amount: v.nextPaymentAmount ?? remaining,
-                                  })}
+                                  }) : undefined}
                                   paysRemaining={nextPaymentPaysRemaining}
+                                  onMarkFullBalancePaid={!nextPaymentPaysRemaining ? () => handleVendorPaidInFull(v.id) : undefined}
                                   t={t}
                                 />
-                              )}
-                              {!nextPaymentPaysRemaining && <MarkPaidInFullButton onClick={() => handleVendorPaidInFull(v.id)} t={t} />}
                               </div>
                             </TableCell>
                           </>
@@ -2176,18 +2177,14 @@ export default function Budget() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="flex min-w-[180px] flex-col items-center gap-2">
-                              {recentPaymentUndo[`manual-${m.id}`] && (
-                                <UndoPaymentButton onClick={() => runRememberedUndo(`manual-${m.id}`)} t={t} />
-                              )}
-                              {m.nextPaymentDue && (
-                                <PaymentCompleteButton
-                                  onClick={() => handleMarkPaid(m.id)}
+                              <div className="flex min-w-[180px] justify-center">
+                                <PaymentActionsDropdown
+                                  onUndo={recentPaymentUndo[`manual-${m.id}`] ? () => runRememberedUndo(`manual-${m.id}`) : undefined}
+                                  onMarkScheduledPaid={m.nextPaymentDue ? () => handleMarkPaid(m.id) : undefined}
                                   paysRemaining={nextPaymentPaysRemaining}
+                                  onMarkFullBalancePaid={!nextPaymentPaysRemaining ? () => handleManualPaidInFull(m) : undefined}
                                   t={t}
                                 />
-                              )}
-                              {!nextPaymentPaysRemaining && <MarkPaidInFullButton onClick={() => handleManualPaidInFull(m)} t={t} />}
                               </div>
                             </TableCell>
                           </>
