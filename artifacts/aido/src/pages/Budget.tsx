@@ -195,7 +195,7 @@ const MANUAL_CATEGORY_BADGE_STYLES: Record<string, string> = {
   "Beauty": "border-transparent bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300",
   "Stationery": "border-transparent bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
   "Honeymoon": "border-transparent bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300",
-  "License/Certification": "border-transparent bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200",
+  "License/Certification": "border-transparent bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
 };
 const ALL_CATEGORY_BADGE_STYLES: Record<string, string> = {
   ...VENDOR_CATEGORY_BADGE_STYLES,
@@ -549,7 +549,7 @@ export default function Budget() {
   const manualFormPaid = form.paidInFull ? manualFormCost : Math.max(0, Number(form.amountPaid || 0));
   const manualFormRemaining = Math.max(0, manualFormCost - manualFormPaid);
   const vendorFormCost = Math.max(0, Number(vendorForm.totalCost || 0));
-  const vendorExistingPaid = activeVendorBudgetRow ? cappedPaid(activeVendorBudgetRow.totalCost, activeVendorBudgetRow.totalPaid) : 0;
+  const vendorExistingPaid = activeVendorBudgetRow ? cappedPaid(vendorFormCost, activeVendorBudgetRow.totalPaid) : 0;
   const vendorFormDeposit = Math.max(0, Number(vendorForm.depositAmount || 0));
   const vendorFormPaid = vendorForm.paidInFull ? vendorFormCost : Math.max(vendorExistingPaid, vendorFormDeposit);
   const vendorFormRemaining = Math.max(0, vendorFormCost - vendorFormPaid);

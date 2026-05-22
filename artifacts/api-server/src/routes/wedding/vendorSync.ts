@@ -429,8 +429,9 @@ router.get("/vendors", requireAuth, async (req, res) => {
       const fv = formatVendor(v);
       const payments = paymentsByVendor[v.id] ?? [];
       const hasDepositMilestone = payments.some(p => p.label.toLowerCase() === "deposit");
-      const totalPaid = (hasDepositMilestone ? 0 : fv.depositAmount) +
+      const rawTotalPaid = (hasDepositMilestone ? 0 : fv.depositAmount) +
         payments.filter(p => p.isPaid).reduce((s, p) => s + p.amount, 0);
+      const totalPaid = Math.min(Math.max(0, fv.totalCost), Math.max(0, rawTotalPaid));
       const isPaidOff = fv.totalCost > 0 && totalPaid >= fv.totalCost;
       return { ...fv, payments, totalPaid, isPaidOff };
     }));
@@ -490,8 +491,9 @@ router.get("/vendors/financials", requireAuth, async (req, res) => {
     const vendorDetails = userVendors.map((v) => {
       const deposit = Number(v.depositAmount);
       const milestones = paidByVendor[v.id] ?? 0;
-      const totalPaid = (vendorsWithDepositMilestone.has(v.id) ? 0 : deposit) + milestones;
       const totalCost = Number(v.totalCost);
+      const rawTotalPaid = (vendorsWithDepositMilestone.has(v.id) ? 0 : deposit) + milestones;
+      const totalPaid = Math.min(Math.max(0, totalCost), Math.max(0, rawTotalPaid));
       const nextPayment = nextPaymentByVendor[v.id];
       return {
         id: v.id,
