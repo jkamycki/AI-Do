@@ -50,7 +50,7 @@ const PHOTO_EFFECT_FILTERS: Record<PhotoEffect, string> = {
   bw: "grayscale(1) contrast(1.05)",
   sepia: "sepia(0.7) saturate(1.1)",
   vintage: "sepia(0.35) contrast(0.95) saturate(0.85) brightness(0.95)",
-  soft: "contrast(0.92) brightness(1.05) saturate(0.9) blur(0.4px)",
+  soft: "contrast(0.96) brightness(1.04) saturate(0.94)",
   warm: "hue-rotate(8deg) saturate(1.15) brightness(1.04)",
   dramatic: "contrast(1.25) saturate(1.2) brightness(0.92)",
   noir: "grayscale(1) contrast(1.35) brightness(0.85)",
