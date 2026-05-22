@@ -1714,22 +1714,29 @@ export default function Budget() {
               </div>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-center font-bold">{t("budget.col_vendor")}</TableHead>
-                    <TableHead className="text-center font-bold">{t("budget.col_category")}</TableHead>
-                    <TableHead className="text-center font-bold">{t("budget.col_total_cost")}</TableHead>
-                    <TableHead className="text-center font-bold">{t("budget.col_paid")}</TableHead>
-                    <TableHead className="text-center font-bold">{t("budget.col_remaining")}</TableHead>
-                    <TableHead className="text-center font-bold">{t("budget.col_next_payment")}</TableHead>
-                    <TableHead className="min-w-[180px] text-center font-bold">{t("budget.col_payment_actions", { defaultValue: "Payment actions" })}</TableHead>
-                    <TableHead className="min-w-[180px] text-center font-bold">{t("budget.col_progress")}</TableHead>
-                    <TableHead className="text-right font-bold">{t("budget.col_actions", { defaultValue: "Actions" })}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+            <div className="space-y-3">
+              <div className="flex justify-end">
+                <Button type="button" variant="outline" className="gap-2" onClick={openAddSyncedVendor}>
+                  <Plus className="h-4 w-4" />
+                  {t("budget.add_synced_vendor", { defaultValue: "Add vendor line item" })}
+                </Button>
+              </div>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-center font-bold">{t("budget.col_vendor")}</TableHead>
+                      <TableHead className="text-center font-bold">{t("budget.col_category")}</TableHead>
+                      <TableHead className="text-center font-bold">{t("budget.col_total_cost")}</TableHead>
+                      <TableHead className="text-center font-bold">{t("budget.col_paid")}</TableHead>
+                      <TableHead className="text-center font-bold">{t("budget.col_remaining")}</TableHead>
+                      <TableHead className="text-center font-bold">{t("budget.col_next_payment")}</TableHead>
+                      <TableHead className="min-w-[180px] text-center font-bold">{t("budget.col_payment_actions", { defaultValue: "Payment actions" })}</TableHead>
+                      <TableHead className="min-w-[180px] text-center font-bold">{t("budget.col_progress")}</TableHead>
+                      <TableHead className="text-right font-bold">{t("budget.col_actions", { defaultValue: "Actions" })}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                   {orderedVendorRows.map((v) => {
                     const paid = cappedPaid(v.totalCost, v.totalPaid);
                     const remaining = Math.max(0, v.totalCost - paid);
@@ -1841,8 +1848,9 @@ export default function Budget() {
                       </TableRow>
                     );
                   })}
-                </TableBody>
-              </Table>
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           )}
         </CardContent>
@@ -2211,14 +2219,14 @@ export default function Budget() {
 
       {/* ── Add/Edit Manual Expense Dialog ──────────────────────── */}
       <Dialog open={isAdding} onOpenChange={(open) => { if (!open) { setIsAdding(false); setEditingId(null); } }}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden sm:max-w-[500px]">
-          <DialogHeader>
+        <DialogContent className="top-4 bottom-4 flex max-h-none translate-y-0 flex-col gap-0 overflow-hidden p-0 sm:max-w-[500px]">
+          <DialogHeader className="shrink-0 px-6 pb-3 pt-6">
             <DialogTitle className="font-serif text-2xl text-primary">
               {editingId != null ? t("budget.edit_expense_label") : t("budget.add_expense_label")}
             </DialogTitle>
             <DialogDescription>{t("budget.dialog_description")}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-2">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">{t("budget.expense_name")}</label>
               <Input
@@ -2351,7 +2359,7 @@ export default function Budget() {
               )}
             </div>
           </div>
-          <DialogFooter className="sticky bottom-0 -mx-6 -mb-6 flex-wrap gap-2 border-t bg-background px-6 py-4 sm:gap-2">
+          <DialogFooter className="shrink-0 flex-wrap gap-2 border-t bg-background px-6 py-4 sm:gap-2">
             <Button variant="outline" onClick={() => { setIsAdding(false); setEditingId(null); }}>
               {t("common.cancel")}
             </Button>
