@@ -48,6 +48,26 @@ export default defineConfig({
     emptyOutDir: true,
     sourcemap: false,
     chunkSizeWarningLimit: 3000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("@clerk")) return "vendor-auth";
+          if (id.includes("@tanstack/react-query")) return "vendor-query";
+          if (id.includes("@radix-ui")) return "vendor-ui";
+          if (id.includes("lucide-react")) return "vendor-icons";
+          if (id.includes("recharts")) return "vendor-charts";
+          if (id.includes("exceljs")) return "vendor-excel";
+          if (id.includes("jspdf") || id.includes("html2canvas")) return "vendor-pdf";
+          if (id.includes("@dnd-kit")) return "vendor-dnd";
+          if (id.includes("react-easy-crop")) return "vendor-crop";
+          if (id.includes("react-markdown") || id.includes("dompurify")) return "vendor-content";
+          if (id.includes("framer-motion")) return "vendor-motion";
+          if (id.includes("react") || id.includes("react-dom") || id.includes("scheduler")) return "vendor-react";
+          return "vendor";
+        },
+      },
+    },
   },
   server: {
     port,

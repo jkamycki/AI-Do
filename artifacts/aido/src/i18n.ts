@@ -2,19 +2,6 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
 import en from "./locales/en.json";
-import es from "./locales/es.json";
-import fr from "./locales/fr.json";
-import de from "./locales/de.json";
-import it from "./locales/it.json";
-import pt from "./locales/pt.json";
-import zh from "./locales/zh.json";
-import ja from "./locales/ja.json";
-import ko from "./locales/ko.json";
-import ar from "./locales/ar.json";
-import hi from "./locales/hi.json";
-import ru from "./locales/ru.json";
-import nl from "./locales/nl.json";
-import pl from "./locales/pl.json";
 
 export const LANG_NAME_TO_CODE: Record<string, string> = {
   "English": "en",
@@ -40,6 +27,21 @@ export const LANG_CODE_TO_NAME: Record<string, string> = Object.fromEntries(
 const savedLang = localStorage.getItem("aido_language") ?? "en";
 
 const RTL_LANGS = new Set(["ar", "he", "fa", "ur"]);
+const LOCALE_LOADERS: Record<string, () => Promise<{ default: Record<string, unknown> }>> = {
+  es: () => import("./locales/es.json"),
+  fr: () => import("./locales/fr.json"),
+  de: () => import("./locales/de.json"),
+  it: () => import("./locales/it.json"),
+  pt: () => import("./locales/pt.json"),
+  zh: () => import("./locales/zh.json"),
+  ja: () => import("./locales/ja.json"),
+  ko: () => import("./locales/ko.json"),
+  ar: () => import("./locales/ar.json"),
+  hi: () => import("./locales/hi.json"),
+  ru: () => import("./locales/ru.json"),
+  nl: () => import("./locales/nl.json"),
+  pl: () => import("./locales/pl.json"),
+};
 
 function applyDocumentDirection(lng: string) {
   if (typeof document === "undefined") return;
@@ -48,31 +50,36 @@ function applyDocumentDirection(lng: string) {
   document.documentElement.setAttribute("dir", dir);
 }
 
+async function loadLocale(lng: string) {
+  if (lng === "en" || i18n.hasResourceBundle(lng, "translation")) return;
+  const loader = LOCALE_LOADERS[lng];
+  if (!loader) return;
+  const mod = await loader();
+  i18n.addResourceBundle(lng, "translation", mod.default, true, true);
+}
+
 i18n
   .use(initReactI18next)
   .init({
     resources: {
       en: { translation: en },
-      es: { translation: es },
-      fr: { translation: fr },
-      de: { translation: de },
-      it: { translation: it },
-      pt: { translation: pt },
-      zh: { translation: zh },
-      ja: { translation: ja },
-      ko: { translation: ko },
-      ar: { translation: ar },
-      hi: { translation: hi },
-      ru: { translation: ru },
-      nl: { translation: nl },
-      pl: { translation: pl },
     },
-    lng: savedLang,
+    lng: "en",
     fallbackLng: "en",
     interpolation: { escapeValue: false },
   });
 
-applyDocumentDirection(savedLang);
+const originalChangeLanguage = i18n.changeLanguage.bind(i18n);
+i18n.changeLanguage = async (lng?: string, callback?: Parameters<typeof originalChangeLanguage>[1]) => {
+  if (lng) await loadLocale(lng);
+  return originalChangeLanguage(lng, callback);
+};
+
+if (savedLang !== "en") {
+  void i18n.changeLanguage(savedLang);
+}
+
+applyDocumentDirection(i18n.language || savedLang);
 i18n.on("languageChanged", (lng) => applyDocumentDirection(lng));
 
 export default i18n;

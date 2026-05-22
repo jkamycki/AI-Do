@@ -1,7 +1,7 @@
 import { createContext, useContext, useLayoutEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@clerk/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { setWorkspaceProfileId } from "@workspace/api-client-react";
+import { setWorkspaceProfileId } from "@workspace/api-client-react/custom-fetch";
 import { setAuthFetchWorkspaceProfileId } from "@/lib/authFetch";
 
 function syncWorkspaceProfileId(id: number | null) {

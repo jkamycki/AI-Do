@@ -5,13 +5,12 @@ import { ClerkProvider, useClerk, useAuth, useUser, useSignIn, useSignUp, Show, 
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
+import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react/custom-fetch";
 import { setFetchTokenGetter, setAuthFetchBaseUrl, authFetch } from "@/lib/authFetch";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ApiHealthBanner } from "@/components/ApiHealthBanner";
 import { WorkspaceProvider, useWorkspace } from "@/contexts/WorkspaceContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import { useGetProfile, getGetProfileQueryKey } from "@workspace/api-client-react";
 import { useTracking } from "@/hooks/useTracking";
 import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 import { MaintenanceNotice } from "@/components/MaintenanceNotice";
@@ -78,7 +77,10 @@ const queryClient = new QueryClient({
       // force fresh fetches as expected (invalidate marks the query stale).
       // Bonus: navigating between pages reuses cached data for 30s, which is
       // a perceived-perf win across the app.
-      staleTime: 30_000,
+      staleTime: 60_000,
+      gcTime: 10 * 60_000,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
       // If a query errors (e.g. 404 for a brand-new user without a profile),
       // don't have every newly-mounted observer trigger another retry. Pages
       // that need to recover from a transient error already render an
@@ -1595,7 +1597,17 @@ function AppTracking() {
 function LanguageSyncProvider() {
   const { user, isLoaded } = useUser();
   const { isSignedIn } = useAuth();
-  const { data: profile } = useGetProfile({ query: { queryKey: getGetProfileQueryKey(), enabled: isLoaded && !!isSignedIn } });
+  const { data: profile } = useQuery({
+    queryKey: ["profile-language"],
+    queryFn: async () => {
+      const res = await authFetch("/api/profile");
+      if (!res.ok) return null;
+      return res.json() as Promise<{ preferredLanguage?: string | null }>;
+    },
+    enabled: isLoaded && !!isSignedIn,
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
 
   useEffect(() => {
     if (!isLoaded || !user) return;
