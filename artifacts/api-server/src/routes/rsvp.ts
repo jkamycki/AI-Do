@@ -2553,14 +2553,15 @@ router.post("/save-the-date/:token/hotel", async (req, res) => {
 
     const { hotelNeeded, bookedHotelBlockId, bookedHotelRoomCount } = req.body ?? {};
     const wantsHotel = hotelNeeded === true || hotelNeeded === "true";
+    const hasHotelBlockSelection = bookedHotelBlockId !== undefined && bookedHotelBlockId !== null && bookedHotelBlockId !== "";
     const roomCount = Number(bookedHotelRoomCount);
     const updateData: Partial<typeof guests.$inferInsert> = {
       needsHotel: wantsHotel,
       bookedHotelBlockId: null,
-      bookedHotelRoomCount: wantsHotel && Number.isInteger(roomCount) && roomCount >= 1 && roomCount <= 2 ? roomCount : wantsHotel ? 1 : null,
+      bookedHotelRoomCount: wantsHotel && hasHotelBlockSelection && Number.isInteger(roomCount) && roomCount >= 1 && roomCount <= 2 ? roomCount : null,
     };
 
-    if (wantsHotel && bookedHotelBlockId !== undefined && bookedHotelBlockId !== null && bookedHotelBlockId !== "") {
+    if (wantsHotel && hasHotelBlockSelection) {
       const hotelId = Number(bookedHotelBlockId);
       if (!Number.isInteger(hotelId) || hotelId <= 0) {
         return res.status(400).json({ error: "Invalid hotel block selection." });

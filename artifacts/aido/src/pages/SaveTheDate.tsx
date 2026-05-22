@@ -232,6 +232,7 @@ export default function SaveTheDate() {
   const hotelSummary = hotelOptions.filter((hotel) => hotel.hotelName || hotel.bookingLink || hotel.discountCode || hotel.groupName);
   const canSyncHotelToGuest = !!token && !slug && !sharedInviteToken && hotelSummary.length > 0;
   const selectedHotel = hotelOptions.find((hotel) => String(hotel.id) === hotelBlockId) ?? null;
+  const hasSelectedHotelBlock = !!selectedHotel;
   const hotelFieldStyle = (isOverlay: boolean): CSSProperties => ({
     width: "100%",
     border: `1px solid ${isOverlay ? "rgba(255,255,255,.28)" : CARD_BDR}`,
@@ -320,7 +321,7 @@ export default function SaveTheDate() {
         body: JSON.stringify({
           hotelNeeded: needsHotel,
           bookedHotelBlockId: needsHotel && hotelBlockId ? Number(hotelBlockId) : null,
-          bookedHotelRoomCount: needsHotel ? Number(hotelRoomCount) : null,
+          bookedHotelRoomCount: needsHotel && hotelBlockId ? Number(hotelRoomCount) : null,
         }),
       });
       if (!res.ok) {
@@ -394,17 +395,21 @@ export default function SaveTheDate() {
                     </option>
                   ))}
                 </select>
-                <label style={{ display: "block", marginBottom: -4, fontSize: 9.5 * sc, opacity: 0.78 }}>
-                  {hotelResponse === "booked" ? "How many rooms did you book?" : "How many rooms will you need?"}
-                </label>
-                <select
-                  value={hotelRoomCount}
-                  onChange={(event) => setHotelRoomCount(event.target.value)}
-                  style={hotelFieldStyle(isOverlay)}
-                >
-                  <option value="1">1 room</option>
-                  <option value="2">2 rooms</option>
-                </select>
+                {hasSelectedHotelBlock && (
+                  <>
+                    <label style={{ display: "block", marginBottom: -4, fontSize: 9.5 * sc, opacity: 0.78 }}>
+                      {hotelResponse === "booked" ? "How many rooms did you book?" : "How many rooms will you need?"}
+                    </label>
+                    <select
+                      value={hotelRoomCount}
+                      onChange={(event) => setHotelRoomCount(event.target.value)}
+                      style={hotelFieldStyle(isOverlay)}
+                    >
+                      <option value="1">1 room</option>
+                      <option value="2">2 rooms</option>
+                    </select>
+                  </>
+                )}
                 {selectedHotel && renderSelectedHotelDetails(selectedHotel, isOverlay)}
                 {canSyncHotelToGuest && (
                   <p style={{ margin: 0, fontSize: 9.5 * sc, opacity: 0.78 }}>
