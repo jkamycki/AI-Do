@@ -1236,7 +1236,7 @@ export default function Rsvp() {
                                   )}
                                   {selectedHotel.cutoffDate && (
                                     <p className="text-xs mt-1" style={{ color: MUTED }}>
-                                      <span className="font-semibold" style={{ color: WHITE }}>Book by:</span> {formatHotelCutoffDate(selectedHotel.cutoffDate)}
+                                      <span className="font-semibold" style={{ color: WHITE }}>Cutoff Date to Book:</span> {formatHotelCutoffDate(selectedHotel.cutoffDate)}
                                     </p>
                                   )}
                                   <p className="text-xs mt-1" style={{ color: MUTED }}>

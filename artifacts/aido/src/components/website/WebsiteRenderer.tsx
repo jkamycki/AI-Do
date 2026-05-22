@@ -1466,7 +1466,7 @@ function RsvpSection({
                         <p className="mt-1 text-xs opacity-85"><span className="font-semibold">{t("rsvp.group_code", { defaultValue: "Group code:" })}</span> <span className="font-mono font-semibold">{selectedHotel.discountCode}</span></p>
                       )}
                       {selectedHotel.cutoffDate && (
-                        <p className="mt-1 text-xs opacity-85"><span className="font-semibold">{t("rsvp.book_by", { defaultValue: "Book by:" })}</span> {websiteHotelCutoffDate(selectedHotel.cutoffDate)}</p>
+                        <p className="mt-1 text-xs opacity-85"><span className="font-semibold">{t("rsvp.book_by", { defaultValue: "Cutoff Date to Book:" })}</span> {websiteHotelCutoffDate(selectedHotel.cutoffDate)}</p>
                       )}
                       <p className="mt-1 text-xs opacity-85"><span className="font-semibold">{t("rsvp.rooms", { defaultValue: "Rooms:" })}</span> {hotelRoomCount === "2" ? t("rsvp.two_rooms", { defaultValue: "2 rooms" }) : t("rsvp.one_room", { defaultValue: "1 room" })}</p>
                       {selectedHotel.bookingLink && (

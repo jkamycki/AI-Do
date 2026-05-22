@@ -183,7 +183,7 @@ function buildHotelRsvpEmailText(hotels: Array<{
   const details = [
     primary?.groupName ? `Wedding block: ${primary.groupName}` : null,
     primary?.discountCode ? `Group code: ${primary.discountCode}` : null,
-    primary?.cutoffDate ? `Book by: ${formatHotelEmailDate(primary.cutoffDate)}` : null,
+    primary?.cutoffDate ? `Cutoff Date to Book: ${formatHotelEmailDate(primary.cutoffDate)}` : null,
   ].filter(Boolean).join(" | ");
   return [
     `Hotel RSVP: choose whether you need a hotel room after clicking RSVP NOW. Hotel option${sortedHotels.length > 1 ? "s" : ""}: ${hotelNames}.`,

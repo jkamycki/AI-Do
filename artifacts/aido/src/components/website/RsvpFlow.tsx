@@ -125,7 +125,7 @@ export function RsvpFlow({
         )}
         {selectedHotel.cutoffDate && (
           <p className="text-xs mt-1 opacity-85">
-            <span className="font-semibold">{t("rsvp.hotel_cutoff_date", { defaultValue: "Book by" })}:</span> {formatHotelCutoffDate(selectedHotel.cutoffDate)}
+            <span className="font-semibold">{t("rsvp.hotel_cutoff_date", { defaultValue: "Cutoff Date to Book" })}:</span> {formatHotelCutoffDate(selectedHotel.cutoffDate)}
           </p>
         )}
         <p className="text-xs mt-1 opacity-85">

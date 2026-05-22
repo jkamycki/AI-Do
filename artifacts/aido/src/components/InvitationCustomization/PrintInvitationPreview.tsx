@@ -250,7 +250,7 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
                       {hotel.distanceFromVenue ? ` - ${hotel.distanceFromVenue}` : ""}
                       {hotel.pricePerNight != null ? ` - ${formatMoney(hotel.pricePerNight)}` : ""}
                       {hotel.discountCode ? ` - Code ${hotel.discountCode}` : ""}
-                      {hotel.cutoffDate ? ` - Book by ${formatHotelCutoffDate(hotel.cutoffDate)}` : ""}
+                      {hotel.cutoffDate ? ` - Cutoff Date to Book ${formatHotelCutoffDate(hotel.cutoffDate)}` : ""}
                     </p>
                   ))}
                   {hotelSummary.some((hotel) => hotel.checkInDate || hotel.checkOutDate) && (
@@ -350,7 +350,7 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
                       {hotel.distanceFromVenue ? ` - ${hotel.distanceFromVenue}` : ""}
                       {hotel.pricePerNight != null ? ` - ${formatMoney(hotel.pricePerNight)}` : ""}
                       {hotel.discountCode ? ` - Code ${hotel.discountCode}` : ""}
-                      {hotel.cutoffDate ? ` - Book by ${formatHotelCutoffDate(hotel.cutoffDate)}` : ""}
+                      {hotel.cutoffDate ? ` - Cutoff Date to Book ${formatHotelCutoffDate(hotel.cutoffDate)}` : ""}
                     </p>
                   ))}
                   {hotelSummary.some((hotel) => hotel.checkInDate || hotel.checkOutDate) && (

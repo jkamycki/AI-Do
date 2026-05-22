@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import type { CSSProperties } from "react";
 import { apiFetch } from "@/lib/authFetch";
 import { useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -219,6 +220,68 @@ export default function SaveTheDate() {
   const hotelSummary = hotelOptions.filter((hotel) => hotel.hotelName || hotel.bookingLink || hotel.discountCode || hotel.groupName);
   const canSyncHotelToGuest = !!token && !slug && !sharedInviteToken && hotelSummary.length > 0;
   const selectedHotel = hotelOptions.find((hotel) => String(hotel.id) === hotelBlockId) ?? null;
+  const hotelFieldStyle = (isOverlay: boolean): CSSProperties => ({
+    width: "100%",
+    border: `1px solid ${isOverlay ? "rgba(255,255,255,.28)" : CARD_BDR}`,
+    borderRadius: 8,
+    background: isOverlay ? "rgba(255,255,255,.12)" : "rgba(255,255,255,.78)",
+    color: WHITE,
+    padding: "8px 9px",
+    fontFamily: LABEL_FONT,
+    fontSize: 11 * sc,
+  });
+
+  const renderSelectedHotelDetails = (hotel: NonNullable<typeof selectedHotel>, isOverlay: boolean) => (
+    <div
+      style={{
+        marginTop: 8,
+        padding: "10px 11px",
+        borderRadius: 9,
+        border: `1px solid ${isOverlay ? "rgba(255,255,255,.24)" : CARD_BDR}`,
+        background: isOverlay ? "rgba(255,255,255,.08)" : "rgba(255,255,255,.62)",
+        fontSize: 10 * sc,
+        lineHeight: 1.45,
+      }}
+    >
+      <p style={{ margin: 0, fontWeight: 800 }}>{hotel.hotelName || "Hotel block"}</p>
+      {hotelAddressLine(hotel) && <p style={{ margin: "2px 0 0", opacity: 0.82 }}>{hotelAddressLine(hotel)}</p>}
+      {hotel.groupName && <p style={{ margin: "6px 0 0", opacity: 0.88 }}><strong>Wedding block:</strong> {hotel.groupName}</p>}
+      {(hotel.checkInDate || hotel.checkOutDate) && (
+        <p style={{ margin: "2px 0 0", opacity: 0.88 }}>
+          <strong>Book these dates:</strong> {[hotel.checkInDate, hotel.checkOutDate].filter(Boolean).join(" to ")}
+        </p>
+      )}
+      {hotel.distanceFromVenue && <p style={{ margin: "2px 0 0", opacity: 0.88 }}><strong>Distance:</strong> {hotel.distanceFromVenue}</p>}
+      {hotel.pricePerNight != null && <p style={{ margin: "2px 0 0", opacity: 0.88 }}><strong>Rate:</strong> {formatMoney(hotel.pricePerNight)}</p>}
+      {hotel.discountCode && <p style={{ margin: "2px 0 0", opacity: 0.88 }}><strong>Group code:</strong> {hotel.discountCode}</p>}
+      {hotel.cutoffDate && <p style={{ margin: "2px 0 0", opacity: 0.88 }}><strong>Cutoff Date to Book:</strong> {formatHotelCutoffDate(hotel.cutoffDate)}</p>}
+      {(hotel.checkInDate || hotel.checkOutDate) && (
+        <p style={{ margin: "6px 0 0", fontWeight: 800, color: GOLD }}>
+          Select the check-in/check-out dates above when booking.
+        </p>
+      )}
+      {hotel.bookingLink && (
+        <a
+          href={hotel.bookingLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: "block",
+            marginTop: 8,
+            padding: "8px 10px",
+            borderRadius: 8,
+            background: GOLD,
+            color: isLight ? "#fff" : BG,
+            fontWeight: 800,
+            textAlign: "center",
+            textDecoration: "none",
+          }}
+        >
+          Open booking link
+        </a>
+      )}
+    </div>
+  );
 
   useEffect(() => {
     if (!info) return;
@@ -280,37 +343,14 @@ export default function SaveTheDate() {
         <p style={{ margin: "0 0 7px", fontSize: 10 * sc, fontWeight: 800, letterSpacing: "0.18em", textTransform: "uppercase", color: GOLD }}>
           Hotel Info
         </p>
-        {hotelSummary.map((hotel) => (
-          <div key={hotel.id} style={{ marginTop: 8, fontSize: 10.5 * sc, lineHeight: 1.45 }}>
-            <p style={{ margin: 0, fontWeight: 800 }}>{hotel.hotelName || "Hotel block"}</p>
-            {hotelAddressLine(hotel) && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>{hotelAddressLine(hotel)}</p>}
-            {hotel.groupName && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>Block: {hotel.groupName}</p>}
-            {(hotel.checkInDate || hotel.checkOutDate) && (
-              <p style={{ margin: "2px 0 0", opacity: 0.88 }}>
-                Book these dates: {[hotel.checkInDate, hotel.checkOutDate].filter(Boolean).join(" to ")}
-              </p>
-            )}
-            {hotel.distanceFromVenue && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>Distance: {hotel.distanceFromVenue}</p>}
-            {hotel.pricePerNight != null && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>Rate: {formatMoney(hotel.pricePerNight)}</p>}
-            {hotel.discountCode && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>Group code: {hotel.discountCode}</p>}
-            {hotel.cutoffDate && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>Book by: {formatHotelCutoffDate(hotel.cutoffDate)}</p>}
-            {(hotel.checkInDate || hotel.checkOutDate) && (
-              <p style={{ margin: "6px 0 0", fontWeight: 800, color: GOLD }}>
-                When booking, select the check-in/check-out dates above to see the wedding block rate.
-              </p>
-            )}
-            {hotel.bookingLink && (
-              <a href={hotel.bookingLink} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 6, color: GOLD, fontWeight: 800, textDecoration: "none" }}>
-                Open booking link
-              </a>
-            )}
-          </div>
-        ))}
         {canSyncHotelToGuest && (
-          <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${isOverlay ? "rgba(255,255,255,.24)" : CARD_BDR}` }}>
+          <div style={{ marginTop: 10 }}>
             <label style={{ display: "block", marginBottom: 5, fontSize: 10 * sc, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>
               Will you need a hotel room?
             </label>
+            <p style={{ margin: "0 0 8px", fontSize: 9.5 * sc, opacity: 0.78 }}>
+              Let the couple know if you need a room, already booked one, or do not need hotel accommodations.
+            </p>
             <select
               value={hotelResponse}
               onChange={(event) => {
@@ -320,36 +360,21 @@ export default function SaveTheDate() {
                 setHotelSaveError(null);
                 if (value === "no") setHotelBlockId("");
               }}
-              style={{
-                width: "100%",
-                border: `1px solid ${isOverlay ? "rgba(255,255,255,.28)" : CARD_BDR}`,
-                borderRadius: 8,
-                background: isOverlay ? "rgba(255,255,255,.12)" : "rgba(255,255,255,.78)",
-                color: WHITE,
-                padding: "8px 9px",
-                fontFamily: LABEL_FONT,
-                fontSize: 11 * sc,
-              }}
+              style={hotelFieldStyle(isOverlay)}
             >
               <option value="no">No</option>
-              <option value="yes">Yes, I need a room</option>
+              <option value="yes">Yes</option>
               <option value="booked">I've already booked</option>
             </select>
             {hotelResponse !== "no" && (
               <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
+                <label style={{ display: "block", marginBottom: -4, fontSize: 9.5 * sc, opacity: 0.78 }}>
+                  {hotelResponse === "booked" ? "Which hotel did you book?" : "Which hotel block will you book?"}
+                </label>
                 <select
                   value={hotelBlockId}
                   onChange={(event) => setHotelBlockId(event.target.value)}
-                  style={{
-                    width: "100%",
-                    border: `1px solid ${isOverlay ? "rgba(255,255,255,.28)" : CARD_BDR}`,
-                    borderRadius: 8,
-                    background: isOverlay ? "rgba(255,255,255,.12)" : "rgba(255,255,255,.78)",
-                    color: WHITE,
-                    padding: "8px 9px",
-                    fontFamily: LABEL_FONT,
-                    fontSize: 11 * sc,
-                  }}
+                  style={hotelFieldStyle(isOverlay)}
                 >
                   <option value="">{hotelResponse === "booked" ? "Booked outside the block / not listed" : "Decide later"}</option>
                   {hotelOptions.map((hotel) => (
@@ -358,28 +383,21 @@ export default function SaveTheDate() {
                     </option>
                   ))}
                 </select>
+                <label style={{ display: "block", marginBottom: -4, fontSize: 9.5 * sc, opacity: 0.78 }}>
+                  {hotelResponse === "booked" ? "How many rooms did you book?" : "How many rooms will you need?"}
+                </label>
                 <select
                   value={hotelRoomCount}
                   onChange={(event) => setHotelRoomCount(event.target.value)}
-                  style={{
-                    width: "100%",
-                    border: `1px solid ${isOverlay ? "rgba(255,255,255,.28)" : CARD_BDR}`,
-                    borderRadius: 8,
-                    background: isOverlay ? "rgba(255,255,255,.12)" : "rgba(255,255,255,.78)",
-                    color: WHITE,
-                    padding: "8px 9px",
-                    fontFamily: LABEL_FONT,
-                    fontSize: 11 * sc,
-                  }}
+                  style={hotelFieldStyle(isOverlay)}
                 >
                   <option value="1">1 room</option>
                   <option value="2">2 rooms</option>
                 </select>
-                {selectedHotel && (
-                  <p style={{ margin: 0, fontSize: 9.5 * sc, opacity: 0.78 }}>
-                    This will sync to {selectedHotel.hotelName || "the selected hotel block"} in the guest list.
-                  </p>
-                )}
+                {selectedHotel && renderSelectedHotelDetails(selectedHotel, isOverlay)}
+                <p style={{ margin: 0, fontSize: 9.5 * sc, opacity: 0.78 }}>
+                  This saves to the guest list hotel fields.
+                </p>
               </div>
             )}
             <button
@@ -407,6 +425,32 @@ export default function SaveTheDate() {
             {hotelSaveError && <p style={{ margin: "7px 0 0", fontSize: 9.5 * sc, color: "#b91c1c" }}>{hotelSaveError}</p>}
           </div>
         )}
+        {!canSyncHotelToGuest && hotelSummary.map((hotel) => (
+          <div key={hotel.id} style={{ marginTop: 8, fontSize: 10.5 * sc, lineHeight: 1.45 }}>
+            <p style={{ margin: 0, fontWeight: 800 }}>{hotel.hotelName || "Hotel block"}</p>
+            {hotelAddressLine(hotel) && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>{hotelAddressLine(hotel)}</p>}
+            {hotel.groupName && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>Block: {hotel.groupName}</p>}
+            {(hotel.checkInDate || hotel.checkOutDate) && (
+              <p style={{ margin: "2px 0 0", opacity: 0.88 }}>
+                Book these dates: {[hotel.checkInDate, hotel.checkOutDate].filter(Boolean).join(" to ")}
+              </p>
+            )}
+            {hotel.distanceFromVenue && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>Distance: {hotel.distanceFromVenue}</p>}
+            {hotel.pricePerNight != null && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>Rate: {formatMoney(hotel.pricePerNight)}</p>}
+            {hotel.discountCode && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>Group code: {hotel.discountCode}</p>}
+            {hotel.cutoffDate && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>Cutoff Date to Book: {formatHotelCutoffDate(hotel.cutoffDate)}</p>}
+            {(hotel.checkInDate || hotel.checkOutDate) && (
+              <p style={{ margin: "6px 0 0", fontWeight: 800, color: GOLD }}>
+                When booking, select the check-in/check-out dates above to see the wedding block rate.
+              </p>
+            )}
+            {hotel.bookingLink && (
+              <a href={hotel.bookingLink} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 6, color: GOLD, fontWeight: 800, textDecoration: "none" }}>
+                Open booking link
+              </a>
+            )}
+          </div>
+        ))}
       </div>
     );
   };

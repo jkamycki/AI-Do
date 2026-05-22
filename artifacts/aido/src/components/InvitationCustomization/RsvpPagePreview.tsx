@@ -540,7 +540,7 @@ export function RsvpPagePreview({
                             )}
                             {selectedHotel?.cutoffDate && (
                               <p style={{ fontFamily: bodyFont, fontSize: 9 * sc, color: textMuted, marginTop: 2 }}>
-                                <strong style={{ color: textColor }}>Book by:</strong> {formatHotelCutoffDate(selectedHotel.cutoffDate)}
+                                <strong style={{ color: textColor }}>Cutoff Date to Book:</strong> {formatHotelCutoffDate(selectedHotel.cutoffDate)}
                               </p>
                             )}
                             {selectedHotel?.bookingLink && (
@@ -644,7 +644,7 @@ export function RsvpPagePreview({
                 )}
                 {selectedHotel?.cutoffDate && (
                   <p style={{ fontFamily: bodyFont, fontSize: 9 * sc, color: textMuted, marginTop: 2 }}>
-                    <strong style={{ color: textColor }}>Book by:</strong> {formatHotelCutoffDate(selectedHotel.cutoffDate)}
+                    <strong style={{ color: textColor }}>Cutoff Date to Book:</strong> {formatHotelCutoffDate(selectedHotel.cutoffDate)}
                   </p>
                 )}
                 <p style={{ fontFamily: bodyFont, fontSize: 9 * sc, color: textMuted, marginTop: 2 }}>
