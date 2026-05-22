@@ -6,7 +6,10 @@ import { getAuth } from "@clerk/express";
 // Broad protection against bots/scrapers hitting the API.
 export const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 300,
+  limit: (req: Request) =>
+    process.env.LOAD_TEST_MODE === "true" && req.headers["x-aido-load-test"] === "true"
+      ? 60_000
+      : 300,
   standardHeaders: "draft-8",
   legacyHeaders: false,
   validate: { xForwardedForHeader: false },
