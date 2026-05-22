@@ -195,7 +195,7 @@ const MANUAL_CATEGORY_BADGE_STYLES: Record<string, string> = {
   "Beauty": "border-transparent bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300",
   "Stationery": "border-transparent bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
   "Honeymoon": "border-transparent bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300",
-  "License/Certification": "border-transparent bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
+  "License/Certification": "border-transparent bg-stone-200 text-stone-900 dark:bg-stone-800 dark:text-stone-200",
 };
 const ALL_CATEGORY_BADGE_STYLES: Record<string, string> = {
   ...VENDOR_CATEGORY_BADGE_STYLES,
