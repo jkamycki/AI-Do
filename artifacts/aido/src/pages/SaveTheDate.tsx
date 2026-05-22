@@ -51,6 +51,10 @@ interface SaveTheDateInfo {
     discountCode?: string | null;
     groupName?: string | null;
     cutoffDate?: string | null;
+    checkInDate?: string | null;
+    checkOutDate?: string | null;
+    pricePerNight?: number | null;
+    distanceFromVenue?: string | null;
     address?: string | null;
     city?: string | null;
     state?: string | null;
@@ -100,6 +104,11 @@ function formatHotelCutoffDate(value: string | null | undefined) {
   const date = yy && mm && dd ? new Date(yy, mm - 1, dd) : new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
+function formatMoney(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(Number(value))) return "";
+  return `$${Number(value).toLocaleString("en-US", { maximumFractionDigits: 0 })}/night`;
 }
 
 function hotelAddressLine(hotel: NonNullable<SaveTheDateInfo["hotelOptions"]>[number]) {
@@ -276,8 +285,20 @@ export default function SaveTheDate() {
             <p style={{ margin: 0, fontWeight: 800 }}>{hotel.hotelName || "Hotel block"}</p>
             {hotelAddressLine(hotel) && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>{hotelAddressLine(hotel)}</p>}
             {hotel.groupName && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>Block: {hotel.groupName}</p>}
+            {(hotel.checkInDate || hotel.checkOutDate) && (
+              <p style={{ margin: "2px 0 0", opacity: 0.88 }}>
+                Book these dates: {[hotel.checkInDate, hotel.checkOutDate].filter(Boolean).join(" to ")}
+              </p>
+            )}
+            {hotel.distanceFromVenue && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>Distance: {hotel.distanceFromVenue}</p>}
+            {hotel.pricePerNight != null && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>Rate: {formatMoney(hotel.pricePerNight)}</p>}
             {hotel.discountCode && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>Group code: {hotel.discountCode}</p>}
             {hotel.cutoffDate && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>Book by: {formatHotelCutoffDate(hotel.cutoffDate)}</p>}
+            {(hotel.checkInDate || hotel.checkOutDate) && (
+              <p style={{ margin: "6px 0 0", fontWeight: 800, color: GOLD }}>
+                When booking, select the check-in/check-out dates above to see the wedding block rate.
+              </p>
+            )}
             {hotel.bookingLink && (
               <a href={hotel.bookingLink} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 6, color: GOLD, fontWeight: 800, textDecoration: "none" }}>
                 Open booking link

@@ -494,6 +494,8 @@ export const hotelBlocks = pgTable("hotel_blocks", {
   discountCode: text("discount_code"),
   groupName: text("group_name"),
   cutoffDate: text("cutoff_date"),
+  checkInDate: text("check_in_date"),
+  checkOutDate: text("check_out_date"),
   roomsReserved: integer("rooms_reserved"),
   roomsBooked: integer("rooms_booked").notNull().default(0),
   pricePerNight: numeric("price_per_night", { precision: 12, scale: 2 }),

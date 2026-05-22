@@ -191,6 +191,32 @@ function buildHotelRsvpEmailText(hotels: Array<{
   ].filter(Boolean).join(" ");
 }
 
+async function listSaveTheDateHotelOptions(profileId: number) {
+  const rows = await db
+    .select({
+      id: hotelBlocks.id,
+      hotelName: hotelBlocks.hotelName,
+      bookingLink: hotelBlocks.bookingLink,
+      discountCode: hotelBlocks.discountCode,
+      groupName: hotelBlocks.groupName,
+      cutoffDate: hotelBlocks.cutoffDate,
+      checkInDate: hotelBlocks.checkInDate,
+      checkOutDate: hotelBlocks.checkOutDate,
+      pricePerNight: hotelBlocks.pricePerNight,
+      distanceFromVenue: hotelBlocks.distanceFromVenue,
+      address: hotelBlocks.address,
+      city: hotelBlocks.city,
+      state: hotelBlocks.state,
+      zip: hotelBlocks.zip,
+    })
+    .from(hotelBlocks)
+    .where(eq(hotelBlocks.profileId, profileId));
+  return rows.map((hotel) => ({
+    ...hotel,
+    pricePerNight: hotel.pricePerNight != null ? Number(hotel.pricePerNight) : null,
+  }));
+}
+
 function sanitizeOrigin(raw: string | undefined, fallback: string): string {
   const value = raw?.trim().replace(/\/+$/, "");
   if (!value) return fallback;
@@ -2217,21 +2243,7 @@ async function buildSharedSaveTheDateInfo(profile: typeof weddingProfiles.$infer
   } catch {
     // best-effort - fall back to AI defaults
   }
-  const saveTheDateHotelOptions = await db
-    .select({
-      id: hotelBlocks.id,
-      hotelName: hotelBlocks.hotelName,
-      bookingLink: hotelBlocks.bookingLink,
-      discountCode: hotelBlocks.discountCode,
-      groupName: hotelBlocks.groupName,
-      cutoffDate: hotelBlocks.cutoffDate,
-      address: hotelBlocks.address,
-      city: hotelBlocks.city,
-      state: hotelBlocks.state,
-      zip: hotelBlocks.zip,
-    })
-    .from(hotelBlocks)
-    .where(eq(hotelBlocks.profileId, profile.id));
+  const saveTheDateHotelOptions = await listSaveTheDateHotelOptions(profile.id);
 
   return {
     guestName,
@@ -2482,6 +2494,8 @@ router.get("/save-the-date/:token", async (req, res) => {
     } catch {
       // best-effort — fall back to AI defaults
     }
+
+    const saveTheDateHotelOptions = await listSaveTheDateHotelOptions(profile.id);
 
     res.json({
       guestName: guest.name,

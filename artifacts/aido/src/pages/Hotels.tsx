@@ -34,6 +34,8 @@ interface HotelBlock {
   discountCode?: string | null;
   groupName?: string | null;
   cutoffDate?: string | null;
+  checkInDate?: string | null;
+  checkOutDate?: string | null;
   roomsReserved?: number | null;
   roomsBooked: number;
   pricePerNight?: number | null;
@@ -53,7 +55,7 @@ interface HotelGuest {
 
 const EMPTY: Partial<HotelBlock> = {
   hotelName: "", address: "", city: "", state: "", zip: "", phone: "", email: "", bookingLink: "",
-  discountCode: "", groupName: "", cutoffDate: "", roomsReserved: undefined,
+  discountCode: "", groupName: "", cutoffDate: "", checkInDate: "", checkOutDate: "", roomsReserved: undefined,
   roomsBooked: 0, pricePerNight: undefined, distanceFromVenue: "", notes: "",
 };
 
@@ -181,6 +183,24 @@ function HotelForm({
             type="date"
             value={form.cutoffDate ?? ""}
             onChange={e => set("cutoffDate", e.target.value)}
+            className="[&::-webkit-calendar-picker-indicator]:invert"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Check-in Date</Label>
+          <Input
+            type="date"
+            value={form.checkInDate ?? ""}
+            onChange={e => set("checkInDate", e.target.value)}
+            className="[&::-webkit-calendar-picker-indicator]:invert"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Check-out Date</Label>
+          <Input
+            type="date"
+            value={form.checkOutDate ?? ""}
+            onChange={e => set("checkOutDate", e.target.value)}
             className="[&::-webkit-calendar-picker-indicator]:invert"
           />
         </div>
@@ -318,6 +338,12 @@ function HotelCard({
           {hotel.distanceFromVenue && (
             <span className="inline-flex items-center gap-1 text-xs bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-full">
               <Navigation className="h-3 w-3" />{hotel.distanceFromVenue}
+            </span>
+          )}
+          {(hotel.checkInDate || hotel.checkOutDate) && (
+            <span className="inline-flex items-center gap-1 text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full">
+              <Calendar className="h-3 w-3" />
+              {[hotel.checkInDate, hotel.checkOutDate].filter(Boolean).join(" to ")}
             </span>
           )}
         </div>

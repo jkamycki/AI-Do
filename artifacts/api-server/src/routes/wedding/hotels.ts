@@ -245,7 +245,7 @@ router.post("/hotels", requireAuth, async (req, res) => {
     const { profile, userId } = await hotelScope(req);
     const {
       hotelName, address, city, state, zip, phone, email, bookingLink, discountCode,
-      groupName, cutoffDate, roomsReserved, roomsBooked, pricePerNight,
+      groupName, cutoffDate, checkInDate, checkOutDate, roomsReserved, roomsBooked, pricePerNight,
       distanceFromVenue, notes,
     } = req.body;
     const [created] = await db.insert(hotelBlocks).values({
@@ -262,6 +262,8 @@ router.post("/hotels", requireAuth, async (req, res) => {
       discountCode: discountCode ?? null,
       groupName: groupName ?? null,
       cutoffDate: cutoffDate ?? null,
+      checkInDate: checkInDate ?? null,
+      checkOutDate: checkOutDate ?? null,
       roomsReserved: roomsReserved ?? null,
       roomsBooked: roomsBooked ?? 0,
       pricePerNight: pricePerNight != null ? String(pricePerNight) : null,
@@ -286,7 +288,7 @@ router.patch("/hotels/:id", requireAuth, async (req, res) => {
     const id = Number(req.params.id);
     const {
       hotelName, address, city, state, zip, phone, email, bookingLink, discountCode,
-      groupName, cutoffDate, roomsReserved, roomsBooked, pricePerNight,
+      groupName, cutoffDate, checkInDate, checkOutDate, roomsReserved, roomsBooked, pricePerNight,
       distanceFromVenue, notes,
     } = req.body;
     const [updated] = await db
@@ -294,7 +296,7 @@ router.patch("/hotels/:id", requireAuth, async (req, res) => {
       .set({
         hotelName, address, city: city ?? null, state: state ?? null, zip: zip ?? null,
         phone, email, bookingLink, discountCode,
-        groupName, cutoffDate, roomsReserved, roomsBooked,
+        groupName, cutoffDate, checkInDate, checkOutDate, roomsReserved, roomsBooked,
         pricePerNight: pricePerNight != null ? String(pricePerNight) : null,
         distanceFromVenue, notes,
       })

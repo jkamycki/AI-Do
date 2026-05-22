@@ -72,6 +72,11 @@ function hotelAddressLine(hotel: NonNullable<InvitationDesignDocument["fields"][
   ].filter(Boolean).join(" ");
 }
 
+function formatMoney(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(Number(value))) return "";
+  return `$${Number(value).toLocaleString("en-US", { maximumFractionDigits: 0 })}/night`;
+}
+
 function RealQrCode({ url, accent }: { url: string; accent: string }) {
   return (
     <div
@@ -240,10 +245,19 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
                     <p key={hotel.id} style={{ margin: "2px 0", fontSize: 8.2, lineHeight: 1.35 }}>
                       <strong>{hotel.hotelName || "Hotel block"}</strong>
                       {hotelAddressLine(hotel) ? ` - ${hotelAddressLine(hotel)}` : ""}
+                      {hotel.groupName ? ` - Block: ${hotel.groupName}` : ""}
+                      {hotel.checkInDate || hotel.checkOutDate ? ` - ${[hotel.checkInDate, hotel.checkOutDate].filter(Boolean).join(" to ")}` : ""}
+                      {hotel.distanceFromVenue ? ` - ${hotel.distanceFromVenue}` : ""}
+                      {hotel.pricePerNight != null ? ` - ${formatMoney(hotel.pricePerNight)}` : ""}
                       {hotel.discountCode ? ` - Code ${hotel.discountCode}` : ""}
                       {hotel.cutoffDate ? ` - Book by ${formatHotelCutoffDate(hotel.cutoffDate)}` : ""}
                     </p>
                   ))}
+                  {hotelSummary.some((hotel) => hotel.checkInDate || hotel.checkOutDate) && (
+                    <p style={{ margin: "5px 0 0", fontSize: 7.6, lineHeight: 1.35, fontWeight: 800, color: accent }}>
+                      Select these check-in/check-out dates when booking.
+                    </p>
+                  )}
                 </div>
               )}
               {!isSaveTheDate && (locLines.length > 0 || timeLines.length > 0 || rsvpDate) && (
@@ -331,10 +345,19 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
                     <p key={hotel.id} style={{ margin: "3px 0", fontSize: 9.5, lineHeight: 1.4 }}>
                       <strong>{hotel.hotelName || "Hotel block"}</strong>
                       {hotelAddressLine(hotel) ? ` - ${hotelAddressLine(hotel)}` : ""}
+                      {hotel.groupName ? ` - Block: ${hotel.groupName}` : ""}
+                      {hotel.checkInDate || hotel.checkOutDate ? ` - ${[hotel.checkInDate, hotel.checkOutDate].filter(Boolean).join(" to ")}` : ""}
+                      {hotel.distanceFromVenue ? ` - ${hotel.distanceFromVenue}` : ""}
+                      {hotel.pricePerNight != null ? ` - ${formatMoney(hotel.pricePerNight)}` : ""}
                       {hotel.discountCode ? ` - Code ${hotel.discountCode}` : ""}
                       {hotel.cutoffDate ? ` - Book by ${formatHotelCutoffDate(hotel.cutoffDate)}` : ""}
                     </p>
                   ))}
+                  {hotelSummary.some((hotel) => hotel.checkInDate || hotel.checkOutDate) && (
+                    <p style={{ margin: "6px 0 0", fontSize: 8.4, lineHeight: 1.35, fontWeight: 800, color: accent }}>
+                      Select these check-in/check-out dates when booking.
+                    </p>
+                  )}
                 </div>
               )}
               {!isSaveTheDate && (locLines.length > 0 || timeLines.length > 0 || rsvpDate) && (
