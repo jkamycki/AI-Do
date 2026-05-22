@@ -341,10 +341,9 @@ export default function SaveTheDate() {
         }}
       >
         <p style={{ margin: "0 0 7px", fontSize: 10 * sc, fontWeight: 800, letterSpacing: "0.18em", textTransform: "uppercase", color: GOLD }}>
-          Hotel Info
+          Hotel Accommodations
         </p>
-        {canSyncHotelToGuest && (
-          <div style={{ marginTop: 10 }}>
+        <div style={{ marginTop: 10 }}>
             <label style={{ display: "block", marginBottom: 5, fontSize: 10 * sc, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>
               Will you need a hotel room?
             </label>
@@ -395,62 +394,41 @@ export default function SaveTheDate() {
                   <option value="2">2 rooms</option>
                 </select>
                 {selectedHotel && renderSelectedHotelDetails(selectedHotel, isOverlay)}
-                <p style={{ margin: 0, fontSize: 9.5 * sc, opacity: 0.78 }}>
-                  This saves to the guest list hotel fields.
-                </p>
+                {canSyncHotelToGuest && (
+                  <p style={{ margin: 0, fontSize: 9.5 * sc, opacity: 0.78 }}>
+                    This saves to the guest list hotel fields.
+                  </p>
+                )}
               </div>
             )}
-            <button
-              type="button"
-              onClick={submitHotelSync}
-              disabled={savingHotel}
-              style={{
-                marginTop: 9,
-                width: "100%",
-                border: 0,
-                borderRadius: 8,
-                background: GOLD,
-                color: isLight ? "#fff" : BG,
-                cursor: savingHotel ? "default" : "pointer",
-                fontFamily: LABEL_FONT,
-                fontSize: 10.5 * sc,
-                fontWeight: 800,
-                padding: "9px 10px",
-                opacity: savingHotel ? 0.65 : 1,
-              }}
-            >
-              {savingHotel ? "Saving..." : "Save hotel response"}
-            </button>
-            {hotelSaveMessage && <p style={{ margin: "7px 0 0", fontSize: 9.5 * sc, color: GOLD }}>{hotelSaveMessage}</p>}
-            {hotelSaveError && <p style={{ margin: "7px 0 0", fontSize: 9.5 * sc, color: "#b91c1c" }}>{hotelSaveError}</p>}
-          </div>
-        )}
-        {!canSyncHotelToGuest && hotelSummary.map((hotel) => (
-          <div key={hotel.id} style={{ marginTop: 8, fontSize: 10.5 * sc, lineHeight: 1.45 }}>
-            <p style={{ margin: 0, fontWeight: 800 }}>{hotel.hotelName || "Hotel block"}</p>
-            {hotelAddressLine(hotel) && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>{hotelAddressLine(hotel)}</p>}
-            {hotel.groupName && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>Block: {hotel.groupName}</p>}
-            {(hotel.checkInDate || hotel.checkOutDate) && (
-              <p style={{ margin: "2px 0 0", opacity: 0.88 }}>
-                Book these dates: {[hotel.checkInDate, hotel.checkOutDate].filter(Boolean).join(" to ")}
-              </p>
-            )}
-            {hotel.distanceFromVenue && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>Distance: {hotel.distanceFromVenue}</p>}
-            {hotel.pricePerNight != null && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>Rate: {formatMoney(hotel.pricePerNight)}</p>}
-            {hotel.discountCode && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>Group code: {hotel.discountCode}</p>}
-            {hotel.cutoffDate && <p style={{ margin: "2px 0 0", opacity: 0.88 }}>Cutoff Date to Book: {formatHotelCutoffDate(hotel.cutoffDate)}</p>}
-            {(hotel.checkInDate || hotel.checkOutDate) && (
-              <p style={{ margin: "6px 0 0", fontWeight: 800, color: GOLD }}>
-                When booking, select the check-in/check-out dates above to see the wedding block rate.
-              </p>
-            )}
-            {hotel.bookingLink && (
-              <a href={hotel.bookingLink} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 6, color: GOLD, fontWeight: 800, textDecoration: "none" }}>
-                Open booking link
-              </a>
+            {canSyncHotelToGuest && (
+              <>
+                <button
+                  type="button"
+                  onClick={submitHotelSync}
+                  disabled={savingHotel}
+                  style={{
+                    marginTop: 9,
+                    width: "100%",
+                    border: 0,
+                    borderRadius: 8,
+                    background: GOLD,
+                    color: isLight ? "#fff" : BG,
+                    cursor: savingHotel ? "default" : "pointer",
+                    fontFamily: LABEL_FONT,
+                    fontSize: 10.5 * sc,
+                    fontWeight: 800,
+                    padding: "9px 10px",
+                    opacity: savingHotel ? 0.65 : 1,
+                  }}
+                >
+                  {savingHotel ? "Saving..." : "Save hotel response"}
+                </button>
+                {hotelSaveMessage && <p style={{ margin: "7px 0 0", fontSize: 9.5 * sc, color: GOLD }}>{hotelSaveMessage}</p>}
+                {hotelSaveError && <p style={{ margin: "7px 0 0", fontSize: 9.5 * sc, color: "#b91c1c" }}>{hotelSaveError}</p>}
+              </>
             )}
           </div>
-        ))}
       </div>
     );
   };
