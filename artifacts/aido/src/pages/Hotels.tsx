@@ -69,6 +69,18 @@ function useCopy() {
   return { copied, copy };
 }
 
+function formatHotelBookingDate(value: string | null | undefined) {
+  if (!value) return "";
+  const [yy, mm, dd] = value.split("-").map(Number);
+  const date = yy && mm && dd ? new Date(yy, mm - 1, dd) : new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
+function formatHotelBookingDateRange(checkIn: string | null | undefined, checkOut: string | null | undefined) {
+  return [formatHotelBookingDate(checkIn), formatHotelBookingDate(checkOut)].filter(Boolean).join(" to ");
+}
+
 function RoomsBar({ reserved, booked }: { reserved?: number | null; booked: number }) {
   if (!reserved) return null;
   const pct = Math.min(100, Math.round((booked / reserved) * 100));
@@ -343,7 +355,7 @@ function HotelCard({
           {(hotel.checkInDate || hotel.checkOutDate) && (
             <span className="inline-flex items-center gap-1 text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full">
               <Calendar className="h-3 w-3" />
-              {[hotel.checkInDate, hotel.checkOutDate].filter(Boolean).join(" to ")}
+              {formatHotelBookingDateRange(hotel.checkInDate, hotel.checkOutDate)}
             </span>
           )}
         </div>

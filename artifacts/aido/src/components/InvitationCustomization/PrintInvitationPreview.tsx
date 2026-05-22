@@ -64,6 +64,18 @@ function formatHotelCutoffDate(value: string | null | undefined) {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+function formatHotelBookingDate(value: string | null | undefined) {
+  if (!value) return "";
+  const [yy, mm, dd] = value.split("-").map(Number);
+  const date = yy && mm && dd ? new Date(yy, mm - 1, dd) : new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
+function formatHotelBookingDateRange(checkIn: string | null | undefined, checkOut: string | null | undefined) {
+  return [formatHotelBookingDate(checkIn), formatHotelBookingDate(checkOut)].filter(Boolean).join(" to ");
+}
+
 function hotelAddressLine(hotel: NonNullable<InvitationDesignDocument["fields"]["hotelOptions"]>[number]) {
   return [
     hotel.address,
@@ -246,7 +258,7 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
                       <strong>{hotel.hotelName || "Hotel block"}</strong>
                       {hotelAddressLine(hotel) ? ` - ${hotelAddressLine(hotel)}` : ""}
                       {hotel.groupName ? ` - Block: ${hotel.groupName}` : ""}
-                      {hotel.checkInDate || hotel.checkOutDate ? ` - ${[hotel.checkInDate, hotel.checkOutDate].filter(Boolean).join(" to ")}` : ""}
+                      {hotel.checkInDate || hotel.checkOutDate ? ` - ${formatHotelBookingDateRange(hotel.checkInDate, hotel.checkOutDate)}` : ""}
                       {hotel.distanceFromVenue ? ` - ${hotel.distanceFromVenue}` : ""}
                       {hotel.pricePerNight != null ? ` - ${formatMoney(hotel.pricePerNight)}` : ""}
                       {hotel.discountCode ? ` - Code ${hotel.discountCode}` : ""}
@@ -346,7 +358,7 @@ export const PrintInvitationPreview = forwardRef<HTMLDivElement, PrintInvitation
                       <strong>{hotel.hotelName || "Hotel block"}</strong>
                       {hotelAddressLine(hotel) ? ` - ${hotelAddressLine(hotel)}` : ""}
                       {hotel.groupName ? ` - Block: ${hotel.groupName}` : ""}
-                      {hotel.checkInDate || hotel.checkOutDate ? ` - ${[hotel.checkInDate, hotel.checkOutDate].filter(Boolean).join(" to ")}` : ""}
+                      {hotel.checkInDate || hotel.checkOutDate ? ` - ${formatHotelBookingDateRange(hotel.checkInDate, hotel.checkOutDate)}` : ""}
                       {hotel.distanceFromVenue ? ` - ${hotel.distanceFromVenue}` : ""}
                       {hotel.pricePerNight != null ? ` - ${formatMoney(hotel.pricePerNight)}` : ""}
                       {hotel.discountCode ? ` - Code ${hotel.discountCode}` : ""}

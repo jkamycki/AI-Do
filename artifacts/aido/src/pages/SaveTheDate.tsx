@@ -107,6 +107,18 @@ function formatHotelCutoffDate(value: string | null | undefined) {
   return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
+function formatHotelBookingDate(value: string | null | undefined) {
+  if (!value) return "";
+  const [yy, mm, dd] = value.split("-").map(Number);
+  const date = yy && mm && dd ? new Date(yy, mm - 1, dd) : new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
+function formatHotelBookingDateRange(checkIn: string | null | undefined, checkOut: string | null | undefined) {
+  return [formatHotelBookingDate(checkIn), formatHotelBookingDate(checkOut)].filter(Boolean).join(" to ");
+}
+
 function formatMoney(value: number | null | undefined) {
   if (value == null || !Number.isFinite(Number(value))) return "";
   return `$${Number(value).toLocaleString("en-US", { maximumFractionDigits: 0 })}/night`;
@@ -248,7 +260,7 @@ export default function SaveTheDate() {
       {hotel.groupName && <p style={{ margin: "6px 0 0", opacity: 0.88 }}><strong>Wedding block:</strong> {hotel.groupName}</p>}
       {(hotel.checkInDate || hotel.checkOutDate) && (
         <p style={{ margin: "2px 0 0", opacity: 0.88 }}>
-          <strong>Book these dates:</strong> {[hotel.checkInDate, hotel.checkOutDate].filter(Boolean).join(" to ")}
+          <strong>Book these dates:</strong> {formatHotelBookingDateRange(hotel.checkInDate, hotel.checkOutDate)}
         </p>
       )}
       {hotel.distanceFromVenue && <p style={{ margin: "2px 0 0", opacity: 0.88 }}><strong>Distance:</strong> {hotel.distanceFromVenue}</p>}
