@@ -1,0 +1,78 @@
+name: E2E
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      include_safe_crud:
+        description: "Run mutating safe CRUD tests too"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  playwright:
+    name: Playwright live workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AIDO_BASE_URL: https://aidowedding.net
+      AIDO_AUTH_STATE_BASE64: ${{ secrets.AIDO_AUTH_STATE_BASE64 }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore authenticated Playwright state
+        run: |
+          if [ -z "$AIDO_AUTH_STATE_BASE64" ]; then
+            echo "Missing AIDO_AUTH_STATE_BASE64 secret. Create it from .auth/user.json to run signed-in workflows."
+            exit 1
+          fi
+          mkdir -p .auth
+          printf '%s' "$AIDO_AUTH_STATE_BASE64" | base64 --decode > .auth/user.json
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run non-mutating workflow tests
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.include_safe_crud == false }}
+        run: pnpm run test:e2e:ci
+
+      - name: Run full workflow tests
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.include_safe_crud == true }}
+        run: pnpm run test:e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload Playwright test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
