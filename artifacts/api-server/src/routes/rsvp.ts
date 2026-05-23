@@ -2176,6 +2176,8 @@ async function buildSharedSaveTheDateInfo(profile: typeof weddingProfiles.$infer
     saveTheDatePhotoUrl: string | null;
     colorPalette: Record<string, string> | null;
     layout: string | null;
+    saveTheDateShowHotel: boolean;
+    saveTheDateHotelBlockId: number | string | null;
   } = {
     useGeneratedInvitation: true,
     backgroundColor: null,
@@ -2190,6 +2192,8 @@ async function buildSharedSaveTheDateInfo(profile: typeof weddingProfiles.$infer
     saveTheDatePhotoUrl: null,
     colorPalette: null,
     layout: null,
+    saveTheDateShowHotel: false,
+    saveTheDateHotelBlockId: null,
   };
 
   try {
@@ -2202,7 +2206,7 @@ async function buildSharedSaveTheDateInfo(profile: typeof weddingProfiles.$infer
       const cust = custRows[0];
       const useGenerated = cust.useGeneratedInvitation !== false;
       const palette = (cust.colorPalette ?? {}) as Record<string, string>;
-      const customColors = (cust.customColors ?? {}) as Record<string, string>;
+      const customColors = (cust.customColors ?? {}) as Record<string, any>;
       const mergedAccent =
         cust.saveTheDateAccentColor
         ?? customColors.saveTheDateAccent
@@ -2238,12 +2242,19 @@ async function buildSharedSaveTheDateInfo(profile: typeof weddingProfiles.$infer
         saveTheDatePhotoUrl: cust.saveTheDatePhotoUrl ?? null,
         colorPalette: useGenerated ? null : mergedPalette,
         layout: useGenerated ? null : (cust.saveTheDateLayout ?? cust.digitalInvitationLayout ?? cust.selectedLayout ?? "classic"),
+        saveTheDateShowHotel: customColors.saveTheDateShowHotel === true,
+        saveTheDateHotelBlockId: customColors.saveTheDateHotelBlockId as number | string | null | undefined ?? null,
       };
     }
   } catch {
     // best-effort - fall back to AI defaults
   }
-  const saveTheDateHotelOptions = await listSaveTheDateHotelOptions(profile.id);
+  const allSaveTheDateHotelOptions = await listSaveTheDateHotelOptions(profile.id);
+  const saveTheDateHotelOptions = customizationData.saveTheDateShowHotel
+    ? customizationData.saveTheDateHotelBlockId && customizationData.saveTheDateHotelBlockId !== "all"
+      ? allSaveTheDateHotelOptions.filter((hotel) => hotel.id === Number(customizationData.saveTheDateHotelBlockId))
+      : allSaveTheDateHotelOptions
+    : [];
 
   return {
     guestName,
@@ -2419,6 +2430,8 @@ router.get("/save-the-date/:token", async (req, res) => {
       // exact same canvas component the editor preview uses (pixel parity).
       colorPalette: Record<string, string> | null;
       layout: string | null;
+      saveTheDateShowHotel: boolean;
+      saveTheDateHotelBlockId: number | string | null;
     } = {
       useGeneratedInvitation: true,
       backgroundColor: null,
@@ -2433,6 +2446,8 @@ router.get("/save-the-date/:token", async (req, res) => {
       saveTheDatePhotoUrl: null,
       colorPalette: null,
       layout: null,
+      saveTheDateShowHotel: false,
+      saveTheDateHotelBlockId: null,
     };
     try {
       const custRows = await db
@@ -2444,7 +2459,7 @@ router.get("/save-the-date/:token", async (req, res) => {
         const cust = custRows[0];
         const useGenerated = cust.useGeneratedInvitation !== false;
         const palette = (cust.colorPalette ?? {}) as Record<string, string>;
-        const customColors = (cust.customColors ?? {}) as Record<string, string>;
+        const customColors = (cust.customColors ?? {}) as Record<string, any>;
         // Prefer the per-invitation dedicated column, then the JSONB backup key,
         // then the shared accent as last resort.
         const mergedAccent =
@@ -2489,13 +2504,20 @@ router.get("/save-the-date/:token", async (req, res) => {
           saveTheDatePhotoUrl: cust.saveTheDatePhotoUrl ?? null,
           colorPalette: useGenerated ? null : mergedPalette,
           layout: useGenerated ? null : (cust.saveTheDateLayout ?? cust.digitalInvitationLayout ?? cust.selectedLayout ?? "classic"),
+          saveTheDateShowHotel: customColors.saveTheDateShowHotel === true,
+          saveTheDateHotelBlockId: customColors.saveTheDateHotelBlockId as number | string | null | undefined ?? null,
         };
       }
     } catch {
       // best-effort — fall back to AI defaults
     }
 
-    const saveTheDateHotelOptions = await listSaveTheDateHotelOptions(profile.id);
+    const allSaveTheDateHotelOptions = await listSaveTheDateHotelOptions(profile.id);
+    const saveTheDateHotelOptions = customizationData.saveTheDateShowHotel
+      ? customizationData.saveTheDateHotelBlockId && customizationData.saveTheDateHotelBlockId !== "all"
+        ? allSaveTheDateHotelOptions.filter((hotel) => hotel.id === Number(customizationData.saveTheDateHotelBlockId))
+        : allSaveTheDateHotelOptions
+      : [];
 
     res.json({
       guestName: guest.name,

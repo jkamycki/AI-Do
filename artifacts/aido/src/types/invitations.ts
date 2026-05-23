@@ -13,6 +13,8 @@ export interface ColorPalette {
   digitalInvitationPhotoZoom?: number;
   rsvpAskHotel?: boolean;
   rsvpHotelBlockId?: number | null;
+  saveTheDateShowHotel?: boolean;
+  saveTheDateHotelBlockId?: number | string | null;
   rsvpMealOptions?: Array<{ value: string; label: string }>;
 }
 

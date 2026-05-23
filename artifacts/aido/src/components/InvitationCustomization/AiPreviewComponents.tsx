@@ -1,5 +1,5 @@
 import { useRef, type ReactNode } from "react";
-import { Heart, MapPin, Download } from "lucide-react";
+import { Heart, MapPin, Download, Hotel } from "lucide-react";
 import type { ColorPalette } from "@/types/invitations";
 import { AuthMediaImage } from "@/components/AuthMediaImage";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
@@ -26,6 +26,19 @@ export interface WeddingInfo {
 }
 
 export interface PhotoPosition { x: number; y: number }
+
+export interface SaveTheDateHotelInfo {
+  id: number;
+  hotelName: string;
+  bookingLink?: string | null;
+  discountCode?: string | null;
+  groupName?: string | null;
+  cutoffDate?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+}
 
 export const MIN_PHOTO_ZOOM = 0.5;
 export const MAX_PHOTO_ZOOM = 2.5;
@@ -119,6 +132,14 @@ function dragDeltaToPercent(e: React.PointerEvent<HTMLElement>, dx: number, dy: 
 
 function firstName(value?: string | null) {
   return String(value || "").trim().split(/\s+/)[0] || "";
+}
+
+function hotelAddressLine(hotel: SaveTheDateHotelInfo) {
+  return [
+    hotel.address,
+    [hotel.city, hotel.state].filter(Boolean).join(", "),
+    hotel.zip,
+  ].filter(Boolean).join(" ");
 }
 
 export interface CustomColors {
@@ -338,6 +359,7 @@ export function AiSaveDatePreview({
   customColors,
   fullPhoto = false,
   photoEffect = "none",
+  hotelOptions = [],
 }: {
   profile: WeddingInfo;
   palette: ColorPalette;
@@ -348,6 +370,7 @@ export function AiSaveDatePreview({
   customColors?: CustomColors;
   fullPhoto?: boolean;
   photoEffect?: string | null;
+  hotelOptions?: SaveTheDateHotelInfo[];
 }) {
   if (fullPhoto) {
     return (
@@ -359,6 +382,7 @@ export function AiSaveDatePreview({
         onPhotoPositionChange={onPhotoPositionChange}
         customColors={customColors}
         photoEffect={photoEffect}
+        hotelOptions={hotelOptions}
       />
     );
   }
@@ -380,6 +404,9 @@ export function AiSaveDatePreview({
   const couple    = [profile.partner2Name, profile.partner1Name].filter(Boolean).join(" & ") || "The Couple";
   const dateStr   = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const cityLine  = [profile.venueCity, profile.venueState].filter(Boolean).join(", ");
+  const primaryHotel = hotelOptions[0] ?? null;
+  const hotelAddress = primaryHotel ? hotelAddressLine(primaryHotel) : "";
+  const hotelCutoff = primaryHotel?.cutoffDate ? formatDate(primaryHotel.cutoffDate, { month: "short", day: "numeric", year: "numeric" }) : null;
 
   return (
     <CardShell
@@ -428,6 +455,53 @@ export function AiSaveDatePreview({
         Formal invitation to follow
       </p>
 
+      {primaryHotel && (
+        <div style={{
+          margin: "16px auto 0",
+          maxWidth: 310,
+          border: `1px solid ${cardBdr}`,
+          background: `${accent}10`,
+          borderRadius: 10,
+          padding: "12px 14px",
+          textAlign: "left",
+          color: text,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <Hotel style={{ width: 14, height: 14, color: accent, flex: "0 0 auto" }} />
+            <p style={{ margin: 0, fontFamily: labelFont, fontSize: 9.5 * sc, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: accent }}>
+              Hotel Block
+            </p>
+          </div>
+          <p style={{ margin: 0, fontFamily: displayFont, fontSize: `${0.95 * sc}rem`, fontWeight: 700, color: text }}>
+            {primaryHotel.hotelName || "Hotel block"}
+          </p>
+          {hotelAddress && (
+            <p style={{ margin: "4px 0 0", fontFamily: labelFont, fontSize: 9.5 * sc, lineHeight: 1.45, color: muted }}>
+              {hotelAddress}
+            </p>
+          )}
+          {(primaryHotel.groupName || primaryHotel.discountCode || hotelCutoff) && (
+            <p style={{ margin: "7px 0 0", fontFamily: labelFont, fontSize: 9.5 * sc, lineHeight: 1.45, color: muted }}>
+              {primaryHotel.groupName ? `Block: ${primaryHotel.groupName}` : ""}
+              {primaryHotel.groupName && primaryHotel.discountCode ? " - " : ""}
+              {primaryHotel.discountCode ? `Code: ${primaryHotel.discountCode}` : ""}
+              {(primaryHotel.groupName || primaryHotel.discountCode) && hotelCutoff ? " - " : ""}
+              {hotelCutoff ? `Book by ${hotelCutoff}` : ""}
+            </p>
+          )}
+          {primaryHotel.bookingLink && (
+            <p style={{ margin: "7px 0 0", fontFamily: labelFont, fontSize: 9 * sc, fontWeight: 700, color: accent }}>
+              Booking link included
+            </p>
+          )}
+          {hotelOptions.length > 1 && (
+            <p style={{ margin: "7px 0 0", fontFamily: labelFont, fontSize: 9 * sc, color: muted }}>
+              Plus {hotelOptions.length - 1} more hotel option{hotelOptions.length > 2 ? "s" : ""}.
+            </p>
+          )}
+        </div>
+      )}
+
       <div style={{ marginTop: 16 }}>
         <div style={{
           display: "inline-flex", alignItems: "center", gap: 6,
@@ -452,6 +526,7 @@ function FullPhotoSaveDatePreview({
   onPhotoPositionChange,
   customColors,
   photoEffect,
+  hotelOptions = [],
 }: {
   profile: WeddingInfo;
   photoUrl?: string | null;
@@ -460,6 +535,7 @@ function FullPhotoSaveDatePreview({
   onPhotoPositionChange?: (pos: PhotoPosition) => void;
   customColors?: CustomColors;
   photoEffect?: string | null;
+  hotelOptions?: SaveTheDateHotelInfo[];
 }) {
   const displayFont = customColors?.font
     ? `'${customColors.font}', ${cormorant}`
@@ -504,6 +580,7 @@ function FullPhotoSaveDatePreview({
   const brideFirst = firstName(profile.partner2Name) || "Partner";
   const dateStr = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const cityLine = [profile.venueCity, profile.venueState].filter(Boolean).join(", ");
+  const primaryHotel = hotelOptions[0] ?? null;
 
   return (
     <div style={{ backgroundColor: BG, borderRadius: 28, padding: "12px" }}>
@@ -596,6 +673,12 @@ function FullPhotoSaveDatePreview({
             {profile.saveTheDateMessage && (
               <p style={{ fontFamily: displayFont, fontSize: `${1 * sc}rem`, fontStyle: "italic", lineHeight: 1.55, margin: "18px 0 0", color: textColor, opacity: 0.9 }}>
                 &ldquo;{profile.saveTheDateMessage}&rdquo;
+              </p>
+            )}
+            {primaryHotel && (
+              <p style={{ fontFamily: labelFont, fontSize: 10 * sc, lineHeight: 1.45, margin: "16px 0 0", color: textColor, opacity: 0.9 }}>
+                Hotel block: {primaryHotel.hotelName || "Hotel block"}
+                {primaryHotel.discountCode ? ` - Code ${primaryHotel.discountCode}` : ""}
               </p>
             )}
           </div>

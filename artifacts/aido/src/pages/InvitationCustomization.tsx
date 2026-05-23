@@ -43,6 +43,7 @@ import {
   Send,
   Plus,
   Trash2,
+  Hotel,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import type {
@@ -329,6 +330,8 @@ export default function InvitationCustomizationPage({
   const [rsvpByDate, setRsvpByDate] = useState<string>("");
   const [rsvpAskHotel, setRsvpAskHotel] = useState(false);
   const [rsvpHotelBlockId, setRsvpHotelBlockId] = useState<string>("all");
+  const [saveTheDateShowHotel, setSaveTheDateShowHotel] = useState(false);
+  const [saveTheDateHotelBlockId, setSaveTheDateHotelBlockId] = useState<string>("all");
   const [rsvpMealOptions, setRsvpMealOptions] = useState<MealOption[]>(DEFAULT_RSVP_MEAL_OPTIONS);
   const [newMealOption, setNewMealOption] = useState("");
   const [savingMessage, setSavingMessage] = useState(false);
@@ -364,6 +367,8 @@ export default function InvitationCustomizationPage({
     rsvpByDate,
     rsvpAskHotel,
     rsvpHotelBlockId,
+    saveTheDateShowHotel,
+    saveTheDateHotelBlockId,
     rsvpMealOptions,
   });
   const saveTheDateBlobUrlRef = useRef<string | null>(null);
@@ -470,6 +475,8 @@ export default function InvitationCustomizationPage({
     rsvpByDate,
     rsvpAskHotel,
     rsvpHotelBlockId,
+    saveTheDateShowHotel,
+    saveTheDateHotelBlockId,
     rsvpMealOptions,
   };
 
@@ -500,6 +507,8 @@ export default function InvitationCustomizationPage({
         digitalInvitationPhotoZoom: v.digitalInvitationPhotoZoom,
         rsvpAskHotel: false,
         rsvpHotelBlockId: null,
+        saveTheDateShowHotel: v.saveTheDateShowHotel,
+        saveTheDateHotelBlockId: v.saveTheDateHotelBlockId === "all" ? "all" : Number(v.saveTheDateHotelBlockId),
         rsvpMealOptions: normalizeMealOptions(v.rsvpMealOptions),
       };
       const body = JSON.stringify({
@@ -663,6 +672,12 @@ export default function InvitationCustomizationPage({
       setRsvpHotelBlockId(
         customization.customColors?.rsvpHotelBlockId
           ? String(customization.customColors.rsvpHotelBlockId)
+          : "all",
+      );
+      setSaveTheDateShowHotel(!!customization.customColors?.saveTheDateShowHotel);
+      setSaveTheDateHotelBlockId(
+        customization.customColors?.saveTheDateHotelBlockId
+          ? String(customization.customColors.saveTheDateHotelBlockId)
           : "all",
       );
       setRsvpMealOptions(normalizeMealOptions(customization.customColors?.rsvpMealOptions));
@@ -959,6 +974,8 @@ export default function InvitationCustomizationPage({
       digitalInvitationPhotoZoom,
       rsvpAskHotel: false,
       rsvpHotelBlockId: null,
+      saveTheDateShowHotel,
+      saveTheDateHotelBlockId: saveTheDateHotelBlockId === "all" ? "all" : Number(saveTheDateHotelBlockId),
       rsvpMealOptions: normalizeMealOptions(rsvpMealOptions),
     };
     return {
@@ -1063,6 +1080,8 @@ export default function InvitationCustomizationPage({
     rsvpByDate,
     rsvpAskHotel,
     rsvpHotelBlockId,
+    saveTheDateShowHotel,
+    saveTheDateHotelBlockId,
     rsvpMealOptions,
   ]);
 
@@ -1084,6 +1103,8 @@ export default function InvitationCustomizationPage({
           digitalInvitationPhotoEffect: v.digitalInvitationPhotoEffect,
           rsvpAskHotel: false,
           rsvpHotelBlockId: null,
+          saveTheDateShowHotel: v.saveTheDateShowHotel,
+          saveTheDateHotelBlockId: v.saveTheDateHotelBlockId === "all" ? "all" : Number(v.saveTheDateHotelBlockId),
           rsvpMealOptions: normalizeMealOptions(v.rsvpMealOptions),
         },
       };
@@ -1124,6 +1145,11 @@ export default function InvitationCustomizationPage({
   const activeCustomStyle = isSTD
     ? customDesign.saveTheDate
     : customDesign.rsvpInvitation;
+  const selectedSaveTheDateHotels = saveTheDateShowHotel
+    ? saveTheDateHotelBlockId === "all"
+      ? hotelBlocks
+      : hotelBlocks.filter((hotel) => String(hotel.id) === saveTheDateHotelBlockId)
+    : [];
   const activeDesignDocument = buildInvitationDesignDocument({
     kind: previewTab,
     deliveryMode,
@@ -1138,7 +1164,7 @@ export default function InvitationCustomizationPage({
     photoZoom: isSTD ? saveTheDatePhotoZoom : digitalInvitationPhotoZoom,
     customStyle: activeCustomStyle,
     rsvpByDate,
-    hotelOptions: hotelBlocks,
+    hotelOptions: isSTD ? selectedSaveTheDateHotels : hotelBlocks,
   });
   const websiteUrl =
     websiteRecord?.slug && websiteRecord?.published
@@ -1722,6 +1748,67 @@ export default function InvitationCustomizationPage({
           {/* RSVP By date — only meaningful for the RSVP invitation, so hide it
               when the user is editing the Save the Date. Autosaves through the
               same debounced effect as the rest of this tab. */}
+          {isSTD && (
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <Hotel className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium">Hotel Block</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Add hotel booking details to the Save the Date preview and guest link.
+                        </p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={saveTheDateShowHotel}
+                        onChange={(event) => setSaveTheDateShowHotel(event.target.checked)}
+                        className="mt-1 h-4 w-4 shrink-0 accent-primary"
+                        aria-label="Show hotel block on save the date"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {saveTheDateShowHotel && (
+                  <div className="space-y-2">
+                    {hotelBlocks.length > 0 ? (
+                      <>
+                        <label className="block text-xs space-y-1">
+                          <span className="text-muted-foreground">Hotel shown</span>
+                          <select
+                            value={saveTheDateHotelBlockId}
+                            onChange={(event) => setSaveTheDateHotelBlockId(event.target.value)}
+                            className="block h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                          >
+                            <option value="all">Show all hotel blocks</option>
+                            {hotelBlocks.map((hotel) => (
+                              <option key={hotel.id} value={String(hotel.id)}>
+                                {hotel.hotelName || "Unnamed Hotel"}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <div className="rounded-md border bg-muted/20 px-3 py-2 text-xs text-muted-foreground leading-relaxed">
+                          {selectedSaveTheDateHotels[0]?.hotelName || "Hotel block"} will appear in the preview below.
+                          {selectedSaveTheDateHotels.length > 1 ? ` Guests can see ${selectedSaveTheDateHotels.length} hotel options.` : ""}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="rounded-md border bg-muted/20 px-3 py-2 text-xs text-muted-foreground leading-relaxed">
+                        Add a hotel block in Hotels first, then come back here to show it on the Save the Date.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {!isSTD && (
             <Card>
               <CardContent className="p-4 space-y-4">
@@ -2179,6 +2266,7 @@ export default function InvitationCustomizationPage({
                         customColors={previewCustomColors}
                         fullPhoto={false}
                         photoEffect={saveTheDatePhotoEffect}
+                        hotelOptions={selectedSaveTheDateHotels}
                       />
                     ) : (
                       <AiDigitalInvitationPreview
