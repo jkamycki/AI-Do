@@ -451,16 +451,30 @@ function ContractCard({ contract, onDelete, onRename }: { contract: Contract; on
           </div>
           <div className="flex-1 min-w-0">
             {renaming ? (
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <Input
                   autoFocus
                   value={nameInput}
                   onChange={e => setNameInput(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter") submitRename(); if (e.key === "Escape") { setRenaming(false); setNameInput(contract.fileName); } }}
-                  className="h-7 text-sm font-semibold"
+                  className="h-9 text-sm font-semibold sm:h-7"
                 />
-                <button onClick={submitRename} className="p-1 rounded hover:bg-muted text-emerald-600"><Check className="h-3.5 w-3.5" /></button>
-                <button onClick={() => { setRenaming(false); setNameInput(contract.fileName); }} className="p-1 rounded hover:bg-muted text-muted-foreground"><X className="h-3.5 w-3.5" /></button>
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:gap-1.5">
+                  <Button type="button" size="sm" className="h-9 gap-1.5 sm:h-7 sm:px-2" onClick={submitRename}>
+                    <Check className="h-3.5 w-3.5" />
+                    Save
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-9 gap-1.5 sm:h-7 sm:px-2"
+                    onClick={() => { setRenaming(false); setNameInput(contract.fileName); }}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    Cancel
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="flex flex-wrap items-center gap-2">
@@ -469,7 +483,7 @@ function ContractCard({ contract, onDelete, onRename }: { contract: Contract; on
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-7 shrink-0 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+                  className="h-8 shrink-0 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground sm:h-7"
                   title={t("contracts.rename")}
                   onClick={() => { setNameInput(contract.fileName); setRenaming(true); }}
                 >
@@ -787,7 +801,7 @@ export default function Contracts({ embedded = false }: { embedded?: boolean } =
               </span>
             </span>
           </label>
-          <div className="flex gap-2">
+          <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
             <Button className="flex-1" onClick={confirmUpload} disabled={!pendingName.trim()}>
               <Upload className="h-4 w-4 mr-2" /> {t("contracts.analyze_and_save")}
             </Button>
@@ -806,7 +820,14 @@ export default function Contracts({ embedded = false }: { embedded?: boolean } =
           onDrop={onDrop}
           onClick={() => fileRef.current?.click()}
         >
-          <input ref={fileRef} type="file" className="hidden" accept=".pdf,.txt,.docx" onChange={onFileChange} />
+          <input
+            ref={fileRef}
+            id="contract-file-upload"
+            type="file"
+            className="sr-only"
+            accept=".pdf,.txt,.docx,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            onChange={onFileChange}
+          />
           <div className="flex flex-col items-center gap-3">
             {uploading ? (
               <>
@@ -825,9 +846,13 @@ export default function Contracts({ embedded = false }: { embedded?: boolean } =
                   <p className="text-sm font-semibold text-foreground">{t("contracts.drop_here")}</p>
                   <p className="text-xs text-muted-foreground mt-1">{t("contracts.click_to_browse")}</p>
                 </div>
-                <Button size="sm" variant="outline" className="mt-1 border-primary/30 text-primary" onClick={e => { e.stopPropagation(); fileRef.current?.click(); }}>
+                <label
+                  htmlFor="contract-file-upload"
+                  className="mt-1 inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-primary/30 bg-background px-4 text-sm font-medium text-primary shadow-sm transition-colors hover:bg-primary/5 sm:h-9"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {t("contracts.choose_file")}
-                </Button>
+                </label>
               </>
             )}
           </div>
