@@ -122,6 +122,7 @@ export interface WebsiteRendererPayload {
     city?: string | null;
     state?: string | null;
     zip?: string | null;
+    distanceFromVenue?: string | null;
   }>;
   mealOptions?: Array<{ value: string; label: string }>;
   galleryImages: Array<{ url: string; caption?: string; order: number }>;
@@ -2435,8 +2436,17 @@ function Schedule({
 
 function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const text = data.customText.travel ?? "";
-  const hotelName = (data.customText._hotelName ?? "").trim();
-  const hotelAddress = (data.customText._hotelAddress ?? "").trim();
+  const selectedHotelBlockId =
+    data.customText._rsvpHotelBlockId && data.customText._rsvpHotelBlockId !== "all"
+      ? data.customText._rsvpHotelBlockId
+      : "";
+  const syncedHotel =
+    (selectedHotelBlockId
+      ? data.hotelOptions?.find((hotel) => String(hotel.id) === selectedHotelBlockId)
+      : data.hotelOptions?.[0]) ?? null;
+  const syncedHotelAddress = syncedHotel ? websiteHotelAddressLine(syncedHotel) : "";
+  const hotelName = (syncedHotel?.hotelName || data.customText._hotelName || "").trim();
+  const hotelAddress = (syncedHotelAddress || data.customText._hotelAddress || "").trim();
   const hasHotel = !!hotelName;
   if (!text && !data.couple.venue && !hasHotel && !ctx.editable) return null;
   const labelColor = sectionTextColor(data, "travel");
@@ -2582,31 +2592,44 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                     className="text-[11px] font-semibold uppercase tracking-wider"
                     style={{ color: labelColor }}
                   />
-                  <EditableText
-                    as="div"
-                    editable={ctx.editable}
-                    value={data.customText._hotelName ?? ""}
-                    defaultValue={ctx.editable ? "Hotel name" : ""}
-                    onCommit={(v) => ctx.onTextChange("_hotelName", v)}
+                  <div
                     className="text-base sm:text-lg font-medium"
                     style={{ color: labelColor }}
-                    {...withBaseColor(tsp(ctx, "_hotelName"), labelColor)}
-                  />
-                  <EditableText
-                    as="div"
-                    editable={ctx.editable}
-                    value={data.customText._hotelAddress ?? ""}
-                    defaultValue={
-                      ctx.editable ? "Address (street, city, state)" : ""
-                    }
-                    onCommit={(v) => ctx.onTextChange("_hotelAddress", v)}
-                    className="text-sm font-medium"
-                    style={{ color: labelColor }}
-                    {...withBaseColor(tsp(ctx, "_hotelAddress"), labelColor)}
-                  />
+                  >
+                    {hotelName || (ctx.editable ? "Hotel name" : "")}
+                  </div>
+                  {(hotelAddress || ctx.editable) && (
+                    <div
+                      className="text-sm font-medium"
+                      style={{ color: labelColor }}
+                    >
+                      {hotelAddress || "Address (street, city, state)"}
+                    </div>
+                  )}
+                  {syncedHotel?.groupName && (
+                    <div className="mt-2 text-xs font-medium" style={{ color: labelColor }}>
+                      Room block: {syncedHotel.groupName}
+                    </div>
+                  )}
+                  {syncedHotel?.discountCode && (
+                    <div className="text-xs font-medium" style={{ color: labelColor }}>
+                      Code: {syncedHotel.discountCode}
+                    </div>
+                  )}
+                  {syncedHotel?.cutoffDate && (
+                    <div className="text-xs font-medium" style={{ color: labelColor }}>
+                      Book by {websiteHotelCutoffDate(syncedHotel.cutoffDate)}
+                    </div>
+                  )}
+                  {syncedHotel?.distanceFromVenue && (
+                    <div className="text-xs font-medium" style={{ color: labelColor }}>
+                      {syncedHotel.distanceFromVenue} from venue
+                    </div>
+                  )}
                 </div>
               </div>
-              {hasHotel && (
+              <div className="flex flex-wrap items-center gap-3">
+                {hasHotel && (
                 <a
                   href={`https://www.google.com/maps/search/${hotelQuery}`}
                   target="_blank"
@@ -2617,7 +2640,20 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   <Navigation className="h-3.5 w-3.5" />
                   {data.customText._openInGoogleMaps || "Open in Google Maps"}
                 </a>
-              )}
+                )}
+                {syncedHotel?.bookingLink && (
+                  <a
+                    href={syncedHotel.bookingLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium transition-opacity hover:opacity-70"
+                    style={{ color: data.colorPalette.primary }}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Book hotel block
+                  </a>
+                )}
+              </div>
             </div>
           )}
       </div>

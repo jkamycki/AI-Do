@@ -322,6 +322,7 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
       city: hotelBlocks.city,
       state: hotelBlocks.state,
       zip: hotelBlocks.zip,
+      distanceFromVenue: hotelBlocks.distanceFromVenue,
     })
     .from(hotelBlocks)
     .where(eq(hotelBlocks.profileId, profile.id))
@@ -405,6 +406,7 @@ async function buildInvitationSharePayload(profileId: number, frontendOrigin: st
       city: hotelBlocks.city,
       state: hotelBlocks.state,
       zip: hotelBlocks.zip,
+      distanceFromVenue: hotelBlocks.distanceFromVenue,
     })
     .from(hotelBlocks)
     .where(eq(hotelBlocks.profileId, profile.id))
