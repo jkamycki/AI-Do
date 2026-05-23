@@ -183,16 +183,18 @@ function applyTimeMoveInstructions(events: TimelineBlock[], vision: string): Tim
   return moved.sort((a, b) => parseTimeToMinutes(a.startTime, 0) - parseTimeToMinutes(b.startTime, 0));
 }
 
-function moveEventEarlier(events: TimelineBlock[], fromIndex: number, toIndex: number, note: string): TimelineBlock[] {
-  if (fromIndex <= toIndex || fromIndex <= 0) return events;
+function moveEventToIndex(events: TimelineBlock[], fromIndex: number, toIndex: number, note: string): TimelineBlock[] {
+  if (fromIndex === toIndex || fromIndex < 0) return events;
   const ordered = events.map(event => ({ ...event }));
   const [target] = ordered.splice(fromIndex, 1);
   if (!target) return ordered;
-  ordered.splice(toIndex, 0, target);
+  const clampedToIndex = Math.max(0, Math.min(toIndex, ordered.length));
+  ordered.splice(clampedToIndex, 0, target);
 
-  let cursor = parseTimeToMinutes(events[toIndex]?.startTime, parseTimeToMinutes(target.startTime, 8 * 60));
-  const lastRetimedIndex = Math.max(fromIndex, toIndex);
-  for (let index = toIndex; index <= lastRetimedIndex; index += 1) {
+  const firstRetimedIndex = Math.min(fromIndex, clampedToIndex);
+  const lastRetimedIndex = Math.max(fromIndex, clampedToIndex);
+  let cursor = parseTimeToMinutes(events[firstRetimedIndex]?.startTime, parseTimeToMinutes(target.startTime, 8 * 60));
+  for (let index = firstRetimedIndex; index <= lastRetimedIndex; index += 1) {
     const event = ordered[index];
     if (!event) continue;
     const duration = eventDuration(event);
@@ -205,9 +207,33 @@ function moveEventEarlier(events: TimelineBlock[], fromIndex: number, toIndex: n
   return ordered.sort((a, b) => parseTimeToMinutes(a.startTime, 0) - parseTimeToMinutes(b.startTime, 0));
 }
 
+function applyDurationInstructions(events: TimelineBlock[], vision: string): TimelineBlock[] {
+  const adjusted = events.map(event => ({ ...event }));
+  const durationPatterns = [
+    /\b(?:make|set|change)\s+(.{3,70}?)\s+(?:duration\s+)?(?:to|for)\s+(\d{1,3})\s*(?:minutes?|mins?)\b/gi,
+    /\b(?:make|set|change)\s+(.{3,70}?)\s+(\d{1,3})\s*(?:minutes?|mins?)\b/gi,
+    /\b(?:shorten|extend|lengthen)\s+(.{3,70}?)\s+(?:to|for)\s+(\d{1,3})\s*(?:minutes?|mins?)\b/gi,
+  ];
+
+  for (const re of durationPatterns) {
+    let match: RegExpExecArray | null;
+    while ((match = re.exec(vision))) {
+      const label = match[1]?.trim() ?? "";
+      const idx = findEventIndex(adjusted, label);
+      if (idx < 0) continue;
+      const duration = Math.max(15, Math.min(240, Number(match[2])));
+      const start = parseTimeToMinutes(adjusted[idx].startTime, 8 * 60);
+      adjusted[idx].endTime = minutesToTime(start + duration);
+      adjusted[idx].notes = [adjusted[idx].notes, `Duration adjusted from prompt: ${match[0]}.`].filter(Boolean).join(" ");
+    }
+  }
+
+  return adjusted.sort((a, b) => parseTimeToMinutes(a.startTime, 0) - parseTimeToMinutes(b.startTime, 0));
+}
+
 function applyRelativeMoveInstructions(events: TimelineBlock[], vision: string): TimelineBlock[] {
   let ordered = events.map(event => ({ ...event }));
-  const earlyRe = /\b(?:move|put|schedule|start|shift)\s+(.{3,70}?)\s+(?:much\s+)?(?:earlier in the day|earlier|early|up|sooner)\b/gi;
+  const earlyRe = /\b(?:move|put|schedule|start|shift)\s+(.{3,70}?)\s+(?:to\s+)?(?:much\s+)?(?:earlier in the day|earlier|early|up|sooner)\b/gi;
   let match: RegExpExecArray | null;
 
   while ((match = earlyRe.exec(vision))) {
@@ -217,7 +243,18 @@ function applyRelativeMoveInstructions(events: TimelineBlock[], vision: string):
     const toIndex = /early|earlier in the day|sooner/i.test(match[0])
       ? Math.max(1, idx - 2)
       : idx - 1;
-    ordered = moveEventEarlier(ordered, idx, toIndex, `Moved earlier from prompt: ${match[0]}.`);
+    ordered = moveEventToIndex(ordered, idx, toIndex, `Moved earlier from prompt: ${match[0]}.`);
+  }
+
+  const laterRe = /\b(?:move|put|schedule|start|shift)\s+(.{3,70}?)\s+(?:to\s+)?(?:much\s+)?(?:later in the day|later|back)\b/gi;
+  while ((match = laterRe.exec(vision))) {
+    const label = match[1]?.trim() ?? "";
+    const idx = findEventIndex(ordered, label);
+    if (idx < 0 || idx >= ordered.length - 1) continue;
+    const toIndex = /later in the day/i.test(match[0])
+      ? Math.min(ordered.length - 1, idx + 2)
+      : idx + 1;
+    ordered = moveEventToIndex(ordered, idx, toIndex, `Moved later from prompt: ${match[0]}.`);
   }
 
   const beforeRe = /\b(?:move|put|schedule|start|shift)\s+(.{3,70}?)\s+(?:before|ahead of)\s+(.{3,70}?)(?:[.!?]|$)/gi;
@@ -226,8 +263,22 @@ function applyRelativeMoveInstructions(events: TimelineBlock[], vision: string):
     const referenceLabel = match[2]?.trim() ?? "";
     const idx = findEventIndex(ordered, label);
     const referenceIndex = findEventIndex(ordered, referenceLabel);
-    if (idx < 0 || referenceIndex < 0 || idx < referenceIndex) continue;
-    ordered = moveEventEarlier(ordered, idx, referenceIndex, `Moved before ${ordered[referenceIndex]?.title ?? referenceLabel} from prompt: ${match[0]}.`);
+    if (idx < 0 || referenceIndex < 0) continue;
+    const toIndex = idx < referenceIndex ? referenceIndex - 1 : referenceIndex;
+    if (idx === toIndex) continue;
+    ordered = moveEventToIndex(ordered, idx, toIndex, `Moved before ${ordered[referenceIndex]?.title ?? referenceLabel} from prompt: ${match[0]}.`);
+  }
+
+  const afterRe = /\b(?:move|put|schedule|start|shift)\s+(.{3,70}?)\s+(?:after|behind|following)\s+(.{3,70}?)(?:[.!?]|$)/gi;
+  while ((match = afterRe.exec(vision))) {
+    const label = match[1]?.trim() ?? "";
+    const referenceLabel = match[2]?.trim() ?? "";
+    const idx = findEventIndex(ordered, label);
+    const referenceIndex = findEventIndex(ordered, referenceLabel);
+    if (idx < 0 || referenceIndex < 0) continue;
+    const toIndex = idx < referenceIndex ? referenceIndex : referenceIndex + 1;
+    if (idx === toIndex) continue;
+    ordered = moveEventToIndex(ordered, idx, toIndex, `Moved after ${ordered[referenceIndex]?.title ?? referenceLabel} from prompt: ${match[0]}.`);
   }
 
   return ordered;
@@ -274,6 +325,7 @@ function applyOrderingInstructions(events: TimelineBlock[], dayVision?: string):
   ordered = applyRemovalInstructions(ordered, vision);
   ordered = applyRelativeMoveInstructions(ordered, vision);
   ordered = applyTimeMoveInstructions(ordered, vision);
+  ordered = applyDurationInstructions(ordered, vision);
   if (!promptSaysMakeupNotFirst(vision) || ordered.length < 2) return ordered;
 
   const firstMakeupIndex = ordered.findIndex(isHairMakeupEvent);
