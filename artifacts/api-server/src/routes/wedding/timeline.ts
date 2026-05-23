@@ -183,6 +183,56 @@ function applyTimeMoveInstructions(events: TimelineBlock[], vision: string): Tim
   return moved.sort((a, b) => parseTimeToMinutes(a.startTime, 0) - parseTimeToMinutes(b.startTime, 0));
 }
 
+function moveEventEarlier(events: TimelineBlock[], fromIndex: number, toIndex: number, note: string): TimelineBlock[] {
+  if (fromIndex <= toIndex || fromIndex <= 0) return events;
+  const ordered = events.map(event => ({ ...event }));
+  const [target] = ordered.splice(fromIndex, 1);
+  if (!target) return ordered;
+  ordered.splice(toIndex, 0, target);
+
+  let cursor = parseTimeToMinutes(events[toIndex]?.startTime, parseTimeToMinutes(target.startTime, 8 * 60));
+  const lastRetimedIndex = Math.max(fromIndex, toIndex);
+  for (let index = toIndex; index <= lastRetimedIndex; index += 1) {
+    const event = ordered[index];
+    if (!event) continue;
+    const duration = eventDuration(event);
+    event.startTime = minutesToTime(cursor);
+    event.endTime = minutesToTime(cursor + duration);
+    cursor += duration;
+  }
+
+  target.notes = [target.notes, note].filter(Boolean).join(" ");
+  return ordered.sort((a, b) => parseTimeToMinutes(a.startTime, 0) - parseTimeToMinutes(b.startTime, 0));
+}
+
+function applyRelativeMoveInstructions(events: TimelineBlock[], vision: string): TimelineBlock[] {
+  let ordered = events.map(event => ({ ...event }));
+  const earlyRe = /\b(?:move|put|schedule|start|shift)\s+(.{3,70}?)\s+(?:much\s+)?(?:earlier in the day|earlier|early|up|sooner)\b/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = earlyRe.exec(vision))) {
+    const label = match[1]?.trim() ?? "";
+    const idx = findEventIndex(ordered, label);
+    if (idx <= 0) continue;
+    const toIndex = /early|earlier in the day|sooner/i.test(match[0])
+      ? Math.max(1, idx - 2)
+      : idx - 1;
+    ordered = moveEventEarlier(ordered, idx, toIndex, `Moved earlier from prompt: ${match[0]}.`);
+  }
+
+  const beforeRe = /\b(?:move|put|schedule|start|shift)\s+(.{3,70}?)\s+(?:before|ahead of)\s+(.{3,70}?)(?:[.!?]|$)/gi;
+  while ((match = beforeRe.exec(vision))) {
+    const label = match[1]?.trim() ?? "";
+    const referenceLabel = match[2]?.trim() ?? "";
+    const idx = findEventIndex(ordered, label);
+    const referenceIndex = findEventIndex(ordered, referenceLabel);
+    if (idx < 0 || referenceIndex < 0 || idx < referenceIndex) continue;
+    ordered = moveEventEarlier(ordered, idx, referenceIndex, `Moved before ${ordered[referenceIndex]?.title ?? referenceLabel} from prompt: ${match[0]}.`);
+  }
+
+  return ordered;
+}
+
 function applyRemovalInstructions(events: TimelineBlock[], vision: string): TimelineBlock[] {
   const removals: string[] = [];
   const re = /\b(?:remove|delete|skip|do\s*not include|don't include|dont include|no)\s+(.{3,55}?)(?:[.!?]|$)/gi;
@@ -222,6 +272,7 @@ function applyOrderingInstructions(events: TimelineBlock[], dayVision?: string):
   if (!vision || events.length < 2) return events;
   let ordered = applyPutFirstInstructions(events, vision);
   ordered = applyRemovalInstructions(ordered, vision);
+  ordered = applyRelativeMoveInstructions(ordered, vision);
   ordered = applyTimeMoveInstructions(ordered, vision);
   if (!promptSaysMakeupNotFirst(vision) || ordered.length < 2) return ordered;
 
