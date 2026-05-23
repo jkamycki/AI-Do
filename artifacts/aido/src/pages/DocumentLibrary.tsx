@@ -905,10 +905,10 @@ export default function DocumentLibrary() {
       </Dialog>
 
       <Dialog open={!!summaryDoc} onOpenChange={(open) => !open && setSummaryDoc(null)}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader><DialogTitle>AI Summary</DialogTitle></DialogHeader>
+        <DialogContent className="max-h-[92vh] max-w-3xl overflow-hidden p-0">
+          <DialogHeader className="px-6 pb-2 pt-6"><DialogTitle>AI Summary</DialogTitle></DialogHeader>
           {summaryDoc && (
-            <div className="space-y-5">
+            <div className="max-h-[calc(92vh-5rem)] space-y-5 overflow-y-auto px-6 pb-6 pr-5">
               <p className="rounded-lg bg-muted/40 p-4 text-sm leading-relaxed">{summaryDoc.summary || "No summary yet."}</p>
               <FieldSection title="Extracted fields" doc={summaryDoc} />
               <div className="flex flex-wrap gap-2">
