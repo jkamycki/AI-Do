@@ -12,11 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { getGetChecklistQueryKey, useListVendors } from "@workspace/api-client-react";
+import { useListVendors } from "@workspace/api-client-react";
 import { cn } from "@/lib/utils";
 import Contracts from "./Contracts";
 import {
-  CheckSquare,
   Copy,
   Download,
   Eye,
@@ -44,7 +43,6 @@ type ExtractedFields = {
   cancellationPolicy?: string | null;
   deliverables?: string[];
   contactInfo?: { name?: string | null; phone?: string | null; email?: string | null; address?: string | null };
-  suggestedTasks?: Array<{ title?: string; task?: string; description?: string; dueDate?: string | null }>;
   suggestedVendorId?: number | null;
   suggestedVendorName?: string | null;
 };
@@ -258,7 +256,7 @@ export default function DocumentLibrary() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["documents"] });
-      toast({ title: "Document uploaded", description: "Aria read it, summarized it, and looked for vendor links and tasks." });
+      toast({ title: "Document uploaded", description: "Aria read it, summarized it, and looked for vendor links." });
     },
     onError: async (err, file) => {
       const refreshed = await queryClient.fetchQuery({ queryKey: ["documents"], queryFn: fetchDocuments }).catch(() => null);
@@ -334,19 +332,6 @@ export default function DocumentLibrary() {
     },
     onSuccess: ({ action, payload }) => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
-      if (action === "tasks") {
-        queryClient.invalidateQueries({ queryKey: getGetChecklistQueryKey() });
-        const added = Array.isArray(payload.tasks) ? payload.tasks.length : 0;
-        toast({
-          title: added > 0 ? "A Task was added to your Checklist" : "This Task is already in your Checklist",
-          description: added > 1
-            ? `${added} tasks were added.`
-            : added === 0
-              ? "No duplicate checklist tasks were created."
-              : undefined,
-        });
-        return;
-      }
       toast({ title: "Document refreshed" });
     },
     onError: (err) => toast({ title: "Could not complete action", description: err instanceof Error ? err.message : "Please try again.", variant: "destructive" }),
@@ -606,7 +591,7 @@ export default function DocumentLibrary() {
             <p className="text-sm font-medium text-primary">Wedding planning dashboard</p>
             <h1 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight">Document Library</h1>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              Upload contracts, invoices, proposals, menus, floor plans, and screenshots. Aria reads each document, extracts key details, suggests tasks, and links vendors when she can.
+              Upload contracts, invoices, proposals, menus, floor plans, and screenshots. Aria reads each document, extracts key details, and links vendors when she can.
             </p>
           </div>
           {activeTab === "library" && (
@@ -871,16 +856,6 @@ export default function DocumentLibrary() {
                             </SelectContent>
                           </Select>
                           <Button
-                            variant="ghost"
-                            size="sm"
-                            className="gap-2"
-                            onClick={() => actionMutation.mutate({ id: doc.id, action: "tasks" })}
-                            disabled={actionMutation.isPending}
-                          >
-                            {actionMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckSquare className="h-4 w-4" />}
-                            Tasks
-                          </Button>
-                          <Button
                             type="button"
                             variant="ghost"
                             size="sm"
@@ -946,16 +921,6 @@ export default function DocumentLibrary() {
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" className="gap-2" onClick={() => actionMutation.mutate({ id: summaryDoc.id, action: "summary" })}><Sparkles className="h-4 w-4" /> Run Summary</Button>
                 <Button size="sm" variant="outline" className="gap-2" onClick={() => actionMutation.mutate({ id: summaryDoc.id, action: "extract" })}><Wand2 className="h-4 w-4" /> Run Extraction</Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-2"
-                  onClick={() => actionMutation.mutate({ id: summaryDoc.id, action: "tasks" })}
-                  disabled={actionMutation.isPending}
-                >
-                  {actionMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckSquare className="h-4 w-4" />}
-                  Generate Tasks
-                </Button>
               </div>
             </div>
           )}
@@ -1079,7 +1044,6 @@ export default function DocumentLibrary() {
 
 function FieldSection({ title, doc }: { title: string; doc: DocumentRecord }) {
   const extracted = fields(doc);
-  const tasks = extracted.suggestedTasks ?? [];
   return (
     <div className="space-y-4">
       <h3 className="text-sm font-semibold">{title}</h3>
@@ -1095,9 +1059,6 @@ function FieldSection({ title, doc }: { title: string; doc: DocumentRecord }) {
         "",
         "Due dates:",
         ...(extracted.dueDates ?? []).map((d) => `- ${d.label || "Deadline"} ${d.date || ""} ${d.notes || ""}`),
-        "",
-        "Suggested tasks:",
-        ...tasks.map((task) => `- ${task.task || task.title}${task.dueDate ? ` due ${task.dueDate}` : ""}`),
       ].join("\n")} />
     </div>
   );

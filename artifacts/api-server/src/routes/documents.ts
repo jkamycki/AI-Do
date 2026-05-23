@@ -6,7 +6,7 @@ import JSZip from "jszip";
 import he from "he";
 import PDFDocument from "pdfkit";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
-import { db, checklistItems, documents, vendors } from "@workspace/db";
+import { db, documents, vendors } from "@workspace/db";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../middlewares/requireAuth";
 import { ObjectStorageService } from "../lib/objectStorage";
@@ -69,7 +69,6 @@ type ExtractedFields = {
   cancellationPolicy?: string | null;
   deliverables?: string[];
   contactInfo?: { name?: string | null; phone?: string | null; email?: string | null; address?: string | null };
-  suggestedTasks?: Array<{ title?: string; task?: string; description?: string; dueDate?: string | null }>;
   suggestedVendorId?: number | null;
   suggestedVendorName?: string | null;
 };
@@ -205,17 +204,6 @@ function normalizeExtractedFields(raw: unknown): ExtractedFields {
       email: asText(contact.email) || null,
       address: asText(contact.address) || null,
     },
-    suggestedTasks: Array.isArray(obj.suggestedTasks)
-      ? obj.suggestedTasks.map((item) => {
-          const row = asObject(item);
-          return {
-            title: asText(row.title) || asText(row.task) || "Review document task",
-            task: asText(row.task) || asText(row.title) || "Review document task",
-            description: asText(row.description),
-            dueDate: asText(row.dueDate) || null,
-          };
-        })
-      : [],
     suggestedVendorName: asText(obj.suggestedVendorName) || asText(obj.vendorName) || null,
     suggestedVendorId: asNullableNumber(obj.suggestedVendorId),
   };
@@ -254,12 +242,6 @@ function fallbackFields(fileName: string, extractedText: string): ExtractedField
     cancellationPolicy: text.toLowerCase().includes("cancel") ? "Cancellation language appears in the document. Review the preview for exact terms." : null,
     deliverables: [],
     contactInfo: { name: null, phone, email, address: null },
-    suggestedTasks: amountMatches.map((payment) => ({
-      title: `Review payment in ${fileName}`,
-      task: `Review payment in ${fileName}`,
-      description: payment.notes ?? "",
-      dueDate: null,
-    })),
     suggestedVendorName: null,
     suggestedVendorId: null,
   };
@@ -283,7 +265,6 @@ async function analyzeDocument(fileName: string, fileType: string, extractedText
   "cancellationPolicy": "short policy or null",
   "deliverables": ["deliverable"],
   "contactInfo": {"name": null, "phone": null, "email": null, "address": null},
-  "suggestedTasks": [{"title":"Task title","task":"Task title","description":"why this task matters","dueDate":"YYYY-MM-DD or null"}],
   "suggestedVendorName": "vendor or null"
 }
 
@@ -346,10 +327,6 @@ function normalizeTags(value: unknown): string[] {
   return Array.isArray(value)
     ? Array.from(new Set(value.map((item) => asText(item)).filter((item) => item && item.toLowerCase() !== "contract analyzer"))).slice(0, 20)
     : [];
-}
-
-function normalizeChecklistTaskKey(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 function normalizeVisibility(value: unknown): string[] {
@@ -723,61 +700,6 @@ router.post("/documents/:id/link-vendor", requireAuth, async (req, res) => {
     .returning();
   if (!updated[0]) return res.status(404).json({ error: "Document not found" });
   res.json({ document: updated[0] });
-});
-
-router.post("/documents/:id/tasks", requireAuth, async (req, res) => {
-  const role = await resolveCallerRole(req);
-  if (!hasMinRole(role, "planner")) return res.status(403).json({ error: "Only owners, partners, and planners can create tasks." });
-  const profile = await resolveProfile(req);
-  if (!profile) return res.status(404).json({ error: "Profile not found" });
-  const id = Number(req.params.id);
-  const rows = await db.select().from(documents).where(and(eq(documents.id, id), eq(documents.profileId, profile.id))).limit(1);
-  const doc = rows[0];
-  if (!doc) return res.status(404).json({ error: "Document not found" });
-  const fields = normalizeExtractedFields(doc.extractedFields);
-  const tasks = fields.suggestedTasks?.filter((task) => asText(task.task || task.title)).slice(0, 12) ?? [];
-  if (!tasks.length) return res.json({ tasks: [] });
-
-  const taskValues = tasks.map((task) => ({
-    profileId: profile.id,
-    month: task.dueDate ? "Document deadlines" : "Document follow-up",
-    task: asText(task.task || task.title, "Review document task"),
-    description: asText(task.description, `Generated from ${doc.fileName}`),
-    isCompleted: false,
-  }));
-
-  const result = await db.transaction(async (tx) => {
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(${profile.id}, ${id})`);
-    const existingRows = await tx
-      .select({ task: checklistItems.task })
-      .from(checklistItems)
-      .where(eq(checklistItems.profileId, profile.id));
-    const existingKeys = new Set(existingRows.map((item) => normalizeChecklistTaskKey(item.task)));
-    const insertValues = taskValues.filter((item) => {
-      const key = normalizeChecklistTaskKey(item.task);
-      if (existingKeys.has(key)) return false;
-      existingKeys.add(key);
-      return true;
-    });
-
-    if (!insertValues.length) {
-      await tx.execute(sql`UPDATE documents SET updated_at = now() WHERE id = ${id}`);
-      return { inserted: [], skipped: taskValues.length };
-    }
-
-    const inserted = await tx
-      .insert(checklistItems)
-      .values(insertValues)
-      .returning();
-    await tx.execute(sql`UPDATE documents SET updated_at = now() WHERE id = ${id}`);
-    return { inserted, skipped: taskValues.length - inserted.length };
-  });
-
-  res.status(result.inserted.length ? 201 : 200).json({
-    tasks: result.inserted,
-    skipped: result.skipped,
-    duplicate: result.inserted.length === 0,
-  });
 });
 
 export default router;
