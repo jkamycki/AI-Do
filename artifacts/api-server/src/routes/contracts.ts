@@ -133,10 +133,12 @@ const upload = multer({
   // 5MB cap — protects Render memory from DoS via large uploads.
   limits: { fileSize: 5 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, cb) => {
+    const fileName = file.originalname.toLowerCase();
     const ok =
       ALLOWED_CONTRACT_MIMES.has(file.mimetype) ||
-      file.originalname.toLowerCase().endsWith(".txt") ||
-      file.originalname.toLowerCase().endsWith(".docx");
+      fileName.endsWith(".pdf") ||
+      fileName.endsWith(".txt") ||
+      fileName.endsWith(".docx");
     if (!ok) {
       cb(new Error("Unsupported file type. Please upload a PDF, DOCX, or .txt file."));
       return;
@@ -513,6 +515,37 @@ function buildFallbackAnalysis(contractText: string): Record<string, unknown> {
   });
 }
 
+function buildUnreadableContractAnalysis(fileName: string, mimetype: string): Record<string, unknown> {
+  const fileType = detectFileType(mimetype, fileName);
+
+  return normalizeAnalysis({
+    overallRiskLevel: "medium",
+    vendorType: "Contract",
+    summary: `A.IDO saved ${fileName}, but could not extract readable text from this ${fileType}. The file may be scanned, image-based, protected, or exported in a way that hides the text layer.`,
+    redFlags: [
+      {
+        severity: "medium",
+        title: "Readable contract text needed",
+        detail: "A.IDO cannot review payment, cancellation, liability, rescheduling, or force majeure terms until the document has selectable text.",
+        recommendation: "Upload a text-based PDF, DOCX, or TXT copy, or ask the vendor for a digital version with selectable text.",
+      },
+    ],
+    keyTerms: [
+      { label: "Payment schedule", value: "Not available until readable text is uploaded." },
+      { label: "Cancellation/refund", value: "Not available until readable text is uploaded." },
+      { label: "Services included", value: "Not available until readable text is uploaded." },
+      { label: "Rescheduling/force majeure", value: "Not available until readable text is uploaded." },
+      { label: "Liability/insurance", value: "Not available until readable text is uploaded." },
+    ],
+    cancellationPolicy: "Not available until readable text is uploaded.",
+    paymentTerms: "Not available until readable text is uploaded.",
+    liabilityNotes: "Not available until readable text is uploaded.",
+    positives: ["The file was uploaded and saved in the contract library."],
+    missingClauses: ["Readable contract text for clause review"],
+    negotiationTips: ["Ask the vendor for a text-based PDF or DOCX copy so A.IDO can review the actual clauses."],
+  });
+}
+
 function xmlTextToPlainText(xml: string): string {
   return sanitizeText(
     he.decode(
@@ -559,11 +592,18 @@ async function resolveContractScope(req: Parameters<typeof resolveProfile>[0]) {
   };
 }
 
-async function extractText(buffer: Buffer, mimetype: string): Promise<string> {
-  if (mimetype === "text/plain" || mimetype === "text/html") {
+async function extractText(buffer: Buffer, mimetype: string, fileName = ""): Promise<string> {
+  const lowerName = fileName.toLowerCase();
+  const isText = mimetype === "text/plain" || mimetype === "text/html" || lowerName.endsWith(".txt");
+  const isPdf = mimetype === "application/pdf" || lowerName.endsWith(".pdf");
+  const isDocx =
+    mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    lowerName.endsWith(".docx");
+
+  if (isText) {
     return sanitizeText(buffer.toString("utf8")).slice(0, 40000);
   }
-  if (mimetype === "application/pdf") {
+  if (isPdf) {
     try {
       const result = await pdfParse(buffer);
       const text = sanitizeText(result.text);
@@ -577,7 +617,7 @@ async function extractText(buffer: Buffer, mimetype: string): Promise<string> {
       return "";
     }
   }
-  if (mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+  if (isDocx) {
     return extractDocxText(buffer);
   }
   // For Word docs and other types attempt raw text but sanitize heavily
@@ -626,16 +666,11 @@ router.post(
     if (!scope) return res.status(400).json({ error: "No wedding profile found." });
     await ensureVendorContractVendorColumn();
 
-    const extractedText = await extractText(buffer, mimetype);
+    const extractedText = await extractText(buffer, mimetype, originalname);
+    const hasReadableText = Boolean(extractedText.trim());
+    let parsedAnalysis: Record<string, unknown> | null = null;
 
-    if (!extractedText.trim()) {
-      return res.status(422).json({
-        error: mimetype === "application/pdf"
-          ? "Could not extract readable text from this PDF. Please ensure it is a text-based PDF (not a scanned image). Try opening it in a PDF editor and re-saving, or paste the contract text into a .txt file."
-          : "Could not extract readable text from this file. Please upload a PDF or plain text (.txt) file.",
-      });
-    }
-
+    if (hasReadableText) {
     // Truncate to ~7K chars (~1.7K tokens) using a HEAD + TAIL strategy.
     // Critical clauses (cancellation, payment terms, liability, force majeure,
     // signatures) almost always appear in the FIRST or LAST sections of a
@@ -689,7 +724,7 @@ Focus on clauses that could financially harm the couple or cause day-of issues.`
     } catch (err) {
       req.log.warn({ err, fileName: originalname }, "Contract AI timed out; using fast fallback analysis");
     }
-    let parsedAnalysis = parseAnalysisResponse(analysisRaw);
+    parsedAnalysis = parseAnalysisResponse(analysisRaw);
     if (!parsedAnalysis) {
       req.log.warn({ preview: analysisRaw.slice(0, 500) }, "Contract AI returned unstructured analysis");
       if (analysisRaw.trim()) try {
@@ -727,7 +762,10 @@ ${analysisRaw.slice(0, 12000)}`;
       req.log.warn({ fileName: originalname, extractedLength: extractedText.length }, "Contract AI incorrectly claimed missing contract text");
       parsedAnalysis = null;
     }
-    const analysis = parsedAnalysis
+    }
+    const analysis = !hasReadableText
+      ? buildUnreadableContractAnalysis(originalname, mimetype)
+      : parsedAnalysis
       ? enrichAnalysisWithContractText(parsedAnalysis, extractedText)
       : buildFallbackAnalysis(extractedText);
 

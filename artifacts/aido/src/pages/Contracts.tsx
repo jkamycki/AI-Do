@@ -622,7 +622,7 @@ export default function Contracts({ embedded = false }: { embedded?: boolean } =
     const allowed = ["application/pdf", "text/plain",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
     const fileName = file.name.toLowerCase();
-    if (!allowed.includes(file.type) && !fileName.endsWith(".txt") && !fileName.endsWith(".docx")) {
+    if (!allowed.includes(file.type) && !fileName.endsWith(".pdf") && !fileName.endsWith(".txt") && !fileName.endsWith(".docx")) {
       toast({ title: t("contracts.unsupported_file"), description: t("contracts.unsupported_file_desc"), variant: "destructive" });
       return;
     }
