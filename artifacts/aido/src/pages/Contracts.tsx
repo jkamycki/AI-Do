@@ -463,13 +463,19 @@ function ContractCard({ contract, onDelete, onRename }: { contract: Contract; on
                 <button onClick={() => { setRenaming(false); setNameInput(contract.fileName); }} className="p-1 rounded hover:bg-muted text-muted-foreground"><X className="h-3.5 w-3.5" /></button>
               </div>
             ) : (
-              <div className="flex items-center gap-1.5 group">
-                <CardTitle className="text-base font-semibold truncate">{contract.fileName}</CardTitle>
-                <button
-                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-muted text-muted-foreground shrink-0"
+              <div className="flex flex-wrap items-center gap-2">
+                <CardTitle className="min-w-0 flex-1 text-base font-semibold truncate">{contract.fileName}</CardTitle>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 shrink-0 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
                   title={t("contracts.rename")}
                   onClick={() => { setNameInput(contract.fileName); setRenaming(true); }}
-                ><Pencil className="h-3 w-3" /></button>
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Rename
+                </Button>
               </div>
             )}
             <div className="flex items-center gap-2 mt-1 flex-wrap">
