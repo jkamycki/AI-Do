@@ -620,9 +620,18 @@ export default function Contracts({ embedded = false }: { embedded?: boolean } =
 
   function stageFile(file: File) {
     const allowed = ["application/pdf", "text/plain",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "image/jpeg", "image/png", "image/webp"];
     const fileName = file.name.toLowerCase();
-    if (!allowed.includes(file.type) && !fileName.endsWith(".pdf") && !fileName.endsWith(".txt") && !fileName.endsWith(".docx")) {
+    if (
+      !allowed.includes(file.type) &&
+      !fileName.endsWith(".pdf") &&
+      !fileName.endsWith(".txt") &&
+      !fileName.endsWith(".docx") &&
+      !fileName.endsWith(".jpg") &&
+      !fileName.endsWith(".jpeg") &&
+      !fileName.endsWith(".png") &&
+      !fileName.endsWith(".webp")
+    ) {
       toast({ title: t("contracts.unsupported_file"), description: t("contracts.unsupported_file_desc"), variant: "destructive" });
       return;
     }
@@ -662,7 +671,8 @@ export default function Contracts({ embedded = false }: { embedded?: boolean } =
       setPendingVendorId("none");
       setSyncToDocumentLibrary(false);
     } catch (err) {
-      toast({ title: t("contracts.upload_failed"), description: err instanceof Error ? err.message : "", variant: "destructive" });
+      const message = err instanceof Error ? err.message : t("contracts.upload_failed");
+      toast({ title: message || t("contracts.upload_failed"), description: t("contracts.upload_failed"), variant: "destructive" });
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";

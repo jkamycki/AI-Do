@@ -61,7 +61,17 @@ function contractDocumentFileType(fileName: string, mimeType: string): string {
   if (mimeType.includes("pdf") || name.endsWith(".pdf")) return "PDF";
   if (mimeType.includes("word") || name.endsWith(".docx")) return "DOCX";
   if (mimeType.includes("text") || name.endsWith(".txt")) return "TXT";
+  if (mimeType.includes("image") || /\.(jpe?g|png|webp)$/i.test(name)) return "IMAGE";
   return "FILE";
+}
+
+function detectFileType(mimeType: string, fileName: string): string {
+  const name = fileName.toLowerCase();
+  if (mimeType.includes("pdf") || name.endsWith(".pdf")) return "PDF";
+  if (mimeType.includes("word") || name.endsWith(".docx")) return "DOCX";
+  if (mimeType.includes("text") || name.endsWith(".txt")) return "TXT";
+  if (mimeType.includes("image") || /\.(jpe?g|png|webp)$/i.test(name)) return "image";
+  return "file";
 }
 
 function cleanDocumentFileName(fileName: string): string {
@@ -126,19 +136,39 @@ const ALLOWED_CONTRACT_MIMES = new Set([
   "application/pdf",
   "text/plain",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
 ]);
+
+function inferContractMime(fileName: string, mimeType: string): string {
+  const name = fileName.toLowerCase();
+  if (mimeType && mimeType !== "application/octet-stream") return mimeType;
+  if (name.endsWith(".pdf")) return "application/pdf";
+  if (name.endsWith(".txt")) return "text/plain";
+  if (name.endsWith(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  if (name.endsWith(".jpg") || name.endsWith(".jpeg")) return "image/jpeg";
+  if (name.endsWith(".png")) return "image/png";
+  if (name.endsWith(".webp")) return "image/webp";
+  return mimeType || "application/octet-stream";
+}
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  // 5MB cap — protects Render memory from DoS via large uploads.
-  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  // Contracts from phones are often scanned PDFs/images, so keep a moderate cap.
+  limits: { fileSize: 20 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, cb) => {
     const fileName = file.originalname.toLowerCase();
+    const mimeType = inferContractMime(file.originalname, file.mimetype);
     const ok =
-      ALLOWED_CONTRACT_MIMES.has(file.mimetype) ||
+      ALLOWED_CONTRACT_MIMES.has(mimeType) ||
       fileName.endsWith(".pdf") ||
       fileName.endsWith(".txt") ||
-      fileName.endsWith(".docx");
+      fileName.endsWith(".docx") ||
+      fileName.endsWith(".jpg") ||
+      fileName.endsWith(".jpeg") ||
+      fileName.endsWith(".png") ||
+      fileName.endsWith(".webp");
     if (!ok) {
       cb(new Error("Unsupported file type. Please upload a PDF, DOCX, or .txt file."));
       return;
@@ -645,7 +675,7 @@ router.post(
       const msg = err instanceof Error ? err.message : String(err);
       const code = (err as { code?: string }).code;
       if (code === "LIMIT_FILE_SIZE") {
-        return res.status(413).json({ error: "File is too large. Maximum size is 5 MB." });
+        return res.status(413).json({ error: "File is too large. Maximum size is 20 MB." });
       }
       req.log?.warn({ error: msg }, "Contract upload rejected");
       return res.status(400).json({ error: msg || "Invalid contract upload." });
@@ -661,7 +691,8 @@ router.post(
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded." });
     }
-    const { buffer, originalname, mimetype, size } = req.file;
+    const { buffer, originalname, size } = req.file;
+    const mimetype = inferContractMime(originalname, req.file.mimetype);
     const scope = await resolveContractScope(req);
     if (!scope) return res.status(400).json({ error: "No wedding profile found." });
     await ensureVendorContractVendorColumn();

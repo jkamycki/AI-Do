@@ -1066,7 +1066,7 @@
     "couldnt_generate": "Couldn't generate response",
     "copied_toast": "Copied to clipboard!",
     "unsupported_file": "Unsupported file",
-    "unsupported_file_desc": "Please upload a PDF or .txt file.",
+    "unsupported_file_desc": "Please upload a PDF, DOCX, TXT, JPG, PNG, or WebP file.",
     "contract_analyzed": "Contract analyzed!",
     "contract_analyzed_desc": "AI has reviewed your contract.",
     "upload_failed": "Upload failed",
