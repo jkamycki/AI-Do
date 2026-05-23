@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from "react";
+import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Heart, MapPin, Download, Hotel } from "lucide-react";
 import type { ColorPalette } from "@/types/invitations";
 import { AuthMediaImage } from "@/components/AuthMediaImage";
@@ -34,6 +34,10 @@ export interface SaveTheDateHotelInfo {
   discountCode?: string | null;
   groupName?: string | null;
   cutoffDate?: string | null;
+  checkInDate?: string | null;
+  checkOutDate?: string | null;
+  pricePerNight?: number | null;
+  distanceFromVenue?: string | null;
   address?: string | null;
   city?: string | null;
   state?: string | null;
@@ -140,6 +144,33 @@ function hotelAddressLine(hotel: SaveTheDateHotelInfo) {
     [hotel.city, hotel.state].filter(Boolean).join(", "),
     hotel.zip,
   ].filter(Boolean).join(" ");
+}
+
+function formatHotelDate(value: string | null | undefined) {
+  if (!value) return "";
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return value;
+  return new Date(year, month - 1, day).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatHotelDateRange(checkIn?: string | null, checkOut?: string | null) {
+  const start = formatHotelDate(checkIn);
+  const end = formatHotelDate(checkOut);
+  if (start && end) return `${start} - ${end}`;
+  return start || end;
+}
+
+function formatHotelMoney(value: number | null | undefined) {
+  if (value == null || Number.isNaN(Number(value))) return "";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(Number(value));
 }
 
 export interface CustomColors {
@@ -372,6 +403,12 @@ export function AiSaveDatePreview({
   photoEffect?: string | null;
   hotelOptions?: SaveTheDateHotelInfo[];
 }) {
+  const [hotelResponse, setHotelResponse] = useState<"no" | "yes" | "booked">("no");
+  const [hotelBlockId, setHotelBlockId] = useState("");
+  const [hotelRoomCount, setHotelRoomCount] = useState("1");
+  const selectedHotel = hotelOptions.find((hotel) => String(hotel.id) === hotelBlockId) ?? null;
+  const hasSelectedHotelBlock = !!selectedHotel;
+
   if (fullPhoto) {
     return (
       <FullPhotoSaveDatePreview
@@ -404,9 +441,64 @@ export function AiSaveDatePreview({
   const couple    = [profile.partner2Name, profile.partner1Name].filter(Boolean).join(" & ") || "The Couple";
   const dateStr   = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const cityLine  = [profile.venueCity, profile.venueState].filter(Boolean).join(", ");
-  const primaryHotel = hotelOptions[0] ?? null;
-  const hotelAddress = primaryHotel ? hotelAddressLine(primaryHotel) : "";
-  const hotelCutoff = primaryHotel?.cutoffDate ? formatDate(primaryHotel.cutoffDate, { month: "short", day: "numeric", year: "numeric" }) : null;
+  const hotelFieldStyle: CSSProperties = {
+    width: "100%",
+    border: `1px solid ${cardBdr}`,
+    borderRadius: 8,
+    background: "rgba(255,255,255,.78)",
+    color: text,
+    padding: "8px 9px",
+    fontFamily: labelFont,
+    fontSize: 11 * sc,
+  };
+  const renderSelectedHotelDetails = (hotel: SaveTheDateHotelInfo) => {
+    const dateRange = formatHotelDateRange(hotel.checkInDate, hotel.checkOutDate);
+    const rate = formatHotelMoney(hotel.pricePerNight);
+    return (
+      <div
+        style={{
+          marginTop: 8,
+          padding: "10px 11px",
+          borderRadius: 9,
+          border: `1px solid ${cardBdr}`,
+          background: "rgba(255,255,255,.62)",
+          fontFamily: labelFont,
+          fontSize: 10 * sc,
+          lineHeight: 1.45,
+          color: text,
+        }}
+      >
+        <p style={{ margin: 0, fontWeight: 800 }}>{hotel.hotelName || "Hotel block"}</p>
+        {hotelAddressLine(hotel) && <p style={{ margin: "2px 0 0", color: muted }}>{hotelAddressLine(hotel)}</p>}
+        {hotel.groupName && <p style={{ margin: "6px 0 0", color: muted }}><strong>Wedding block:</strong> {hotel.groupName}</p>}
+        {dateRange && <p style={{ margin: "2px 0 0", color: muted }}><strong>Book these dates:</strong> {dateRange}</p>}
+        {hotel.distanceFromVenue && <p style={{ margin: "2px 0 0", color: muted }}><strong>Distance:</strong> {hotel.distanceFromVenue}</p>}
+        {rate && <p style={{ margin: "2px 0 0", color: muted }}><strong>Rate:</strong> {rate}</p>}
+        {hotel.discountCode && <p style={{ margin: "2px 0 0", color: muted }}><strong>Group code:</strong> {hotel.discountCode}</p>}
+        {hotel.cutoffDate && <p style={{ margin: "2px 0 0", color: muted }}><strong>Cutoff Date to Book:</strong> {formatHotelDate(hotel.cutoffDate)}</p>}
+        {dateRange && (
+          <p style={{ margin: "6px 0 0", fontWeight: 800, color: accent }}>
+            Select the check-in/check-out dates above when booking.
+          </p>
+        )}
+        {hotel.bookingLink && (
+          <div
+            style={{
+              marginTop: 8,
+              padding: "8px 10px",
+              borderRadius: 8,
+              background: accent,
+              color: isLightHex(accent) ? text : BG,
+              fontWeight: 800,
+              textAlign: "center",
+            }}
+          >
+            Open booking link
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <CardShell
@@ -455,7 +547,7 @@ export function AiSaveDatePreview({
         Formal invitation to follow
       </p>
 
-      {primaryHotel && (
+      {hotelOptions.length > 0 && (
         <div style={{
           margin: "16px auto 0",
           maxWidth: 310,
@@ -466,39 +558,86 @@ export function AiSaveDatePreview({
           textAlign: "left",
           color: text,
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
             <Hotel style={{ width: 14, height: 14, color: accent, flex: "0 0 auto" }} />
             <p style={{ margin: 0, fontFamily: labelFont, fontSize: 9.5 * sc, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: accent }}>
-              Hotel Block
+              Hotel Accommodations
             </p>
           </div>
-          <p style={{ margin: 0, fontFamily: displayFont, fontSize: `${0.95 * sc}rem`, fontWeight: 700, color: text }}>
-            {primaryHotel.hotelName || "Hotel block"}
+          <label style={{ display: "block", marginBottom: 5, fontFamily: labelFont, fontSize: 10 * sc, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: text }}>
+            Will you need a hotel room?
+          </label>
+          <p style={{ margin: "0 0 8px", fontFamily: labelFont, fontSize: 9.5 * sc, color: muted, lineHeight: 1.45 }}>
+            Let the couple know if you need a room, already booked one, or do not need hotel accommodations.
           </p>
-          {hotelAddress && (
-            <p style={{ margin: "4px 0 0", fontFamily: labelFont, fontSize: 9.5 * sc, lineHeight: 1.45, color: muted }}>
-              {hotelAddress}
-            </p>
+          <select
+            value={hotelResponse}
+            onChange={(event) => {
+              const value = event.target.value as "no" | "yes" | "booked";
+              setHotelResponse(value);
+              if (value === "no") setHotelBlockId("");
+            }}
+            style={hotelFieldStyle}
+          >
+            <option value="no">No</option>
+            <option value="yes">Yes</option>
+            <option value="booked">I've already booked</option>
+          </select>
+          {hotelResponse !== "no" && (
+            <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
+              <label style={{ display: "block", marginBottom: -4, fontFamily: labelFont, fontSize: 9.5 * sc, color: muted }}>
+                {hotelResponse === "booked" ? "Which hotel did you book?" : "Which hotel block will you book?"}
+              </label>
+              <select
+                value={hotelBlockId}
+                onChange={(event) => setHotelBlockId(event.target.value)}
+                style={hotelFieldStyle}
+              >
+                <option value="">{hotelResponse === "booked" ? "Booked outside the block / not listed" : "Decide later"}</option>
+                {hotelOptions.map((hotel) => (
+                  <option key={hotel.id} value={String(hotel.id)}>
+                    {hotel.hotelName || "Hotel block"}
+                  </option>
+                ))}
+              </select>
+              {hasSelectedHotelBlock && (
+                <>
+                  <label style={{ display: "block", marginBottom: -4, fontFamily: labelFont, fontSize: 9.5 * sc, color: muted }}>
+                    {hotelResponse === "booked" ? "How many rooms did you book?" : "How many rooms will you need?"}
+                  </label>
+                  <select
+                    value={hotelRoomCount}
+                    onChange={(event) => setHotelRoomCount(event.target.value)}
+                    style={hotelFieldStyle}
+                  >
+                    <option value="1">1 room</option>
+                    <option value="2">2 rooms</option>
+                  </select>
+                </>
+              )}
+              {selectedHotel && renderSelectedHotelDetails(selectedHotel)}
+              <p style={{ margin: 0, fontFamily: labelFont, fontSize: 9.5 * sc, color: muted, lineHeight: 1.45 }}>
+                In the real guest link, this saves to the guest list hotel fields.
+              </p>
+            </div>
           )}
-          {(primaryHotel.groupName || primaryHotel.discountCode || hotelCutoff) && (
-            <p style={{ margin: "7px 0 0", fontFamily: labelFont, fontSize: 9.5 * sc, lineHeight: 1.45, color: muted }}>
-              {primaryHotel.groupName ? `Block: ${primaryHotel.groupName}` : ""}
-              {primaryHotel.groupName && primaryHotel.discountCode ? " - " : ""}
-              {primaryHotel.discountCode ? `Code: ${primaryHotel.discountCode}` : ""}
-              {(primaryHotel.groupName || primaryHotel.discountCode) && hotelCutoff ? " - " : ""}
-              {hotelCutoff ? `Book by ${hotelCutoff}` : ""}
-            </p>
-          )}
-          {primaryHotel.bookingLink && (
-            <p style={{ margin: "7px 0 0", fontFamily: labelFont, fontSize: 9 * sc, fontWeight: 700, color: accent }}>
-              Booking link included
-            </p>
-          )}
-          {hotelOptions.length > 1 && (
-            <p style={{ margin: "7px 0 0", fontFamily: labelFont, fontSize: 9 * sc, color: muted }}>
-              Plus {hotelOptions.length - 1} more hotel option{hotelOptions.length > 2 ? "s" : ""}.
-            </p>
-          )}
+          <div
+            style={{
+              marginTop: 9,
+              width: "100%",
+              borderRadius: 8,
+              background: accent,
+              color: isLightHex(accent) ? text : BG,
+              fontFamily: labelFont,
+              fontSize: 10.5 * sc,
+              fontWeight: 800,
+              padding: "9px 10px",
+              textAlign: "center",
+              opacity: 0.86,
+            }}
+          >
+            Preview save hotel response
+          </div>
         </div>
       )}
 

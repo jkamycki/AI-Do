@@ -99,6 +99,10 @@ type HotelOption = {
   discountCode?: string | null;
   groupName?: string | null;
   cutoffDate?: string | null;
+  checkInDate?: string | null;
+  checkOutDate?: string | null;
+  pricePerNight?: number | null;
+  distanceFromVenue?: string | null;
   address?: string | null;
   city?: string | null;
   state?: string | null;
