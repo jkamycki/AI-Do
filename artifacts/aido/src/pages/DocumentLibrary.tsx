@@ -90,8 +90,20 @@ function pdfDownloadName(fileName: string) {
   return `${base || "wedding-document"}.pdf`;
 }
 
+function uploadedFileMatches(doc: DocumentRecord, file: File) {
+  const uploadedName = file.name.replace(/[^\w.\- ]+/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
+  const docNames = [doc.fileName, doc.originalFileName].map((name) => name.toLowerCase());
+  return docNames.includes(uploadedName) && (doc.fileSize == null || Math.abs(doc.fileSize - file.size) < 8);
+}
+
+async function fetchDocuments(): Promise<{ documents: DocumentRecord[] }> {
+  const res = await authFetch(`${API}/api/documents`);
+  if (!res.ok) throw new Error("Could not load documents");
+  return res.json();
+}
+
 function DocumentIcon({ type }: { type: string }) {
-  const isImage = ["JPG", "PNG"].includes(type.toUpperCase());
+  const isImage = ["JPG", "PNG", "WEBP", "IMAGE"].includes(type.toUpperCase());
   return isImage ? <FileImage className="h-5 w-5" /> : <FileText className="h-5 w-5" />;
 }
 
@@ -184,11 +196,7 @@ export default function DocumentLibrary() {
 
   const { data, isLoading } = useQuery<{ documents: DocumentRecord[] }>({
     queryKey: ["documents"],
-    queryFn: async () => {
-      const res = await authFetch(`${API}/api/documents`);
-      if (!res.ok) throw new Error("Could not load documents");
-      return res.json();
-    },
+    queryFn: fetchDocuments,
   });
 
   const { data: vendorsData } = useListVendors();
@@ -240,11 +248,18 @@ export default function DocumentLibrary() {
       if (!res.ok) throw new Error(payload.error ?? "Upload failed");
       return payload;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["documents"] });
       toast({ title: "Document uploaded", description: "Aria read it, summarized it, and looked for vendor links and tasks." });
     },
-    onError: (err) => toast({ title: "Upload failed", description: err instanceof Error ? err.message : "Please try again.", variant: "destructive" }),
+    onError: async (err, file) => {
+      const refreshed = await queryClient.fetchQuery({ queryKey: ["documents"], queryFn: fetchDocuments }).catch(() => null);
+      if (refreshed?.documents?.some((doc) => uploadedFileMatches(doc, file))) {
+        toast({ title: "Document uploaded", description: "The upload completed and your library was refreshed." });
+        return;
+      }
+      toast({ title: "Upload failed", description: err instanceof Error ? err.message : "Please try again.", variant: "destructive" });
+    },
   });
 
   const patchMutation = useMutation({

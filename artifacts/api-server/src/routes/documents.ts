@@ -26,20 +26,34 @@ const ALLOWED_DOCUMENT_MIMES = new Set([
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "image/jpeg",
   "image/png",
+  "image/webp",
 ]);
+
+function inferDocumentMime(fileName: string, mimeType: string): string {
+  const name = fileName.toLowerCase();
+  if (mimeType && mimeType !== "application/octet-stream") return mimeType;
+  if (name.endsWith(".pdf")) return "application/pdf";
+  if (name.endsWith(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  if (name.endsWith(".jpg") || name.endsWith(".jpeg")) return "image/jpeg";
+  if (name.endsWith(".png")) return "image/png";
+  if (name.endsWith(".webp")) return "image/webp";
+  return mimeType || "application/octet-stream";
+}
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 12 * 1024 * 1024, files: 1 },
+  limits: { fileSize: 20 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, cb) => {
     const name = file.originalname.toLowerCase();
+    const mimeType = inferDocumentMime(file.originalname, file.mimetype);
     const ok =
-      ALLOWED_DOCUMENT_MIMES.has(file.mimetype) ||
+      ALLOWED_DOCUMENT_MIMES.has(mimeType) ||
       name.endsWith(".pdf") ||
       name.endsWith(".docx") ||
       name.endsWith(".jpg") ||
       name.endsWith(".jpeg") ||
-      name.endsWith(".png");
+      name.endsWith(".png") ||
+      name.endsWith(".webp");
     if (!ok) {
       cb(new Error("Unsupported file type. Please upload a PDF, DOCX, JPG, or PNG file."));
       return;
@@ -112,6 +126,7 @@ function fileTypeFromName(fileName: string, mimeType: string): string {
   if (mimeType.includes("pdf") || name.endsWith(".pdf")) return "PDF";
   if (mimeType.includes("word") || name.endsWith(".docx")) return "DOCX";
   if (mimeType.includes("png") || name.endsWith(".png")) return "PNG";
+  if (mimeType.includes("webp") || name.endsWith(".webp")) return "WEBP";
   if (mimeType.includes("jpeg") || name.endsWith(".jpg") || name.endsWith(".jpeg")) return "JPG";
   return "FILE";
 }
@@ -502,7 +517,22 @@ router.get("/documents/:id/download-pdf", requireAuth, async (req, res) => {
   buildDocumentPdf(doc, res);
 });
 
-router.post("/documents/upload", requireAuth, upload.single("file"), async (req, res) => {
+router.post(
+  "/documents/upload",
+  requireAuth,
+  (req, res, next) => {
+    upload.single("file")(req, res, (err) => {
+      if (!err) return next();
+      const msg = err instanceof Error ? err.message : String(err);
+      const code = (err as { code?: string }).code;
+      if (code === "LIMIT_FILE_SIZE") {
+        return res.status(413).json({ error: "File is too large. Maximum size is 20 MB." });
+      }
+      req.log?.warn({ error: msg }, "Document upload rejected");
+      return res.status(400).json({ error: msg || "Invalid document upload." });
+    });
+  },
+  async (req, res) => {
   const role = await resolveCallerRole(req);
   if (!hasMinRole(role, "planner")) return res.status(403).json({ error: "Only owners, partners, and planners can upload documents." });
   const profile = await resolveProfile(req);
@@ -510,10 +540,11 @@ router.post("/documents/upload", requireAuth, upload.single("file"), async (req,
   if (!req.file) return res.status(400).json({ error: "No document was uploaded." });
 
   const originalName = cleanFileName(req.file.originalname);
-  const fileType = fileTypeFromName(originalName, req.file.mimetype);
+  const mimeType = inferDocumentMime(originalName, req.file.mimetype);
+  const fileType = fileTypeFromName(originalName, mimeType);
   const extractedText = await extractDocumentText(req.file).catch(() => "");
-  const imageDataUrl = req.file.mimetype.startsWith("image/")
-    ? `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`
+  const imageDataUrl = mimeType.startsWith("image/")
+    ? `data:${mimeType};base64,${req.file.buffer.toString("base64")}`
     : undefined;
   const analysis = await analyzeDocument(originalName, fileType, extractedText, imageDataUrl);
   const matchingVendor = await findMatchingVendor(profile.id, analysis.fields, originalName);
@@ -522,7 +553,7 @@ router.post("/documents/upload", requireAuth, upload.single("file"), async (req,
     suggestedVendorId: matchingVendor?.id ?? analysis.fields.suggestedVendorId ?? null,
     suggestedVendorName: matchingVendor?.name ?? analysis.fields.suggestedVendorName ?? analysis.fields.vendorName ?? null,
   };
-  const fileUrl = await storage.uploadObjectEntityFile(req.file.buffer, originalName, req.file.mimetype, {
+  const fileUrl = await storage.uploadObjectEntityFile(req.file.buffer, originalName, mimeType, {
     owner: profile.userId,
     visibility: "private",
   });
@@ -536,7 +567,7 @@ router.post("/documents/upload", requireAuth, upload.single("file"), async (req,
       fileName: originalName,
       originalFileName: originalName,
       fileType,
-      mimeType: req.file.mimetype,
+      mimeType,
       fileSize: req.file.size,
       uploadedBy: req.userId!,
       linkedVendorId: matchingVendor?.id ?? null,
@@ -550,7 +581,8 @@ router.post("/documents/upload", requireAuth, upload.single("file"), async (req,
     .returning();
 
   res.status(201).json({ document: inserted[0] });
-});
+  },
+);
 
 router.patch("/documents/:id", requireAuth, async (req, res) => {
   const role = await resolveCallerRole(req);
