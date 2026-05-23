@@ -230,20 +230,17 @@ function CategoryBadge({ category }: { category: string }) {
 }
 
 function PaidInFullMergedCell({
-  onUndo,
   t,
 }: {
-  onUndo?: () => void;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
   return (
     <TableCell colSpan={2} className="text-sm">
-      <div className="flex min-w-[376px] flex-col items-center gap-2">
+      <div className="flex min-w-[376px] items-center">
         <div className="flex h-9 w-full items-center justify-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-100 px-3 text-sm font-semibold text-emerald-800">
           <CheckCircle2 className="h-3.5 w-3.5" />
           {t("budget.paid_in_full", { defaultValue: "Paid in full" })}
         </div>
-        {onUndo && <UndoPaymentButton onClick={onUndo} t={t} />}
       </div>
     </TableCell>
   );
@@ -1803,7 +1800,6 @@ export default function Budget() {
                         </TableCell>
                         {remaining <= 0 ? (
                           <PaidInFullMergedCell
-                            onUndo={recentPaymentUndo[`vendor-${v.id}`] ? () => runRememberedUndo(`vendor-${v.id}`) : undefined}
                             t={t}
                           />
                         ) : (
@@ -2155,7 +2151,6 @@ export default function Budget() {
                         </TableCell>
                         {remaining <= 0 ? (
                           <PaidInFullMergedCell
-                            onUndo={recentPaymentUndo[`manual-${m.id}`] ? () => runRememberedUndo(`manual-${m.id}`) : undefined}
                             t={t}
                           />
                         ) : (
