@@ -406,6 +406,7 @@ export function AiSaveDatePreview({
   const [hotelResponse, setHotelResponse] = useState<"no" | "yes" | "booked">("no");
   const [hotelBlockId, setHotelBlockId] = useState("");
   const [hotelRoomCount, setHotelRoomCount] = useState("1");
+  const [hotelPreviewSaved, setHotelPreviewSaved] = useState(false);
   const selectedHotel = hotelOptions.find((hotel) => String(hotel.id) === hotelBlockId) ?? null;
   const hasSelectedHotelBlock = !!selectedHotel;
 
@@ -482,8 +483,12 @@ export function AiSaveDatePreview({
           </p>
         )}
         {hotel.bookingLink && (
-          <div
+          <a
+            href={hotel.bookingLink}
+            target="_blank"
+            rel="noopener noreferrer"
             style={{
+              display: "block",
               marginTop: 8,
               padding: "8px 10px",
               borderRadius: 8,
@@ -491,10 +496,11 @@ export function AiSaveDatePreview({
               color: isLightHex(accent) ? text : BG,
               fontWeight: 800,
               textAlign: "center",
+              textDecoration: "none",
             }}
           >
             Open booking link
-          </div>
+          </a>
         )}
       </div>
     );
@@ -575,6 +581,7 @@ export function AiSaveDatePreview({
             onChange={(event) => {
               const value = event.target.value as "no" | "yes" | "booked";
               setHotelResponse(value);
+              setHotelPreviewSaved(false);
               if (value === "no") setHotelBlockId("");
             }}
             style={hotelFieldStyle}
@@ -590,7 +597,10 @@ export function AiSaveDatePreview({
               </label>
               <select
                 value={hotelBlockId}
-                onChange={(event) => setHotelBlockId(event.target.value)}
+                onChange={(event) => {
+                  setHotelBlockId(event.target.value);
+                  setHotelPreviewSaved(false);
+                }}
                 style={hotelFieldStyle}
               >
                 <option value="">{hotelResponse === "booked" ? "Booked outside the block / not listed" : "Decide later"}</option>
@@ -607,7 +617,10 @@ export function AiSaveDatePreview({
                   </label>
                   <select
                     value={hotelRoomCount}
-                    onChange={(event) => setHotelRoomCount(event.target.value)}
+                    onChange={(event) => {
+                      setHotelRoomCount(event.target.value);
+                      setHotelPreviewSaved(false);
+                    }}
                     style={hotelFieldStyle}
                   >
                     <option value="1">1 room</option>
@@ -621,13 +634,17 @@ export function AiSaveDatePreview({
               </p>
             </div>
           )}
-          <div
+          <button
+            type="button"
+            onClick={() => setHotelPreviewSaved(true)}
             style={{
               marginTop: 9,
               width: "100%",
+              border: 0,
               borderRadius: 8,
               background: accent,
               color: isLightHex(accent) ? text : BG,
+              cursor: "pointer",
               fontFamily: labelFont,
               fontSize: 10.5 * sc,
               fontWeight: 800,
@@ -637,7 +654,13 @@ export function AiSaveDatePreview({
             }}
           >
             Preview save hotel response
-          </div>
+          </button>
+          {hotelPreviewSaved && (
+            <p style={{ margin: "7px 0 0", fontFamily: labelFont, fontSize: 9.5 * sc, color: accent, lineHeight: 1.45 }}>
+              Hotel response saved in preview.
+              {hotelResponse !== "no" && selectedHotel ? ` ${selectedHotel.hotelName || "Hotel block"} - ${hotelRoomCount === "2" ? "2 rooms" : "1 room"}.` : ""}
+            </p>
+          )}
         </div>
       )}
 
