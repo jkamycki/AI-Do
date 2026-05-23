@@ -226,6 +226,11 @@ export default function DocumentLibrary() {
     return folderOk && tagOk;
   });
 
+  function selectTagFilter(tag: string) {
+    setTagFilter(tag);
+    if (tag !== "All") setFolderFilter("All");
+  }
+
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
       const form = new FormData();
@@ -687,7 +692,7 @@ export default function DocumentLibrary() {
             </div>
             <div className="space-y-2">
               <Label className="flex items-center gap-2 text-sm"><Tag className="h-4 w-4" /> Tag</Label>
-              <Select value={tagFilter} onValueChange={setTagFilter}>
+              <Select value={tagFilter} onValueChange={selectTagFilter}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {tags.map((tag) => <SelectItem key={tag} value={tag}>{tag}</SelectItem>)}
@@ -707,7 +712,7 @@ export default function DocumentLibrary() {
                         tagFilter === tag ? tagColorClass(tag) : "border-border bg-background hover:bg-muted",
                       )}
                     >
-                      <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => setTagFilter(tag)}>
+                      <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => selectTagFilter(tag)}>
                         <Tag className={cn("h-4 w-4 shrink-0", tagFilter === tag && "text-current")} />
                         <span className="truncate">{tag}</span>
                       </button>
@@ -751,8 +756,10 @@ export default function DocumentLibrary() {
             ) : filtered.length === 0 ? (
               <div className="flex min-h-64 flex-col items-center justify-center rounded-lg border bg-card p-8 text-center">
                 <FileText className="h-10 w-10 text-muted-foreground" />
-                <h2 className="mt-3 text-lg font-semibold">No documents yet</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Upload a PDF, DOCX, JPG, or PNG to start building your library.</p>
+                <h2 className="mt-3 text-lg font-semibold">{documents.length ? "No matching documents" : "No documents yet"}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {documents.length ? "Try All folders or clear the current tag filter." : "Upload a PDF, DOCX, JPG, or PNG to start building your library."}
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,320px),1fr))] gap-4">
@@ -810,7 +817,9 @@ export default function DocumentLibrary() {
                         </div>
                         <div className="flex flex-wrap gap-1.5">
                           {(doc.tags ?? []).slice(0, 4).map((tag) => (
-                            <Badge key={tag} variant="outline" className={cn("border", tagColorClass(tag))}>{tag}</Badge>
+                            <button key={tag} type="button" onClick={() => selectTagFilter(tag)} className="rounded-full">
+                              <Badge variant="outline" className={cn("cursor-pointer border transition-transform hover:-translate-y-0.5", tagColorClass(tag))}>{tag}</Badge>
+                            </button>
                           ))}
                           {doc.linkedVendorName && <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100"><Link2 className="mr-1 h-3 w-3" />{doc.linkedVendorName}</Badge>}
                           {extracted.suggestedVendorName && !doc.linkedVendorName && <Badge variant="outline">Suggested: {extracted.suggestedVendorName}</Badge>}
