@@ -138,6 +138,7 @@ export interface WebsiteRendererPayload {
     location: string;
     venueCity: string | null;
     venueState: string | null;
+    venueZip?: string | null;
   };
   // timeline removed — wedding website schedule is entered directly by the couple
 }
@@ -2436,6 +2437,14 @@ function Schedule({
 
 function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const text = data.customText.travel ?? "";
+  const venueCityStateZip = [
+    [data.couple.venueCity, data.couple.venueState].filter(Boolean).join(", "),
+    data.couple.venueZip,
+  ].filter(Boolean).join(" ");
+  const venueAddressLines = [
+    data.couple.location,
+    venueCityStateZip,
+  ].filter(Boolean);
   const selectedHotelBlockId =
     data.customText._rsvpHotelBlockId && data.customText._rsvpHotelBlockId !== "all"
       ? data.customText._rsvpHotelBlockId
@@ -2454,9 +2463,8 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const venueQuery = encodeURIComponent(
     [
       data.couple.venue,
-      data.couple.venueCity,
-      data.couple.venueState,
       data.couple.location,
+      venueCityStateZip,
     ]
       .filter(Boolean)
       .join(", "),
@@ -2543,14 +2551,15 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   >
                     {data.couple.venue}
                   </div>
-                  {data.couple.location && (
+                  {venueAddressLines.map((line) => (
                     <div
+                      key={line}
                       className="text-sm font-medium"
                       style={{ color: labelColor }}
                     >
-                      {data.couple.location}
+                      {line}
                     </div>
-                  )}
+                  ))}
                 </div>
               </div>
               <a

@@ -507,6 +507,7 @@ export default function WebsiteEditor() {
           location: profile.location ?? "",
           venueCity: profile.venueCity ?? null,
           venueState: profile.venueState ?? null,
+          venueZip: profile.venueZip ?? null,
         },
       });
     })();
@@ -863,6 +864,7 @@ export default function WebsiteEditor() {
         location: "",
         venueCity: null,
         venueState: null,
+        venueZip: null,
       },
     };
   }, [hotelBlocks, invitationHotelSettings, record, previewExtra?.couple, translatedWebsiteText]);

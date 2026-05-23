@@ -382,6 +382,7 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
       location: profile.location,
       venueCity: profile.venueCity,
       venueState: profile.venueState,
+      venueZip: profile.venueZip,
     },
   };
 }
@@ -528,6 +529,7 @@ async function buildInvitationSharePayload(profileId: number, frontendOrigin: st
       location: profile.location,
       venueCity: profile.venueCity,
       venueState: profile.venueState,
+      venueZip: profile.venueZip,
     },
   };
 }
