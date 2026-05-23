@@ -68,8 +68,8 @@ type DocumentRecord = {
   updatedAt?: string;
 };
 
-function fileUrl(path: string) {
-  return `${API}/api/storage/objects${path.replace(/^\/objects/, "")}`;
+function documentFileUrl(doc: DocumentRecord) {
+  return `${API}/api/documents/${doc.id}/file`;
 }
 
 function formatDate(value: string) {
@@ -897,9 +897,9 @@ export default function DocumentLibrary() {
           {previewDoc && (
             <div className="min-h-[60vh] rounded-lg border bg-muted/20">
               {previewDoc.fileType === "PDF" ? (
-                <iframe title={previewDoc.fileName} src={fileUrl(previewDoc.fileUrl)} className="h-[70vh] w-full rounded-lg" />
+                <iframe title={previewDoc.fileName} src={documentFileUrl(previewDoc)} className="h-[70vh] w-full rounded-lg" />
               ) : ["JPG", "PNG"].includes(previewDoc.fileType) ? (
-                <img src={fileUrl(previewDoc.fileUrl)} alt={previewDoc.fileName} className="max-h-[70vh] w-full rounded-lg object-contain" />
+                <img src={documentFileUrl(previewDoc)} alt={previewDoc.fileName} className="max-h-[70vh] w-full rounded-lg object-contain" />
               ) : (
                 <div className="p-5">
                   <p className="mb-3 text-sm text-muted-foreground">DOCX preview is shown as extracted text inside the app.</p>

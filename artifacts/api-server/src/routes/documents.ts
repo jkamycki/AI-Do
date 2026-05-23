@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { Response } from "express";
 import multer from "multer";
 import { createRequire } from "node:module";
+import { Readable } from "stream";
 import JSZip from "jszip";
 import he from "he";
 import PDFDocument from "pdfkit";
@@ -9,7 +10,7 @@ import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { db, documents, vendors } from "@workspace/db";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../middlewares/requireAuth";
-import { ObjectStorageService } from "../lib/objectStorage";
+import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
 import { trackEvent } from "../lib/trackEvent";
 import { hasMinRole, resolveCallerRole, resolveProfile } from "../lib/workspaceAccess";
 
@@ -356,6 +357,22 @@ function finishDocumentPdf(doc: PdfDoc, res: Response, filename: string) {
   doc.end();
 }
 
+function contentDispositionFilename(fileName: string) {
+  const fallback = cleanFileName(fileName).replace(/"/g, "'");
+  return `inline; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(fallback)}`;
+}
+
+async function streamStorageResponse(response: globalThis.Response, res: Response) {
+  res.status(response.status);
+  response.headers.forEach((value, key) => res.setHeader(key, value));
+  if (response.body) {
+    const nodeStream = Readable.fromWeb(response.body as ReadableStream<Uint8Array>);
+    nodeStream.pipe(res);
+  } else {
+    res.end();
+  }
+}
+
 function buildDocumentPdf(record: typeof documents.$inferSelect, res: Response) {
   const pdf = new PDFDocument({ size: "A4", margin: 46, autoFirstPage: true });
   const fields = normalizeExtractedFields(record.extractedFields);
@@ -480,6 +497,37 @@ router.get("/documents/:id", requireAuth, async (req, res) => {
       tags: normalizeTags(rows[0].tags),
     },
   });
+});
+
+router.get("/documents/:id/file", requireAuth, async (req, res) => {
+  const profile = await resolveProfile(req);
+  if (!profile) return res.status(404).json({ error: "Profile not found" });
+  const id = Number(req.params.id);
+  const rows = await db
+    .select({
+      id: documents.id,
+      fileUrl: documents.fileUrl,
+      fileName: documents.fileName,
+      originalFileName: documents.originalFileName,
+    })
+    .from(documents)
+    .where(and(eq(documents.id, id), eq(documents.profileId, profile.id)))
+    .limit(1);
+  const doc = rows[0];
+  if (!doc) return res.status(404).json({ error: "Document not found" });
+
+  try {
+    const file = await storage.getObjectEntityFile(doc.fileUrl);
+    const response = await storage.downloadObject(file);
+    res.setHeader("Content-Disposition", contentDispositionFilename(doc.fileName || doc.originalFileName || "wedding-document"));
+    await streamStorageResponse(response, res);
+  } catch (error) {
+    if (error instanceof ObjectNotFoundError) {
+      return res.status(404).json({ error: "Document file not found" });
+    }
+    req.log.error({ err: error, documentId: id }, "Failed to stream document file");
+    return res.status(500).json({ error: "Failed to preview document" });
+  }
 });
 
 router.get("/documents/:id/download-pdf", requireAuth, async (req, res) => {
