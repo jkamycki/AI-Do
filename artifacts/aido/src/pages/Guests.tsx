@@ -2520,6 +2520,30 @@ export default function Guests({
     );
   }
 
+  function handleTableAssignmentChange(guest: Guest, raw: string) {
+    const next = raw.trim();
+    const current = guest.tableAssignment?.trim() ?? "";
+    if (next === current) return;
+
+    optimisticUpdate(guest.id, { tableAssignment: next || null });
+    authFetch(`/api/guests/${guest.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tableAssignment: next }),
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error();
+        invalidate();
+      })
+      .catch(() => {
+        optimisticUpdate(guest.id, { tableAssignment: guest.tableAssignment });
+        toast({
+          title: "Failed to update table assignment",
+          variant: "destructive",
+        });
+      });
+  }
+
   function handleAdd(data: GuestFormValues) {
     const guestData = getGuestApiValues(data);
     const plusOneName = data.plusOne
@@ -3905,7 +3929,23 @@ export default function Guests({
                       </div>
                       <div className="rounded-lg border border-border/50 bg-muted/20 px-2.5 py-2">
                         <p className="font-semibold uppercase tracking-wide text-muted-foreground">Table</p>
-                        <p className="mt-0.5 font-medium truncate">
+                        <Input
+                          key={`mobile-table-${g.id}-${g.tableAssignment ?? ""}`}
+                          defaultValue={g.tableAssignment ?? ""}
+                          placeholder="—"
+                          aria-label={`Table assignment for ${g.name}`}
+                          title="Edit table assignment"
+                          className="mt-1 h-7 w-full px-2 text-xs font-medium text-muted-foreground"
+                          onBlur={(event) => handleTableAssignmentChange(g, event.currentTarget.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") event.currentTarget.blur();
+                            if (event.key === "Escape") {
+                              event.currentTarget.value = g.tableAssignment ?? "";
+                              event.currentTarget.blur();
+                            }
+                          }}
+                        />
+                        <p className="hidden">
                           {g.tableAssignment || "—"}
                         </p>
                       </div>
@@ -4343,7 +4383,23 @@ export default function Guests({
                               </div>
                             )}
                         </TableCell>
-                        <TableCell className="hidden md:table-cell align-top text-xs lg:text-sm text-muted-foreground break-words">
+                        <TableCell className="hidden md:table-cell align-top text-xs lg:text-sm text-[0px]">
+                          <Input
+                            key={`table-${g.id}-${g.tableAssignment ?? ""}`}
+                            defaultValue={g.tableAssignment ?? ""}
+                            placeholder="—"
+                            aria-label={`Table assignment for ${g.name}`}
+                            title="Edit table assignment"
+                            className="h-7 w-full px-2 text-xs font-medium text-muted-foreground"
+                            onBlur={(event) => handleTableAssignmentChange(g, event.currentTarget.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") event.currentTarget.blur();
+                              if (event.key === "Escape") {
+                                event.currentTarget.value = g.tableAssignment ?? "";
+                                event.currentTarget.blur();
+                              }
+                            }}
+                          />
                           {g.tableAssignment || "—"}
                         </TableCell>
                         <TableCell className="hidden md:table-cell align-top text-xs lg:text-sm">

@@ -193,6 +193,14 @@ test.describe('A.IDO safe CRUD workflows', () => {
 
       await expect(page.locator('body')).toContainText(guestName, { timeout: 15_000 });
       await expect(page.locator('body')).toContainText(/Playwright Plusone/i);
+
+      const tableInput = page.getByLabel(`Table assignment for ${guestName}`);
+      await expect(tableInput).toBeVisible();
+      await tableInput.fill('Table 99');
+      await tableInput.press('Enter');
+      await expect(tableInput).toHaveValue('Table 99');
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await expect(page.getByLabel(`Table assignment for ${guestName}`)).toHaveValue('Table 99');
     } finally {
       await deleteGuestIfPresent(page, guestName).catch(() => {});
       await deleteStalePlaywrightGuests(page).catch(() => {});
