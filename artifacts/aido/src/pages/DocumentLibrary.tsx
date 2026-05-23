@@ -142,9 +142,14 @@ function looksLikeRawExtractedText(summary?: string | null) {
   return summary.length > 180 && (separators >= 2 || contactBits >= 2);
 }
 
+function looksLikeUnreadableTextNotice(summary?: string | null) {
+  if (!summary) return false;
+  return /could not extract readable text|not available until readable text|readable contract text needed/i.test(summary);
+}
+
 function documentCardSummary(doc: DocumentRecord) {
   const extracted = fields(doc);
-  if (doc.summary && !looksLikeRawExtractedText(doc.summary)) return doc.summary;
+  if (doc.summary && !looksLikeRawExtractedText(doc.summary) && !looksLikeUnreadableTextNotice(doc.summary)) return doc.summary;
   const details = [
     extracted.suggestedVendorName || extracted.vendorName || doc.linkedVendorName,
     (extracted.deliverables ?? [])[0],
@@ -152,6 +157,9 @@ function documentCardSummary(doc: DocumentRecord) {
     (extracted.dueDates ?? [])[0]?.date ? `Due date: ${(extracted.dueDates ?? [])[0]?.date}` : null,
   ].filter(Boolean);
   if (details.length) return details.join(". ") + ".";
+  if (looksLikeUnreadableTextNotice(doc.summary)) {
+    return `${doc.fileName} is saved in your library. Open Preview to review the original file, or upload a text-based copy to unlock full AI field extraction.`;
+  }
   return "Document saved. Open Summary or Extract Info to review key details, payment dates, policies, and contact information.";
 }
 

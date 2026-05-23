@@ -551,7 +551,7 @@ function buildUnreadableContractAnalysis(fileName: string, mimetype: string): Re
   return normalizeAnalysis({
     overallRiskLevel: "medium",
     vendorType: "Contract",
-    summary: `A.IDO saved ${fileName}, but could not extract readable text from this ${fileType}. The file may be scanned, image-based, protected, or exported in a way that hides the text layer.`,
+    summary: `A.IDO saved ${fileName} as a ${fileType}. The file looks scanned, image-based, protected, or exported without selectable text, so Preview is the best place to review the original file until a text-based copy is uploaded.`,
     redFlags: [
       {
         severity: "medium",

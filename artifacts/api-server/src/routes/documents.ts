@@ -223,7 +223,7 @@ function normalizeExtractedFields(raw: unknown): ExtractedFields {
 
 function fallbackSummary(fileName: string, extractedText: string, fileType: string): string {
   if (!extractedText) {
-    return `${fileName} is saved as a ${fileType} document. Open Summary or Preview to review the original file.`;
+    return `${fileName} is saved as a ${fileType} document. Open Preview to review the original file, or upload a text-based copy to unlock full AI field extraction.`;
   }
   const text = extractedText.replace(/\s+/g, " ").trim();
   const vendor = text.match(/(?:www\.)?([A-Z0-9][A-Z0-9&'. -]{2,80}?)(?:\s+(?:Contract|Agreement|Invoice|Proposal|Date)\b| \/\/)/i)?.[1]?.trim();
