@@ -2606,30 +2606,9 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                       {hotelAddress || "Address (street, city, state)"}
                     </div>
                   )}
-                  {syncedHotel?.groupName && (
-                    <div className="mt-2 text-xs font-medium" style={{ color: labelColor }}>
-                      Room block: {syncedHotel.groupName}
-                    </div>
-                  )}
-                  {syncedHotel?.discountCode && (
-                    <div className="text-xs font-medium" style={{ color: labelColor }}>
-                      Code: {syncedHotel.discountCode}
-                    </div>
-                  )}
-                  {syncedHotel?.cutoffDate && (
-                    <div className="text-xs font-medium" style={{ color: labelColor }}>
-                      Book by {websiteHotelCutoffDate(syncedHotel.cutoffDate)}
-                    </div>
-                  )}
-                  {syncedHotel?.distanceFromVenue && (
-                    <div className="text-xs font-medium" style={{ color: labelColor }}>
-                      {syncedHotel.distanceFromVenue} from venue
-                    </div>
-                  )}
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-3">
-                {hasHotel && (
+              {hasHotel && (
                 <a
                   href={`https://www.google.com/maps/search/${hotelQuery}`}
                   target="_blank"
@@ -2640,20 +2619,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   <Navigation className="h-3.5 w-3.5" />
                   {data.customText._openInGoogleMaps || "Open in Google Maps"}
                 </a>
-                )}
-                {syncedHotel?.bookingLink && (
-                  <a
-                    href={syncedHotel.bookingLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs font-medium transition-opacity hover:opacity-70"
-                    style={{ color: data.colorPalette.primary }}
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                    Book hotel block
-                  </a>
-                )}
-              </div>
+              )}
             </div>
           )}
       </div>
