@@ -196,14 +196,14 @@ function ChoiceCard({
     <button
       type="button"
       onClick={onClick}
-      className={`group flex w-full items-start gap-4 rounded-2xl border p-4 text-left transition-all duration-200 ${
+      className={`group flex w-full items-start gap-4 rounded-[1.4rem] border p-4 text-left transition-all duration-200 ${
         active
-          ? "border-[#9c3158] bg-[#fff7f8] shadow-[0_14px_34px_rgba(156,49,88,0.14)]"
-          : "border-[#ead2ca] bg-white/80 hover:-translate-y-0.5 hover:border-[#d4a373] hover:shadow-[0_12px_28px_rgba(94,53,59,0.10)]"
+          ? "border-[#9c3158] bg-[#fff7f8] shadow-[0_14px_34px_rgba(156,49,88,0.14)] ring-1 ring-[#9c3158]/10"
+          : "border-[#ead2ca] bg-white/85 hover:-translate-y-0.5 hover:border-[#d4a373] hover:shadow-[0_12px_28px_rgba(94,53,59,0.10)]"
       }`}
     >
       <span
-        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${
+        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
           active ? "bg-[#9c3158] text-white" : "bg-[#f7dde2] text-[#9c3158] group-hover:bg-[#f3d19d] group-hover:text-[#6d3f2d]"
         }`}
       >
@@ -229,12 +229,23 @@ function StepShell({
   children: ReactNode;
 }) {
   return (
-    <div className="mx-auto w-full max-w-3xl">
-      {eyebrow && <p className="mb-3 text-xs font-bold uppercase tracking-[0.22em] text-[#9c3158]">{eyebrow}</p>}
-      <h2 className="font-serif text-4xl leading-tight text-[#3c252b] sm:text-5xl">{title}</h2>
-      {description && <p className="mt-4 max-w-2xl text-lg leading-8 text-[#73565d]">{description}</p>}
+    <section className="mx-auto w-full max-w-4xl rounded-[2rem] border border-[#f0d5d9] bg-white/86 p-5 shadow-[0_22px_60px_rgba(99,55,64,0.11)] backdrop-blur sm:p-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          {eyebrow && (
+            <p className="mb-3 inline-flex rounded-full bg-[#f7dde2] px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-[#9c3158]">
+              {eyebrow}
+            </p>
+          )}
+          <h2 className="max-w-2xl font-serif text-3xl leading-tight text-[#3c252b] sm:text-5xl">{title}</h2>
+        </div>
+        <span className="hidden rounded-full border border-[#e8cfc5] bg-[#fffaf6] px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-[#b7804e] sm:inline-flex">
+          A.I Do
+        </span>
+      </div>
+      {description && <p className="mt-4 max-w-2xl text-base leading-7 text-[#73565d] sm:text-lg sm:leading-8">{description}</p>}
       <div className="mt-8">{children}</div>
-    </div>
+    </section>
   );
 }
 
@@ -298,6 +309,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
   const venueChoice = form.watch("venueChoice") as VenueChoice;
   const bookedVendors = form.watch("bookedVendors") ?? [];
   const finalPrompt = form.watch("ariaPrompt");
+  const progressPercent = Math.round(((step + 1) / STEPS.length) * 100);
 
   function markDismissed() {
     if (user?.id) {
@@ -479,7 +491,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && dismiss()}>
       <DialogContent
-        className="max-h-[94vh] overflow-hidden border-[#efd6d9] bg-[#fffaf6] p-0 shadow-[0_30px_90px_rgba(74,35,43,0.26)] sm:max-w-[980px]"
+        className="max-h-[94vh] overflow-hidden border-[#efd6d9] bg-[#fffaf6] p-0 shadow-[0_30px_90px_rgba(74,35,43,0.26)] sm:max-w-[1120px]"
         onPointerDownOutside={(event) => event.preventDefault()}
       >
         <DialogHeader className="sr-only">
@@ -487,35 +499,77 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
           <DialogDescription>Set up your wedding workspace and Aria assistant.</DialogDescription>
         </DialogHeader>
 
-        <div className="relative max-h-[94vh] overflow-y-auto bg-[radial-gradient(circle_at_top_right,rgba(247,221,226,0.85),transparent_34%),linear-gradient(180deg,#fffaf6_0%,#fff6f7_100%)] px-5 py-6 sm:px-10 sm:py-8">
-          <div className="pointer-events-none absolute right-8 top-20 h-44 w-44 rounded-full bg-[#f7dde2]/50 blur-3xl" />
-          <div className="pointer-events-none absolute bottom-12 left-8 h-36 w-36 rounded-full bg-[#d4a373]/20 blur-3xl" />
+        <div className="max-h-[94vh] overflow-y-auto bg-[#fff8f3]">
+          <div className="grid min-h-[720px] lg:grid-cols-[280px_1fr]">
+            <aside className="hidden border-r border-[#efd6d9] bg-[#fff3f0] px-6 py-8 lg:block">
+              <div className="sticky top-8">
+                <div className="rounded-[1.75rem] border border-[#f0d5d9] bg-white/80 p-5 shadow-[0_16px_38px_rgba(99,55,64,0.08)]">
+                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#b7804e]">Setup Studio</p>
+                  <h3 className="mt-3 font-serif text-3xl leading-tight text-[#3c252b]">Shape your planning hub.</h3>
+                  <p className="mt-3 text-sm leading-6 text-[#73565d]">
+                    A short guided setup for your A.I Do workspace, dashboard, and Aria.
+                  </p>
+                  <div className="mt-5 h-2 overflow-hidden rounded-full bg-[#f0ded9]">
+                    <div
+                      className="h-full rounded-full bg-[#9c3158] transition-all duration-500"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                  <p className="mt-3 text-sm font-semibold text-[#9c3158]">{progressPercent}% ready</p>
+                </div>
 
-          <div className="relative z-10 mb-8 flex items-center gap-2">
-            {STEPS.map((label, index) => (
-              <div key={label} className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#eadfda]">
+                <div className="mt-6 space-y-2">
+                  {STEPS.map((label, index) => {
+                    const active = index === step;
+                    const done = index < step;
+                    return (
+                      <div
+                        key={label}
+                        className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition ${
+                          active ? "bg-white text-[#3c252b] shadow-sm" : done ? "text-[#9c3158]" : "text-[#8b6f73]"
+                        }`}
+                      >
+                        <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
+                          active ? "bg-[#9c3158] text-white" : done ? "bg-[#f7dde2] text-[#9c3158]" : "bg-[#f4e7e2] text-[#8b6f73]"
+                        }`}>
+                          {done ? <Check className="h-3.5 w-3.5" /> : index + 1}
+                        </span>
+                        {label}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </aside>
+
+            <main className="px-4 py-5 sm:px-8 sm:py-8">
+              <div className="mb-5 flex items-center justify-between gap-4 lg:hidden">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#b7804e]">Setup Studio</p>
+                  <p className="font-serif text-2xl text-[#3c252b]">{STEPS[step]}</p>
+                </div>
+                <span className="rounded-full bg-[#f7dde2] px-3 py-1 text-sm font-bold text-[#9c3158]">{progressPercent}%</span>
+              </div>
+              <div className="mb-6 h-2 overflow-hidden rounded-full bg-[#f0ded9] lg:hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    index <= step ? "w-full bg-[#9c3158]" : "w-0 bg-[#9c3158]"
-                  }`}
+                  className="h-full rounded-full bg-[#9c3158] transition-all duration-500"
+                  style={{ width: `${progressPercent}%` }}
                 />
               </div>
-            ))}
-          </div>
 
-          <Form {...form}>
-            <form className="relative z-10" onSubmit={(event) => event.preventDefault()}>
+              <Form {...form}>
+                <form onSubmit={(event) => event.preventDefault()}>
               {step === 0 && (
                 <StepShell
-                  eyebrow="A.I Do onboarding"
-                  title="Wedding planning without the scattered tabs."
-                  description="A.I Do keeps your budget, guests, vendors, tasks, documents, and day-of timeline in one calm workspace. Aria uses the details you add here to help you move faster from the first screen."
+                  eyebrow="A.I Do setup"
+                  title="Start with the details that unlock everything."
+                  description="In a few minutes, A.I Do will shape your dashboard, budget, guest tools, vendor plan, and Aria assistant around your actual wedding. Think of this as setting the table before the planning begins."
                 >
                   <div className="grid gap-4 sm:grid-cols-3">
                     {[
-                      { icon: ClipboardCheck, title: "One plan", text: "Tasks, files, vendors, and budget stay connected." },
-                      { icon: Search, title: "Smart discovery", text: "Still looking for a venue? We will start the wizard here." },
-                      { icon: MessageCircle, title: "Aria ready", text: "Your assistant starts with real context, not a blank chat." },
+                      { icon: ClipboardCheck, title: "Planning hub", text: "Your tasks, budget, guests, and files start from the same source of truth." },
+                      { icon: Search, title: "Venue path", text: "Booked or still searching, we capture the right next step without extra setup." },
+                      { icon: MessageCircle, title: "Aria context", text: "Your assistant begins with useful details instead of asking you to repeat yourself." },
                     ].map(({ icon: Icon, title, text }) => (
                       <div key={title} className="rounded-3xl border border-[#efd6d9] bg-white/80 p-5 shadow-[0_14px_34px_rgba(94,53,59,0.08)]">
                         <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f7dde2] text-[#9c3158]">
@@ -528,10 +582,10 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                   </div>
                   <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
                     <PrimaryButton type="button" onClick={next}>
-                      Build my wedding plan
+                      Create my planning hub
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </PrimaryButton>
-                    <SecondaryButton type="button" onClick={dismiss}>Skip setup for now</SecondaryButton>
+                    <SecondaryButton type="button" onClick={dismiss}>I will set this up later</SecondaryButton>
                   </div>
                 </StepShell>
               )}
@@ -539,8 +593,8 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
               {step === 1 && (
                 <StepShell
                   eyebrow="Step 1 of 7"
-                  title="Who is getting married?"
-                  description="First names are enough. We will use these throughout your dashboard, reminders, and Aria's planning context."
+                  title="Name your wedding workspace."
+                  description="Add the names you want A.I Do to use across your dashboard, reminders, guest tools, and Aria planning context."
                 >
                   <div className="grid gap-5 sm:grid-cols-2">
                     <FormField
@@ -549,7 +603,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Your first name</FormLabel>
-                          <FormControl><Input className="h-14 rounded-2xl border-[#e8cfc5] bg-white text-base" placeholder="First name" {...field} /></FormControl>
+                          <FormControl><Input className="h-14 rounded-2xl border-[#e8cfc5] bg-white text-base" placeholder="e.g. Stacy" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -560,7 +614,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Partner's first name</FormLabel>
-                          <FormControl><Input className="h-14 rounded-2xl border-[#e8cfc5] bg-white text-base" placeholder="First name" {...field} /></FormControl>
+                          <FormControl><Input className="h-14 rounded-2xl border-[#e8cfc5] bg-white text-base" placeholder="e.g. Rick" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -583,8 +637,8 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
               {step === 2 && (
                 <StepShell
                   eyebrow="Step 2 of 7"
-                  title={`When is the wedding, ${firstName(values.partner2Name) || "friend"}?`}
-                  description="An exact date is ideal, but a target date works too. Your checklist, reminders, and timeline all build from here."
+                  title={`Put the big day on the calendar${firstName(values.partner2Name) ? `, ${firstName(values.partner2Name)}` : ""}.`}
+                  description="A.I Do uses this date to pace your checklist, payment reminders, day-of timeline, and guest communication."
                 >
                   <div className="grid gap-5 sm:grid-cols-[1.4fr_1fr_1fr]">
                     <FormField
@@ -625,8 +679,8 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
               {step === 3 && (
                 <StepShell
                   eyebrow="Step 3 of 7"
-                  title="Set the planning range."
-                  description="These estimates help A.I Do size the budget, guest tools, vendor reminders, and timeline. You can adjust them anytime."
+                  title="Give the plan its guardrails."
+                  description="Budget and guest count are working estimates. They help A.I Do size recommendations, reminders, and vendor priorities without locking you in."
                 >
                   <div className="grid gap-5 sm:grid-cols-2">
                     <FormField
@@ -643,7 +697,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                               className="h-14 rounded-2xl border-[#e8cfc5] bg-white text-base"
                             />
                           </FormControl>
-                          <p className="text-sm text-[#835f66]">A realistic range matters more than a perfect number.</p>
+                          <p className="text-sm text-[#835f66]">Use your current comfort zone. You can revise it anytime.</p>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -655,7 +709,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                         <FormItem>
                           <FormLabel>Estimated guest count</FormLabel>
                           <FormControl><Input type="number" min={1} className="h-14 rounded-2xl border-[#e8cfc5] bg-white text-base" placeholder="e.g. 120" {...field} /></FormControl>
-                          <p className="text-sm text-[#835f66]">This is a planning number, not a commitment.</p>
+                          <p className="text-sm text-[#835f66]">A rough count is enough for early planning.</p>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -686,28 +740,28 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
               {step === 4 && (
                 <StepShell
                   eyebrow="Step 4 of 7"
-                  title="Have you booked a venue yet?"
-                  description="If you already have one, we will anchor your profile around it. If not, A.I Do will open the Venue Discovery Wizard right here."
+                  title="Set the venue direction."
+                  description="Tell A.I Do whether the location is locked, still in progress, or intentionally unconventional. The next questions adapt to your answer."
                 >
                   <div className="grid gap-4">
                     <ChoiceCard
                       active={venueChoice === "booked"}
-                      title="Yes, we have a venue"
-                      description="Add the name and location so the rest of your plan has a home base."
+                      title="Venue is booked"
+                      description="Add the name and city so your timeline, budget, and reminders can anchor around it."
                       icon={MapPin}
                       onClick={() => form.setValue("venueChoice", "booked", { shouldDirty: true })}
                     />
                     <ChoiceCard
                       active={venueChoice === "looking"}
-                      title="We are still looking"
-                      description="Use the discovery wizard to define locations, style, must-haves, and outreach drafts."
+                      title="Venue search is active"
+                      description="Open the discovery flow to organize location, style, must-haves, and outreach notes."
                       icon={Search}
                       onClick={() => form.setValue("venueChoice", "looking", { shouldDirty: true })}
                     />
                     <ChoiceCard
                       active={venueChoice === "non_traditional"}
-                      title="We are doing something non-traditional"
-                      description="Great. We will still capture the area, constraints, and planning notes so Aria can guide the next steps."
+                      title="Private, pop-up, or non-traditional"
+                      description="Capture the area and constraints so Aria can help turn the idea into a workable plan."
                       icon={Sparkles}
                       onClick={() => form.setValue("venueChoice", "non_traditional", { shouldDirty: true })}
                     />
@@ -747,7 +801,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                           <FormItem>
                             <FormLabel>Where are you planning?</FormLabel>
                             <FormControl><Input className="h-14 rounded-2xl border-[#e8cfc5] bg-white text-base" placeholder="e.g. Austin, TX or Hudson Valley, NY" {...field} /></FormControl>
-                            <p className="text-sm text-[#835f66]">This feeds venue discovery and local vendor suggestions.</p>
+                            <p className="text-sm text-[#835f66]">This gives the venue wizard and Aria a useful search area.</p>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -779,8 +833,8 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
               {step === 5 && (
                 <StepShell
                   eyebrow="Step 5 of 7"
-                  title="Which vendors have you already booked?"
-                  description="Tap anything already handled. A.I Do will use this as launch context so Aria and your checklist focus on what is still open."
+                  title="Mark what is already handled."
+                  description="Select any vendor categories you have covered. Your checklist will start smarter and Aria will focus on the open decisions."
                 >
                   <div className="grid gap-3 sm:grid-cols-2">
                     {VENDOR_OPTIONS.map((vendor) => {
@@ -805,7 +859,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                     })}
                   </div>
                   <div className="mt-5 rounded-3xl border border-[#efd6d9] bg-white/70 p-5">
-                    <p className="font-semibold text-[#3c252b]">{bookedVendors.length ? `${bookedVendors.length} booked so far` : "None yet"}</p>
+                    <p className="font-semibold text-[#3c252b]">{bookedVendors.length ? `${bookedVendors.length} categories already covered` : "Starting fresh"}</p>
                     <p className="mt-1 text-sm text-[#835f66]">You can still add full vendor cards later with contracts, payments, contacts, and files.</p>
                   </div>
                 </StepShell>
@@ -814,8 +868,8 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
               {step === 6 && (
                 <StepShell
                   eyebrow="Step 6 of 7"
-                  title="Invite your partner when you are ready."
-                  description="They will get full access to view, edit, and manage the wedding workspace with you. This can be skipped and done later from Settings."
+                  title="Bring in your planning partner."
+                  description="Send an invite now, or skip it and add collaborators later from Settings. You stay in control of access."
                 >
                   <FormField
                     control={form.control}
@@ -834,8 +888,8 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                         <Mail className="h-5 w-5" />
                       </span>
                       <div>
-                        <p className="font-semibold text-[#3c252b]">Collaboration stays flexible.</p>
-                        <p className="mt-1 text-sm leading-6 text-[#835f66]">You can also invite planners or vendors later with more limited permissions.</p>
+                        <p className="font-semibold text-[#3c252b]">Access can grow with the plan.</p>
+                        <p className="mt-1 text-sm leading-6 text-[#835f66]">Later, you can invite planners or vendors with role-specific permissions.</p>
                       </div>
                     </div>
                   </div>
@@ -845,8 +899,8 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
               {step === 7 && (
                 <StepShell
                   eyebrow="Step 7 of 7"
-                  title="One more thing before you dive in."
-                  description="Meet Aria, your A.I Do planning assistant. Aria can answer questions, create tasks, draft vendor emails, update details, and use the context you just added."
+                  title="Hand the first question to Aria."
+                  description="Aria is your A.I Do planning assistant. It can turn your setup into next steps, draft vendor outreach, create tasks, and answer questions with your wedding context in mind."
                 >
                   <div className="grid gap-5 lg:grid-cols-[auto_1fr]">
                     <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#9c3158] text-lg font-bold text-white shadow-[0_14px_30px_rgba(156,49,88,0.2)]">
@@ -854,12 +908,12 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                     </div>
                     <div className="rounded-[2rem] border border-[#efd6d9] bg-white/85 p-6 shadow-[0_16px_38px_rgba(94,53,59,0.1)]">
                       <p className="text-lg leading-8 text-[#3c252b]">
-                        Hi {coupleNames}. I can see your wedding date, budget, guest estimate, venue status, and which vendors you have already handled.
+                        Hi {coupleNames}. I have your date, budget range, guest estimate, venue direction, and early vendor status.
                       </p>
                       <p className="mt-4 text-lg leading-8 text-[#3c252b]">
                         {venueChoice === "booked"
-                          ? `Since ${values.venue || "your venue"} is booked, I will help keep payments, guests, and timeline details moving.`
-                          : "Since you are still shaping the venue plan, I can help compare locations, draft outreach, and turn the search into clear next steps."}
+                          ? `With ${values.venue || "your venue"} in place, I can help keep payments, guests, and timeline details moving.`
+                          : "With the venue path still open, I can help compare options, prepare outreach, and turn the search into practical next steps."}
                       </p>
                     </div>
                   </div>
@@ -872,7 +926,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                         <FormControl>
                           <Textarea
                             className="min-h-24 rounded-3xl border-[#e8cfc5] bg-white p-5 text-base"
-                            placeholder="Ask Aria anything, or leave this blank and head to your dashboard..."
+                            placeholder="Ask Aria for your first next move, or leave this blank and open the dashboard..."
                             {...field}
                           />
                         </FormControl>
@@ -882,11 +936,11 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
 
                   <div className="mt-6 grid gap-3 sm:grid-cols-2">
                     <PrimaryButton type="button" disabled={saving} onClick={() => complete({ openAria: Boolean(finalPrompt?.trim()) })}>
-                      {saving ? "Saving..." : finalPrompt?.trim() ? "Ask Aria" : "Go to my dashboard"}
+                      {saving ? "Saving..." : finalPrompt?.trim() ? "Ask Aria" : "Open my dashboard"}
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </PrimaryButton>
                     <SecondaryButton type="button" disabled={saving} onClick={() => complete({ openAria: false })}>
-                      Go to dashboard
+                      Finish without asking Aria
                     </SecondaryButton>
                   </div>
                 </StepShell>
@@ -907,7 +961,9 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                 </div>
               )}
             </form>
-          </Form>
+              </Form>
+            </main>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
