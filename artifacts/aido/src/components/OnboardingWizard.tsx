@@ -158,6 +158,12 @@ function normalizeGuests(value: unknown) {
   return Number.isFinite(numeric) ? Math.max(1, Math.round(numeric)) : 1;
 }
 
+function defaultTargetWeddingDate() {
+  const target = new Date();
+  target.setFullYear(target.getFullYear() + 1);
+  return target.toISOString().slice(0, 10);
+}
+
 function venueDiscoveryForSave(values: WizardValues) {
   const discovery = {
     ...freshVenueDiscovery(),
@@ -275,6 +281,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(0);
+  const [skippedSteps, setSkippedSteps] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
   const queryClient = useQueryClient();
   const saveProfile = useSaveProfile();
@@ -379,6 +386,18 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
 
   function next() {
     if (!validateStep()) return;
+    setSkippedSteps((current) => current.filter((item) => item !== step));
+    setStep((current) => Math.min(current + 1, STEPS.length - 1));
+  }
+
+  function skipCurrentStep() {
+    if (step === 0) {
+      dismiss();
+      return;
+    }
+
+    form.clearErrors();
+    setSkippedSteps((current) => current.includes(step) ? current : [...current, step]);
     setStep((current) => Math.min(current + 1, STEPS.length - 1));
   }
 
@@ -411,6 +430,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
 
   async function complete(options: { openAria?: boolean } = {}) {
     for (let index = 1; index <= 6; index += 1) {
+      if (skippedSteps.includes(index)) continue;
       if (!validateStep(index)) {
         setStep(index);
         return;
@@ -418,34 +438,45 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
     }
 
     const current = form.getValues();
-    const { sharedLastName } = current;
-    const venueStatus = current.venueChoice === "booked" ? "booked" : "not_yet";
-    const venueDiscovery = venueStatus === "not_yet" ? venueDiscoveryForSave(current) : null;
-    const location = current.location || current.venueDiscovery.location || "";
-    const prompt = current.ariaPrompt.trim();
+    const saveValues = {
+      ...current,
+      partner2Name: current.partner2Name.trim() || user?.firstName?.trim() || "You",
+      partner1Name: current.partner1Name.trim() || "Partner",
+      weddingDate: current.weddingDate.trim() || defaultTargetWeddingDate(),
+      location: current.location || current.venueDiscovery.location || "",
+      partnerEmail:
+        skippedSteps.includes(6) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(current.partnerEmail.trim())
+          ? ""
+          : current.partnerEmail,
+    };
+    const { sharedLastName } = saveValues;
+    const venueStatus = saveValues.venueChoice === "booked" ? "booked" : "not_yet";
+    const venueDiscovery = venueStatus === "not_yet" ? venueDiscoveryForSave(saveValues) : null;
+    const location = saveValues.location || saveValues.venueDiscovery.location || "";
+    const prompt = saveValues.ariaPrompt.trim();
 
     setSaving(true);
     try {
       await saveProfile.mutateAsync({
         data: {
-          ...current,
-          ...prepareCoupleNames({ ...current, sharedLastName }),
+          ...saveValues,
+          ...prepareCoupleNames({ ...saveValues, sharedLastName }),
           accountType: "couple_individual",
           venueStatus,
           venueDiscovery: venueDiscovery as Record<string, unknown> | null,
           venueBrainstorm: null,
           planningPriorities: emptyPlanningPriorities,
-          venue: venueStatus === "booked" ? current.venue.trim() : "",
+          venue: venueStatus === "booked" ? saveValues.venue.trim() || "Venue to be added" : "",
           location,
-          guestCount: normalizeGuests(current.guestCount),
-          totalBudget: normalizeMoney(current.totalBudget),
-          weddingVibe: current.weddingVibe.trim() || "Warm, elegant, and organized",
-          preferredLanguage: current.preferredLanguage,
+          guestCount: normalizeGuests(saveValues.guestCount),
+          totalBudget: normalizeMoney(saveValues.totalBudget),
+          weddingVibe: saveValues.weddingVibe.trim() || "Warm, elegant, and organized",
+          preferredLanguage: saveValues.preferredLanguage,
         },
       });
 
       try {
-        await maybeInvitePartner(current.partnerEmail);
+        await maybeInvitePartner(saveValues.partnerEmail);
       } catch (inviteError) {
         toast({
           title: "Profile saved",
@@ -454,7 +485,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
         });
       }
 
-      const code = LANG_NAME_TO_CODE[current.preferredLanguage] ?? "en";
+      const code = LANG_NAME_TO_CODE[saveValues.preferredLanguage] ?? "en";
       i18n.changeLanguage(code);
       queryClient.invalidateQueries({ queryKey: getGetProfileQueryKey() });
       queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
@@ -465,7 +496,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
           sessionStorage.setItem(`${ONBOARDING_KEY_PREFIX}:${user.id}`, "true");
           sessionStorage.removeItem("aido_signup_account_type");
           localStorage.setItem(`aido_language_${user.id}`, code);
-          localStorage.setItem(`aido_onboarding_booked_vendors_${user.id}`, JSON.stringify(current.bookedVendors));
+          localStorage.setItem(`aido_onboarding_booked_vendors_${user.id}`, JSON.stringify(saveValues.bookedVendors));
         } catch {}
       }
 
@@ -585,7 +616,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                       Create my planning hub
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </PrimaryButton>
-                    <SecondaryButton type="button" onClick={dismiss}>I will set this up later</SecondaryButton>
+                    <SecondaryButton type="button" onClick={skipCurrentStep}>I'll skip this for now</SecondaryButton>
                   </div>
                 </StepShell>
               )}
@@ -940,24 +971,31 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </PrimaryButton>
                     <SecondaryButton type="button" disabled={saving} onClick={() => complete({ openAria: false })}>
-                      Finish without asking Aria
+                      I'll skip this for now
                     </SecondaryButton>
                   </div>
                 </StepShell>
               )}
 
               {step > 0 && step < STEPS.length && (
-                <div className="mx-auto mt-10 flex w-full max-w-3xl items-center justify-between gap-3">
+                <div className="mx-auto mt-10 flex w-full max-w-3xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <SecondaryButton type="button" onClick={back}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
                   </SecondaryButton>
-                  {step < STEPS.length - 1 && (
-                    <PrimaryButton type="button" onClick={next}>
-                      Continue
-                      <ArrowRight className="ml-2 h-5 w-5" />
-                    </PrimaryButton>
-                  )}
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    {step < STEPS.length - 1 && (
+                      <SecondaryButton type="button" onClick={skipCurrentStep}>
+                        I'll skip this for now
+                      </SecondaryButton>
+                    )}
+                    {step < STEPS.length - 1 && (
+                      <PrimaryButton type="button" onClick={next}>
+                        Continue
+                        <ArrowRight className="ml-2 h-5 w-5" />
+                      </PrimaryButton>
+                    )}
+                  </div>
                 </div>
               )}
             </form>
