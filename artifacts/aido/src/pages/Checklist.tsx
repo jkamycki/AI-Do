@@ -628,14 +628,6 @@ export default function Checklist() {
                             </div>
                           ) : (
                             <div className={`p-4 md:p-6 flex gap-4 transition-colors hover:bg-muted/30 group ${item.isCompleted ? 'bg-muted/10' : ''}`}>
-                              <div className="pt-1">
-                                <Checkbox
-                                  checked={item.isCompleted}
-                                  onCheckedChange={() => handleToggle(item.id, item.isCompleted)}
-                                  data-testid={`checkbox-item-${item.id}`}
-                                  className="h-6 w-6 rounded-full border-primary/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                                />
-                              </div>
                               <div className="flex-1 space-y-1 min-w-0">
                                 <h4 className={`text-lg font-medium transition-all ${item.isCompleted ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                                   {item.task}
@@ -698,7 +690,7 @@ export default function Checklist() {
                                   </button>
                                 )}
                               </div>
-                              <div className="flex items-start gap-1 opacity-100 md:opacity-60 md:group-hover:opacity-100 transition-opacity shrink-0 pt-1">
+                              <div className="flex items-start gap-2 opacity-100 md:opacity-60 md:group-hover:opacity-100 transition-opacity shrink-0 pt-1">
                                 <button
                                   onClick={() => startEdit(item)}
                                   className="p-1.5 rounded border border-border/40 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
@@ -717,6 +709,13 @@ export default function Checklist() {
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </button>
+                                <Checkbox
+                                  checked={item.isCompleted}
+                                  onCheckedChange={() => handleToggle(item.id, item.isCompleted)}
+                                  aria-label={item.isCompleted ? t("checklist.mark_incomplete", { defaultValue: "Mark incomplete" }) : t("checklist.mark_complete", { defaultValue: "Mark complete" })}
+                                  data-testid={`checkbox-item-${item.id}`}
+                                  className="ml-1 h-6 w-6 rounded-full border-primary/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                />
                               </div>
                             </div>
                           )}

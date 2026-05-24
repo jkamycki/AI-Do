@@ -360,10 +360,9 @@ export function Sidebar() {
       defaultOpen: true,
       items: [
         { href: "/dashboard", label: t("sidebar.overview", { defaultValue: "Overview" }) },
-        { href: "/checklist", label: t("sidebar.tasks", { defaultValue: "Tasks" }) },
         { href: "/mood-board", label: t("sidebar.vision_board", { defaultValue: "Vision Board" }) },
         { href: "/profile", label: t("nav.profile", { defaultValue: "Wedding Profile" }) },
-        { href: "/timeline", label: t("nav.timeline", { defaultValue: "Timeline" }) },
+        { href: "/checklist", label: t("nav.checklist", { defaultValue: "Checklist" }) },
       ],
     },
     {
