@@ -41,6 +41,8 @@ export const weddingProfiles = pgTable("wedding_profiles", {
   vendorBccEmail: text("vendor_bcc_email"),
   taskEmailRemindersEnabled: boolean("task_email_reminders_enabled").notNull().default(true),
   taskReminderDaysBefore: integer("task_reminder_days_before").notNull().default(7),
+  rsvpEmailNotificationsEnabled: boolean("rsvp_email_notifications_enabled").notNull().default(true),
+  rsvpNotificationEmails: jsonb("rsvp_notification_emails").$type<string[] | null>(),
   invitationPhotoUrl: text("invitation_photo_url"),
   invitationMessage: text("invitation_message"),
   saveTheDatePhotoUrl: text("save_the_date_photo_url"),

@@ -23,7 +23,7 @@ import {
 import {
   Users, UserPlus, Mail, Shield, Eye, Briefcase, Copy,
   CheckCircle2, Clock, XCircle, Trash2, RefreshCw, ChevronDown,
-  Settings as SettingsIcon, Crown, Globe, Check, TriangleAlert, Sparkles, HelpCircle, Download,
+  Settings as SettingsIcon, Crown, Globe, Check, TriangleAlert, Sparkles, HelpCircle, Download, Plus,
 } from "lucide-react";
 
 type CollabRole = "partner" | "planner" | "vendor";
@@ -80,14 +80,36 @@ const REMINDER_DAY_OPTIONS = [
   { value: "30", label: "30 days before" },
 ];
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 type ReminderPreferences = {
   enabled: boolean;
   daysBefore: number;
 };
 
+type RsvpNotificationPreferences = {
+  enabled: boolean;
+  emails: string[];
+};
+
 function normalizeReminderDays(value: unknown): number {
   const days = Number(value);
   return REMINDER_DAY_OPTIONS.some((option) => Number(option.value) === days) ? days : 7;
+}
+
+function normalizeNotificationEmails(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return Array.from(new Set(
+    value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim().toLowerCase())
+      .filter((item) => EMAIL_PATTERN.test(item))
+  )).slice(0, 10);
+}
+
+function sameEmailList(a: string[], b: string[]) {
+  if (a.length !== b.length) return false;
+  return a.every((email, index) => email === b[index]);
 }
 
 function RoleBadge({ role }: { role: CollabRole }) {
@@ -306,6 +328,8 @@ function buildProfileSavePayload(profile: Record<string, unknown>, overrides: Re
     vendorBccEmail: profile.vendorBccEmail ?? null,
     taskEmailRemindersEnabled: typeof profile.taskEmailRemindersEnabled === "boolean" ? profile.taskEmailRemindersEnabled : true,
     taskReminderDaysBefore: normalizeReminderDays(profile.taskReminderDaysBefore),
+    rsvpEmailNotificationsEnabled: typeof profile.rsvpEmailNotificationsEnabled === "boolean" ? profile.rsvpEmailNotificationsEnabled : true,
+    rsvpNotificationEmails: normalizeNotificationEmails(profile.rsvpNotificationEmails),
     ariaMemory: profile.ariaMemory ?? null,
     ...overrides,
   } as never;
@@ -437,7 +461,7 @@ function VendorBccEmailCard() {
   const current = draft ?? (profile as { vendorBccEmail?: string | null } | undefined)?.vendorBccEmail ?? "";
   const original = (profile as { vendorBccEmail?: string | null } | undefined)?.vendorBccEmail ?? "";
   const hasChange = draft !== null && draft.trim() !== original.trim();
-  const isValid = !current || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(current.trim());
+  const isValid = !current || EMAIL_PATTERN.test(current.trim());
 
   function save() {
     if (!profile || !isValid) return;
@@ -629,6 +653,196 @@ function TaskReminderSettingsCard() {
                 <div className="h-4 w-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
               ) : (
                 "Save Settings"
+              )}
+            </Button>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function RsvpNotificationSettingsCard() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const { data: profile, isLoading } = useGetProfile();
+  const saveProfile = useSaveProfile();
+  const [draft, setDraft] = useState<RsvpNotificationPreferences | null>(null);
+  const [emailDraft, setEmailDraft] = useState("");
+
+  const profilePrefs = profile as ({
+    rsvpEmailNotificationsEnabled?: boolean | null;
+    rsvpNotificationEmails?: unknown;
+  } | undefined);
+  const savedEnabled = typeof profilePrefs?.rsvpEmailNotificationsEnabled === "boolean"
+    ? profilePrefs.rsvpEmailNotificationsEnabled
+    : true;
+  const savedEmails = normalizeNotificationEmails(profilePrefs?.rsvpNotificationEmails);
+  const current = draft ?? { enabled: savedEnabled, emails: savedEmails };
+  const pendingEmail = emailDraft.trim().toLowerCase();
+  const canAddEmail =
+    pendingEmail.length > 0 &&
+    EMAIL_PATTERN.test(pendingEmail) &&
+    !current.emails.includes(pendingEmail) &&
+    current.emails.length < 10;
+  const hasChange = Boolean(
+    profile &&
+    draft &&
+    (draft.enabled !== savedEnabled || !sameEmailList(draft.emails, savedEmails))
+  );
+
+  function updateDraft(next: Partial<RsvpNotificationPreferences>) {
+    setDraft((existing) => ({
+      enabled: existing?.enabled ?? savedEnabled,
+      emails: existing?.emails ?? savedEmails,
+      ...next,
+    }));
+  }
+
+  function addEmail() {
+    if (!canAddEmail) return;
+    updateDraft({ emails: [...current.emails, pendingEmail] });
+    setEmailDraft("");
+  }
+
+  function removeEmail(email: string) {
+    updateDraft({ emails: current.emails.filter((item) => item !== email) });
+  }
+
+  function save() {
+    if (!profile) return;
+    saveProfile.mutate(
+      {
+        data: buildProfileSavePayload(profile as unknown as Record<string, unknown>, {
+          rsvpEmailNotificationsEnabled: current.enabled,
+          rsvpNotificationEmails: current.emails,
+        }),
+      },
+      {
+        onSuccess: () => {
+          qc.invalidateQueries({ queryKey: getGetProfileQueryKey() });
+          setDraft(null);
+          setEmailDraft("");
+          toast({
+            title: "RSVP email settings saved",
+            description: current.enabled
+              ? "New RSVP responses will be emailed to your account and any extra recipients listed here."
+              : "RSVP response emails are turned off.",
+          });
+        },
+        onError: () => toast({
+          variant: "destructive",
+          title: "Could not save RSVP email settings",
+          description: "Please check the email addresses and try again.",
+        }),
+      }
+    );
+  }
+
+  return (
+    <Card className="border-none shadow-sm">
+      <CardContent className="space-y-5 p-6">
+        {isLoading ? (
+          <div className="space-y-4">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-14 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        ) : !profile ? (
+          <p className="text-sm text-muted-foreground">Complete your wedding profile first, then you can manage RSVP response emails.</p>
+        ) : (
+          <>
+            <div className="flex items-start gap-4">
+              <Checkbox
+                checked={current.enabled}
+                onCheckedChange={(checked) => updateDraft({ enabled: checked === true })}
+                aria-label="Email me RSVP responses"
+                className="mt-1 h-5 w-5 rounded-md border-primary/60"
+              />
+              <div>
+                <h3 className="text-xl font-semibold text-foreground">RSVP response emails</h3>
+                <p className="mt-1 text-sm font-medium text-muted-foreground">
+                  Email each new RSVP response to your account inbox.
+                </p>
+              </div>
+            </div>
+
+            <div className={`space-y-3 ${current.enabled ? "" : "opacity-60"}`}>
+              <label className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                Send copies to additional emails
+                <span
+                  className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-muted text-muted-foreground"
+                  title="Your account email is included automatically while RSVP response emails are turned on."
+                >
+                  <HelpCircle className="h-3.5 w-3.5" />
+                </span>
+              </label>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  type="email"
+                  value={emailDraft}
+                  onChange={(e) => setEmailDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addEmail();
+                    }
+                  }}
+                  placeholder="planner@example.com"
+                  disabled={!current.enabled}
+                  className="h-12 rounded-xl border-primary/20 bg-background"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addEmail}
+                  disabled={!current.enabled || !canAddEmail}
+                  className="h-12 gap-2 rounded-xl"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Email
+                </Button>
+              </div>
+              {pendingEmail && !EMAIL_PATTERN.test(pendingEmail) && (
+                <p className="text-xs text-destructive">Enter a valid email address before adding it.</p>
+              )}
+              {current.emails.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {current.emails.map((email) => (
+                    <Badge key={email} variant="secondary" className="gap-2 rounded-full px-3 py-1.5">
+                      {email}
+                      <button
+                        type="button"
+                        onClick={() => removeEmail(email)}
+                        className="rounded-full text-muted-foreground hover:text-destructive"
+                        aria-label={`Remove ${email}`}
+                        disabled={!current.enabled}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No extra recipients yet. Your account email is still included automatically while this is on.
+                </p>
+              )}
+              <p className="text-sm text-muted-foreground">
+                Turn this off if you only want RSVP responses stored inside A.I Do.
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              onClick={save}
+              disabled={!hasChange || saveProfile.isPending}
+              className="h-12 rounded-full px-8 text-base font-semibold"
+            >
+              {saveProfile.isPending ? (
+                <div className="h-4 w-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+              ) : (
+                "Save RSVP Settings"
               )}
             </Button>
           </>
@@ -1330,6 +1544,7 @@ export default function SettingsPage() {
         <div className="space-y-4">
           <LanguageSwitcherCard />
           <TaskReminderSettingsCard />
+          <RsvpNotificationSettingsCard />
           <VendorBccEmailCard />
           <DataExportCard />
           <ActivityLogCard />

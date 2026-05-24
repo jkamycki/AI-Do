@@ -14,6 +14,8 @@ type ProfileSummary = {
   partner1Name: string | null;
   partner2Name: string | null;
   weddingDate: string | null;
+  rsvpEmailNotificationsEnabled: boolean;
+  rsvpNotificationEmails: string[];
 };
 
 type WebsiteRsvpBackup = {
@@ -74,6 +76,18 @@ function valueOrNone(value: unknown) {
   return String(value);
 }
 
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function normalizeNotificationEmails(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return Array.from(new Set(
+    value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim().toLowerCase())
+      .filter((item) => emailPattern.test(item))
+  )).slice(0, 10);
+}
+
 async function getProfileSummary(profileId: number): Promise<ProfileSummary | null> {
   const [profile] = await db
     .select({
@@ -81,6 +95,8 @@ async function getProfileSummary(profileId: number): Promise<ProfileSummary | nu
       partner1Name: weddingProfiles.partner1Name,
       partner2Name: weddingProfiles.partner2Name,
       weddingDate: weddingProfiles.weddingDate,
+      rsvpEmailNotificationsEnabled: weddingProfiles.rsvpEmailNotificationsEnabled,
+      rsvpNotificationEmails: weddingProfiles.rsvpNotificationEmails,
     })
     .from(weddingProfiles)
     .where(eq(weddingProfiles.id, profileId))
@@ -92,6 +108,8 @@ async function getProfileSummary(profileId: number): Promise<ProfileSummary | nu
         partner1Name: profile.partner1Name || null,
         partner2Name: profile.partner2Name || null,
         weddingDate: profile.weddingDate || null,
+        rsvpEmailNotificationsEnabled: profile.rsvpEmailNotificationsEnabled !== false,
+        rsvpNotificationEmails: normalizeNotificationEmails(profile.rsvpNotificationEmails),
       }
     : null;
 }
@@ -102,6 +120,17 @@ async function getOwnerEmail(userId: string | null): Promise<string | null> {
   return owner.emailAddresses.find((e) => e.id === owner.primaryEmailAddressId)?.emailAddress
     ?? owner.emailAddresses[0]?.emailAddress
     ?? null;
+}
+
+async function getRsvpNotificationRecipients(profile: ProfileSummary): Promise<string[]> {
+  if (!profile.rsvpEmailNotificationsEnabled) return [];
+  const ownerEmail = await getOwnerEmail(profile.userId);
+  return Array.from(new Set(
+    [ownerEmail, ...profile.rsvpNotificationEmails]
+      .filter((email): email is string => typeof email === "string" && email.trim().length > 0)
+      .map((email) => email.trim().toLowerCase())
+      .filter((email) => emailPattern.test(email))
+  ));
 }
 
 function buildHtml(lines: string[]) {
@@ -124,8 +153,12 @@ export async function sendGuestRsvpBackupEmail({
 }) {
   try {
     const profile = await getProfileSummary(profileId);
-    const to = await getOwnerEmail(profile?.userId ?? null);
-    if (!profile || !to) return;
+    if (!profile) return;
+    const recipients = await getRsvpNotificationRecipients(profile);
+    if (!recipients.length) return;
+    const to = recipients[0];
+    const cc = recipients.slice(1);
+    if (!to) return;
 
     const submittedAt = guest.rsvpRespondedAt ? new Date(guest.rsvpRespondedAt).toISOString() : new Date().toISOString();
     const couple = coupleDisplayName(profile);
@@ -155,6 +188,7 @@ export async function sendGuestRsvpBackupEmail({
       to,
       from: FROM_EMAIL,
       replyTo: FROM_EMAIL,
+      ...(cc.length ? { cc } : {}),
       subject: `RSVP backup: ${guest.name} - ${formatStatus(guest.rsvpStatus)}`,
       text: lines.join("\n"),
       html: buildHtml(lines),
@@ -181,8 +215,12 @@ export async function sendWebsiteRsvpBackupEmail({
 }) {
   try {
     const profile = await getProfileSummary(profileId);
-    const to = await getOwnerEmail(profile?.userId ?? null);
-    if (!profile || !to) return;
+    if (!profile) return;
+    const recipients = await getRsvpNotificationRecipients(profile);
+    if (!recipients.length) return;
+    const to = recipients[0];
+    const cc = recipients.slice(1);
+    if (!to) return;
 
     const submittedAt = rsvp.submittedAt ? new Date(rsvp.submittedAt).toISOString() : new Date().toISOString();
     const couple = coupleDisplayName(profile);
@@ -204,6 +242,7 @@ export async function sendWebsiteRsvpBackupEmail({
       to,
       from: FROM_EMAIL,
       replyTo: FROM_EMAIL,
+      ...(cc.length ? { cc } : {}),
       subject: `RSVP backup: ${rsvp.name} - ${formatStatus(rsvp.attending)}`,
       text: lines.join("\n"),
       html: buildHtml(lines),

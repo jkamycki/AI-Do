@@ -1823,8 +1823,8 @@ router.post("/rsvp/:token", async (req, res) => {
       .where(eq(guests.id, guest.id))
       .returning();
 
-    // Best-effort backup email to the account owner so they always have a
-    // copy of each RSVP submission outside the app datastore.
+    // Best-effort backup email to the configured RSVP notification recipients
+    // so the couple can keep a copy outside the app datastore.
     try {
       const [profileRow] = await db
         .select({
@@ -1832,17 +1832,34 @@ router.post("/rsvp/:token", async (req, res) => {
           partner1Name: weddingProfiles.partner1Name,
           partner2Name: weddingProfiles.partner2Name,
           weddingDate: weddingProfiles.weddingDate,
+          rsvpEmailNotificationsEnabled: weddingProfiles.rsvpEmailNotificationsEnabled,
+          rsvpNotificationEmails: weddingProfiles.rsvpNotificationEmails,
         })
         .from(weddingProfiles)
         .where(eq(weddingProfiles.id, guest.profileId))
         .limit(1);
 
-      if (profileRow?.ownerUserId) {
+      if (profileRow?.ownerUserId && profileRow.rsvpEmailNotificationsEnabled !== false) {
         const owner = await clerkClient.users.getUser(profileRow.ownerUserId);
         const primaryEmail = owner.emailAddresses.find(e => e.id === owner.primaryEmailAddressId)?.emailAddress
           ?? owner.emailAddresses[0]?.emailAddress
           ?? null;
-        if (primaryEmail) {
+        const extraEmails = Array.isArray(profileRow.rsvpNotificationEmails)
+          ? Array.from(new Set(
+              profileRow.rsvpNotificationEmails
+                .filter((email): email is string => typeof email === "string")
+                .map((email) => email.trim().toLowerCase())
+                .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+            )).slice(0, 10)
+          : [];
+        const recipients = Array.from(new Set(
+          [primaryEmail, ...extraEmails]
+            .filter((email): email is string => typeof email === "string" && email.trim().length > 0)
+            .map((email) => email.trim().toLowerCase())
+        ));
+        const to = recipients[0];
+        const cc = recipients.slice(1);
+        if (to) {
           const couple = coupleDisplayName(profileRow) || "Your wedding";
           const lines = [
             `RSVP backup copy for ${couple}`,
@@ -1864,7 +1881,8 @@ router.post("/rsvp/:token", async (req, res) => {
             `Wedding Date: ${profileRow.weddingDate ?? "(not set)"}`,
           ];
           await sendEmail({
-            to: primaryEmail,
+            to,
+            ...(cc.length ? { cc } : {}),
             subject: `RSVP backup: ${updated.name} — ${updated.rsvpStatus}`,
             text: lines.join("\n"),
             html: `<div style="font-family:Arial,sans-serif;line-height:1.5;color:#1f2937"><h2 style="margin:0 0 12px">RSVP backup copy</h2>${lines.map(l => `<p style=\"margin:4px 0\">${escapeHtml(l)}</p>`).join("")}</div>`,

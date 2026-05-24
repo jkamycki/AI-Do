@@ -21,10 +21,21 @@ const emptyPlanningPriorities: PlanningPriorities = {
 };
 
 const allowedReminderDays = new Set([1, 3, 7, 14, 30]);
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function normalizeReminderDays(value: unknown): number {
   const days = Number(value);
   return Number.isInteger(days) && allowedReminderDays.has(days) ? days : 7;
+}
+
+function normalizeNotificationEmails(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return Array.from(new Set(
+    value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim().toLowerCase())
+      .filter((item) => emailPattern.test(item))
+  )).slice(0, 10);
 }
 
 function normalizePlanningPriorities(value: unknown): PlanningPriorities {
@@ -96,6 +107,7 @@ router.post("/profile", requireAuth, async (req, res) => {
       guestCount, totalBudget, weddingVibe,
       preferredLanguage, vendorBccEmail,
       taskEmailRemindersEnabled, taskReminderDaysBefore,
+      rsvpEmailNotificationsEnabled, rsvpNotificationEmails,
       ceremonyAtVenue, ceremonyVenueName, ceremonyAddress, ceremonyCity, ceremonyState, ceremonyZip,
     } = req.body;
     const ceremonyAtVenueBool = ceremonyAtVenue === undefined ? true : Boolean(ceremonyAtVenue);
@@ -127,6 +139,11 @@ router.post("/profile", requireAuth, async (req, res) => {
       taskEmailRemindersEnabled === false || taskEmailRemindersEnabled === "false" ? false : true;
     const hasTaskReminderDaysBefore = Object.prototype.hasOwnProperty.call(req.body, "taskReminderDaysBefore");
     const normalizedTaskReminderDaysBefore = normalizeReminderDays(taskReminderDaysBefore);
+    const hasRsvpEmailNotificationsEnabled = Object.prototype.hasOwnProperty.call(req.body, "rsvpEmailNotificationsEnabled");
+    const normalizedRsvpEmailNotificationsEnabled =
+      rsvpEmailNotificationsEnabled === false || rsvpEmailNotificationsEnabled === "false" ? false : true;
+    const hasRsvpNotificationEmails = Object.prototype.hasOwnProperty.call(req.body, "rsvpNotificationEmails");
+    const normalizedRsvpNotificationEmails = normalizeNotificationEmails(rsvpNotificationEmails);
     const normalizedAccountType = "couple_individual";
     const normalizedVenueStatus =
       venueStatus === "not_yet" || venueStatus === "deciding" ? venueStatus : "booked";
@@ -168,6 +185,8 @@ router.post("/profile", requireAuth, async (req, res) => {
           ...(hasVendorBccEmail ? { vendorBccEmail: normalizedVendorBcc } : {}),
           ...(hasTaskEmailRemindersEnabled ? { taskEmailRemindersEnabled: normalizedTaskEmailRemindersEnabled } : {}),
           ...(hasTaskReminderDaysBefore ? { taskReminderDaysBefore: normalizedTaskReminderDaysBefore } : {}),
+          ...(hasRsvpEmailNotificationsEnabled ? { rsvpEmailNotificationsEnabled: normalizedRsvpEmailNotificationsEnabled } : {}),
+          ...(hasRsvpNotificationEmails ? { rsvpNotificationEmails: normalizedRsvpNotificationEmails } : {}),
           updatedAt: new Date(),
         })
         .where(eq(weddingProfiles.id, existingProfile.id))
@@ -205,6 +224,8 @@ router.post("/profile", requireAuth, async (req, res) => {
           preferredLanguage: preferredLanguage ?? "English",
           taskEmailRemindersEnabled: hasTaskEmailRemindersEnabled ? normalizedTaskEmailRemindersEnabled : true,
           taskReminderDaysBefore: hasTaskReminderDaysBefore ? normalizedTaskReminderDaysBefore : 7,
+          rsvpEmailNotificationsEnabled: hasRsvpEmailNotificationsEnabled ? normalizedRsvpEmailNotificationsEnabled : true,
+          rsvpNotificationEmails: hasRsvpNotificationEmails ? normalizedRsvpNotificationEmails : null,
         })
         .returning();
       await db
