@@ -245,8 +245,8 @@
   --elevate-1: rgba(0, 0, 0, 0.03);
   --elevate-2: rgba(0, 0, 0, 0.08);
 
-  /* Soft pink-white */
-  --background: 340 50% 97%;
+  /* Flat soft cream app canvas */
+  --background: 24 78% 96%;
   --foreground: 270 15% 18%;
 
   --card: 0 0% 100%;
@@ -433,22 +433,11 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
     overflow-x: hidden;
-    background:
-      radial-gradient(circle at 18% 8%, rgba(230, 166, 183, 0.28), transparent 34rem),
-      radial-gradient(circle at 82% 0%, rgba(242, 226, 198, 0.48), transparent 30rem),
-      radial-gradient(hsl(343 50% 84% / 0.22) 1px, transparent 1px),
-      hsl(var(--background));
-    background-size: auto, auto, 22px 22px, auto;
-    background-attachment: fixed;
+    background: hsl(var(--background));
   }
 
   .dark body {
-    background:
-      radial-gradient(circle at 18% 8%, rgba(247, 231, 214, 0.12), transparent 28rem),
-      radial-gradient(circle at 82% 4%, rgba(141, 41, 77, 0.2), transparent 30rem),
-      radial-gradient(hsl(343 50% 84% / 0.08) 1px, transparent 1px),
-      linear-gradient(145deg, #160711 0%, #25101f 52%, #0f060d 100%);
-    background-size: auto, auto, 24px 24px, auto;
+    background: hsl(var(--background));
   }
 
   :root:not(.dark) .portal-shell {

@@ -104,8 +104,6 @@ export default function Landing() {
 
       <main>
         <section className="relative isolate overflow-hidden border-b border-[#F2E2C6] bg-[#FFF7F2]">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_34%,rgba(255,255,255,0.98)_0%,rgba(255,247,242,0.9)_38%,rgba(242,226,198,0.38)_100%)]" />
-          <div className="absolute inset-x-0 top-0 h-[520px] bg-[url('/images/floral-bg.png')] bg-cover bg-center opacity-[0.32] mix-blend-multiply" />
           <div className="absolute inset-x-0 top-0 h-1.5 bg-[linear-gradient(90deg,#8D294D,#E6A6B7,#F2E2C6,#B16C8E)]" />
           <HeroSparkles />
           <div className="relative z-10 mx-auto flex min-h-[calc(100vh-210px)] max-w-5xl flex-col items-center px-4 pb-8 pt-6 text-center sm:min-h-[calc(100vh-330px)] sm:px-8 sm:pb-8 sm:pt-8">
@@ -180,7 +178,7 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="preview" className="bg-[linear-gradient(180deg,#FFF7F2_0%,#F9ECE8_100%)] px-5 py-16 scroll-mt-20 sm:px-8 sm:py-20">
+        <section id="preview" className="bg-[#FFF7F2] px-5 py-16 scroll-mt-20 sm:px-8 sm:py-20">
           <div className="mx-auto max-w-6xl">
             <div className="mb-8 text-center">
               <p className="text-sm font-bold uppercase tracking-[0.3em] text-[#B16C8E]">{t("landing.video_title", { defaultValue: "Feature Preview" })}</p>
