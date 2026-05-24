@@ -301,14 +301,9 @@ export default function DataHandling() {
                 uploaded files where available.
               </li>
               <li>
-                For a full account-data export, email{" "}
-                <a
-                  className="text-[#8D294D] underline underline-offset-4"
-                  href="mailto:support@aidowedding.net"
-                >
-                  support@aidowedding.net
-                </a>{" "}
-                — we'll respond within a reasonable time, typically 30 days.
+                A full account-data export is available from Settings under
+                Your Data. You can still email support@aidowedding.net if you
+                need help with a portability request.
               </li>
             </ul>
           </section>

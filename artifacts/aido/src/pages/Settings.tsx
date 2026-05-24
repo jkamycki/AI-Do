@@ -23,7 +23,7 @@ import {
 import {
   Users, UserPlus, Mail, Shield, Eye, Briefcase, Copy,
   CheckCircle2, Clock, XCircle, Trash2, RefreshCw, ChevronDown,
-  Settings as SettingsIcon, Crown, Globe, Check, TriangleAlert, Sparkles, HelpCircle,
+  Settings as SettingsIcon, Crown, Globe, Check, TriangleAlert, Sparkles, HelpCircle, Download,
 } from "lucide-react";
 
 type CollabRole = "partner" | "planner" | "vendor";
@@ -638,6 +638,87 @@ function TaskReminderSettingsCard() {
   );
 }
 
+function filenameFromContentDisposition(header: string | null): string | null {
+  const match = header?.match(/filename="([^"]+)"/i) ?? header?.match(/filename=([^;]+)/i);
+  return match?.[1]?.trim() || null;
+}
+
+function DataExportCard() {
+  const { toast } = useToast();
+  const [downloading, setDownloading] = useState(false);
+
+  async function downloadData() {
+    setDownloading(true);
+    try {
+      const res = await authFetch("/api/account/export");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error ?? "Could not download your data.");
+      }
+      const blob = await res.blob();
+      const filename =
+        filenameFromContentDisposition(res.headers.get("Content-Disposition")) ??
+        `aido-data-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast({
+        title: "Data backup downloaded",
+        description: "Your wedding planning data was saved as a JSON backup.",
+      });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Could not download your data",
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <Card className="border-none shadow-sm">
+      <CardContent className="space-y-5 p-6">
+        <div>
+          <h3 className="flex items-center gap-2 text-2xl font-semibold text-foreground">
+            Your Data
+            <span
+              className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground"
+              title="Downloads a JSON backup of the wedding workspace and your account-related planning records."
+            >
+              <HelpCircle className="h-4 w-4" />
+            </span>
+          </h3>
+          <p className="mt-3 text-base text-muted-foreground">
+            Download a complete backup of all your wedding planning data
+          </p>
+        </div>
+        <Button
+          type="button"
+          onClick={downloadData}
+          disabled={downloading}
+          className="h-14 rounded-full bg-[#24432F] px-9 text-base font-semibold text-white shadow-sm hover:bg-[#1E3928]"
+        >
+          {downloading ? (
+            <div className="h-4 w-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+          ) : (
+            <>
+              <Download className="mr-2 h-4 w-4" />
+              Download My Data
+            </>
+          )}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function SettingsPage() {
   const { t } = useTranslation();
   const { getToken } = useAuth();
@@ -1121,6 +1202,7 @@ export default function SettingsPage() {
           <LanguageSwitcherCard />
           <TaskReminderSettingsCard />
           <VendorBccEmailCard />
+          <DataExportCard />
           <DeleteAccountCard />
           <Card className="border-none shadow-sm">
             <CardContent className="p-8 text-center space-y-4">
