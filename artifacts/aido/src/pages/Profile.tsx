@@ -23,8 +23,89 @@ import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { VenueQuestion, type VenueStatus } from "@/components/Profile/VenueQuestion";
 import { VenueWizard, emptyVenueDiscoveryData, type VenueDiscoveryData } from "@/components/Profile/VenueWizard";
 import { normalizeRequirementsSelectorValue } from "@/components/Profile/RequirementsSelector";
+import { cn } from "@/lib/utils";
 
 const NO_COUNTRY = "__none__";
+
+type PlanningPriorityKey = "mustHaves" | "niceToHaves" | "mustAvoids";
+type PlanningPriorities = Record<PlanningPriorityKey, string[]>;
+
+const emptyPlanningPriorities: PlanningPriorities = {
+  mustHaves: [],
+  niceToHaves: [],
+  mustAvoids: [],
+};
+
+const planningPrioritiesSchema = z.object({
+  mustHaves: z.array(z.string()).default([]),
+  niceToHaves: z.array(z.string()).default([]),
+  mustAvoids: z.array(z.string()).default([]),
+}).default(emptyPlanningPriorities);
+
+const WEDDING_PRIORITY_OPTIONS = [
+  "Photography",
+  "Videography",
+  "Venue",
+  "Florals",
+  "Catering",
+  "Cake and desserts",
+  "Music and dancing",
+  "Guest experience",
+  "Ceremony details",
+  "Reception design",
+  "Budget control",
+  "Timeline flow",
+  "Dress and attire",
+  "Hair and makeup",
+  "Open bar",
+  "Late-night food",
+  "Transportation",
+  "Hotel blocks",
+  "Cultural traditions",
+  "Family moments",
+  "Weather backup",
+  "Accessibility",
+  "Kids welcome",
+  "After party",
+];
+
+const PRIORITY_COLUMNS: Array<{
+  key: PlanningPriorityKey;
+  title: string;
+  shortTitle: string;
+  description: string;
+  activeClass: string;
+  summaryClass: string;
+  textClass: string;
+}> = [
+  {
+    key: "mustHaves",
+    title: "Must haves",
+    shortTitle: "Must",
+    description: "Non-negotiables for your day.",
+    activeClass: "border-emerald-300 bg-emerald-50 text-emerald-900 shadow-sm",
+    summaryClass: "border-emerald-200 bg-emerald-50/80",
+    textClass: "text-emerald-700",
+  },
+  {
+    key: "niceToHaves",
+    title: "Nice to haves",
+    shortTitle: "Nice",
+    description: "Lovely extras if budget and timing allow.",
+    activeClass: "border-amber-300 bg-amber-50 text-amber-900 shadow-sm",
+    summaryClass: "border-amber-200 bg-amber-50/80",
+    textClass: "text-amber-700",
+  },
+  {
+    key: "mustAvoids",
+    title: "Must avoids",
+    shortTitle: "Avoid",
+    description: "Things you do not want in the experience.",
+    activeClass: "border-rose-300 bg-rose-50 text-rose-900 shadow-sm",
+    summaryClass: "border-rose-200 bg-rose-50/80",
+    textClass: "text-rose-700",
+  },
+];
 
 const profileSchema = z.object({
   accountType: z.literal("couple_individual").default("couple_individual"),
@@ -51,6 +132,7 @@ const profileSchema = z.object({
   guestCount: z.coerce.number().min(1, "Must be at least 1"),
   totalBudget: z.coerce.number().min(1, "Must be at least 1"),
   weddingVibe: z.string().optional().default(""),
+  planningPriorities: planningPrioritiesSchema,
   preferredLanguage: z.string().default("English"),
 }).superRefine((data, ctx) => {
   if (data.venueStatus === "booked" && !data.venue.trim()) {
@@ -124,6 +206,83 @@ function venueDiscoveryDraftForStorage(value?: VenueDiscoveryData | null): Venue
 
 function normalizeVenueStatus(value?: string | null): VenueStatus {
   return value === "not_yet" || value === "deciding" ? "not_yet" : "booked";
+}
+
+function normalizePlanningPriorities(value?: Partial<PlanningPriorities> | null): PlanningPriorities {
+  const normalizeList = (items: unknown) =>
+    Array.isArray(items)
+      ? Array.from(new Set(items.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim())))
+      : [];
+
+  const mustHaves = normalizeList(value?.mustHaves);
+  const niceToHaves = normalizeList(value?.niceToHaves).filter((item) => !mustHaves.includes(item));
+  const mustAvoids = normalizeList(value?.mustAvoids).filter((item) => !mustHaves.includes(item) && !niceToHaves.includes(item));
+
+  return { mustHaves, niceToHaves, mustAvoids };
+}
+
+function getPriorityForOption(priorities: PlanningPriorities, option: string): PlanningPriorityKey | null {
+  return PRIORITY_COLUMNS.find(({ key }) => priorities[key].includes(option))?.key ?? null;
+}
+
+function setPriorityForOption(priorities: PlanningPriorities, option: string, nextKey: PlanningPriorityKey): PlanningPriorities {
+  const currentKey = getPriorityForOption(priorities, option);
+  const next = PRIORITY_COLUMNS.reduce((acc, { key }) => {
+    acc[key] = priorities[key].filter((item) => item !== option);
+    return acc;
+  }, { mustHaves: [], niceToHaves: [], mustAvoids: [] } as PlanningPriorities);
+
+  if (currentKey !== nextKey) {
+    next[nextKey] = [...next[nextKey], option];
+  }
+
+  return next;
+}
+
+function PlanningPrioritiesSummary({ priorities }: { priorities: PlanningPriorities }) {
+  return (
+    <div className="rounded-2xl border border-primary/15 bg-white/80 p-5 shadow-sm">
+      <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h3 className="font-serif text-2xl text-primary">Priority chart</h3>
+          <p className="text-sm text-muted-foreground">
+            Your selected wedding priorities, grouped by how important they are.
+          </p>
+        </div>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        {PRIORITY_COLUMNS.map(({ key, title, description, summaryClass, textClass }) => {
+          const items = priorities[key];
+          return (
+            <div key={key} className={cn("rounded-xl border p-4", summaryClass)}>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className={cn("text-sm font-semibold uppercase tracking-wide", textClass)}>{title}</p>
+                  <p className="text-xs text-muted-foreground">{description}</p>
+                </div>
+                <span className={cn("rounded-full bg-white/80 px-2.5 py-1 text-xs font-semibold", textClass)}>
+                  {items.length}
+                </span>
+              </div>
+              {items.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {items.map((item) => (
+                    <span key={item} className="rounded-full bg-white/90 px-3 py-1.5 text-xs font-medium text-foreground shadow-sm">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="rounded-lg bg-white/70 px-3 py-3 text-sm text-muted-foreground">
+                  Nothing selected yet.
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 type VenueFlowDraft = {
@@ -227,6 +386,8 @@ export default function Profile() {
       ceremonyZip: "",
       guestCount: 100,
       totalBudget: 30000,
+      weddingVibe: "",
+      planningPriorities: emptyPlanningPriorities,
       preferredLanguage: "English",
     },
   });
@@ -268,6 +429,8 @@ export default function Profile() {
         ceremonyZip: profile.ceremonyZip ?? "",
         guestCount: profile.guestCount,
         totalBudget: profile.totalBudget,
+        weddingVibe: profile.weddingVibe ?? "",
+        planningPriorities: normalizePlanningPriorities(profile.planningPriorities),
         preferredLanguage: profile.preferredLanguage ?? "English",
       });
       hasHydratedVenueDraftRef.current = true;
@@ -821,6 +984,80 @@ export default function Profile() {
                 />
               </div>
 
+              <FormField
+                control={form.control}
+                name="planningPriorities"
+                render={({ field }) => {
+                  const priorities = normalizePlanningPriorities(field.value);
+
+                  return (
+                    <FormItem>
+                      <div className="space-y-2">
+                        <FormLabel className="font-serif text-2xl text-primary">Wedding priorities</FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Choose from one shared list. Tap Must, Nice, or Avoid to move each option into the right bucket.
+                        </p>
+                      </div>
+                      <FormControl>
+                        <div className="space-y-5">
+                          <div className="grid gap-3">
+                            {WEDDING_PRIORITY_OPTIONS.map((option) => {
+                              const activeKey = getPriorityForOption(priorities, option);
+                              const activeColumn = PRIORITY_COLUMNS.find(({ key }) => key === activeKey);
+
+                              return (
+                                <div
+                                  key={option}
+                                  className={cn(
+                                    "rounded-2xl border border-primary/10 bg-white/85 p-4 shadow-sm transition-all",
+                                    activeColumn?.summaryClass,
+                                  )}
+                                >
+                                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                    <div className="min-w-0">
+                                      <p className="font-medium text-foreground">{option}</p>
+                                      {activeColumn ? (
+                                        <p className={cn("mt-1 text-xs font-semibold uppercase tracking-wide", activeColumn.textClass)}>
+                                          Selected as {activeColumn.title}
+                                        </p>
+                                      ) : (
+                                        <p className="mt-1 text-xs text-muted-foreground">Not selected yet</p>
+                                      )}
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 sm:w-[300px]">
+                                      {PRIORITY_COLUMNS.map(({ key, shortTitle, activeClass }) => {
+                                        const isActive = activeKey === key;
+                                        return (
+                                          <button
+                                            key={key}
+                                            type="button"
+                                            onClick={() => field.onChange(setPriorityForOption(priorities, option, key))}
+                                            aria-pressed={isActive}
+                                            className={cn(
+                                              "rounded-full border border-primary/15 bg-white px-3 py-2 text-xs font-semibold text-muted-foreground transition hover:-translate-y-0.5 hover:border-primary/30 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+                                              isActive && activeClass,
+                                            )}
+                                          >
+                                            {shortTitle}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          <PlanningPrioritiesSummary priorities={priorities} />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+
               <div className="flex justify-end gap-3 pt-4">
                 <Button
                   type="button"
@@ -852,6 +1089,8 @@ export default function Profile() {
                       ceremonyZip: "",
                       guestCount: 0,
                       totalBudget: 0,
+                      weddingVibe: "",
+                      planningPriorities: emptyPlanningPriorities,
                       preferredLanguage: "English",
                     });
                   }}

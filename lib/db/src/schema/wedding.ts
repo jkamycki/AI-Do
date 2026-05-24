@@ -20,6 +20,11 @@ export const weddingProfiles = pgTable("wedding_profiles", {
   venueStatus: text("venue_status").notNull().default("booked"),
   venueDiscovery: jsonb("venue_discovery").$type<Record<string, unknown> | null>(),
   venueBrainstorm: jsonb("venue_brainstorm").$type<Record<string, unknown> | null>(),
+  planningPriorities: jsonb("planning_priorities").$type<{
+    mustHaves: string[];
+    niceToHaves: string[];
+    mustAvoids: string[];
+  } | null>(),
   ceremonyAtVenue: boolean("ceremony_at_venue").notNull().default(true),
   ceremonyVenueName: text("ceremony_venue_name"),
   ceremonyAddress: text("ceremony_address"),

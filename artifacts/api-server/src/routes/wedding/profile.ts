@@ -8,6 +8,36 @@ import { resolveProfile, resolveWorkspaceRole, resolveCallerRole, hasMinRole } f
 
 const router = Router();
 
+type PlanningPriorities = {
+  mustHaves: string[];
+  niceToHaves: string[];
+  mustAvoids: string[];
+};
+
+const emptyPlanningPriorities: PlanningPriorities = {
+  mustHaves: [],
+  niceToHaves: [],
+  mustAvoids: [],
+};
+
+function normalizePlanningPriorities(value: unknown): PlanningPriorities {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return emptyPlanningPriorities;
+  }
+
+  const source = value as Partial<Record<keyof PlanningPriorities, unknown>>;
+  const normalizeList = (items: unknown) =>
+    Array.isArray(items)
+      ? Array.from(new Set(items.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim())))
+      : [];
+
+  const mustHaves = normalizeList(source.mustHaves);
+  const niceToHaves = normalizeList(source.niceToHaves).filter((item) => !mustHaves.includes(item));
+  const mustAvoids = normalizeList(source.mustAvoids).filter((item) => !mustHaves.includes(item) && !niceToHaves.includes(item));
+
+  return { mustHaves, niceToHaves, mustAvoids };
+}
+
 router.get("/profile", requireAuth, async (req, res) => {
   try {
     const p = await resolveProfile(req);
@@ -54,6 +84,7 @@ router.post("/profile", requireAuth, async (req, res) => {
       workstationName,
       venue, location, venueCity, venueState, venueZip, venueCountry,
       venueStatus, venueDiscovery, venueBrainstorm,
+      planningPriorities,
       guestCount, totalBudget, weddingVibe,
       preferredLanguage, vendorBccEmail,
       ceremonyAtVenue, ceremonyVenueName, ceremonyAddress, ceremonyCity, ceremonyState, ceremonyZip,
@@ -90,6 +121,7 @@ router.post("/profile", requireAuth, async (req, res) => {
       venueBrainstorm && typeof venueBrainstorm === "object" && !Array.isArray(venueBrainstorm)
         ? venueBrainstorm
         : null;
+    const normalizedPlanningPriorities = normalizePlanningPriorities(planningPriorities);
 
     // Workspace-aware: if a workspaceId/header is set, edit that shared workspace
     // (requires partner+ role). Otherwise, edit the user's own profile.
@@ -110,6 +142,7 @@ router.post("/profile", requireAuth, async (req, res) => {
           venueStatus: normalizedVenueStatus,
           venueDiscovery: normalizedVenueDiscovery,
           venueBrainstorm: normalizedVenueBrainstorm,
+          planningPriorities: normalizedPlanningPriorities,
           ...ceremonyFields,
           guestCount, totalBudget: String(totalBudget), weddingVibe,
           accountType: normalizedAccountType,
@@ -144,6 +177,7 @@ router.post("/profile", requireAuth, async (req, res) => {
           venueStatus: normalizedVenueStatus,
           venueDiscovery: normalizedVenueDiscovery,
           venueBrainstorm: normalizedVenueBrainstorm,
+          planningPriorities: normalizedPlanningPriorities,
           ...ceremonyFields,
           guestCount, totalBudget: String(totalBudget), weddingVibe,
           accountType: normalizedAccountType,

@@ -934,6 +934,12 @@ components:
           type: number
         amountPaid:
           type: number
+        nextPaymentDue:
+          type: string
+          nullable: true
+        nextPaymentAmount:
+          type: number
+          nullable: true
         notes:
           type: string
           nullable: true
@@ -960,6 +966,12 @@ components:
           type: number
         amountPaid:
           type: number
+        nextPaymentDue:
+          type: string
+          nullable: true
+        nextPaymentAmount:
+          type: number
+          nullable: true
         notes:
           type: string
           nullable: true
@@ -1053,6 +1065,22 @@ components:
           type: object
           nullable: true
           additionalProperties: true
+        planningPriorities:
+          type: object
+          nullable: true
+          properties:
+            mustHaves:
+              type: array
+              items:
+                type: string
+            niceToHaves:
+              type: array
+              items:
+                type: string
+            mustAvoids:
+              type: array
+              items:
+                type: string
         ceremonyAtVenue:
           type: boolean
         ceremonyVenueName:
@@ -1150,6 +1178,22 @@ components:
           type: object
           nullable: true
           additionalProperties: true
+        planningPriorities:
+          type: object
+          nullable: true
+          properties:
+            mustHaves:
+              type: array
+              items:
+                type: string
+            niceToHaves:
+              type: array
+              items:
+                type: string
+            mustAvoids:
+              type: array
+              items:
+                type: string
         ceremonyAtVenue:
           type: boolean
         ceremonyVenueName:
@@ -1462,6 +1506,8 @@ components:
         isCompleted:
           type: boolean
         completedAt:
+          type: string
+        resolveNote:
           type: string
       required:
         - id
@@ -1884,7 +1930,19 @@ components:
         tableAssignment:
           type: string
           nullable: true
+        needsHotel:
+          type: boolean
+          nullable: true
+        bookedHotelBlockId:
+          type: integer
+          nullable: true
+        bookedHotelRoomCount:
+          type: integer
+          nullable: true
         notes:
+          type: string
+          nullable: true
+        rsvpMessage:
           type: string
           nullable: true
         source:
@@ -1956,6 +2014,14 @@ components:
           type: string
         tableAssignment:
           type: string
+        needsHotel:
+          type: boolean
+        bookedHotelBlockId:
+          type: integer
+          nullable: true
+        bookedHotelRoomCount:
+          type: integer
+          nullable: true
         notes:
           type: string
       required:
@@ -1984,6 +2050,14 @@ components:
           type: string
         tableAssignment:
           type: string
+        needsHotel:
+          type: boolean
+        bookedHotelBlockId:
+          type: integer
+          nullable: true
+        bookedHotelRoomCount:
+          type: integer
+          nullable: true
         notes:
           type: string
 
