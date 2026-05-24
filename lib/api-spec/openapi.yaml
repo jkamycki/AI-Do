@@ -1113,6 +1113,10 @@ components:
         vendorBccEmail:
           type: string
           nullable: true
+        taskEmailRemindersEnabled:
+          type: boolean
+        taskReminderDaysBefore:
+          type: integer
         ariaMemory:
           type: string
           nullable: true
@@ -1229,6 +1233,10 @@ components:
         vendorBccEmail:
           type: string
           nullable: true
+        taskEmailRemindersEnabled:
+          type: boolean
+        taskReminderDaysBefore:
+          type: integer
         ariaMemory:
           type: string
           nullable: true

@@ -107,6 +107,8 @@ export interface WeddingProfile {
   accountType?: WeddingProfileAccountType;
   preferredLanguage?: string | null;
   vendorBccEmail?: string | null;
+  taskEmailRemindersEnabled?: boolean;
+  taskReminderDaysBefore?: number;
   ariaMemory?: string | null;
   invitationPhotoUrl?: string | null;
   invitationMessage?: string | null;
@@ -169,6 +171,8 @@ export interface SaveProfileBody {
   accountType?: SaveProfileBodyAccountType;
   preferredLanguage?: string | null;
   vendorBccEmail?: string | null;
+  taskEmailRemindersEnabled?: boolean;
+  taskReminderDaysBefore?: number;
   ariaMemory?: string | null;
 }
 

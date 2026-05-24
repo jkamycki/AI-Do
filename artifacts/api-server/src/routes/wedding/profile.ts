@@ -20,6 +20,13 @@ const emptyPlanningPriorities: PlanningPriorities = {
   mustAvoids: [],
 };
 
+const allowedReminderDays = new Set([1, 3, 7, 14, 30]);
+
+function normalizeReminderDays(value: unknown): number {
+  const days = Number(value);
+  return Number.isInteger(days) && allowedReminderDays.has(days) ? days : 7;
+}
+
 function normalizePlanningPriorities(value: unknown): PlanningPriorities {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return emptyPlanningPriorities;
@@ -88,6 +95,7 @@ router.post("/profile", requireAuth, async (req, res) => {
       ariaMemory,
       guestCount, totalBudget, weddingVibe,
       preferredLanguage, vendorBccEmail,
+      taskEmailRemindersEnabled, taskReminderDaysBefore,
       ceremonyAtVenue, ceremonyVenueName, ceremonyAddress, ceremonyCity, ceremonyState, ceremonyZip,
     } = req.body;
     const ceremonyAtVenueBool = ceremonyAtVenue === undefined ? true : Boolean(ceremonyAtVenue);
@@ -114,6 +122,11 @@ router.post("/profile", requireAuth, async (req, res) => {
     const hasAriaMemory = Object.prototype.hasOwnProperty.call(req.body, "ariaMemory");
     const normalizedAriaMemory =
       typeof ariaMemory === "string" ? (ariaMemory.trim().slice(0, 8000) || null) : null;
+    const hasTaskEmailRemindersEnabled = Object.prototype.hasOwnProperty.call(req.body, "taskEmailRemindersEnabled");
+    const normalizedTaskEmailRemindersEnabled =
+      taskEmailRemindersEnabled === false || taskEmailRemindersEnabled === "false" ? false : true;
+    const hasTaskReminderDaysBefore = Object.prototype.hasOwnProperty.call(req.body, "taskReminderDaysBefore");
+    const normalizedTaskReminderDaysBefore = normalizeReminderDays(taskReminderDaysBefore);
     const normalizedAccountType = "couple_individual";
     const normalizedVenueStatus =
       venueStatus === "not_yet" || venueStatus === "deciding" ? venueStatus : "booked";
@@ -153,6 +166,8 @@ router.post("/profile", requireAuth, async (req, res) => {
           accountType: normalizedAccountType,
           preferredLanguage: preferredLanguage ?? "English",
           ...(hasVendorBccEmail ? { vendorBccEmail: normalizedVendorBcc } : {}),
+          ...(hasTaskEmailRemindersEnabled ? { taskEmailRemindersEnabled: normalizedTaskEmailRemindersEnabled } : {}),
+          ...(hasTaskReminderDaysBefore ? { taskReminderDaysBefore: normalizedTaskReminderDaysBefore } : {}),
           updatedAt: new Date(),
         })
         .where(eq(weddingProfiles.id, existingProfile.id))
@@ -188,6 +203,8 @@ router.post("/profile", requireAuth, async (req, res) => {
           guestCount, totalBudget: String(totalBudget), weddingVibe,
           accountType: normalizedAccountType,
           preferredLanguage: preferredLanguage ?? "English",
+          taskEmailRemindersEnabled: hasTaskEmailRemindersEnabled ? normalizedTaskEmailRemindersEnabled : true,
+          taskReminderDaysBefore: hasTaskReminderDaysBefore ? normalizedTaskReminderDaysBefore : 7,
         })
         .returning();
       await db

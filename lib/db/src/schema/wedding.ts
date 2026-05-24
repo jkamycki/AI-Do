@@ -39,6 +39,8 @@ export const weddingProfiles = pgTable("wedding_profiles", {
   preferredLanguage: text("preferred_language").default("English"),
   guestCollectionToken: text("guest_collection_token"),
   vendorBccEmail: text("vendor_bcc_email"),
+  taskEmailRemindersEnabled: boolean("task_email_reminders_enabled").notNull().default(true),
+  taskReminderDaysBefore: integer("task_reminder_days_before").notNull().default(7),
   invitationPhotoUrl: text("invitation_photo_url"),
   invitationMessage: text("invitation_message"),
   saveTheDatePhotoUrl: text("save_the_date_photo_url"),

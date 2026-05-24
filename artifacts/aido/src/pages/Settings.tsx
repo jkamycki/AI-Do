@@ -5,7 +5,9 @@ import { useAuth, useUser } from "@clerk/react";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -69,6 +71,24 @@ const STATUS_CONFIG: Record<CollabStatus, { label: string; icon: React.ElementTy
   active: { label: "Active", icon: CheckCircle2, color: "bg-green-100 text-green-700" },
   declined: { label: "Declined", icon: XCircle, color: "bg-red-100 text-red-700" },
 };
+
+const REMINDER_DAY_OPTIONS = [
+  { value: "1", label: "1 day before" },
+  { value: "3", label: "3 days before" },
+  { value: "7", label: "7 days before" },
+  { value: "14", label: "14 days before" },
+  { value: "30", label: "30 days before" },
+];
+
+type ReminderPreferences = {
+  enabled: boolean;
+  daysBefore: number;
+};
+
+function normalizeReminderDays(value: unknown): number {
+  const days = Number(value);
+  return REMINDER_DAY_OPTIONS.some((option) => Number(option.value) === days) ? days : 7;
+}
 
 function RoleBadge({ role }: { role: CollabRole }) {
   const { t } = useTranslation();
@@ -284,6 +304,8 @@ function buildProfileSavePayload(profile: Record<string, unknown>, overrides: Re
     weddingVibe: String(profile.weddingVibe ?? ""),
     preferredLanguage: typeof profile.preferredLanguage === "string" ? profile.preferredLanguage : "English",
     vendorBccEmail: profile.vendorBccEmail ?? null,
+    taskEmailRemindersEnabled: typeof profile.taskEmailRemindersEnabled === "boolean" ? profile.taskEmailRemindersEnabled : true,
+    taskReminderDaysBefore: normalizeReminderDays(profile.taskReminderDaysBefore),
     ariaMemory: profile.ariaMemory ?? null,
     ...overrides,
   } as never;
@@ -486,6 +508,130 @@ function VendorBccEmailCard() {
             )}
             <p className="text-xs text-muted-foreground">{t("settings.cc_email_hint")}</p>
           </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function TaskReminderSettingsCard() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const { data: profile, isLoading } = useGetProfile();
+  const saveProfile = useSaveProfile();
+  const [draft, setDraft] = useState<ReminderPreferences | null>(null);
+
+  const profilePrefs = profile as ({ taskEmailRemindersEnabled?: boolean | null; taskReminderDaysBefore?: number | null } | undefined);
+  const savedEnabled = typeof profilePrefs?.taskEmailRemindersEnabled === "boolean" ? profilePrefs.taskEmailRemindersEnabled : true;
+  const savedDays = normalizeReminderDays(profilePrefs?.taskReminderDaysBefore);
+  const current = draft ?? { enabled: savedEnabled, daysBefore: savedDays };
+  const hasChange = Boolean(profile && draft && (draft.enabled !== savedEnabled || draft.daysBefore !== savedDays));
+
+  function updateDraft(next: Partial<ReminderPreferences>) {
+    setDraft((existing) => ({
+      enabled: existing?.enabled ?? savedEnabled,
+      daysBefore: existing?.daysBefore ?? savedDays,
+      ...next,
+    }));
+  }
+
+  function save() {
+    if (!profile) return;
+    saveProfile.mutate(
+      {
+        data: buildProfileSavePayload(profile as unknown as Record<string, unknown>, {
+          taskEmailRemindersEnabled: current.enabled,
+          taskReminderDaysBefore: current.daysBefore,
+        }),
+      },
+      {
+        onSuccess: () => {
+          qc.invalidateQueries({ queryKey: getGetProfileQueryKey() });
+          setDraft(null);
+          toast({
+            title: "Reminder settings saved",
+            description: current.enabled
+              ? `We will remind you ${current.daysBefore} day${current.daysBefore === 1 ? "" : "s"} before task deadlines.`
+              : "Email task reminders are turned off.",
+          });
+        },
+        onError: () => toast({
+          variant: "destructive",
+          title: "Could not save reminder settings",
+          description: "Please try again.",
+        }),
+      }
+    );
+  }
+
+  return (
+    <Card className="border-none shadow-sm">
+      <CardContent className="space-y-5 p-6">
+        {isLoading ? (
+          <div className="space-y-4">
+            <Skeleton className="h-8 w-56" />
+            <Skeleton className="h-14 w-full" />
+            <Skeleton className="h-11 w-36 rounded-full" />
+          </div>
+        ) : !profile ? (
+          <p className="text-sm text-muted-foreground">Complete your wedding profile first, then you can set task reminder preferences.</p>
+        ) : (
+          <>
+            <div className="flex items-start gap-4">
+              <Checkbox
+                checked={current.enabled}
+                onCheckedChange={(checked) => updateDraft({ enabled: checked === true })}
+                aria-label="Enable email reminders"
+                className="mt-1 h-5 w-5 rounded-md border-primary/60"
+              />
+              <div>
+                <h3 className="text-xl font-semibold text-foreground">Email reminders</h3>
+                <p className="mt-1 text-sm font-medium text-muted-foreground">Receive email notifications for upcoming task deadlines</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                Remind me before deadline
+                <span
+                  className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-muted text-muted-foreground"
+                  title="This controls how early A.I Do reminds you about dated checklist tasks."
+                >
+                  <HelpCircle className="h-3.5 w-3.5" />
+                </span>
+              </label>
+              <Select
+                value={String(current.daysBefore)}
+                onValueChange={(value) => updateDraft({ daysBefore: normalizeReminderDays(value) })}
+                disabled={!current.enabled}
+              >
+                <SelectTrigger className="h-14 rounded-xl border-primary/20 bg-background text-base">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {REMINDER_DAY_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                You will also receive in-app notifications via the bell icon. Push notifications can be enabled in your browser settings.
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              onClick={save}
+              disabled={!hasChange || saveProfile.isPending}
+              className="h-12 rounded-full px-8 text-base font-semibold"
+            >
+              {saveProfile.isPending ? (
+                <div className="h-4 w-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+              ) : (
+                "Save Settings"
+              )}
+            </Button>
+          </>
         )}
       </CardContent>
     </Card>
@@ -973,6 +1119,7 @@ export default function SettingsPage() {
       {activeTab === "account" && (
         <div className="space-y-4">
           <LanguageSwitcherCard />
+          <TaskReminderSettingsCard />
           <VendorBccEmailCard />
           <DeleteAccountCard />
           <Card className="border-none shadow-sm">

@@ -52,6 +52,8 @@ export const GetProfileResponse = zod.object({
   "accountType": zod.enum(['couple_individual', 'wedding_planner']).optional(),
   "preferredLanguage": zod.string().nullish(),
   "vendorBccEmail": zod.string().nullish(),
+  "taskEmailRemindersEnabled": zod.boolean().optional(),
+  "taskReminderDaysBefore": zod.number().optional(),
   "ariaMemory": zod.string().nullish(),
   "invitationPhotoUrl": zod.string().nullish(),
   "invitationMessage": zod.string().nullish(),
@@ -95,6 +97,8 @@ export const SaveProfileBody = zod.object({
   "accountType": zod.enum(['couple_individual', 'wedding_planner']).optional(),
   "preferredLanguage": zod.string().nullish(),
   "vendorBccEmail": zod.string().nullish(),
+  "taskEmailRemindersEnabled": zod.boolean().optional(),
+  "taskReminderDaysBefore": zod.number().optional(),
   "ariaMemory": zod.string().nullish()
 })
 
@@ -131,6 +135,8 @@ export const SaveProfileResponse = zod.object({
   "accountType": zod.enum(['couple_individual', 'wedding_planner']).optional(),
   "preferredLanguage": zod.string().nullish(),
   "vendorBccEmail": zod.string().nullish(),
+  "taskEmailRemindersEnabled": zod.boolean().optional(),
+  "taskReminderDaysBefore": zod.number().optional(),
   "ariaMemory": zod.string().nullish(),
   "invitationPhotoUrl": zod.string().nullish(),
   "invitationMessage": zod.string().nullish(),
