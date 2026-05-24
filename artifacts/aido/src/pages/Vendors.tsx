@@ -20,6 +20,7 @@ import {
 } from "@workspace/api-client-react";
 import type { Vendor, VendorPayment } from "@workspace/api-client-react";
 import { useUpload } from "@workspace/object-storage-web";
+import { VendorDiscoveryLite } from "@/components/VendorDiscoveryLite";
 import { VendorMessagesTab } from "@/components/VendorMessagesTab";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -120,6 +121,8 @@ const CATEGORY_COLORS: Record<string, string> = {
   "Wedding Planner": "bg-teal-100 dark:bg-teal-900/30 text-teal-800 dark:text-teal-300",
   "Other": "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
 };
+
+type VendorManagementTab = "vendors" | "discovery" | "contacts";
 
 function normalizeVendorCategory(category: string | null | undefined) {
   const raw = String(category ?? "").trim();
@@ -2021,8 +2024,12 @@ export default function Vendors() {
   const [detailInitialTab, setDetailInitialTab] = useState<"overview" | "messages" | "files">("overview");
   const [deletingVendorId, setDeletingVendorId] = useState<number | null>(null);
   const [showSummarize, setShowSummarize] = useState(false);
-  const [activeManagementTab, setActiveManagementTab] = useState<"vendors" | "contacts">(
-    requestedManagementTab === "contacts" ? "contacts" : "vendors",
+  const [activeManagementTab, setActiveManagementTab] = useState<VendorManagementTab>(
+    requestedManagementTab === "contacts"
+      ? "contacts"
+      : requestedManagementTab === "discovery"
+      ? "discovery"
+      : "vendors",
   );
 
   const handleAddVendor = () => {
@@ -2099,6 +2106,8 @@ export default function Vendors() {
   useEffect(() => {
     if (requestedManagementTab === "contacts") {
       setActiveManagementTab("contacts");
+    } else if (requestedManagementTab === "discovery") {
+      setActiveManagementTab("discovery");
     } else if (requestedManagementTab === "vendors") {
       setActiveManagementTab("vendors");
     }
@@ -2146,9 +2155,10 @@ export default function Vendors() {
         </div>
       </div>
 
-      <Tabs value={activeManagementTab} onValueChange={(value) => setActiveManagementTab(value as "vendors" | "contacts")}>
+      <Tabs value={activeManagementTab} onValueChange={(value) => setActiveManagementTab(value as VendorManagementTab)}>
         <TabsList>
           <TabsTrigger value="vendors">{t("vendors.tab_vendors", { defaultValue: "Vendor List" })}</TabsTrigger>
+          <TabsTrigger value="discovery">{t("vendors.tab_discovery", { defaultValue: "Discovery Lite" })}</TabsTrigger>
           <TabsTrigger value="contacts">{t("vendors.tab_contacts", { defaultValue: "Contacts" })}</TabsTrigger>
         </TabsList>
 
@@ -2220,6 +2230,10 @@ export default function Vendors() {
               </button>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="discovery" className="mt-4">
+          <VendorDiscoveryLite vendors={vendors} profile={profile} />
         </TabsContent>
 
         <TabsContent value="contacts" className="mt-4">
