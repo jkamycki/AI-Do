@@ -52,6 +52,7 @@ export const GetProfileResponse = zod.object({
   "accountType": zod.enum(['couple_individual', 'wedding_planner']).optional(),
   "preferredLanguage": zod.string().nullish(),
   "vendorBccEmail": zod.string().nullish(),
+  "ariaMemory": zod.string().nullish(),
   "invitationPhotoUrl": zod.string().nullish(),
   "invitationMessage": zod.string().nullish(),
   "updatedAt": zod.string(),
@@ -93,7 +94,8 @@ export const SaveProfileBody = zod.object({
   "weddingVibe": zod.string(),
   "accountType": zod.enum(['couple_individual', 'wedding_planner']).optional(),
   "preferredLanguage": zod.string().nullish(),
-  "vendorBccEmail": zod.string().nullish()
+  "vendorBccEmail": zod.string().nullish(),
+  "ariaMemory": zod.string().nullish()
 })
 
 export const SaveProfileResponse = zod.object({
@@ -129,6 +131,7 @@ export const SaveProfileResponse = zod.object({
   "accountType": zod.enum(['couple_individual', 'wedding_planner']).optional(),
   "preferredLanguage": zod.string().nullish(),
   "vendorBccEmail": zod.string().nullish(),
+  "ariaMemory": zod.string().nullish(),
   "invitationPhotoUrl": zod.string().nullish(),
   "invitationMessage": zod.string().nullish(),
   "updatedAt": zod.string(),

@@ -6,6 +6,7 @@ import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -20,7 +21,7 @@ import {
 import {
   Users, UserPlus, Mail, Shield, Eye, Briefcase, Copy,
   CheckCircle2, Clock, XCircle, Trash2, RefreshCw, ChevronDown,
-  Settings as SettingsIcon, Crown, Globe, Check, TriangleAlert,
+  Settings as SettingsIcon, Crown, Globe, Check, TriangleAlert, Sparkles, HelpCircle,
 } from "lucide-react";
 
 type CollabRole = "partner" | "planner" | "vendor";
@@ -255,6 +256,154 @@ function LanguageSwitcherCard() {
   );
 }
 
+function buildProfileSavePayload(profile: Record<string, unknown>, overrides: Record<string, unknown> = {}) {
+  return {
+    partner1Name: String(profile.partner1Name ?? ""),
+    partner2Name: String(profile.partner2Name ?? ""),
+    weddingDate: String(profile.weddingDate ?? ""),
+    ceremonyTime: String(profile.ceremonyTime ?? ""),
+    receptionTime: String(profile.receptionTime ?? ""),
+    venue: String(profile.venue ?? ""),
+    location: String(profile.location ?? ""),
+    venueCity: profile.venueCity ?? undefined,
+    venueState: profile.venueState ?? undefined,
+    venueZip: profile.venueZip ?? undefined,
+    venueCountry: profile.venueCountry ?? undefined,
+    venueStatus: profile.venueStatus ?? "booked",
+    venueDiscovery: profile.venueDiscovery ?? null,
+    venueBrainstorm: profile.venueBrainstorm ?? null,
+    planningPriorities: profile.planningPriorities ?? null,
+    ceremonyAtVenue: typeof profile.ceremonyAtVenue === "boolean" ? profile.ceremonyAtVenue : true,
+    ceremonyVenueName: profile.ceremonyVenueName ?? undefined,
+    ceremonyAddress: profile.ceremonyAddress ?? undefined,
+    ceremonyCity: profile.ceremonyCity ?? undefined,
+    ceremonyState: profile.ceremonyState ?? undefined,
+    ceremonyZip: profile.ceremonyZip ?? undefined,
+    guestCount: Number(profile.guestCount ?? 1),
+    totalBudget: Number(profile.totalBudget ?? 0),
+    weddingVibe: String(profile.weddingVibe ?? ""),
+    preferredLanguage: typeof profile.preferredLanguage === "string" ? profile.preferredLanguage : "English",
+    vendorBccEmail: profile.vendorBccEmail ?? null,
+    ariaMemory: profile.ariaMemory ?? null,
+    ...overrides,
+  } as never;
+}
+
+function AriaMemoryCard() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const { data: profile, isLoading } = useGetProfile();
+  const saveProfile = useSaveProfile();
+  const [draft, setDraft] = useState<string | null>(null);
+
+  const original = ((profile as { ariaMemory?: string | null } | undefined)?.ariaMemory ?? "").trim();
+  const current = draft ?? original;
+  const hasChange = draft !== null && draft.trim() !== original;
+  const remaining = Math.max(0, 4000 - current.length);
+
+  function save() {
+    if (!profile) return;
+    saveProfile.mutate(
+      {
+        data: buildProfileSavePayload(profile as unknown as Record<string, unknown>, {
+          ariaMemory: current.trim() || null,
+        }),
+      },
+      {
+        onSuccess: () => {
+          qc.invalidateQueries({ queryKey: getGetProfileQueryKey() });
+          setDraft(null);
+          toast({
+            title: "Aria memory saved",
+            description: "Aria will use these notes when giving planning guidance.",
+          });
+        },
+        onError: () => toast({
+          variant: "destructive",
+          title: "Could not save Aria memory",
+          description: "Please try again.",
+        }),
+      }
+    );
+  }
+
+  return (
+    <Card className="overflow-hidden border-none shadow-sm">
+      <CardHeader className="border-b border-primary/10 bg-gradient-to-br from-primary/5 via-background to-[#f7dde2]/30 pb-5">
+        <div className="flex items-start gap-3">
+          <div className="w-11 h-11 bg-primary/10 rounded-2xl flex items-center justify-center shrink-0">
+            <Sparkles className="h-5 w-5 text-primary" />
+          </div>
+          <div className="space-y-1">
+            <CardTitle className="font-serif text-2xl flex items-center gap-2">
+              Things Aria should know
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground" title="Aria reads these notes at the start of every chat.">
+                <HelpCircle className="h-3.5 w-3.5" />
+              </span>
+            </CardTitle>
+            <CardDescription className="max-w-2xl text-sm leading-6">
+              Key decisions and preferences that Aria will remember across conversations. Add anything important like theme, allergies, must-haves, family dynamics, traditions, accessibility needs, or hard no's.
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4 p-6">
+        {isLoading ? (
+          <Skeleton className="h-56 w-full rounded-2xl" />
+        ) : !profile ? (
+          <p className="text-sm text-muted-foreground">Complete your wedding profile first, then Aria can remember planning context.</p>
+        ) : (
+          <>
+            <Textarea
+              value={current}
+              onChange={(event) => setDraft(event.target.value.slice(0, 4000))}
+              placeholder={[
+                "e.g.",
+                "- We are going rustic-elegant with a woodland feel",
+                "- No shellfish because my partner has an allergy",
+                "- Ceremony will be outdoors rain or shine",
+                "- Colors are blush, sage, ivory, and gold",
+                "- We want a first look before the ceremony",
+                "- Budget comfort zone is more important than extra decor",
+              ].join("\n")}
+              className="min-h-64 resize-y rounded-2xl border-primary/20 bg-background p-5 text-base leading-7 shadow-inner"
+            />
+            <div className="rounded-2xl border border-primary/10 bg-primary/5 px-4 py-3 text-sm text-foreground/80">
+              Aria reads these notes every time you chat. They shape suggestions, vendor briefs, task plans, and planning guidance.
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-muted-foreground">{remaining.toLocaleString()} characters left</p>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!hasChange || saveProfile.isPending}
+                  onClick={() => setDraft(null)}
+                >
+                  Reset
+                </Button>
+                <Button
+                  type="button"
+                  disabled={!hasChange || saveProfile.isPending}
+                  onClick={save}
+                  className="gap-2"
+                >
+                  {saveProfile.isPending ? (
+                    <div className="h-3.5 w-3.5 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+                  ) : (
+                    <Check className="h-4 w-4" />
+                  )}
+                  Save Aria Memory
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function VendorBccEmailCard() {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -272,30 +421,9 @@ function VendorBccEmailCard() {
     if (!profile || !isValid) return;
     saveProfile.mutate(
       {
-        data: {
-          partner1Name: profile.partner1Name,
-          partner2Name: profile.partner2Name,
-          weddingDate: profile.weddingDate,
-          ceremonyTime: profile.ceremonyTime,
-          receptionTime: profile.receptionTime,
-          venue: profile.venue,
-          location: profile.location,
-          venueCity: profile.venueCity ?? undefined,
-          venueState: profile.venueState ?? undefined,
-          venueZip: profile.venueZip ?? undefined,
-          venueCountry: (profile as { venueCountry?: string | null }).venueCountry ?? undefined,
-          ceremonyAtVenue: (profile as { ceremonyAtVenue?: boolean }).ceremonyAtVenue,
-          ceremonyVenueName: (profile as { ceremonyVenueName?: string | null }).ceremonyVenueName ?? undefined,
-          ceremonyAddress: (profile as { ceremonyAddress?: string | null }).ceremonyAddress ?? undefined,
-          ceremonyCity: (profile as { ceremonyCity?: string | null }).ceremonyCity ?? undefined,
-          ceremonyState: (profile as { ceremonyState?: string | null }).ceremonyState ?? undefined,
-          ceremonyZip: (profile as { ceremonyZip?: string | null }).ceremonyZip ?? undefined,
-          guestCount: profile.guestCount,
-          totalBudget: profile.totalBudget,
-          weddingVibe: profile.weddingVibe,
-          preferredLanguage: profile.preferredLanguage ?? "English",
+        data: buildProfileSavePayload(profile as unknown as Record<string, unknown>, {
           vendorBccEmail: current.trim() || null,
-        } as never,
+        }),
       },
       {
         onSuccess: () => {
@@ -370,7 +498,7 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { activeWorkspace } = useWorkspace();
-  const [activeTab, setActiveTab] = useState<"collaborators" | "account">("collaborators");
+  const [activeTab, setActiveTab] = useState<"collaborators" | "aria" | "account">("collaborators");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<CollabRole>("planner");
   const [newInviteLink, setNewInviteLink] = useState<string | null>(null);
@@ -537,8 +665,12 @@ export default function SettingsPage() {
         <p className="text-lg text-muted-foreground mt-1">{t("settings.subtitle")}</p>
       </div>
 
-      <div className="flex gap-1 p-1 bg-muted/40 rounded-xl w-fit">
-        {([["collaborators", t("settings.collab_tab"), Users], ["account", t("settings.account_tab"), SettingsIcon]] as const).map(([key, label, Icon]) => (
+      <div className="flex flex-wrap gap-1 p-1 bg-muted/40 rounded-xl w-fit">
+        {([
+          ["collaborators", t("settings.collab_tab"), Users],
+          ["aria", "Aria", Sparkles],
+          ["account", t("settings.account_tab"), SettingsIcon],
+        ] as const).map(([key, label, Icon]) => (
           <button
             key={key}
             onClick={() => setActiveTab(key)}
@@ -829,6 +961,12 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {activeTab === "aria" && (
+        <div className="space-y-4">
+          <AriaMemoryCard />
         </div>
       )}
 

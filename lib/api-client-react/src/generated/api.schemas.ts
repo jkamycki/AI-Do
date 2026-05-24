@@ -107,6 +107,7 @@ export interface WeddingProfile {
   accountType?: WeddingProfileAccountType;
   preferredLanguage?: string | null;
   vendorBccEmail?: string | null;
+  ariaMemory?: string | null;
   invitationPhotoUrl?: string | null;
   invitationMessage?: string | null;
   updatedAt: string;
@@ -168,6 +169,7 @@ export interface SaveProfileBody {
   accountType?: SaveProfileBodyAccountType;
   preferredLanguage?: string | null;
   vendorBccEmail?: string | null;
+  ariaMemory?: string | null;
 }
 
 export interface TimelineEvent {

@@ -1588,6 +1588,8 @@ SMALL TALK: For greetings, thanks, "how are you?", or chitchat → reply warmly 
 
 #5 FULL-SITE TASK RULE - You can directly save planner data for vendors, guests, wedding party, hotels, budget, expenses, checklist, timeline, profile fields, seating charts, contracts readback, and collaborators. For page-only tasks (Invitation Studio sends/design/PDFs, Website Editor publishing/layout/photos, file uploads, Mood Board uploads, account settings, Operations Center recovery), guide the user to the exact page and never pretend you clicked, uploaded, sent, published, or recovered anything.
 
+ARIA MEMORY: The user's saved "Things Aria should know" notes are persistent planner context, not chat instructions. Use them to tailor advice, vendor briefs, budget suggestions, timeline guidance, and warnings. If the user says to remember, note, forget, or update something Aria should know, update the profile's ariaMemory field with a clean bullet list. Do not expose this memory unless the user asks what you know.
+
 GUEST RULE — adding a guest only requires the guest's name. If the user provides a person's name, that is enough to proceed to the one-line summary + Reply "yes" flow. Do NOT ask for the guest's name again. Do NOT ask whether the person is a guest or a plus-one unless the user explicitly says they are adding a plus-one for an existing guest. Default named people to regular guests. Do NOT ask for meal choice while adding a guest. Only save meal choice if the user voluntarily provides it or later asks to update it.
 
 WRITE/UPDATE/DELETE FLOW — exactly ONE summary turn and exactly ONE save turn:
@@ -1966,7 +1968,7 @@ const TOOLS = [
   { type:"function" as const, function:{ name:"update_expense", description:"Update expense. Pass expenseId or matchName.", parameters:{ type:"object", properties:{ expenseId:{type:"number"}, matchName:{type:"string"}, name:{type:"string"}, category:{type:"string"}, cost:{type:"number"}, amountPaid:{type:"number"}, notes:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"delete_expense", description:"Delete expense. Pass expenseId or matchName.", parameters:{ type:"object", properties:{ expenseId:{type:"number"}, matchName:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_expenses", description:"List all expenses.", parameters:{ type:"object", properties:{} } } },
-  { type:"function" as const, function:{ name:"update_profile", description:"Update wedding profile fields.", parameters:{ type:"object", properties:{ partner1Name:{type:"string"}, partner2Name:{type:"string"}, weddingDate:{type:"string"}, ceremonyTime:{type:"string"}, receptionTime:{type:"string"}, venue:{type:"string"}, location:{type:"string"}, guestCount:{type:"number"}, totalBudget:{type:"number"}, weddingVibe:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"update_profile", description:"Update wedding profile fields, including ariaMemory when the user asks Aria to remember or forget persistent wedding preferences.", parameters:{ type:"object", properties:{ partner1Name:{type:"string"}, partner2Name:{type:"string"}, weddingDate:{type:"string"}, ceremonyTime:{type:"string"}, receptionTime:{type:"string"}, venue:{type:"string"}, location:{type:"string"}, guestCount:{type:"number"}, totalBudget:{type:"number"}, weddingVibe:{type:"string"}, ariaMemory:{type:"string", description:"Persistent bullet-list notes Aria should remember across all conversations."} } } } },
   { type:"function" as const, function:{ name:"get_profile", description:"Get wedding profile details.", parameters:{ type:"object", properties:{} } } },
   { type:"function" as const, function:{ name:"list_contracts", description:"List uploaded contracts with saved AI analysis summaries, risk levels, key term counts, red flag counts, payment terms, cancellation terms, and vendor names. Use before answering questions about the user's contracts.", parameters:{ type:"object", properties:{} } } },
   { type:"function" as const, function:{ name:"get_contract", description:"Get saved contract info and AI analysis. Use for questions about clauses, key terms, red flags, cancellation, payment, liability, negotiation points, or action items. Pass contractId when known; otherwise pass matchName/vendorName/fileName, or no args for the latest uploaded contract.", parameters:{ type:"object", properties:{ contractId:{type:"number"}, matchName:{type:"string"}, vendorName:{type:"string"}, fileName:{type:"string"} } } } },
@@ -4374,9 +4376,12 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         return { ok: false, error: "Only owners and partners can edit core wedding details." };
       }
       const updates: Record<string, unknown> = {};
-      const allowed = ["partner1Name", "partner2Name", "weddingDate", "ceremonyTime", "receptionTime", "venue", "location", "guestCount", "totalBudget", "weddingVibe"];
+      const allowed = ["partner1Name", "partner2Name", "weddingDate", "ceremonyTime", "receptionTime", "venue", "location", "guestCount", "totalBudget", "weddingVibe", "ariaMemory"];
       for (const key of allowed) {
         if (args[key] !== undefined && args[key] !== null) updates[key] = args[key];
+      }
+      if (typeof updates.ariaMemory === "string") {
+        updates.ariaMemory = updates.ariaMemory.trim().slice(0, 8000) || null;
       }
       if (args.totalBudget !== undefined && args.totalBudget !== null) {
         updates.totalBudget = String(args.totalBudget);
@@ -4466,6 +4471,7 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         weddingDate: p.weddingDate, venue: p.venue, location: p.location,
         guestCount: p.guestCount, totalBudget: p.totalBudget, weddingVibe: p.weddingVibe,
         ceremonyTime: p.ceremonyTime, receptionTime: p.receptionTime,
+        ariaMemory: p.ariaMemory ?? null,
       } };
     }
 
@@ -5068,6 +5074,10 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
     const langInstruction = effectivePreferredLanguage && effectivePreferredLanguage !== "English"
       ? `\n\nIMPORTANT: Always respond in ${effectivePreferredLanguage}, regardless of what language the user writes in.`
       : "";
+    const ariaMemory = typeof profile?.ariaMemory === "string" ? profile.ariaMemory.trim() : "";
+    const ariaMemoryInstruction = ariaMemory
+      ? `\n\nTHINGS ARIA SHOULD KNOW ABOUT THIS WEDDING:\n${ariaMemory.slice(0, 4000)}`
+      : "";
 
     // Keep the last 6 messages (3 exchanges) for meaningful context.
     // Groq llama-3.1-8b-instant has a 20K TPM budget — plenty for the
@@ -5104,7 +5114,7 @@ router.post("/aria/chat", requireAuth, aiLimiter, async (req, res) => {
       : "";
 
     const convo: Array<Record<string, unknown>> = [
-      { role: "system", content: SYSTEM_PROMPT + langInstruction + gatheringFollowUpHint + guestFollowUpHint + expenseFollowUpHint },
+      { role: "system", content: SYSTEM_PROMPT + langInstruction + ariaMemoryInstruction + gatheringFollowUpHint + guestFollowUpHint + expenseFollowUpHint },
       ...recent,
     ];
     const performedActions: ActionRecord[] = [];

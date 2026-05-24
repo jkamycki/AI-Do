@@ -25,6 +25,7 @@ export const weddingProfiles = pgTable("wedding_profiles", {
     niceToHaves: string[];
     mustAvoids: string[];
   } | null>(),
+  ariaMemory: text("aria_memory"),
   ceremonyAtVenue: boolean("ceremony_at_venue").notNull().default(true),
   ceremonyVenueName: text("ceremony_venue_name"),
   ceremonyAddress: text("ceremony_address"),

@@ -85,6 +85,7 @@ router.post("/profile", requireAuth, async (req, res) => {
       venue, location, venueCity, venueState, venueZip, venueCountry,
       venueStatus, venueDiscovery, venueBrainstorm,
       planningPriorities,
+      ariaMemory,
       guestCount, totalBudget, weddingVibe,
       preferredLanguage, vendorBccEmail,
       ceremonyAtVenue, ceremonyVenueName, ceremonyAddress, ceremonyCity, ceremonyState, ceremonyZip,
@@ -110,6 +111,9 @@ router.post("/profile", requireAuth, async (req, res) => {
     const hasVendorBccEmail = Object.prototype.hasOwnProperty.call(req.body, "vendorBccEmail");
     const normalizedVendorBcc =
       typeof vendorBccEmail === "string" ? (vendorBccEmail.trim() || null) : null;
+    const hasAriaMemory = Object.prototype.hasOwnProperty.call(req.body, "ariaMemory");
+    const normalizedAriaMemory =
+      typeof ariaMemory === "string" ? (ariaMemory.trim().slice(0, 8000) || null) : null;
     const normalizedAccountType = "couple_individual";
     const normalizedVenueStatus =
       venueStatus === "not_yet" || venueStatus === "deciding" ? venueStatus : "booked";
@@ -143,6 +147,7 @@ router.post("/profile", requireAuth, async (req, res) => {
           venueDiscovery: normalizedVenueDiscovery,
           venueBrainstorm: normalizedVenueBrainstorm,
           planningPriorities: normalizedPlanningPriorities,
+          ...(hasAriaMemory ? { ariaMemory: normalizedAriaMemory } : {}),
           ...ceremonyFields,
           guestCount, totalBudget: String(totalBudget), weddingVibe,
           accountType: normalizedAccountType,
@@ -178,6 +183,7 @@ router.post("/profile", requireAuth, async (req, res) => {
           venueDiscovery: normalizedVenueDiscovery,
           venueBrainstorm: normalizedVenueBrainstorm,
           planningPriorities: normalizedPlanningPriorities,
+          ariaMemory: normalizedAriaMemory,
           ...ceremonyFields,
           guestCount, totalBudget: String(totalBudget), weddingVibe,
           accountType: normalizedAccountType,
