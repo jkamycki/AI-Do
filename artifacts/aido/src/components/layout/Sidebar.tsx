@@ -358,8 +358,8 @@ export function Sidebar() {
       defaultOpen: true,
       items: [
         { href: "/dashboard", label: t("sidebar.overview", { defaultValue: "Overview" }) },
-        { href: "/mood-board", label: t("sidebar.vision_board", { defaultValue: "Vision Board" }) },
         { href: "/profile", label: t("nav.profile", { defaultValue: "Wedding Profile" }) },
+        { href: "/mood-board", label: t("sidebar.vision_board", { defaultValue: "Vision Board" }) },
         { href: "/checklist", label: t("nav.checklist", { defaultValue: "Checklist" }) },
       ],
     },
