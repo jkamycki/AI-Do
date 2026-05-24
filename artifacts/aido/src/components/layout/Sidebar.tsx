@@ -54,7 +54,7 @@ const prefetchedRoutes = new Set<string>();
 function prefetchSidebarRoute(href: string) {
   if (prefetchedRoutes.has(href)) return;
   if (typeof navigator !== "undefined" && navigator.connection?.saveData) return;
-  const load = routePrefetchers[href];
+  const load = routePrefetchers[href.split("?")[0]];
   if (!load) return;
   prefetchedRoutes.add(href);
   void load().catch(() => prefetchedRoutes.delete(href));
@@ -371,7 +371,7 @@ export function Sidebar() {
       items: [
         { href: "/vendors", label: t("sidebar.my_vendors", { defaultValue: "My Vendors" }) },
         { href: "/budget", label: t("sidebar.budget_summary", { defaultValue: "Budget Summary" }) },
-        { href: "/documents", label: t("sidebar.vendor_files", { defaultValue: "Vendor Files" }) },
+        { href: "/vendors?management=contacts", label: t("sidebar.vendor_contacts", { defaultValue: "Vendor Contacts" }) },
       ],
     },
     {

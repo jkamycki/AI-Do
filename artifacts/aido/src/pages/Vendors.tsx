@@ -2013,6 +2013,7 @@ export default function Vendors() {
   const query = new URLSearchParams(queryString);
   const requestedVendorId = Number(query.get("vendorId") ?? "");
   const requestedTab = query.get("tab");
+  const requestedManagementTab = query.get("management");
 
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
@@ -2020,7 +2021,9 @@ export default function Vendors() {
   const [detailInitialTab, setDetailInitialTab] = useState<"overview" | "messages" | "files">("overview");
   const [deletingVendorId, setDeletingVendorId] = useState<number | null>(null);
   const [showSummarize, setShowSummarize] = useState(false);
-  const [activeManagementTab, setActiveManagementTab] = useState<"vendors" | "contacts">("vendors");
+  const [activeManagementTab, setActiveManagementTab] = useState<"vendors" | "contacts">(
+    requestedManagementTab === "contacts" ? "contacts" : "vendors",
+  );
 
   const handleAddVendor = () => {
     if (!profileLoading && !profile) {
@@ -2092,6 +2095,14 @@ export default function Vendors() {
     setViewingVendorId(requestedVendorId);
     setLocation("/vendors", { replace: true });
   }, [isLoading, requestedVendorId, requestedTab, setLocation]);
+
+  useEffect(() => {
+    if (requestedManagementTab === "contacts") {
+      setActiveManagementTab("contacts");
+    } else if (requestedManagementTab === "vendors") {
+      setActiveManagementTab("vendors");
+    }
+  }, [requestedManagementTab]);
 
   if (isLoading) {
     return (
