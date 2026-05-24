@@ -719,6 +719,135 @@ function DataExportCard() {
   );
 }
 
+type ActivityLogEntry = {
+  id: number;
+  action: string;
+  resourceType?: string | null;
+  userName?: string | null;
+  details?: Record<string, unknown> | null;
+  createdAt: string;
+};
+
+function activityTone(action: string) {
+  const normalized = action.toLowerCase();
+  if (normalized.includes("created") || normalized.includes("added")) {
+    return {
+      symbol: "+",
+      className: "bg-emerald-100 text-emerald-700",
+    };
+  }
+  if (normalized.includes("deleted") || normalized.includes("removed")) {
+    return {
+      symbol: "-",
+      className: "bg-rose-100 text-rose-700",
+    };
+  }
+  if (normalized.includes("completed")) {
+    return {
+      Icon: Check,
+      symbol: null,
+      className: "bg-emerald-100 text-emerald-700",
+    };
+  }
+  return {
+    symbol: "~",
+    className: "bg-amber-100 text-[#24432F]",
+  };
+}
+
+function formatActivityDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(undefined, {
+    month: "numeric",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(date);
+}
+
+function ActivityLogCard() {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["account-activity"],
+    queryFn: async () => {
+      const res = await authFetch("/api/account/activity?limit=8");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error ?? "Could not load activity.");
+      }
+      return res.json() as Promise<{ activities: ActivityLogEntry[] }>;
+    },
+    staleTime: 30000,
+  });
+
+  const activities = data?.activities ?? [];
+
+  return (
+    <Card className="border-none shadow-sm">
+      <CardContent className="space-y-5 p-6">
+        <div>
+          <h3 className="text-2xl font-semibold text-foreground">Activity Log</h3>
+          <p className="mt-3 text-base text-muted-foreground">Recent changes to your wedding data</p>
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-3">
+            {[0, 1].map((item) => (
+              <div key={item} className="rounded-2xl border border-[#E7CDAF] bg-background p-5">
+                <div className="flex items-center gap-4">
+                  <Skeleton className="h-9 w-9 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-5 w-2/3" />
+                    <Skeleton className="h-4 w-36" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : isError ? (
+          <div className="rounded-2xl border border-[#E7CDAF] bg-background p-5 text-sm text-muted-foreground">
+            Activity could not load right now.
+          </div>
+        ) : activities.length === 0 ? (
+          <div className="rounded-2xl border border-[#E7CDAF] bg-background p-5 text-sm text-muted-foreground">
+            No recent changes yet. Updates will appear here as you edit guests, budgets, vendors, tasks, and Aria-generated plans.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {activities.map((activity) => {
+              const tone = activityTone(activity.action);
+              const ToneIcon = "Icon" in tone ? tone.Icon : null;
+              return (
+                <div
+                  key={activity.id}
+                  className="rounded-2xl border border-[#E7CDAF] bg-background p-5 shadow-[0_1px_0_rgba(139,61,88,0.03)]"
+                >
+                  <div className="flex items-start gap-4">
+                    <span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${tone.className}`}>
+                      {tone.symbol ? (
+                        <span aria-hidden="true">{tone.symbol}</span>
+                      ) : ToneIcon ? (
+                        <ToneIcon className="h-4 w-4" aria-hidden="true" />
+                      ) : null}
+                      <span className="sr-only">Activity type</span>
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-lg font-semibold leading-snug text-foreground">{activity.action}</p>
+                      <p className="mt-1 text-base text-muted-foreground">{formatActivityDate(activity.createdAt)}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function SettingsPage() {
   const { t } = useTranslation();
   const { getToken } = useAuth();
@@ -1203,6 +1332,7 @@ export default function SettingsPage() {
           <TaskReminderSettingsCard />
           <VendorBccEmailCard />
           <DataExportCard />
+          <ActivityLogCard />
           <DeleteAccountCard />
           <Card className="border-none shadow-sm">
             <CardContent className="p-8 text-center space-y-4">

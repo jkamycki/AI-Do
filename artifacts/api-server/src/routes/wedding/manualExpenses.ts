@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, manualExpenses } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
-import { resolveProfile, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
+import { resolveProfile, resolveCallerRole, hasMinRole, logActivity } from "../../lib/workspaceAccess";
 
 const router = Router();
 
@@ -121,6 +121,12 @@ router.post("/manual-expenses", requireAuth, async (req, res) => {
         receiptName: typeof receiptName === "string" ? receiptName.slice(0, 200) : null,
       })
       .returning();
+    void logActivity(profile.id, req.userId!, `Created expenses ${created.name}`, "expenses", {
+      expenseId: created.id,
+      name: created.name,
+      category: created.category,
+      amount: Number(created.cost),
+    });
     res.status(201).json(format(created));
   } catch (err) {
     req.log.error(err, "Failed to create manual expense");
@@ -203,6 +209,12 @@ router.put("/manual-expenses/:id", requireAuth, async (req, res) => {
       res.status(404).json({ error: "Not found" });
       return;
     }
+    void logActivity(profile.id, req.userId!, `Updated expenses ${updated.name}`, "expenses", {
+      expenseId: updated.id,
+      name: updated.name,
+      category: updated.category,
+      amount: Number(updated.cost),
+    });
     res.json(format(updated));
   } catch (err) {
     req.log.error(err, "Failed to update manual expense");
@@ -252,6 +264,11 @@ router.post("/manual-expenses/:id/mark-paid", requireAuth, async (req, res) => {
       })
       .where(and(eq(manualExpenses.id, id), eq(manualExpenses.profileId, profile.id)))
       .returning();
+    void logActivity(profile.id, req.userId!, `Updated expenses ${updated.name}`, "expenses", {
+      expenseId: updated.id,
+      name: updated.name,
+      amountPaid: Number(updated.amountPaid),
+    });
     res.json(format(updated));
   } catch (err) {
     req.log.error(err, "Failed to mark manual expense paid");
@@ -280,6 +297,10 @@ router.delete("/manual-expenses/:id", requireAuth, async (req, res) => {
       res.status(404).json({ error: "Not found" });
       return;
     }
+    void logActivity(profile.id, req.userId!, `Deleted expenses ${result[0].name}`, "expenses", {
+      expenseId: result[0].id,
+      name: result[0].name,
+    });
     res.json({ success: true });
   } catch (err) {
     req.log.error(err, "Failed to delete manual expense");

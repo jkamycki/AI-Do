@@ -33,7 +33,7 @@ import {
   workspaceActivity,
   workspaceCollaborators,
 } from "@workspace/db";
-import { eq, inArray, or } from "drizzle-orm";
+import { desc, eq, inArray, or } from "drizzle-orm";
 import { hasMinRole, resolveCallerRole, resolveProfile } from "../lib/workspaceAccess";
 
 const router = Router();
@@ -249,6 +249,44 @@ router.get("/account/export", requireAuth, async (req, res) => {
   } catch (err) {
     req.log.error(err, "Failed to export account data");
     res.status(500).json({ error: "Could not export your data. Please try again." });
+  }
+});
+
+router.get("/account/activity", requireAuth, async (req, res) => {
+  try {
+    const [profile, callerRole] = await Promise.all([
+      resolveProfile(req),
+      resolveCallerRole(req),
+    ]);
+
+    if (profile && !hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Only workspace owners, partners, and planners can view activity." });
+      return;
+    }
+
+    if (!profile) {
+      res.json({ activities: [] });
+      return;
+    }
+
+    const rawLimit = Number(req.query["limit"] ?? 8);
+    const limit = Math.min(50, Math.max(1, Number.isFinite(rawLimit) ? rawLimit : 8));
+    const activities = await db
+      .select()
+      .from(workspaceActivity)
+      .where(eq(workspaceActivity.profileId, profile.id))
+      .orderBy(desc(workspaceActivity.createdAt))
+      .limit(limit);
+
+    res.json({
+      activities: activities.map((activity) => ({
+        ...activity,
+        createdAt: activity.createdAt.toISOString(),
+      })),
+    });
+  } catch (err) {
+    req.log.error(err, "Failed to load account activity");
+    res.status(500).json({ error: "Could not load activity. Please try again." });
   }
 });
 

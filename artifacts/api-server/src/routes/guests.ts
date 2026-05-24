@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, guests } from "@workspace/db";
 import { eq, and, or, ilike, not } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
-import { resolveProfile, resolveCallerRole, hasMinRole } from "../lib/workspaceAccess";
+import { resolveProfile, resolveCallerRole, hasMinRole, logActivity } from "../lib/workspaceAccess";
 import { sendGuestRsvpBackupEmail, shouldSendManualRsvpBackupEmail } from "../lib/rsvpBackupEmail";
 
 const router = Router();
@@ -124,6 +124,11 @@ router.post("/guests", requireAuth, async (req, res) => {
       })
       .returning();
 
+    void logActivity(profileId, req.userId!, `Created guests ${created.name}`, "guests", {
+      guestId: created.id,
+      name: created.name,
+      rsvpStatus: created.rsvpStatus,
+    });
     res.status(201).json(created);
     return;
   } catch (err) {
@@ -230,6 +235,11 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
       .returning();
 
     if (!updated) return res.status(404).json({ error: "Guest not found" });
+    void logActivity(profileId, req.userId!, `Updated guests ${updated.name}`, "guests", {
+      guestId: updated.id,
+      name: updated.name,
+      rsvpStatus: updated.rsvpStatus,
+    });
     if (shouldSendManualRsvpBackupEmail(existingGuest, updated)) {
       void sendGuestRsvpBackupEmail({
         profileId,
@@ -325,9 +335,16 @@ router.delete("/guests/:id", requireAuth, async (req, res) => {
     const profileId = profile?.id ?? null;
     if (!profileId) return res.status(400).json({ error: "No wedding profile found." });
 
-    await db
+    const deleted = await db
       .delete(guests)
-      .where(and(eq(guests.id, id), eq(guests.profileId, profileId)));
+      .where(and(eq(guests.id, id), eq(guests.profileId, profileId)))
+      .returning();
+
+    if (!deleted.length) return res.status(404).json({ error: "Guest not found" });
+    void logActivity(profileId, req.userId!, `Deleted guests ${deleted[0].name}`, "guests", {
+      guestId: deleted[0].id,
+      name: deleted[0].name,
+    });
 
     res.json({ success: true });
     return;
