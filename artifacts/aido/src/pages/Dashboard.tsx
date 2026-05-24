@@ -37,7 +37,6 @@ import {
   ImagePlus,
   Crown,
   Armchair,
-  BookOpenCheck,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -1328,20 +1327,6 @@ function DashboardContent() {
                     )
                   }
                   testId="btn-goto-checklist"
-                />
-              ),
-            },
-            {
-              id: "planningGuides",
-              node: (
-                <FeatureCard
-                  icon={BookOpenCheck}
-                  title="Planning Guides"
-                  description="Step-by-step questionnaires for guest lists, design, florals, music, speeches, and vendor briefs."
-                  cta="/planning-guides"
-                  ctaLabel="Open Guides"
-                  stat={<div className="text-xs text-muted-foreground">Start with Guest List, then build each vendor brief</div>}
-                  testId="btn-goto-planning-guides"
                 />
               ),
             },

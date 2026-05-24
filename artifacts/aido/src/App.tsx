@@ -42,7 +42,6 @@ const Hotels = lazy(() => import("@/pages/Hotels"));
 const Contracts = lazy(() => import("@/pages/Contracts"));
 const DocumentLibrary = lazy(() => import("@/pages/DocumentLibrary"));
 const MoodBoard = lazy(() => import("@/pages/MoodBoard"));
-const PlanningGuides = lazy(() => import("@/pages/PlanningGuides"));
 const Aria = lazy(() => import("@/pages/Aria"));
 const Terms = lazy(() => import("@/pages/Terms"));
 const Privacy = lazy(() => import("@/pages/Privacy"));
@@ -1509,7 +1508,6 @@ const PORTAL_TRACKING_ROUTES: Array<{ pattern: RegExp } & PortalTrackingContext>
   { pattern: /^\/contracts\/?$/, feature: "Contract Analyzer", section: "Budget & Vendors", tool: "Contract Analyzer", step: "Viewed contract analyzer" },
   { pattern: /^\/documents\/?$/, feature: "Document Library", section: "Budget & Vendors", tool: "Document Library", step: "Viewed document library" },
   { pattern: /^\/mood-board\/?$/, feature: "Mood Board", section: "Planning", tool: "Mood Board Builder", step: "Viewed mood board" },
-  { pattern: /^\/planning-guides\/?$/, feature: "Planning Guides", section: "Planning", tool: "Planning Guides", step: "Viewed planning guides" },
   { pattern: /^\/guests(?:\/[^/]+)?\/?$/, feature: "Guest List & Invitations", section: "Guest Experience", tool: "Guest List & Invitations", step: "Viewed guest list and invitations" },
   { pattern: /^\/seating-chart\/?$/, feature: "Seating Chart", section: "Guest Experience", tool: "Seating Chart", step: "Viewed seating chart" },
   { pattern: /^\/wedding-party\/?$/, feature: "Wedding Party", section: "Guest Experience", tool: "Wedding Party", step: "Viewed wedding party" },
@@ -1872,7 +1870,6 @@ function Router() {
         <Route path="/contracts" component={() => <ProtectedRoute component={Contracts} />} />
         <Route path="/documents" component={() => <ProtectedRoute component={DocumentLibrary} maintenanceSection="portal-documents" />} />
         <Route path="/mood-board" component={() => <ProtectedRoute component={MoodBoard} maintenanceSection="portal-mood-board" />} />
-        <Route path="/planning-guides" component={() => <ProtectedRoute component={PlanningGuides} />} />
         <Route path="/aria" component={() => <ProtectedRoute component={Aria} maintenanceSection="portal-aria" />} />
         <Route path="/website-editor" component={() => <ProtectedRoute component={WebsiteEditor} fullWidth maintenanceSection="portal-website-editor" />} />
         <Route path="/workspace/:profileId" component={() => <ProtectedRoute component={SharedWorkspace} fullWidth />} />

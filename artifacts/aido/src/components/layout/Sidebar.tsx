@@ -16,7 +16,6 @@ import {
   ImagePlus,
   Trash2,
   Pencil,
-  BookOpenCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -32,7 +31,6 @@ const routePrefetchers: Record<string, () => Promise<unknown>> = {
   "/dashboard": () => import("@/pages/Dashboard"),
   "/profile": () => import("@/pages/Profile"),
   "/mood-board": () => import("@/pages/MoodBoard"),
-  "/planning-guides": () => import("@/pages/PlanningGuides"),
   "/timeline": () => import("@/pages/Timeline"),
   "/checklist": () => import("@/pages/Checklist"),
   "/vendors": () => import("@/pages/Vendors"),
@@ -399,7 +397,6 @@ export function Sidebar() {
       label: t("sidebar.planning_tools_section", { defaultValue: "Planning Tools" }),
       defaultOpen: false,
       items: [
-        { href: "/planning-guides", label: t("sidebar.planning_guides", { defaultValue: "Planning Guides" }), icon: BookOpenCheck },
         { href: "/website-editor", label: t("nav.website_editor", { defaultValue: "Website Editor" }) },
         { href: "/documents", label: t("nav.document_library", { defaultValue: "Document Library" }) },
       ],
