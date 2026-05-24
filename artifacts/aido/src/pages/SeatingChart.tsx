@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import {
-  Users, Plus, Trash2, Wand2, Heart, AlertTriangle, UserPlus,
+  Users, Plus, Minus, Trash2, Wand2, Heart, AlertTriangle, UserPlus,
   ChevronDown, ChevronUp, RefreshCw, Info, Armchair, Save,
   Clock, ChevronRight, Download, GripVertical, MoveRight, Pencil, FileDown,
 } from "lucide-react";
@@ -1300,9 +1300,23 @@ export default function SeatingChartPage() {
               {t("seating.number_of_tables")}
             </label>
             <div className="flex items-center gap-2">
-              <button onClick={() => setTableCount(t => Math.max(1, t - 1))} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-lg hover:bg-muted transition-colors">âˆ’</button>
+              <button
+                type="button"
+                aria-label="Decrease number of tables"
+                onClick={() => setTableCount(t => Math.max(1, t - 1))}
+                className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-lg hover:bg-muted transition-colors"
+              >
+                <Minus className="h-4 w-4" />
+              </button>
               <span className="w-10 text-center font-bold text-xl">{tableCount}</span>
-              <button onClick={() => setTableCount(t => Math.min(30, t + 1))} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-lg hover:bg-muted transition-colors">+</button>
+              <button
+                type="button"
+                aria-label="Increase number of tables"
+                onClick={() => setTableCount(t => Math.min(30, t + 1))}
+                className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-lg hover:bg-muted transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
             </div>
           </CardContent>
         </Card>
@@ -1313,9 +1327,23 @@ export default function SeatingChartPage() {
               {t("seating.seats_per_table")}
             </label>
             <div className="flex items-center gap-2">
-              <button onClick={() => setSeatsPerTable(s => Math.max(2, s - 1))} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-lg hover:bg-muted transition-colors">âˆ’</button>
+              <button
+                type="button"
+                aria-label="Decrease seats per table"
+                onClick={() => setSeatsPerTable(s => Math.max(2, s - 1))}
+                className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-lg hover:bg-muted transition-colors"
+              >
+                <Minus className="h-4 w-4" />
+              </button>
               <span className="w-10 text-center font-bold text-xl">{seatsPerTable}</span>
-              <button onClick={() => setSeatsPerTable(s => Math.min(20, s + 1))} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-lg hover:bg-muted transition-colors">+</button>
+              <button
+                type="button"
+                aria-label="Increase seats per table"
+                onClick={() => setSeatsPerTable(s => Math.min(20, s + 1))}
+                className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-lg hover:bg-muted transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
             </div>
           </CardContent>
         </Card>
@@ -1326,7 +1354,10 @@ export default function SeatingChartPage() {
             <p className="text-2xl font-bold text-primary mt-1">{filledSeatCount} / {totalCapacity}</p>
             <p className="text-xs text-muted-foreground">{t("seating.guests_seats")}</p>
             {filledSeatCount > totalCapacity && (
-              <p className="text-xs text-red-500 mt-1 font-medium">âš  {t("seating.over_capacity")}</p>
+              <p className="text-xs text-red-500 mt-1 font-medium inline-flex items-center gap-1">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                {t("seating.over_capacity")}
+              </p>
             )}
           </CardContent>
         </Card>
