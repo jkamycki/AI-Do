@@ -403,10 +403,10 @@ export function Sidebar() {
     },
     {
       id: "settings",
-      label: t("nav.settings", { defaultValue: "Settings" }),
+      label: t("sidebar.settings_section", { defaultValue: "Settings & Support" }),
       defaultOpen: false,
       items: [
-        { href: "/settings", label: t("nav.settings", { defaultValue: "Settings" }) },
+        { href: "/settings", label: t("sidebar.account_collaborators", { defaultValue: "Account & Collaborators" }) },
         { href: "/help", label: t("nav.help", { defaultValue: "Help & Support" }) },
         { href: "/help/updates-improvements", label: t("nav.updates_improvements", { defaultValue: "Updates & Improvements" }) },
         ...(isAdmin ? [{ href: "/operations-center", label: t("nav.admin", { defaultValue: "Operations Center" }), special: true }] : []),
