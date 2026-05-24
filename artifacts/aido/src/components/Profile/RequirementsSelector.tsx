@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 export type RequirementCategoryKey = "mustHaves" | "niceToHaves" | "mustNotHaves";
 
@@ -15,22 +15,22 @@ type RequirementsSelectorProps = {
   onChange: (value: RequirementsSelectorValue) => void;
 };
 
-const NOTES_PLACEHOLDER = [
-  "Dealbreakers",
-  "Preferences",
-  "Red flags",
-  "Optional upgrades",
-  "Required accommodations",
-].join("\n");
-
 const REQUIREMENT_CATEGORIES: Array<{
   key: RequirementCategoryKey;
   title: string;
+  description: string;
+  cardClass: string;
+  activeClass: string;
+  textClass: string;
   options: string[];
 }> = [
   {
     key: "mustHaves",
     title: "Must Have",
+    description: "Non-negotiables for your venue search.",
+    cardClass: "border-emerald-200 bg-emerald-50/60",
+    activeClass: "border-emerald-300 bg-emerald-100 text-emerald-900 shadow-sm",
+    textClass: "text-emerald-700",
     options: [
       "Budget-friendly",
       "Specific date availability",
@@ -50,10 +50,14 @@ const REQUIREMENT_CATEGORIES: Array<{
   {
     key: "niceToHaves",
     title: "Nice to Have",
+    description: "Extras that would make the venue feel special.",
+    cardClass: "border-amber-200 bg-amber-50/60",
+    activeClass: "border-amber-300 bg-amber-100 text-amber-900 shadow-sm",
+    textClass: "text-amber-700",
     options: [
       "Scenic photo spots",
       "Open bar",
-      "Custom décor options",
+      "Custom decor options",
       "Late-night food",
       "On-site lodging",
       "Outdoor ceremony space",
@@ -68,6 +72,10 @@ const REQUIREMENT_CATEGORIES: Array<{
   {
     key: "mustNotHaves",
     title: "Must Avoid",
+    description: "Red flags that should stay off the shortlist.",
+    cardClass: "border-rose-200 bg-rose-50/60",
+    activeClass: "border-rose-300 bg-rose-100 text-rose-900 shadow-sm",
+    textClass: "text-rose-700",
     options: [
       "Hidden fees",
       "Strict vendor restrictions",
@@ -77,7 +85,7 @@ const REQUIREMENT_CATEGORIES: Array<{
       "Mandatory in-house catering",
       "Shared spaces with other events",
       "Long travel distance",
-      "Outdated décor",
+      "Outdated decor",
       "Poor lighting",
       "No backup plan",
       "Guest capacity limits",
@@ -99,7 +107,7 @@ export function normalizeRequirementsSelectorValue(value?: Partial<RequirementsS
       : [];
     acc[category.key] = {
       selected,
-      notes: typeof categoryValue?.notes === "string" ? categoryValue.notes : "",
+      notes: "",
     };
     return acc;
   }, { ...emptyRequirementsSelectorValue } as RequirementsSelectorValue);
@@ -111,8 +119,7 @@ export function formatRequirementsForPrompt(value?: RequirementsSelectorValue | 
     .map((category) => {
       const categoryValue = normalized[category.key];
       const selected = categoryValue.selected.length ? categoryValue.selected.join(", ") : "none selected";
-      const notes = categoryValue.notes.trim() ? ` Notes: ${categoryValue.notes.trim()}` : "";
-      return `${category.title}: ${selected}.${notes}`;
+      return `${category.title}: ${selected}.`;
     })
     .join("\n");
 }
@@ -133,63 +140,63 @@ export default function RequirementsSelector({ value, onChange }: RequirementsSe
   return (
     <div className="space-y-4">
       <div>
-        <h4 className="text-sm font-semibold text-foreground">Requirements Selector</h4>
+        <h4 className="font-serif text-xl font-semibold text-primary">Wedding priorities</h4>
         <p className="mt-1 text-xs text-muted-foreground">
-          Capture your dealbreakers, preferences, and red flags for venue research.
+          Choose what matters most before adding venues to your shortlist.
         </p>
       </div>
 
-      {REQUIREMENT_CATEGORIES.map((category) => {
-        const categoryValue = normalized[category.key];
-        const allSelected = categoryValue.selected.length === category.options.length;
+      <div className="grid gap-4 xl:grid-cols-3">
+        {REQUIREMENT_CATEGORIES.map((category) => {
+          const categoryValue = normalized[category.key];
+          const allSelected = categoryValue.selected.length === category.options.length;
 
-        return (
-          <section key={category.key} className="space-y-3 rounded-lg border border-primary/15 bg-card p-4">
-            <div className="flex items-center justify-between gap-3">
-              <h5 className="text-sm font-semibold text-foreground">{category.title}</h5>
-              <button
-                type="button"
-                className="text-xs font-semibold text-primary underline-offset-4 transition hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                onClick={() => updateCategory(category.key, {
-                  selected: allSelected ? [] : category.options,
+          return (
+            <section key={category.key} className={cn("space-y-3 rounded-2xl border p-4", category.cardClass)}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h5 className={cn("text-sm font-semibold", category.textClass)}>{category.title}</h5>
+                  <p className="mt-1 text-xs text-muted-foreground">{category.description}</p>
+                </div>
+                <button
+                  type="button"
+                  className={cn("text-xs font-semibold underline-offset-4 transition hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", category.textClass)}
+                  onClick={() => updateCategory(category.key, {
+                    selected: allSelected ? [] : category.options,
+                  })}
+                >
+                  {allSelected ? "Clear" : "All"}
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {category.options.map((option) => {
+                  const selected = categoryValue.selected.includes(option);
+                  return (
+                    <Button
+                      key={option}
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className={cn(
+                        "h-auto min-h-8 rounded-full border bg-white/90 px-3 py-1.5 text-xs text-foreground shadow-sm hover:-translate-y-0.5 hover:bg-white",
+                        selected && category.activeClass,
+                      )}
+                      onClick={() => updateCategory(category.key, {
+                        selected: selected
+                          ? categoryValue.selected.filter(item => item !== option)
+                          : [...categoryValue.selected, option],
+                      })}
+                    >
+                      {option}
+                    </Button>
+                  );
                 })}
-              >
-                {allSelected ? "Clear all" : "Select all"}
-              </button>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {category.options.map((option) => {
-                const selected = categoryValue.selected.includes(option);
-                return (
-                  <Button
-                    key={option}
-                    type="button"
-                    size="sm"
-                    variant={selected ? "default" : "outline"}
-                    className="h-auto min-h-8 rounded-full px-3 py-1.5 text-xs sm:text-sm"
-                    onClick={() => updateCategory(category.key, {
-                      selected: selected
-                        ? categoryValue.selected.filter(item => item !== option)
-                        : [...categoryValue.selected, option],
-                    })}
-                  >
-                    {option}
-                  </Button>
-                );
-              })}
-            </div>
-
-            <Textarea
-              value={categoryValue.notes}
-              onChange={(event) => updateCategory(category.key, { notes: event.target.value })}
-              placeholder={NOTES_PLACEHOLDER}
-              rows={4}
-              className="min-h-24 resize-y border-primary/20 bg-background text-sm"
-            />
-          </section>
-        );
-      })}
+              </div>
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }

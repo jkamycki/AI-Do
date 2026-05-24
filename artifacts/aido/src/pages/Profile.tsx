@@ -1000,7 +1000,7 @@ export default function Profile() {
                       </div>
                       <FormControl>
                         <div className="space-y-5">
-                          <div className="grid gap-3">
+                          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                             {WEDDING_PRIORITY_OPTIONS.map((option) => {
                               const activeKey = getPriorityForOption(priorities, option);
                               const activeColumn = PRIORITY_COLUMNS.find(({ key }) => key === activeKey);
@@ -1009,13 +1009,13 @@ export default function Profile() {
                                 <div
                                   key={option}
                                   className={cn(
-                                    "rounded-2xl border border-primary/10 bg-white/85 p-4 shadow-sm transition-all",
+                                    "rounded-2xl border border-primary/10 bg-white/85 p-3 shadow-sm transition-all",
                                     activeColumn?.summaryClass,
                                   )}
                                 >
-                                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                  <div className="space-y-3">
                                     <div className="min-w-0">
-                                      <p className="font-medium text-foreground">{option}</p>
+                                      <p className="font-medium leading-snug text-foreground">{option}</p>
                                       {activeColumn ? (
                                         <p className={cn("mt-1 text-xs font-semibold uppercase tracking-wide", activeColumn.textClass)}>
                                           Selected as {activeColumn.title}
@@ -1024,7 +1024,7 @@ export default function Profile() {
                                         <p className="mt-1 text-xs text-muted-foreground">Not selected yet</p>
                                       )}
                                     </div>
-                                    <div className="grid grid-cols-3 gap-2 sm:w-[300px]">
+                                    <div className="grid grid-cols-3 gap-2">
                                       {PRIORITY_COLUMNS.map(({ key, shortTitle, activeClass }) => {
                                         const isActive = activeKey === key;
                                         return (

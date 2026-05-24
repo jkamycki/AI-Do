@@ -2129,25 +2129,27 @@ export default function Vendors() {
           <h1 className="text-3xl font-serif text-foreground">{t("vendors.title")}</h1>
           <p className="text-muted-foreground mt-0.5">{vendors.length} {t("vendors.tracked", { count: vendors.length })}</p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowSummarize(true)}
-            data-testid="btn-summarize-email-open"
-          >
-            <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-            {t("vendors.summarize_reply")}
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleAddVendor}
-            data-testid="btn-add-vendor"
-          >
-            <Plus className="h-4 w-4 mr-1.5" />
-            {t("vendors.add_vendor")}
-          </Button>
-        </div>
+        {activeManagementTab === "vendors" && (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSummarize(true)}
+              data-testid="btn-summarize-email-open"
+            >
+              <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+              {t("vendors.summarize_reply")}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleAddVendor}
+              data-testid="btn-add-vendor"
+            >
+              <Plus className="h-4 w-4 mr-1.5" />
+              {t("vendors.add_vendor")}
+            </Button>
+          </div>
+        )}
       </div>
 
       <Tabs value={activeManagementTab} onValueChange={(value) => setActiveManagementTab(value as VendorManagementTab)}>

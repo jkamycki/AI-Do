@@ -48,6 +48,12 @@ interface SeatingResult {
   totalSeated: number;
 }
 
+interface PreviewSeat {
+  label: string;
+  moveName: string;
+  isPlusOne?: boolean;
+}
+
 interface SavedChart {
   id: number;
   name: string;
@@ -101,8 +107,36 @@ function normalizeSeatingTables(tables: unknown): SeatingTable[] {
   });
 }
 
-function normalizeSeatingResult(value: SeatingResult): SeatingResult {
-  const tables = normalizeSeatingTables(value.tables);
+function ensurePlannedTableCount(tables: SeatingTable[], expectedCount?: number): SeatingTable[] {
+  const plannedCount = Number.isFinite(Number(expectedCount)) && Number(expectedCount) > 0
+    ? Math.round(Number(expectedCount))
+    : tables.length;
+  if (plannedCount <= tables.length && tables.every((table, index) => table.tableNumber === index + 1)) {
+    return tables;
+  }
+
+  const tableByNumber = new Map<number, SeatingTable>();
+  tables.forEach((table) => {
+    if (!tableByNumber.has(table.tableNumber)) {
+      tableByNumber.set(table.tableNumber, table);
+    }
+  });
+
+  const plannedTables = Array.from({ length: plannedCount }, (_, index) => {
+    const tableNumber = index + 1;
+    return tableByNumber.get(tableNumber) ?? {
+      tableNumber,
+      tableName: `Table ${tableNumber}`,
+      guests: [],
+    };
+  });
+
+  const extras = tables.filter((table) => table.tableNumber > plannedCount);
+  return [...plannedTables, ...extras];
+}
+
+function normalizeSeatingResult(value: SeatingResult, expectedTableCount?: number): SeatingResult {
+  const tables = ensurePlannedTableCount(normalizeSeatingTables(value.tables), expectedTableCount);
   const totalSeated = tables.reduce((sum, table) => sum + table.guests.length, 0);
   return {
     tables,
@@ -134,6 +168,38 @@ function seatingDisplayRows(guestNames: string[], seatingGuests: Guest[]) {
       plusOneLabel: guest?.plusOne ? (cleanPlusOneName ? `+ ${cleanPlusOneName}` : "+1") : null,
     }];
   });
+}
+
+function tableDisplayLabel(index: number) {
+  let value = index;
+  let label = "";
+  do {
+    label = String.fromCharCode(65 + (value % 26)) + label;
+    value = Math.floor(value / 26) - 1;
+  } while (value >= 0);
+  return label;
+}
+
+function seatingPreviewSeats(guestNames: string[], seatingGuests: Guest[], seatsPerTable: number) {
+  const rows = seatingDisplayRows(guestNames, seatingGuests);
+  const assigned = rows.flatMap<PreviewSeat>((row) => {
+    const seats: PreviewSeat[] = [{ label: row.name, moveName: row.name }];
+    if (row.plusOneLabel) {
+      const plusOneName = row.plusOneLabel.replace(/^\+\s*/, "").trim();
+      seats.push({
+        label: plusOneName && plusOneName !== "1" ? plusOneName : "Plus one",
+        moveName: row.name,
+        isPlusOne: true,
+      });
+    }
+    return seats;
+  });
+
+  return {
+    seats: Array.from({ length: seatsPerTable }, (_, index) => assigned[index] ?? null),
+    overflow: assigned.slice(seatsPerTable),
+    assignedCount: assigned.length,
+  };
 }
 
 function GuestCard({
@@ -397,6 +463,218 @@ function TableCard({
   );
 }
 
+function SeatingPreviewTable({
+  table,
+  index,
+  seatsPerTable,
+  seatingGuests,
+  onMoveGuest,
+}: {
+  table: SeatingTable;
+  index: number;
+  seatsPerTable: number;
+  seatingGuests: Guest[];
+  onMoveGuest: (fromTableNumber: number, toTableNumber: number, guestName: string) => void;
+}) {
+  const [dragOver, setDragOver] = useState(false);
+  const seatTotal = Math.max(2, Math.min(20, Math.round(seatsPerTable)));
+  const { seats, overflow, assignedCount } = seatingPreviewSeats(table.guests, seatingGuests, seatTotal);
+  const tableLabel = tableDisplayLabel(index);
+  const tableSize = seatTotal > 14 ? 124 : seatTotal > 10 ? 116 : 104;
+  const seatSize = seatTotal > 14 ? 20 : 23;
+  const stageSize = tableSize + 58;
+  const accent = TABLE_ACCENTS[index % TABLE_ACCENTS.length];
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const raw = e.dataTransfer.getData("application/x-aido-guest");
+    if (!raw) return;
+    try {
+      const { fromTable, name } = JSON.parse(raw) as { fromTable: number; name: string };
+      if (fromTable !== table.tableNumber) {
+        onMoveGuest(fromTable, table.tableNumber, name);
+      }
+    } catch {
+      // ignore malformed payloads
+    }
+  };
+
+  return (
+    <div
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleDrop}
+      className={`rounded-2xl border bg-white/85 p-3 shadow-[0_12px_30px_rgba(141,41,77,0.08)] transition-all ${dragOver ? "ring-2 ring-primary/70 scale-[1.01]" : "border-primary/10"}`}
+    >
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/70">
+            Table {tableLabel}
+          </p>
+          <p className="text-sm font-semibold text-foreground truncate">
+            {table.tableName || `Table ${table.tableNumber}`}
+          </p>
+        </div>
+        <Badge variant={assignedCount > seatTotal ? "destructive" : "secondary"} className="rounded-full">
+          {Math.min(assignedCount, seatTotal)} / {seatTotal}
+        </Badge>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <div
+          className="relative flex-shrink-0"
+          style={{ width: stageSize, height: stageSize }}
+          aria-label={`Visual preview for Table ${tableLabel}`}
+        >
+          <div
+            className="absolute left-1/2 top-1/2 rounded-full border border-primary/25 bg-gradient-to-br from-white to-[#FFF7F2] shadow-inner"
+            style={{ width: tableSize, height: tableSize, transform: "translate(-50%, -50%)" }}
+          >
+            <div className="absolute inset-5 rounded-full border border-dashed border-primary/15" />
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+              <span className="font-serif text-3xl font-bold text-primary">{tableLabel}</span>
+              <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                {seatTotal} seats
+              </span>
+            </div>
+          </div>
+          {seats.map((seat, seatIndex) => {
+            const angle = (-90 + seatIndex * (360 / seatTotal)) * (Math.PI / 180);
+            const radius = tableSize / 2 + 13;
+            const x = stageSize / 2 + Math.cos(angle) * radius;
+            const y = stageSize / 2 + Math.sin(angle) * radius;
+            return (
+              <div
+                key={seatIndex}
+                className={`absolute flex items-center justify-center rounded-full border text-[10px] font-semibold shadow-sm ${seat ? "border-primary/45 bg-primary/10 text-primary" : "border-primary/20 bg-white text-muted-foreground"}`}
+                style={{
+                  left: x,
+                  top: y,
+                  width: seatSize,
+                  height: seatSize,
+                  transform: "translate(-50%, -50%)",
+                }}
+                title={seat?.label ?? `Open seat ${seatIndex + 1}`}
+              >
+                {seatIndex + 1}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="min-w-[132px] flex-1 overflow-hidden rounded-xl border border-primary/15 bg-white/90 text-xs">
+          <div className={`grid grid-cols-[2rem_1fr] ${accent.chip}`}>
+            <div className="border-r border-primary/15 px-2 py-1 font-semibold">#</div>
+            <div className="px-2 py-1 font-semibold">Guest</div>
+          </div>
+          {seats.map((seat, seatIndex) => (
+            <div
+              key={seatIndex}
+              draggable={Boolean(seat)}
+              onDragStart={(e) => {
+                if (!seat) return;
+                e.dataTransfer.setData(
+                  "application/x-aido-guest",
+                  JSON.stringify({ fromTable: table.tableNumber, name: seat.moveName }),
+                );
+                e.dataTransfer.effectAllowed = "move";
+              }}
+              className={`grid grid-cols-[2rem_1fr] border-t border-primary/10 ${seat ? "cursor-grab active:cursor-grabbing hover:bg-primary/5" : "text-muted-foreground/55"}`}
+              title={seat ? "Drag to another table" : "Open seat"}
+            >
+              <div className="border-r border-primary/10 px-2 py-1 tabular-nums">{seatIndex + 1}</div>
+              <div className="px-2 py-1 truncate">
+                {seat ? (
+                  <span className={seat.isPlusOne ? "text-primary/75 italic" : "text-foreground"}>
+                    {seat.label}
+                  </span>
+                ) : (
+                  "Open seat"
+                )}
+              </div>
+            </div>
+          ))}
+          {overflow.length > 0 && (
+            <div className="border-t border-destructive/20 bg-destructive/10 px-2 py-1 text-[11px] font-medium text-destructive">
+              +{overflow.length} over capacity
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SeatingFloorPlanPreview({
+  tables,
+  tableCount,
+  seatsPerTable,
+  seatingGuests,
+  onMoveGuest,
+}: {
+  tables: SeatingTable[];
+  tableCount: number;
+  seatsPerTable: number;
+  seatingGuests: Guest[];
+  onMoveGuest: (fromTableNumber: number, toTableNumber: number, guestName: string) => void;
+}) {
+  const { t } = useTranslation();
+  const seatTotal = Math.max(2, Math.min(20, Math.round(seatsPerTable)));
+  const previewTables = ensurePlannedTableCount(tables, tableCount);
+  const columns = Math.min(3, Math.max(1, Math.ceil(Math.sqrt(Math.max(previewTables.length, 1)))));
+  const totalCapacity = previewTables.length * seatTotal;
+  const assignedSeats = previewTables.reduce(
+    (sum, table) => sum + seatingPreviewSeats(table.guests, seatingGuests, seatTotal).assignedCount,
+    0,
+  );
+
+  return (
+    <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-[#FFFDFB] via-[#FFF7F2] to-[#F7DDE2]/45 shadow-[0_18px_50px_rgba(141,41,77,0.12)]">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <CardTitle className="font-serif text-2xl text-foreground">
+              {t("seating.floor_plan_preview", { defaultValue: "Reception Layout Preview" })}
+            </CardTitle>
+            <CardDescription className="mt-1">
+              {t("seating.floor_plan_preview_desc", { defaultValue: "A visual table map that follows your table count and seats-per-table settings." })}
+            </CardDescription>
+          </div>
+          <Badge className="rounded-full bg-white text-primary border border-primary/20 shadow-sm hover:bg-white">
+            {assignedSeats} / {totalCapacity} seats
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto rounded-2xl border border-primary/15 bg-white/55 p-3">
+          <div
+            className="grid gap-5"
+            style={{
+              gridTemplateColumns: `repeat(${columns}, minmax(292px, 1fr))`,
+              minWidth: columns * 292 + (columns - 1) * 20,
+            }}
+          >
+            {previewTables.map((table, index) => (
+              <SeatingPreviewTable
+                key={table.tableNumber}
+                table={table}
+                index={index}
+                seatsPerTable={seatTotal}
+                seatingGuests={seatingGuests}
+                onMoveGuest={onMoveGuest}
+              />
+            ))}
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          {t("seating.floor_plan_drag_hint", { defaultValue: "Tip: drag a guest name in the preview or in the table cards below to move them to another table." })}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function SeatingChartPage() {
   const { t, i18n } = useTranslation();
   const { userId } = useAuth();
@@ -517,11 +795,11 @@ export default function SeatingChartPage() {
     if (namesToMove.length === 0) return;
 
     const toTable = result.tables.find(t => t.tableNumber === toTableNumber);
-    if (!toTable) return;
-    const namesAlreadyAtDestination = new Set(toTable.guests.map(normalizeSeatDisplayName));
+    const namesAlreadyAtDestination = new Set((toTable?.guests ?? []).map(normalizeSeatDisplayName));
     const moveNames = namesToMove.filter((name) => !namesAlreadyAtDestination.has(normalizeSeatDisplayName(name)));
     if (moveNames.length === 0) return; // already at destination, no-op
 
+    const destinationExists = Boolean(toTable);
     const tables = result.tables.map(t => {
       if (t.tableNumber === fromTableNumber) {
         const movingKeys = new Set(namesToMove.map(normalizeSeatDisplayName));
@@ -533,6 +811,14 @@ export default function SeatingChartPage() {
       }
       return t;
     });
+    if (!destinationExists) {
+      tables.push({
+        tableNumber: toTableNumber,
+        tableName: `Table ${toTableNumber}`,
+        guests: moveNames,
+      });
+      tables.sort((a, b) => a.tableNumber - b.tableNumber);
+    }
 
     setResult({ ...result, tables });
     setChartDirty(true);
@@ -898,7 +1184,7 @@ export default function SeatingChartPage() {
       return r.json() as Promise<SeatingResult>;
     },
     onSuccess: (data) => {
-      const normalized = normalizeSeatingResult(data);
+      const normalized = normalizeSeatingResult(data, tableCount);
       setResult(normalized);
       setChartDirty(false);
       setShowGuests(false);
@@ -924,7 +1210,7 @@ export default function SeatingChartPage() {
 
   const loadChart = (chart: SavedChart) => {
     if (chart.tables) {
-      const tables = normalizeSeatingTables(chart.tables);
+      const tables = ensurePlannedTableCount(normalizeSeatingTables(chart.tables), chart.tableCount);
       setResult({
         tables,
         insights: [],
@@ -1006,7 +1292,7 @@ export default function SeatingChartPage() {
     if (!result) return;
     setExportingPdf(true);
     try {
-      const pdfResult = normalizeSeatingResult(result);
+      const pdfResult = normalizeSeatingResult(result, tableCount);
       if (pdfResult.tables.length === 0) {
         throw new Error("There are no seating tables to export yet.");
       }
@@ -1597,6 +1883,23 @@ export default function SeatingChartPage() {
               ))}
             </div>
           )}
+
+          <SeatingFloorPlanPreview
+            tables={result.tables}
+            tableCount={tableCount}
+            seatsPerTable={seatsPerTable}
+            seatingGuests={guests}
+            onMoveGuest={moveGuest}
+          />
+
+          <div>
+            <h3 className="font-serif text-xl font-semibold text-foreground">
+              {t("seating.editable_table_cards", { defaultValue: "Editable Table Assignments" })}
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {t("seating.editable_table_cards_desc", { defaultValue: "Use these cards for detailed edits, table notes, and quick move menus." })}
+            </p>
+          </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {result.tables.map((table, i) => (

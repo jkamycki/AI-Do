@@ -897,13 +897,13 @@ function DataExportCard() {
   }
 
   return (
-    <Card className="border-none shadow-sm">
+    <Card className="border border-primary/10 bg-gradient-to-br from-white via-[#FFF7F2] to-[#F7DDE2]/35 shadow-[0_14px_36px_rgba(141,41,77,0.08)]">
       <CardContent className="space-y-5 p-6">
         <div>
           <h3 className="flex items-center gap-2 text-2xl font-semibold text-foreground">
             Your Data
             <span
-              className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground"
+              className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-primary/20 bg-[#F7DDE2] text-primary"
               title="Downloads a JSON backup of the wedding workspace and your account-related planning records."
             >
               <HelpCircle className="h-4 w-4" />
@@ -917,7 +917,7 @@ function DataExportCard() {
           type="button"
           onClick={downloadData}
           disabled={downloading}
-          className="h-14 rounded-full bg-[#24432F] px-9 text-base font-semibold text-white shadow-sm hover:bg-[#1E3928]"
+          className="h-14 rounded-full border border-primary/20 bg-gradient-to-r from-primary via-[#B16C8E] to-[#D4A373] px-9 text-base font-semibold text-white shadow-[0_14px_28px_rgba(141,41,77,0.22)] transition-all hover:from-[#7A2142] hover:via-primary hover:to-[#C49462] hover:shadow-[0_16px_34px_rgba(141,41,77,0.28)]"
         >
           {downloading ? (
             <div className="h-4 w-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
