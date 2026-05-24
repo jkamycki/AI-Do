@@ -63,6 +63,7 @@ interface Conversation {
 
 const STORAGE_PREFIX = "aido:aria:conversations:";
 const DRAFT_STORAGE_PREFIX = "aido:aria:draft:";
+const ARIA_ONBOARDING_PROMPT_KEY = "aido_aria_initial_prompt";
 const MAX_STORED = 30;
 
 function storageKey(userId: string | null | undefined) {
@@ -246,6 +247,7 @@ export default function Aria() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const sendingRef = useRef(false);
   const skipNextDraftSaveRef = useRef(false);
+  const onboardingPromptConsumedRef = useRef(false);
 
   // Load conversations on mount / when user changes
   useEffect(() => {
@@ -578,6 +580,27 @@ export default function Aria() {
       saveDraft(userId, activeId, value);
     }
   }
+
+  useEffect(() => {
+    if (hydratedUserId !== userId || onboardingPromptConsumedRef.current) return;
+
+    let onboardingPrompt = "";
+    try {
+      onboardingPrompt = sessionStorage.getItem(ARIA_ONBOARDING_PROMPT_KEY) ?? "";
+      if (onboardingPrompt) {
+        sessionStorage.removeItem(ARIA_ONBOARDING_PROMPT_KEY);
+      }
+    } catch {
+      onboardingPrompt = "";
+    }
+
+    if (!onboardingPrompt.trim()) return;
+    onboardingPromptConsumedRef.current = true;
+    const timer = window.setTimeout(() => {
+      void send(onboardingPrompt);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [hydratedUserId, userId]);
 
   const isEmpty = messages.length === 0;
   const sortedConversations = [...conversations].sort((a, b) => b.updatedAt - a.updatedAt);
