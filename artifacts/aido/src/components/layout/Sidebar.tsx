@@ -372,7 +372,7 @@ export function Sidebar() {
       items: [
         { href: "/vendors", label: t("sidebar.my_vendors", { defaultValue: "My Vendors" }) },
         { href: "/budget", label: t("sidebar.budget_summary", { defaultValue: "Budget Summary" }) },
-        { href: "/vendors?management=contacts", label: t("sidebar.vendor_contacts", { defaultValue: "Vendor Contacts" }) },
+        { href: "/vendors?management=contacts", label: t("sidebar.vendor_contacts", { defaultValue: "Vendor List & Contacts" }) },
       ],
     },
     {
