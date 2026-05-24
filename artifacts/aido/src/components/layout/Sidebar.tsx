@@ -628,8 +628,8 @@ export function Sidebar() {
             onFocus={() => prefetchSidebarRoute("/aria")}
             onClick={() => {
               void track("tab_bar_feature_used", {
-                feature: "Ask A.I. Do",
-                tool: "Ask A.I. Do",
+                feature: "Ask Aria",
+                tool: "Ask Aria",
                 section: "Assistant",
                 path: "/aria",
                 fromPath: location,
@@ -637,10 +637,10 @@ export function Sidebar() {
               });
               closeMenu();
             }}
-            className="mb-5 flex w-full items-center gap-2 rounded-lg bg-gradient-to-r from-[#263923] via-[#5F6421] to-[#9B8426] px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform hover:-translate-y-0.5 hover:shadow-md"
+            className="mb-5 flex w-full items-center gap-2 rounded-lg border border-[#D4A373]/45 bg-gradient-to-r from-[#F7DDE2] via-[#FFF8F5] to-[#F1D5AF] px-3 py-2.5 text-sm font-semibold text-[#8D3D58] shadow-[0_8px_18px_rgba(141,61,88,0.12)] transition-transform hover:-translate-y-0.5 hover:border-[#D4A373]/70 hover:shadow-[0_10px_24px_rgba(141,61,88,0.18)]"
           >
-            <Sparkles className="h-4 w-4" />
-            {t("sidebar.ask_aido", { defaultValue: "Ask A.I. Do" })}
+            <Sparkles className="h-4 w-4 text-[#D4A373]" />
+            {t("sidebar.ask_aria", { defaultValue: "Ask Aria" })}
           </Link>
 
           <div className="space-y-4">
