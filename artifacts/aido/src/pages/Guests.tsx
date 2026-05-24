@@ -3933,7 +3933,7 @@ export default function Guests({
                           key={`mobile-table-${g.id}-${g.tableAssignment ?? ""}`}
                           defaultValue={g.tableAssignment ?? ""}
                           placeholder="—"
-                          aria-label={`Table assignment for ${g.name}`}
+                          aria-label={`Mobile card table for ${g.name}`}
                           title="Edit table assignment"
                           className="mt-1 h-7 w-full px-2 text-xs font-medium text-muted-foreground"
                           onBlur={(event) => handleTableAssignmentChange(g, event.currentTarget.value)}
