@@ -55,6 +55,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import {
@@ -76,6 +77,7 @@ import {
   ExternalLink,
   Sparkles,
   X,
+  ChevronDown,
   ChevronRight,
   Bell,
   MessageSquare,
@@ -285,6 +287,70 @@ function buildVendorAddress({
   const stateZip = [state.trim(), zip.trim()].filter(Boolean).join(" ");
   const cityStateZip = [city.trim(), stateZip].filter(Boolean).join(", ");
   return [streetAddress.trim(), aptUnit.trim(), cityStateZip].filter(Boolean).join(", ");
+}
+
+function ContractStatusDropdown({
+  signed,
+  disabled,
+  onChange,
+}: {
+  signed: boolean;
+  disabled?: boolean;
+  onChange: (signed: boolean) => void;
+}) {
+  const { t } = useTranslation();
+  const label = signed
+    ? t("vendors.contract_signed", { defaultValue: "Contract signed" })
+    : t("vendors.contract_pending_badge", { defaultValue: "Contract pending" });
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-pressed={signed}
+          disabled={disabled}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:pointer-events-none disabled:opacity-60 ${
+            signed
+              ? "border-green-200 bg-green-50 text-green-700 hover:bg-green-100 dark:border-green-800/50 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50"
+              : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-800/50 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50"
+          }`}
+          data-testid="btn-vendor-contract-status"
+        >
+          {signed ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
+          <span>{label}</span>
+          <ChevronDown className="h-3 w-3 opacity-70" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        className="z-[80] w-48"
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <DropdownMenuItem
+          onSelect={() => {
+            onChange(false);
+          }}
+          className="gap-2"
+        >
+          <Clock className="h-3.5 w-3.5 text-amber-700" />
+          {t("vendors.contract_pending_badge", { defaultValue: "Contract pending" })}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={() => {
+            onChange(true);
+          }}
+          className="gap-2"
+        >
+          <CheckCircle2 className="h-3.5 w-3.5 text-green-700" />
+          {t("vendors.contract_signed", { defaultValue: "Contract signed" })}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 function AddEditVendorDialog({
@@ -1044,8 +1110,22 @@ function VendorDetailDialog({
 }) {
   const { data: vendor, isLoading } = useGetVendor(vendorId);
   const [activeTab, setActiveTab] = useState(initialTab);
-
+  const qc = useQueryClient();
+  const { toast } = useToast();
   const { t } = useTranslation();
+  const updateContractMutation = useUpdateVendor({
+    mutation: {
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: getGetVendorQueryKey(vendorId) });
+        qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
+        qc.invalidateQueries({ queryKey: ["vendor-financials"] });
+        qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+        toast({ title: t("vendors.contract_status_updated", { defaultValue: "Contract status updated" }) });
+      },
+      onError: () => toast({ title: t("vendors.failed_update"), variant: "destructive" }),
+    },
+  });
+
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab, vendorId]);
@@ -1070,6 +1150,13 @@ function VendorDetailDialog({
   const totalScheduled = vendor.payments.reduce((s, p) => s + p.amount, 0);
   const totalForProgress = vendor.totalCost > 0 ? vendor.totalCost : totalScheduled;
   const overdue = vendor.payments.filter((p) => !p.isPaid && daysUntil(p.dueDate) < 0);
+  const setContractStatus = (contractSigned: boolean) => {
+    if (vendor.contractSigned === contractSigned) return;
+    updateContractMutation.mutate({
+      id: vendor.id,
+      data: { contractSigned } as never,
+    });
+  };
 
   return (
     <>
@@ -1083,11 +1170,11 @@ function VendorDetailDialog({
                   <Badge className={`text-xs ${vendorCategoryBadgeClass(vendor.category)}`} variant="secondary">
                     {vendorCategoryLabel(vendor.category)}
                   </Badge>
-                  {vendor.contractSigned && (
-                    <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
-                      <CheckCircle2 className="h-3 w-3 mr-1" /> {t("vendors.contract_signed_badge")}
-                    </Badge>
-                  )}
+                  <ContractStatusDropdown
+                    signed={vendor.contractSigned}
+                    disabled={updateContractMutation.isPending}
+                    onChange={setContractStatus}
+                  />
                   {overdue.length > 0 && (
                     <Badge variant="destructive" className="text-xs">
                       <AlertCircle className="h-3 w-3 mr-1" /> {t("vendors.overdue_badge", { n: overdue.length })}
@@ -1745,12 +1832,16 @@ function VendorCard({
   onEdit,
   onDelete,
   onViewBudget,
+  onSetContractStatus,
+  isContractUpdating,
 }: {
   vendor: Vendor;
   onClick: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onViewBudget: () => void;
+  onSetContractStatus: (signed: boolean) => void;
+  isContractUpdating?: boolean;
 }) {
   const { t } = useTranslation();
   const payments = vendor.payments ?? [];
@@ -1899,18 +1990,11 @@ function VendorCard({
           )}
         </div>
         <div className="flex items-center gap-1.5 flex-wrap justify-end">
-          {vendor.contractSigned && (
-            <div className="flex items-center gap-1 text-xs text-green-700 bg-green-50 dark:bg-green-900/30 dark:text-green-300 px-2 py-0.5 rounded-full">
-              <CheckCircle2 className="h-3 w-3" />
-              <span>{t("vendors.signed_badge")}</span>
-            </div>
-          )}
-          {!vendor.contractSigned && (
-            <div className="flex items-center gap-1 text-xs text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-300 px-2 py-0.5 rounded-full">
-              <Clock className="h-3 w-3" />
-              <span>{t("vendors.pending_badge")}</span>
-            </div>
-          )}
+          <ContractStatusDropdown
+            signed={vendor.contractSigned}
+            disabled={isContractUpdating}
+            onChange={onSetContractStatus}
+          />
         </div>
       </div>
     </div>
@@ -1972,6 +2056,26 @@ export default function Vendors() {
       return res.json() as Promise<{ totalCommitted: number; totalDeposits: number; totalPaidMilestones: number; totalPaid: number; vendorCount: number }>;
     },
   });
+
+  const toggleContractMutation = useUpdateVendor({
+    mutation: {
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
+        qc.invalidateQueries({ queryKey: ["vendor-financials"] });
+        qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+        toast({ title: t("vendors.contract_status_updated", { defaultValue: "Contract status updated" }) });
+      },
+      onError: () => toast({ title: t("vendors.failed_update"), variant: "destructive" }),
+    },
+  });
+
+  const handleSetContractStatus = (vendor: Vendor, contractSigned: boolean) => {
+    if (vendor.contractSigned === contractSigned) return;
+    toggleContractMutation.mutate({
+      id: vendor.id,
+      data: { contractSigned } as never,
+    });
+  };
 
   const totalCost = vendors.reduce((s, v) => s + v.totalCost, 0);
   const totalDeposit = vendors.reduce((s, v) => s + v.depositAmount, 0);
@@ -2091,6 +2195,8 @@ export default function Vendors() {
                   onEdit={() => setEditingVendor(vendor)}
                   onDelete={() => setDeletingVendorId(vendor.id)}
                   onViewBudget={() => setLocation("/budget/summary")}
+                  onSetContractStatus={(contractSigned) => handleSetContractStatus(vendor, contractSigned)}
+                  isContractUpdating={toggleContractMutation.isPending}
                 />
               ))}
               <button

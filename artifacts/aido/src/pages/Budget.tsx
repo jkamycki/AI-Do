@@ -72,6 +72,7 @@ interface VendorFinancials {
 
 type RecentPaymentUndoMap = Record<string, { run: () => void }>;
 const PAYMENT_UNDO_MS = 8000;
+const HIDDEN_TABLE_SCROLLBAR_CLASS = "[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
 interface ManualExpenseFormState {
   name: string;
@@ -129,6 +130,11 @@ function cappedPaid(total: number, paid: number) {
 
 function moneyMatches(a: number, b: number) {
   return Math.round((a || 0) * 100) === Math.round((b || 0) * 100);
+}
+
+function moneyValue(value: string) {
+  const n = Number(String(value || "").replace(/[^\d.]/g, ""));
+  return Number.isFinite(n) ? n : 0;
 }
 
 function safeReceiptHref(url: string | null | undefined): string | null {
@@ -555,6 +561,8 @@ export default function Budget() {
   const vendorFormDeposit = Math.max(0, Number(vendorForm.depositAmount || 0));
   const vendorFormPaid = vendorForm.paidInFull ? vendorFormCost : Math.max(vendorExistingPaid, vendorFormDeposit);
   const vendorFormRemaining = Math.max(0, vendorFormCost - vendorFormPaid);
+  const manualNextPaymentNeedsDate = !form.paidInFull && moneyValue(form.nextPaymentAmount) > 0 && !form.nextPaymentDue.trim();
+  const vendorNextPaymentNeedsDate = !vendorForm.paidInFull && moneyValue(vendorForm.nextPaymentAmount) > 0 && !vendorForm.nextPaymentDue.trim();
 
   const upload = useUpload({
     getToken,
@@ -712,6 +720,9 @@ export default function Budget() {
       paidInFull: vendor.totalCost > 0 && paid >= vendor.totalCost,
     });
   };
+  const openVendorDetailFromBudget = (vendorId: number) => {
+    setLocation(`/vendors?vendorId=${vendorId}`);
+  };
   const openAddSyncedVendor = () => {
     setEditingVendor(null);
     setSelectedBudgetVendorId("new");
@@ -810,6 +821,17 @@ export default function Budget() {
     const costNum = parseFloat(form.cost) || 0;
     const paidInFull = form.paidInFull && costNum > 0;
     const scheduledAmount = Math.max(0, parseFloat(form.nextPaymentAmount) || 0);
+    const nextPaymentDue = form.nextPaymentDue.trim();
+    if (!paidInFull && scheduledAmount > 0 && !nextPaymentDue) {
+      toast({
+        variant: "destructive",
+        title: t("budget.next_payment_date_required", { defaultValue: "Add a payment date" }),
+        description: t("budget.next_payment_date_required_desc", {
+          defaultValue: "A scheduled payment needs both an amount and a date.",
+        }),
+      });
+      return;
+    }
     const rawPaidAmount = cappedPaid(costNum, parseFloat(form.amountPaid) || 0);
     const payload = {
       name: form.name.trim(),
@@ -817,10 +839,10 @@ export default function Budget() {
       cost: costNum,
       amountPaid: paidInFull
         ? costNum
-        : form.nextPaymentDue.trim() && scheduledAmount > 0
+        : nextPaymentDue && scheduledAmount > 0
           ? Math.min(rawPaidAmount, Math.max(0, costNum - scheduledAmount))
           : rawPaidAmount,
-      nextPaymentDue: paidInFull ? null : form.nextPaymentDue.trim() || null,
+      nextPaymentDue: paidInFull ? null : nextPaymentDue || null,
       nextPaymentAmount: paidInFull ? null : scheduledAmount || null,
       notes: form.notes.trim() || null,
       receiptUrl: form.receiptUrl,
@@ -1225,6 +1247,16 @@ export default function Budget() {
       toast({
         variant: "destructive",
         title: t("budget.vendor_invalid_money", { defaultValue: "Please enter valid dollar amounts." }),
+      });
+      return;
+    }
+    if (!vendorForm.paidInFull && nextPaymentAmount > 0 && !nextPaymentDue) {
+      toast({
+        variant: "destructive",
+        title: t("budget.next_payment_date_required", { defaultValue: "Add a payment date" }),
+        description: t("budget.next_payment_date_required_desc", {
+          defaultValue: "A scheduled payment needs both an amount and a date.",
+        }),
       });
       return;
     }
@@ -1764,8 +1796,8 @@ export default function Budget() {
             </div>
           ) : (
             <div>
-              <div className="overflow-x-auto">
-                <Table>
+              <div className={`overflow-x-auto ${HIDDEN_TABLE_SCROLLBAR_CLASS}`}>
+                <Table wrapperClassName={HIDDEN_TABLE_SCROLLBAR_CLASS}>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-center font-bold">{t("budget.col_vendor")}</TableHead>
@@ -1786,7 +1818,21 @@ export default function Budget() {
                     const pct = v.totalCost > 0 ? Math.min((paid / v.totalCost) * 100, 100) : 0;
                     const nextPaymentPaysRemaining = !!v.nextPaymentDue && moneyMatches(v.nextPaymentAmount ?? remaining, remaining);
                     return (
-                      <TableRow key={v.id}>
+                      <TableRow
+                        key={v.id}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={t("budget.open_vendor_row", { vendor: v.name, defaultValue: `Open ${v.name}` })}
+                        title={t("budget.open_vendor_row", { vendor: v.name, defaultValue: `Open ${v.name}` })}
+                        className="cursor-pointer"
+                        onClick={() => openVendorDetailFromBudget(v.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openVendorDetailFromBudget(v.id);
+                          }
+                        }}
+                      >
                         <TableCell className="text-center font-medium">
                           <span className="block min-w-[180px] truncate">{v.name}</span>
                         </TableCell>
@@ -1804,7 +1850,7 @@ export default function Budget() {
                           />
                         ) : (
                           <>
-                            <TableCell className="text-sm">
+                            <TableCell className="text-sm" onClick={(e) => e.stopPropagation()}>
                               <div className="flex min-w-[180px] flex-col items-center gap-2">
                                 {v.nextPaymentDue ? (
                                   <>
@@ -1822,7 +1868,7 @@ export default function Budget() {
                                 )}
                               </div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell onClick={(e) => e.stopPropagation()}>
                               <div className="flex min-w-[180px] justify-center">
                                 <PaymentActionsDropdown
                                   onUndo={recentPaymentUndo[`vendor-${v.id}`] ? () => runRememberedUndo(`vendor-${v.id}`) : undefined}
@@ -1852,7 +1898,7 @@ export default function Budget() {
                             <p className="text-[10px] text-muted-foreground">{t("budget.pct_paid", { pct: pct.toFixed(0) })}</p>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex justify-end gap-1">
                             <Button
                               size="sm"
@@ -1862,14 +1908,6 @@ export default function Budget() {
                             >
                               <Pencil className="h-3.5 w-3.5" />
                               {t("common.edit", { defaultValue: "Edit" })}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setLocation(`/vendors?vendorId=${v.id}`)}
-                              className="gap-1"
-                            >
-                              {t("budget.col_view")} <ArrowUpRight className="h-3 w-3" />
                             </Button>
                             <Button
                               size="sm"
@@ -2028,8 +2066,15 @@ export default function Budget() {
                       type="date"
                       value={vendorForm.nextPaymentDue}
                       onChange={(e) => setVendorForm((f) => ({ ...f, nextPaymentDue: e.target.value }))}
-                      className="[color-scheme:light]"
+                      className={`[color-scheme:light] ${vendorNextPaymentNeedsDate ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                      aria-invalid={vendorNextPaymentNeedsDate}
+                      required={vendorNextPaymentNeedsDate}
                     />
+                    {vendorNextPaymentNeedsDate && (
+                      <p className="text-xs text-destructive">
+                        {t("budget.next_payment_date_required_inline", { defaultValue: "Add a date for this payment amount." })}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium">{t("budget.next_payment_amount_label", { defaultValue: "Next payment amount" })}</label>
@@ -2113,8 +2158,8 @@ export default function Budget() {
               </Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
+            <div className={`overflow-x-auto ${HIDDEN_TABLE_SCROLLBAR_CLASS}`}>
+              <Table wrapperClassName={HIDDEN_TABLE_SCROLLBAR_CLASS}>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-center font-bold">{t("budget.col_expense")}</TableHead>
@@ -2136,7 +2181,21 @@ export default function Budget() {
                     const pct = m.cost > 0 ? Math.min((paid / m.cost) * 100, 100) : 0;
                     const nextPaymentPaysRemaining = !!m.nextPaymentDue && moneyMatches(m.nextPaymentAmount ?? 0, remaining);
                     return (
-                      <TableRow key={m.id}>
+                      <TableRow
+                        key={m.id}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={t("budget.open_expense_row", { expense: m.name, defaultValue: `Edit ${m.name}` })}
+                        title={t("budget.open_expense_row", { expense: m.name, defaultValue: `Edit ${m.name}` })}
+                        className="cursor-pointer"
+                        onClick={() => openEdit(m)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openEdit(m);
+                          }
+                        }}
+                      >
                         <TableCell className="text-center">
                           <div className="font-medium">{m.name}</div>
                           {m.notes && <div className="text-xs text-muted-foreground line-clamp-1">{m.notes}</div>}
@@ -2155,7 +2214,7 @@ export default function Budget() {
                           />
                         ) : (
                           <>
-                            <TableCell className="text-sm">
+                            <TableCell className="text-sm" onClick={(e) => e.stopPropagation()}>
                               <div className="flex min-w-[180px] flex-col items-center gap-2">
                                 {m.nextPaymentDue ? (
                                   <NextPaymentDisplay
@@ -2171,7 +2230,7 @@ export default function Budget() {
                                 )}
                               </div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell onClick={(e) => e.stopPropagation()}>
                               <div className="flex min-w-[180px] justify-center">
                                 <PaymentActionsDropdown
                                   onUndo={recentPaymentUndo[`manual-${m.id}`] ? () => runRememberedUndo(`manual-${m.id}`) : undefined}
@@ -2197,7 +2256,7 @@ export default function Budget() {
                             <p className="text-[10px] text-muted-foreground">{t("budget.pct_paid", { pct: pct.toFixed(0) })}</p>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           {(() => {
                             const href = safeReceiptHref(m.receiptUrl);
                             return href ? (
@@ -2215,7 +2274,7 @@ export default function Budget() {
                             );
                           })()}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex justify-end gap-1">
                             <Button size="sm" variant="ghost" onClick={() => openEdit(m)}>
                               <Pencil className="h-4 w-4" />
@@ -2367,8 +2426,15 @@ export default function Budget() {
                       type="date"
                       value={form.nextPaymentDue}
                       onChange={(e) => setForm((f) => ({ ...f, nextPaymentDue: e.target.value }))}
-                      className="[color-scheme:light]"
+                      className={`[color-scheme:light] ${manualNextPaymentNeedsDate ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                      aria-invalid={manualNextPaymentNeedsDate}
+                      required={manualNextPaymentNeedsDate}
                     />
+                    {manualNextPaymentNeedsDate && (
+                      <p className="text-xs text-destructive">
+                        {t("budget.next_payment_date_required_inline", { defaultValue: "Add a date for this payment amount." })}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium">{t("budget.next_payment_amount_label", { defaultValue: "Next payment amount" })}</label>

@@ -58,6 +58,12 @@ function cleanOptionalText(value: unknown) {
   return text || null;
 }
 
+function sanitizePaymentDueDate(value: unknown) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : null;
+}
+
 function normalizeContactType(value: unknown) {
   return value === "Vendor" ? "Vendor" : "General";
 }
@@ -719,11 +725,19 @@ router.post("/vendors/:id/payments", requireAuth, async (req, res) => {
       return res.status(404).json({ error: "Vendor not found" });
     }
     const { label, amount, dueDate, isPaid, reopenBalance } = req.body;
+    const amountNum = Number(amount);
+    const sanitizedDueDate = sanitizePaymentDueDate(dueDate);
+    if (!Number.isFinite(amountNum) || amountNum <= 0) {
+      return res.status(400).json({ error: "amount must be a positive number" });
+    }
+    if (!sanitizedDueDate) {
+      return res.status(400).json({ error: "dueDate is required when amount is provided" });
+    }
     const [payment] = await db.insert(vendorPayments).values({
       vendorId,
       label,
-      amount: String(amount),
-      dueDate,
+      amount: String(amountNum),
+      dueDate: sanitizedDueDate,
       isPaid: isPaid ?? false,
     }).returning();
     if (reopenBalance && !(isPaid ?? false)) {
@@ -906,10 +920,27 @@ router.put("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) => 
       return res.status(404).json({ error: "Payment not found" });
     }
     const { label, amount, dueDate, isPaid, reopenBalance } = req.body;
+    const [existingPayment] = await db
+      .select()
+      .from(vendorPayments)
+      .where(and(eq(vendorPayments.id, paymentId), eq(vendorPayments.vendorId, vendorId)))
+      .limit(1);
+    if (!existingPayment) {
+      return res.status(404).json({ error: "Payment not found" });
+    }
+    const isEditingPaymentSchedule = amount !== undefined || dueDate !== undefined;
+    const nextAmount = amount !== undefined ? Number(amount) : Number(existingPayment.amount);
+    const nextDueDate = dueDate !== undefined ? sanitizePaymentDueDate(dueDate) : existingPayment.dueDate;
+    if (isEditingPaymentSchedule && (!Number.isFinite(nextAmount) || nextAmount <= 0)) {
+      return res.status(400).json({ error: "amount must be a positive number" });
+    }
+    if (isEditingPaymentSchedule && !nextDueDate) {
+      return res.status(400).json({ error: "dueDate is required when amount is provided" });
+    }
     const updates: Partial<typeof vendorPayments.$inferInsert> = {};
     if (label !== undefined) updates.label = label;
-    if (amount !== undefined) updates.amount = String(amount);
-    if (dueDate !== undefined) updates.dueDate = dueDate;
+    if (amount !== undefined) updates.amount = String(nextAmount);
+    if (dueDate !== undefined) updates.dueDate = nextDueDate;
     if (isPaid !== undefined) {
       updates.isPaid = isPaid;
       updates.paidAt = isPaid ? new Date() : null;

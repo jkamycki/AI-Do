@@ -6,34 +6,16 @@ import { useWorkspace, type WorkspaceInfo } from "@/contexts/WorkspaceContext";
 import { useTranslation } from "react-i18next";
 import {
   Heart,
-  LayoutDashboard,
-  User,
-  CalendarDays,
-  Mail,
-  DollarSign,
-  CheckSquare,
-  Smartphone,
-  Store,
   Menu,
   X,
   LogOut,
-  Shield,
-  Settings,
   ChevronDown,
   Users,
-  Crown,
-  HelpCircle,
-  Armchair,
-  UsersRound,
-  Hotel,
-  Flower2,
-  FolderOpen,
   Sparkles,
   Camera,
   ImagePlus,
   Trash2,
   Pencil,
-  Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -77,43 +59,6 @@ function prefetchSidebarRoute(href: string) {
   prefetchedRoutes.add(href);
   void load().catch(() => prefetchedRoutes.delete(href));
 }
-
-const navSections = [
-  {
-    labelKey: "nav.planning",
-    items: [
-      { href: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard },
-      { href: "/profile", labelKey: "nav.profile", icon: User },
-      { href: "/mood-board", labelKey: "nav.mood_board", icon: ImagePlus },
-      { href: "/timeline", labelKey: "nav.timeline", icon: CalendarDays },
-      { href: "/checklist", labelKey: "nav.checklist", icon: CheckSquare },
-    ],
-  },
-  {
-    labelKey: "nav.budget_vendors",
-    items: [
-      { href: "/vendors", labelKey: "nav.vendors", icon: Store },
-      { href: "/budget", labelKey: "nav.budget", icon: DollarSign },
-      { href: "/documents", labelKey: "nav.document_library", icon: FolderOpen },
-    ],
-  },
-  {
-    labelKey: "nav.guests_label",
-    items: [
-      { href: "/guests", labelKey: "nav.guests", icon: UsersRound },
-      { href: "/wedding-party", labelKey: "nav.party", icon: Crown },
-      { href: "/seating-chart", labelKey: "nav.seating", icon: Armchair },
-      { href: "/hotels", labelKey: "nav.hotels", icon: Hotel },
-    ],
-  },
-  {
-    labelKey: "nav.ai_label",
-    items: [
-      { href: "/aria", labelKey: "nav.aria", icon: Sparkles },
-      { href: "/day-of", labelKey: "nav.dayof", icon: Smartphone },
-    ],
-  },
-];
 
 interface WorkspacesData {
   ownProfile: {
@@ -303,6 +248,7 @@ export function Sidebar() {
   const picInputRef = useRef<HTMLInputElement>(null);
   const [uploadingPic, setUploadingPic] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const isPlannerOwnWorkspace = false;
 
   const handlePicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -405,6 +351,77 @@ export function Sidebar() {
 
   const closeMenu = () => setIsOpen(false);
 
+  const sidebarSections = [
+    {
+      id: "planning",
+      label: t("nav.planning", { defaultValue: "Planning" }),
+      defaultOpen: true,
+      items: [
+        { href: "/dashboard", label: t("sidebar.overview", { defaultValue: "Overview" }) },
+        { href: "/checklist", label: t("sidebar.tasks", { defaultValue: "Tasks" }) },
+        { href: "/mood-board", label: t("sidebar.vision_board", { defaultValue: "Vision Board" }) },
+        { href: "/profile", label: t("nav.profile", { defaultValue: "Wedding Profile" }) },
+        { href: "/timeline", label: t("nav.timeline", { defaultValue: "Timeline" }) },
+      ],
+    },
+    {
+      id: "vendors",
+      label: t("sidebar.vendors_section", { defaultValue: "Vendors" }),
+      defaultOpen: true,
+      items: [
+        { href: "/vendors", label: t("sidebar.my_vendors", { defaultValue: "My Vendors" }) },
+        { href: "/budget", label: t("sidebar.budget_summary", { defaultValue: "Budget Summary" }) },
+        { href: "/documents", label: t("sidebar.vendor_files", { defaultValue: "Vendor Files" }) },
+      ],
+    },
+    {
+      id: "people",
+      label: t("sidebar.people_section", { defaultValue: "People" }),
+      defaultOpen: false,
+      items: [
+        { href: "/guests", label: t("nav.guests", { defaultValue: "Guest List & Invitations" }) },
+        { href: "/wedding-party", label: t("nav.party", { defaultValue: "Wedding Party" }) },
+        { href: "/seating-chart", label: t("nav.seating", { defaultValue: "Seating Chart" }) },
+        { href: "/hotels", label: t("nav.hotels", { defaultValue: "Hotel Blocks" }) },
+      ],
+    },
+    {
+      id: "day-of",
+      label: t("sidebar.day_of_section", { defaultValue: "Day-Of" }),
+      defaultOpen: true,
+      items: [
+        { href: "/day-of", label: t("sidebar.day_of_planner", { defaultValue: "Day-Of Planner" }) },
+      ],
+    },
+    {
+      id: "planning-tools",
+      label: t("sidebar.planning_tools_section", { defaultValue: "Planning Tools" }),
+      defaultOpen: false,
+      items: [
+        { href: "/website-editor", label: t("nav.website_editor", { defaultValue: "Website Editor" }) },
+        { href: "/documents", label: t("nav.document_library", { defaultValue: "Document Library" }) },
+      ],
+    },
+    {
+      id: "settings",
+      label: t("nav.settings", { defaultValue: "Settings" }),
+      defaultOpen: false,
+      items: [
+        { href: "/settings", label: t("nav.settings", { defaultValue: "Settings" }) },
+        { href: "/help", label: t("nav.help", { defaultValue: "Help & Support" }) },
+        { href: "/help/updates-improvements", label: t("nav.updates_improvements", { defaultValue: "Updates & Improvements" }) },
+        ...(isAdmin ? [{ href: "/operations-center", label: t("nav.admin", { defaultValue: "Operations Center" }), special: true }] : []),
+      ],
+    },
+  ];
+
+  const isHrefActive = (href: string) =>
+    location === href || (href !== "/dashboard" && location.startsWith(href));
+
+  const toggleSection = (id: string) => {
+    setCollapsedSections((current) => ({ ...current, [id]: !current[id] }));
+  };
+
   const NavLink = ({
     href,
     label,
@@ -415,28 +432,27 @@ export function Sidebar() {
   }: {
     href: string;
     label: string;
-    icon: React.ElementType;
+    icon?: React.ElementType;
     special?: boolean;
     dot?: boolean;
     sectionLabel?: string;
   }) => {
-    const isActive =
-      location === href || (href !== "/dashboard" && location.startsWith(href));
+    const isActive = isHrefActive(href);
     return (
       <Link
         href={href}
         onPointerEnter={() => prefetchSidebarRoute(href)}
         onFocus={() => prefetchSidebarRoute(href)}
         className={`
-          flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group
+          flex items-center gap-3 rounded-md px-2 py-2 text-sm transition-all duration-200 group
           ${
             isActive
               ? special
                 ? "bg-primary/15 text-[#24171D] font-bold dark:bg-primary/10 dark:text-[#F7E7D6] dark:ring-1 dark:ring-primary/35"
-                : "bg-primary text-primary-foreground font-medium shadow-md dark:bg-primary/15 dark:text-primary dark:ring-1 dark:ring-primary/35 dark:shadow-none"
+                : "bg-primary/8 text-primary font-semibold"
               : special
               ? "text-[#24171D] font-bold hover:bg-primary/10 hover:text-[#24171D] dark:text-[#F7E7D6] dark:hover:bg-primary/10 dark:hover:text-[#F7E7D6]"
-              : "hover:bg-primary/10 text-card-foreground hover:text-primary dark:text-card-foreground dark:hover:bg-primary/10 dark:hover:text-primary"
+              : "text-muted-foreground hover:bg-primary/5 hover:text-foreground dark:text-muted-foreground dark:hover:bg-primary/10 dark:hover:text-card-foreground"
           }
         `}
         onClick={() => {
@@ -453,11 +469,13 @@ export function Sidebar() {
         }}
         data-testid={`nav-link-${label.toLowerCase().replace(/\s+/g, "-")}`}
       >
-        <Icon
-          className={`h-5 w-5 flex-shrink-0 ${
-            isActive ? "" : "group-hover:scale-110 transition-transform duration-200"
-          }`}
-        />
+        {Icon && (
+          <Icon
+            className={`h-4 w-4 flex-shrink-0 ${
+              isActive ? "" : "group-hover:scale-110 transition-transform duration-200"
+            }`}
+          />
+        )}
         <span className="text-sm flex-1">{label}</span>
         {dot && (
           <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-400">
@@ -520,8 +538,8 @@ export function Sidebar() {
           ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
         `}
       >
-        <div className="hidden md:flex flex-col items-center justify-center px-4 py-4 border-b border-primary/10 gap-2">
-          <img src="/logo.png" alt="A.I Do — AI Wedding Planner Assistant" className="h-44 w-auto object-contain" />
+        <div className="hidden md:flex flex-col items-center justify-center px-4 py-3 border-b border-primary/10 gap-1">
+          <img src="/logo.png" alt="A.I Do - AI Wedding Planner Assistant" className="h-20 w-auto object-contain" />
           <span className="text-[10px] font-bold tracking-[0.22em] uppercase px-2.5 py-0.5 rounded-full border border-primary/50 text-primary bg-primary/10 dark:bg-primary/10 dark:text-primary dark:border-primary/35">
             BETA
           </span>
@@ -603,71 +621,63 @@ export function Sidebar() {
           </DropdownMenu>
         </div>
 
-        <nav className="flex-1 p-4 space-y-4">
-          {!isPlannerOwnWorkspace && (
-            <>
-              {navSections.map((section) => (
-                <div key={section.labelKey}>
-                  <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-primary dark:text-primary/80">
-                    {t(section.labelKey, { defaultValue: section.labelKey })}
-                  </p>
-                  <div className="space-y-0.5">
-                    {section.items.map((item) => (
-                      <NavLink
-                        key={item.href}
-                        href={item.href}
-                        label={t(item.labelKey)}
-                        icon={item.icon}
-                        dot={"dot" in item ? item.dot as boolean : undefined}
-                        sectionLabel={t(section.labelKey, { defaultValue: section.labelKey })}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
+        <nav className="flex-1 px-4 py-4">
+          <Link
+            href="/aria"
+            onPointerEnter={() => prefetchSidebarRoute("/aria")}
+            onFocus={() => prefetchSidebarRoute("/aria")}
+            onClick={() => {
+              void track("tab_bar_feature_used", {
+                feature: "Ask A.I. Do",
+                tool: "Ask A.I. Do",
+                section: "Assistant",
+                path: "/aria",
+                fromPath: location,
+                source: "sidebar_ask_button",
+              });
+              closeMenu();
+            }}
+            className="mb-5 flex w-full items-center gap-2 rounded-lg bg-gradient-to-r from-[#263923] via-[#5F6421] to-[#9B8426] px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform hover:-translate-y-0.5 hover:shadow-md"
+          >
+            <Sparkles className="h-4 w-4" />
+            {t("sidebar.ask_aido", { defaultValue: "Ask A.I. Do" })}
+          </Link>
 
-              <div className="border-t border-primary/10 pt-4">
-                <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-primary dark:text-primary/80">
-                  {t("sidebar.guest_website_builder", { defaultValue: "Guest Website Builder" })}
-                </p>
-                <div className="space-y-0.5">
-                  <NavLink
-                    href="/website-editor"
-                    label={t("nav.website_editor", { defaultValue: "Website Editor" })}
-                    icon={Globe}
-                    sectionLabel={t("sidebar.guest_website_builder", { defaultValue: "Guest Website Builder" })}
-                  />
-                </div>
-              </div>
-            </>
-          )}
+          <div className="space-y-4">
+            {!isPlannerOwnWorkspace && sidebarSections.map((section) => {
+              const hasActiveItem = section.items.some((item) => isHrefActive(item.href));
+              const expanded = section.id in collapsedSections
+                ? !collapsedSections[section.id]
+                : hasActiveItem || section.defaultOpen;
 
-          <div className="border-t border-primary/10 pt-4">
-            <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-primary dark:text-primary/80">
-              {t("sidebar.workspace_section")}
-            </p>
-            <div className="space-y-0.5">
-              <NavLink href="/settings" label={t("nav.settings")} icon={Settings} sectionLabel={t("sidebar.workspace_section")} />
-              <NavLink href="/help" label={t("nav.help")} icon={HelpCircle} sectionLabel={t("sidebar.workspace_section")} />
-              <NavLink
-                href="/help/updates-improvements"
-                label={t("nav.updates_improvements", { defaultValue: "Updates & Improvements" })}
-                icon={Sparkles}
-                sectionLabel={t("sidebar.workspace_section")}
-              />
-            </div>
+              return (
+                <div key={section.id} className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection(section.id)}
+                    className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm font-semibold text-foreground transition-colors hover:bg-primary/5"
+                    aria-expanded={expanded}
+                  >
+                    <span>{section.label}</span>
+                    <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
+                  </button>
+                  {expanded && (
+                    <div className="space-y-0.5 pl-0">
+                      {section.items.map((item) => (
+                        <NavLink
+                          key={`${section.id}-${item.href}-${item.label}`}
+                          href={item.href}
+                          label={item.label}
+                          special={"special" in item ? item.special : false}
+                          sectionLabel={section.label}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-
-          {isAdmin && (
-            <div className="border-t border-primary/10 pt-4">
-              <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                {t("sidebar.admin_section")}
-              </p>
-              <div className="space-y-0.5">
-                <NavLink href="/operations-center" label={t("nav.admin")} icon={Shield} special sectionLabel={t("sidebar.admin_section")} />
-              </div>
-            </div>
-          )}
         </nav>
 
         <div className="p-3 border-t border-primary/10 space-y-2">

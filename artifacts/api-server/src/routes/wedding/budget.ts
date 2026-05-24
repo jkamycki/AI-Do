@@ -10,6 +10,12 @@ import { getRequestLanguage } from "../../lib/language";
 
 const router = Router();
 
+function parsePaymentDate(input: unknown): Date | null {
+  if (typeof input !== "string" || !input.trim()) return null;
+  const date = new Date(input);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 async function verifyBudgetItemOwnership(itemId: number, profileId: number): Promise<boolean> {
   const rows = await db
     .select({ budgetProfileId: budgets.profileId })
@@ -405,8 +411,14 @@ router.post("/budget/items/:id/payments", requireAuth, async (req, res) => {
       return;
     }
     const { amount, note, paidAt } = req.body;
-    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+    const amountNum = Number(amount);
+    if (!Number.isFinite(amountNum) || amountNum <= 0) {
       res.status(400).json({ error: "amount must be a positive number" });
+      return;
+    }
+    const paidAtDate = parsePaymentDate(paidAt);
+    if (!paidAtDate) {
+      res.status(400).json({ error: "paidAt is required when amount is provided" });
       return;
     }
 
@@ -428,9 +440,9 @@ router.post("/budget/items/:id/payments", requireAuth, async (req, res) => {
       .insert(budgetPaymentLogs)
       .values({
         budgetItemId: itemId,
-        amount: String(amount),
+        amount: String(amountNum),
         note: note ?? null,
-        ...(paidAt ? { paidAt: new Date(paidAt) } : {}),
+        paidAt: paidAtDate,
       })
       .returning();
 
@@ -489,12 +501,21 @@ router.patch("/budget/items/:id/payments/:paymentId", requireAuth, async (req, r
     }
 
     const oldAmount = parseFloat(existing.amount as string);
-    const newAmount = amount !== undefined ? parseFloat(String(amount)) : oldAmount;
+    const newAmount = amount !== undefined ? Number(amount) : oldAmount;
+    if (!Number.isFinite(newAmount) || newAmount <= 0) {
+      res.status(400).json({ error: "amount must be a positive number" });
+      return;
+    }
+    const paidAtDate = paidAt !== undefined ? parsePaymentDate(paidAt) : null;
+    if (paidAt !== undefined && !paidAtDate) {
+      res.status(400).json({ error: "paidAt must be a valid date" });
+      return;
+    }
 
     await db.update(budgetPaymentLogs).set({
       ...(amount !== undefined ? { amount: String(newAmount) } : {}),
       ...(note !== undefined ? { note: note || null } : {}),
-      ...(paidAt !== undefined ? { paidAt: new Date(paidAt) } : {}),
+      ...(paidAt !== undefined ? { paidAt: paidAtDate as Date } : {}),
     }).where(eq(budgetPaymentLogs.id, paymentId));
 
     // Recalculate amountPaid on the item

@@ -98,6 +98,12 @@ router.post("/manual-expenses", requireAuth, async (req, res) => {
       res.status(400).json({ error: "cost and amountPaid must be valid numbers" });
       return;
     }
+    const sanitizedNextPaymentDue = sanitizeNextPaymentDue(nextPaymentDue);
+    const sanitizedNextPaymentAmount = sanitizeNextPaymentAmount(nextPaymentAmount);
+    if (sanitizedNextPaymentAmount !== null && sanitizedNextPaymentDue === null) {
+      res.status(400).json({ error: "nextPaymentDue is required when nextPaymentAmount is provided" });
+      return;
+    }
     const cappedPaidNum = Math.min(paidNum, costNum);
     const [created] = await db
       .insert(manualExpenses)
@@ -108,8 +114,8 @@ router.post("/manual-expenses", requireAuth, async (req, res) => {
         category: String(category ?? "Other").slice(0, 80),
         cost: String(costNum),
         amountPaid: String(cappedPaidNum),
-        nextPaymentDue: sanitizeNextPaymentDue(nextPaymentDue),
-        nextPaymentAmount: sanitizeNextPaymentAmount(nextPaymentAmount),
+        nextPaymentDue: sanitizedNextPaymentDue,
+        nextPaymentAmount: sanitizedNextPaymentAmount,
         notes: typeof notes === "string" ? notes.slice(0, 2000) : null,
         receiptUrl: sanitizeReceiptUrl(receiptUrl),
         receiptName: typeof receiptName === "string" ? receiptName.slice(0, 200) : null,
@@ -172,8 +178,18 @@ router.put("/manual-expenses/:id", requireAuth, async (req, res) => {
       const costForCap = cost !== undefined ? Math.max(0, Number(cost)) : Number(existing?.cost ?? 0);
       updates.amountPaid = String(Math.min(n, costForCap));
     }
-    if (nextPaymentDue !== undefined) updates.nextPaymentDue = sanitizeNextPaymentDue(nextPaymentDue);
-    if (nextPaymentAmount !== undefined) updates.nextPaymentAmount = sanitizeNextPaymentAmount(nextPaymentAmount);
+    const sanitizedNextPaymentDue = nextPaymentDue !== undefined ? sanitizeNextPaymentDue(nextPaymentDue) : existing.nextPaymentDue ?? null;
+    const sanitizedNextPaymentAmount = nextPaymentAmount !== undefined
+      ? sanitizeNextPaymentAmount(nextPaymentAmount)
+      : existing.nextPaymentAmount != null
+        ? String(existing.nextPaymentAmount)
+        : null;
+    if (sanitizedNextPaymentAmount !== null && sanitizedNextPaymentDue === null) {
+      res.status(400).json({ error: "nextPaymentDue is required when nextPaymentAmount is provided" });
+      return;
+    }
+    if (nextPaymentDue !== undefined) updates.nextPaymentDue = sanitizedNextPaymentDue;
+    if (nextPaymentAmount !== undefined) updates.nextPaymentAmount = sanitizedNextPaymentAmount;
     if (notes !== undefined) updates.notes = typeof notes === "string" ? notes.slice(0, 2000) : null;
     if (receiptUrl !== undefined) updates.receiptUrl = sanitizeReceiptUrl(receiptUrl);
     if (receiptName !== undefined) updates.receiptName = typeof receiptName === "string" ? receiptName.slice(0, 200) : null;
