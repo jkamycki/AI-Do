@@ -3332,7 +3332,6 @@ function GuestPhotoDropSection({
   const labelColor = sectionTextColor(data, "gallery");
   const photos = drop?.photos ?? [];
   const [guestName, setGuestName] = useState("");
-  const [guestEmail, setGuestEmail] = useState("");
   const [caption, setCaption] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -3416,7 +3415,6 @@ function GuestPhotoDropSection({
     setMessage(null);
     const form = new FormData();
     form.append("guestName", guestName.trim());
-    if (guestEmail.trim()) form.append("guestEmail", guestEmail.trim());
     if (caption.trim()) form.append("caption", caption.trim());
     if (deviceId) form.append("deviceId", deviceId);
     files.forEach((file) => form.append("photos", file));
@@ -3480,7 +3478,7 @@ function GuestPhotoDropSection({
         className="mx-auto mt-10 grid max-w-2xl gap-4 rounded-3xl border bg-white/80 p-5 shadow-[0_22px_60px_rgba(91,15,42,0.12)] sm:p-7"
         style={{ borderColor: `${data.colorPalette.primary}26` }}
       >
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3">
           <label className="grid gap-1.5 text-sm font-semibold" style={{ color: data.colorPalette.text }}>
             Your name
             <input
@@ -3490,18 +3488,6 @@ function GuestPhotoDropSection({
               className="h-12 rounded-2xl border bg-white px-4 text-base outline-none focus:ring-2"
               style={{ borderColor: `${data.colorPalette.primary}30`, ["--tw-ring-color" as string]: data.colorPalette.secondary }}
               placeholder="Jane Smith"
-            />
-          </label>
-          <label className="grid gap-1.5 text-sm font-semibold" style={{ color: data.colorPalette.text }}>
-            Email optional
-            <input
-              type="email"
-              value={guestEmail}
-              onChange={(event) => setGuestEmail(event.target.value)}
-              maxLength={200}
-              className="h-12 rounded-2xl border bg-white px-4 text-base outline-none focus:ring-2"
-              style={{ borderColor: `${data.colorPalette.primary}30`, ["--tw-ring-color" as string]: data.colorPalette.secondary }}
-              placeholder="you@example.com"
             />
           </label>
         </div>

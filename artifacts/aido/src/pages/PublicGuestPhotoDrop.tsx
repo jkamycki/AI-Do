@@ -110,7 +110,6 @@ export default function PublicGuestPhotoDrop() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
   const [guestName, setGuestName] = useState("");
-  const [guestEmail, setGuestEmail] = useState("");
   const [caption, setCaption] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -280,7 +279,6 @@ export default function PublicGuestPhotoDrop() {
     setSuccess(null);
     const form = new FormData();
     form.append("guestName", guestName.trim());
-    if (guestEmail.trim()) form.append("guestEmail", guestEmail.trim());
     if (caption.trim()) form.append("caption", caption.trim());
     if (deviceId) form.append("deviceId", deviceId);
     files.forEach((file) => form.append("photos", file));
@@ -440,17 +438,6 @@ export default function PublicGuestPhotoDrop() {
                 onChange={(event) => setGuestName(event.target.value)}
                 maxLength={120}
                 placeholder="Jane Smith"
-                className="h-12 rounded-2xl border border-[#E6A6B7]/70 bg-white px-4 text-base font-normal outline-none focus:ring-2 focus:ring-[#F7DDE2]"
-              />
-            </label>
-            <label className="grid gap-1.5 text-sm font-bold text-[#5B0F2A]">
-              Email optional
-              <input
-                type="email"
-                value={guestEmail}
-                onChange={(event) => setGuestEmail(event.target.value)}
-                maxLength={200}
-                placeholder="you@example.com"
                 className="h-12 rounded-2xl border border-[#E6A6B7]/70 bg-white px-4 text-base font-normal outline-none focus:ring-2 focus:ring-[#F7DDE2]"
               />
             </label>
