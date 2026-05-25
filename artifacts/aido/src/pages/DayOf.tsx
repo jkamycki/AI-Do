@@ -1339,7 +1339,7 @@ function DayOfInner() {
                 {isExportingTimelinePdf ? "Exporting..." : "Export Timeline PDF"}
               </Button>
               <Button
-                className="gap-2 rounded-full bg-[#24432E] text-white hover:bg-[#1c3525]"
+                className="gap-2 rounded-full border border-[#D4A373]/70 bg-[#8D294D] text-white shadow-[0_10px_24px_rgba(141,41,77,0.22)] hover:bg-[#762140]"
                 onClick={handleDownloadBinderPdf}
                 disabled={isExportingBinderPdf}
               >
