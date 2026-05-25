@@ -11,9 +11,12 @@ export function isMediaAuthRequired(url: string | null | undefined): boolean {
   if (url.startsWith("/storage/")) return true;
   if (url.startsWith("/api/storage/")) return true;
   if (url.startsWith("/api/website/media/")) return true;
+  if (/^\/api\/website\/public\/[^/]+\/media\//.test(url)) return true;
   try {
     const path = new URL(url).pathname;
-    return path.startsWith("/api/storage/") || path.startsWith("/api/website/media/");
+    return path.startsWith("/api/storage/")
+      || path.startsWith("/api/website/media/")
+      || /^\/api\/website\/public\/[^/]+\/media\//.test(path);
   } catch {
     return false;
   }

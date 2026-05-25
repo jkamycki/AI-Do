@@ -165,30 +165,71 @@ function verifyInvitationShare(token: string): number | null {
   return Number.isFinite(profileId) && profileId > 0 ? profileId : null;
 }
 
+function normalizeMediaTail(rawTail: string): string | null {
+  const tail = rawTail.split(/[?#]/)[0].replace(/^\/+/, "");
+  if (!tail || tail.includes("..") || tail.includes("\\")) return null;
+  const decoded = tail
+    .split("/")
+    .filter(Boolean)
+    .map((part) => {
+      try {
+        return decodeURIComponent(part);
+      } catch {
+        return part;
+      }
+    })
+    .join("/");
+  return decoded || null;
+}
+
+function objectPathFromMediaTail(rawTail: string): string | null {
+  const tail = normalizeMediaTail(rawTail);
+  return tail ? `/objects/${tail}` : null;
+}
+
+function privateMediaPathFromPathname(pathname: string): string | null {
+  try {
+    const parsed = new URL(pathname);
+    return privateMediaPathFromPathname(parsed.pathname);
+  } catch {
+    // Relative paths are handled below.
+  }
+
+  const path = pathname.trim();
+  if (path.startsWith("/api/storage/objects/")) {
+    return objectPathFromMediaTail(path.slice("/api/storage/objects/".length));
+  }
+  if (path.startsWith("/storage/objects/")) {
+    return objectPathFromMediaTail(path.slice("/storage/objects/".length));
+  }
+  if (path.startsWith("/api/website/media/")) {
+    return objectPathFromMediaTail(path.slice("/api/website/media/".length));
+  }
+  if (path.startsWith("/objects/")) {
+    return objectPathFromMediaTail(path.slice("/objects/".length));
+  }
+  const publicMediaMatch = path.match(/\/api\/website\/public\/[^/]+\/media\/(.+)$/);
+  if (publicMediaMatch) return objectPathFromMediaTail(publicMediaMatch[1]);
+  return null;
+}
+
 function normalizePrivateMediaPath(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
   const trimmed = raw.trim();
   if (!trimmed) return null;
-  try {
-    const parsed = new URL(trimmed);
-    if (parsed.pathname.startsWith("/api/storage/objects/")) {
-      return `/objects/${parsed.pathname.slice("/api/storage/objects/".length)}`;
-    }
-    if (parsed.pathname.startsWith("/storage/objects/")) {
-      return `/objects/${parsed.pathname.slice("/storage/objects/".length)}`;
-    }
-    if (parsed.pathname.startsWith("/objects/")) return parsed.pathname;
-  } catch {
-    // Relative paths are handled below.
-  }
-  if (trimmed.startsWith("/api/storage/objects/")) {
-    return `/objects/${trimmed.slice("/api/storage/objects/".length).split(/[?#]/)[0]}`;
-  }
-  if (trimmed.startsWith("/storage/objects/")) {
-    return `/objects/${trimmed.slice("/storage/objects/".length).split(/[?#]/)[0]}`;
-  }
-  if (trimmed.startsWith("/objects/")) return trimmed.split(/[?#]/)[0];
-  return null;
+  return privateMediaPathFromPathname(trimmed);
+}
+
+function normalizeWebsiteImageForStorage(raw: string): string {
+  const objectPath = normalizePrivateMediaPath(raw);
+  return objectPath ?? raw;
+}
+
+function normalizeWebsiteImagesForStorage<T extends { url: string }>(items: T[], limit: number): T[] {
+  return items.slice(0, limit).map((item) => ({
+    ...item,
+    url: normalizeWebsiteImageForStorage(item.url),
+  }));
 }
 
 function signWebsiteMedia(row: typeof weddingWebsites.$inferSelect, objectPath: string): string {
@@ -1105,9 +1146,15 @@ router.put("/website/update", requireAuth, async (req, res) => {
     if (body.customText && typeof body.customText === "object") updates.customText = body.customText;
     if (body.textStyles && typeof body.textStyles === "object") updates.textStyles = body.textStyles;
     if (body.textPositions && typeof body.textPositions === "object") updates.textPositions = body.textPositions;
-    if (Array.isArray(body.galleryImages)) updates.galleryImages = body.galleryImages.slice(0, 60);
-    if (Array.isArray(body.heroImages)) updates.heroImages = body.heroImages.slice(0, 30);
-    if ("heroImage" in body) updates.heroImage = body.heroImage ?? null;
+    if (Array.isArray(body.galleryImages)) {
+      updates.galleryImages = normalizeWebsiteImagesForStorage(body.galleryImages, 60);
+    }
+    if (Array.isArray(body.heroImages)) {
+      updates.heroImages = normalizeWebsiteImagesForStorage(body.heroImages, 30);
+    }
+    if ("heroImage" in body) {
+      updates.heroImage = typeof body.heroImage === "string" ? normalizeWebsiteImageForStorage(body.heroImage) : null;
+    }
     if ("password" in body) {
       const p = body.password?.trim();
       updates.password = p ? await hashPassword(p) : null;

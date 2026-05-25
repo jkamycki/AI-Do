@@ -106,11 +106,17 @@ function editorMediaSrc(url: string | null | undefined): string | null {
 
   const apiStoragePrefix = "/api/storage/objects/";
   const storagePrefix = "/storage/objects/";
+  const editorWebsitePrefix = "/api/website/media/";
   const objectPrefix = "/objects/";
   let tail: string | null = null;
   if (path.startsWith(apiStoragePrefix)) tail = path.slice(apiStoragePrefix.length);
   else if (path.startsWith(storagePrefix)) tail = path.slice(storagePrefix.length);
+  else if (path.startsWith(editorWebsitePrefix)) tail = path.slice(editorWebsitePrefix.length);
   else if (path.startsWith(objectPrefix)) tail = path.slice(objectPrefix.length);
+  else {
+    const publicMediaMatch = path.match(/\/api\/website\/public\/[^/]+\/media\/(.+)$/);
+    if (publicMediaMatch) tail = publicMediaMatch[1];
+  }
 
   if (!tail) return url;
   const safeTail = tail

@@ -11,10 +11,12 @@ function shouldFetchAsBlob(rawSrc: string): boolean {
   if (rawSrc.startsWith("/storage/")) return true;
   if (rawSrc.startsWith("/api/storage/")) return true;
   if (rawSrc.startsWith("/api/website/media/")) return true;
+  if (/^\/api\/website\/public\/[^/]+\/media\//.test(rawSrc)) return true;
   try {
     const url = new URL(rawSrc);
     return url.pathname.startsWith("/api/storage/")
-      || url.pathname.startsWith("/api/website/media/");
+      || url.pathname.startsWith("/api/website/media/")
+      || /^\/api\/website\/public\/[^/]+\/media\//.test(url.pathname);
   } catch {
     return false;
   }
@@ -25,6 +27,7 @@ function objectMediaTail(rawSrc: string | null | undefined): string | null {
   const objectPrefix = "/objects/";
   const storagePrefix = "/storage/objects/";
   const apiStoragePrefix = "/api/storage/objects/";
+  const websiteMediaPrefix = "/api/website/media/";
   const pathFrom = (value: string) => {
     try {
       return new URL(value).pathname;
@@ -35,7 +38,10 @@ function objectMediaTail(rawSrc: string | null | undefined): string | null {
   const path = pathFrom(rawSrc);
   if (path.startsWith(apiStoragePrefix)) return path.slice(apiStoragePrefix.length).split(/[?#]/)[0] || null;
   if (path.startsWith(storagePrefix)) return path.slice(storagePrefix.length).split(/[?#]/)[0] || null;
+  if (path.startsWith(websiteMediaPrefix)) return path.slice(websiteMediaPrefix.length).split(/[?#]/)[0] || null;
   if (path.startsWith(objectPrefix)) return path.slice(objectPrefix.length).split(/[?#]/)[0] || null;
+  const publicMediaMatch = path.match(/\/api\/website\/public\/[^/]+\/media\/(.+)$/);
+  if (publicMediaMatch) return publicMediaMatch[1].split(/[?#]/)[0] || null;
   return null;
 }
 
