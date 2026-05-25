@@ -39,6 +39,9 @@ type PhotoDropUsage = {
   maxPerUpload: number;
 };
 
+const PHOTO_DROP_HERO_IMAGE =
+  "/photo-drop-polaroid-camera.svg";
+
 function coupleName(data: PublicPhotoDropPayload | null) {
   if (!data) return "A.I Do";
   return `${data.couple.partner2Name} & ${data.couple.partner1Name}`;
@@ -345,7 +348,15 @@ export default function PublicGuestPhotoDrop() {
     <main className="min-h-screen bg-[#FFF7F2] px-4 py-5 text-[#3B1C2B]">
       <div className="mx-auto max-w-lg">
         <section className="overflow-hidden rounded-[2.2rem] border border-[#E6A6B7]/50 bg-white shadow-[0_24px_70px_rgba(91,15,42,0.14)]">
-          <div className="bg-gradient-to-br from-[#FFF7F2] via-[#F7DDE2]/70 to-[#F2E2C6]/50 px-6 pb-7 pt-8 text-center">
+          <div className="relative isolate overflow-hidden px-6 pb-7 pt-8 text-center">
+            <img
+              src={PHOTO_DROP_HERO_IMAGE}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 -z-30 h-full w-full object-cover opacity-55"
+            />
+            <div className="absolute inset-0 -z-20 bg-gradient-to-br from-white/95 via-[#F7DDE2]/82 to-[#F2E2C6]/78" />
+            <div className="absolute inset-x-0 bottom-0 -z-10 h-24 bg-gradient-to-t from-white via-white/80 to-transparent" />
             <div
               className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg"
               style={{ background: `linear-gradient(135deg, ${primary}, ${accent})` }}

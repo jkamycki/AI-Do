@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" role="img" aria-label="">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff8f4"/>
+      <stop offset="0.52" stop-color="#f7dde2"/>
+      <stop offset="1" stop-color="#f2e2c6"/>
+    </linearGradient>
+    <linearGradient id="camera" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f5d6dd"/>
+    </linearGradient>
+    <linearGradient id="strap" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8d294d"/>
+      <stop offset="1" stop-color="#d4a373"/>
+    </linearGradient>
+    <radialGradient id="lens" cx="50%" cy="48%" r="56%">
+      <stop offset="0" stop-color="#fff9f4"/>
+      <stop offset="0.46" stop-color="#d4a373"/>
+      <stop offset="1" stop-color="#8d294d"/>
+    </radialGradient>
+    <filter id="softShadow" x="-20%" y="-25%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="22" stdDeviation="24" flood-color="#5b0f2a" flood-opacity="0.22"/>
+    </filter>
+    <filter id="blur" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="1.4"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="520" fill="url(#bg)"/>
+  <circle cx="1040" cy="94" r="110" fill="#fff" opacity="0.35"/>
+  <circle cx="178" cy="430" r="170" fill="#ffffff" opacity="0.32"/>
+  <path d="M-30 424c122-86 242-98 358-36 86 46 184 45 294-3 108-47 211-46 309 2 103 50 209 41 319-27v170H-30z" fill="#fff7f2" opacity="0.52"/>
+
+  <g filter="url(#blur)" opacity="0.48">
+    <path d="M958 88c39 31 44 84 9 119-36 36-92 28-121-15-28-42-14-95 30-121 27-16 57-10 82 17z" fill="#d4a373"/>
+    <path d="M1004 150c31 2 57 27 58 58 1 32-25 59-58 59-32 0-57-25-58-56-1-34 25-63 58-61z" fill="#e6a6b7"/>
+    <path d="M177 89c46-9 85 22 90 68 5 48-33 88-81 82-45-6-73-49-61-93 7-27 25-51 52-57z" fill="#f2cbd2"/>
+  </g>
+
+  <g transform="translate(190 72) rotate(-8 198 166)" filter="url(#softShadow)">
+    <rect x="0" y="0" width="270" height="330" rx="26" fill="#fffdfb"/>
+    <rect x="22" y="24" width="226" height="190" rx="16" fill="#f7dde2"/>
+    <path d="M44 189c38-55 76-82 115-82 35 0 58 28 91 82z" fill="#d4a373" opacity="0.58"/>
+    <circle cx="88" cy="75" r="31" fill="#fff7f2" opacity="0.92"/>
+    <rect x="44" y="240" width="182" height="16" rx="8" fill="#8d294d" opacity="0.2"/>
+    <rect x="72" y="274" width="126" height="12" rx="6" fill="#d4a373" opacity="0.25"/>
+  </g>
+
+  <g transform="translate(720 92) rotate(9 188 160)" filter="url(#softShadow)" opacity="0.96">
+    <rect x="0" y="0" width="255" height="315" rx="24" fill="#fffdfb"/>
+    <rect x="20" y="22" width="215" height="178" rx="15" fill="#f5d6dd"/>
+    <path d="M24 183c46-46 84-66 115-60 31 5 48 40 91 60z" fill="#8d294d" opacity="0.25"/>
+    <circle cx="174" cy="74" r="34" fill="#fff7f2" opacity="0.9"/>
+    <rect x="44" y="230" width="166" height="15" rx="8" fill="#8d294d" opacity="0.18"/>
+    <rect x="70" y="262" width="116" height="12" rx="6" fill="#d4a373" opacity="0.24"/>
+  </g>
+
+  <g transform="translate(444 142)" filter="url(#softShadow)">
+    <path d="M120 30h70l24 42h196c32 0 58 26 58 58v146c0 32-26 58-58 58H76c-32 0-58-26-58-58V130c0-32 26-58 58-58h20z" fill="url(#camera)"/>
+    <path d="M88 92h333c18 0 33 15 33 33v48H55v-48c0-18 15-33 33-33z" fill="#fffdfb" opacity="0.78"/>
+    <rect x="344" y="112" width="70" height="34" rx="17" fill="url(#strap)" opacity="0.88"/>
+    <circle cx="243" cy="210" r="82" fill="#fff7f2"/>
+    <circle cx="243" cy="210" r="62" fill="url(#lens)"/>
+    <circle cx="224" cy="190" r="20" fill="#fffaf6" opacity="0.7"/>
+    <circle cx="286" cy="252" r="13" fill="#5b0f2a" opacity="0.35"/>
+    <rect x="85" y="126" width="82" height="26" rx="13" fill="#f7dde2"/>
+    <circle cx="109" cy="218" r="22" fill="#d4a373" opacity="0.58"/>
+  </g>
+</svg>
