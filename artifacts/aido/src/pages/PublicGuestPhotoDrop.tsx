@@ -42,6 +42,8 @@ type PhotoDropUsage = {
 
 const PHOTO_DROP_HERO_IMAGE =
   "/images/bokeh-bg.png";
+const PORTAL_ONLY_INSTRUCTIONS =
+  "Share your favorite wedding day moments here. Add a caption if you'd like, and the couple will review every photo privately.";
 
 function coupleName(data: PublicPhotoDropPayload | null) {
   if (!data) return "A.I Do";
@@ -51,6 +53,15 @@ function coupleName(data: PublicPhotoDropPayload | null) {
 function formatFileSize(size: number) {
   if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function guestFacingInstructions(instructions: string, displayMode: "portal" | "website" | "both") {
+  if (displayMode !== "portal") return instructions;
+  const lower = instructions.toLowerCase();
+  if (lower.includes("website") || lower.includes("gallery")) {
+    return PORTAL_ONLY_INSTRUCTIONS;
+  }
+  return instructions || PORTAL_ONLY_INSTRUCTIONS;
 }
 
 function PasswordGate({
@@ -133,9 +144,12 @@ export default function PublicGuestPhotoDrop() {
   const photosLeftAfterSelection = Math.max(0, photosLeft - files.length);
   const primary = data?.colorPalette?.primary || "#8D294D";
   const accent = data?.colorPalette?.accent || "#D4A373";
-  const weddingWebsiteUrl = slug && data?.websitePublished ? publishedWebsiteUrl(slug) : "";
-  const weddingGalleryUrl = slug && data?.websitePublished ? publishedWebsiteUrl(slug, "gallery") : "";
+  const displayMode = drop?.displayMode ?? "both";
+  const showsOnWeddingWebsite = displayMode === "website" || displayMode === "both";
+  const weddingWebsiteUrl = slug && data?.websitePublished && showsOnWeddingWebsite ? publishedWebsiteUrl(slug) : "";
+  const weddingGalleryUrl = slug && data?.websitePublished && showsOnWeddingWebsite ? publishedWebsiteUrl(slug, "gallery") : "";
   const displayWeddingWebsiteUrl = weddingWebsiteUrl.replace(/^https?:\/\//, "");
+  const displayInstructions = drop ? guestFacingInstructions(drop.instructions, displayMode) : "";
 
   useEffect(() => {
     if (!slug) return;
@@ -369,7 +383,7 @@ export default function PublicGuestPhotoDrop() {
             </div>
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#8D294D]">{coupleName(data)}</p>
             <h1 className="mt-3 font-serif text-4xl font-bold leading-tight text-[#5B0F2A]">{drop.title || "Guest Photo Drop"}</h1>
-            <p className="mt-3 text-sm leading-6 text-[#6F3E54]">{drop.instructions}</p>
+            <p className="mt-3 text-sm leading-6 text-[#6F3E54]">{displayInstructions}</p>
           </div>
 
           <form onSubmit={submitPhotos} className="space-y-5 px-5 py-6">
@@ -481,7 +495,7 @@ export default function PublicGuestPhotoDrop() {
                       ? "Once the couple approves your photos, they will appear in the Gallery section on the wedding website."
                       : "Your approved photos will appear in the Gallery section on the wedding website."
                     )
-                    : "Once the couple approves your photos, they will be saved for the couple to review."}
+                    : "Once the couple approves your photos, they will be saved privately for the couple to review."}
                 </p>
                 {photosLeft <= 0 && weddingGalleryUrl && (
                   <a

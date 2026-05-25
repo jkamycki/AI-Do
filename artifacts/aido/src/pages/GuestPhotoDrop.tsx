@@ -111,6 +111,14 @@ function genericGuestPhotoInstructions(displayMode: GuestPhotoSettings["displayM
   return GENERIC_GUEST_PHOTO_INSTRUCTIONS[displayMode] ?? GENERIC_GUEST_PHOTO_INSTRUCTIONS.both;
 }
 
+function shouldRefreshGuestPhotoInstructions(instructions: string) {
+  const trimmed = instructions.trim();
+  if (!trimmed) return true;
+  if (GENERIC_GUEST_PHOTO_INSTRUCTION_SET.has(trimmed)) return true;
+  const lower = trimmed.toLowerCase();
+  return lower.includes("website") || lower.includes("gallery");
+}
+
 async function readJson<T>(response: Response): Promise<T> {
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -269,8 +277,7 @@ export default function GuestPhotoDrop() {
 
   const updateDisplayMode = (value: GuestPhotoSettings["displayMode"]) => {
     if (!settings) return;
-    const shouldRefreshInstructions =
-      !settings.instructions.trim() || GENERIC_GUEST_PHOTO_INSTRUCTION_SET.has(settings.instructions.trim());
+    const shouldRefreshInstructions = shouldRefreshGuestPhotoInstructions(settings.instructions);
     updateDraftAndSave({
       displayMode: value,
       galleryEnabled: value === "website" || value === "both",
@@ -456,8 +463,12 @@ export default function GuestPhotoDrop() {
                   </Select>
                   <p className="mt-2 text-xs leading-5 text-[#6F3E54]">{displayModeCopy[displayMode].description}</p>
                   <div className="mt-3 rounded-xl border border-[#D4A373]/35 bg-white/70 px-3 py-2 text-xs leading-5 text-[#6F3E54]">
-                    <span className="font-bold text-[#8D294D]">Website placement:</span>{" "}
-                    Approved photos appear in the published wedding website's Gallery section under Guest Uploads when this is set to Wedding website only or Portal + website.
+                    <span className="font-bold text-[#8D294D]">
+                      {displayMode === "portal" ? "Private portal:" : "Website placement:"}
+                    </span>{" "}
+                    {displayMode === "portal"
+                      ? "Approved photos stay inside A.I Do for the couple to review and download. The guest upload page will not show a wedding website link."
+                      : "Approved photos appear in the published wedding website's Gallery section under Guest Uploads when this is set to Wedding website only or Portal + website."}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-[#E6A6B7]/45 bg-[#FFF7F2]/70 p-4">
