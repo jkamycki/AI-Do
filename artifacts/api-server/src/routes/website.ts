@@ -325,7 +325,7 @@ function guestPhotoDropSettings(customText: WebsiteCustomText | null | undefined
     enabled: boolSetting(text._guestPhotoDropEnabled, DEFAULT_GUEST_PHOTO_SETTINGS.enabled),
     galleryEnabled: displayMode === "website" || displayMode === "both",
     displayMode,
-    approvalRequired: boolSetting(text._guestPhotoApprovalRequired, DEFAULT_GUEST_PHOTO_SETTINGS.approvalRequired),
+    approvalRequired: true,
     maxUploads,
     uploadLimitMb: DEFAULT_GUEST_PHOTO_SETTINGS.uploadLimitMb,
     title: typeof text._guestPhotoTitle === "string" && text._guestPhotoTitle.trim()
@@ -350,7 +350,7 @@ function mergeGuestPhotoDropSettings(
     next._guestPhotoGalleryEnabled = String(patch.galleryEnabled);
     next._guestPhotoDisplayMode = patch.galleryEnabled ? "both" : "portal";
   }
-  if (typeof patch.approvalRequired === "boolean") next._guestPhotoApprovalRequired = String(patch.approvalRequired);
+  next._guestPhotoApprovalRequired = "true";
   if (typeof patch.maxUploads === "number" && Number.isFinite(patch.maxUploads)) {
     next._guestPhotoMaxUploads = String(Math.max(1, Math.min(GUEST_PHOTO_MAX_FILES, Math.floor(patch.maxUploads))));
   }
@@ -1897,7 +1897,7 @@ router.post(
         .limit(1);
       if (!profile) return res.status(404).json({ error: "Wedding profile not found" });
 
-      const status = settings.approvalRequired ? "pending" : "approved";
+      const status = "pending";
       const createdRows: Array<typeof guestPhotoUploads.$inferSelect> = [];
       for (const file of files) {
         const originalName = cleanGuestPhotoFileName(file.originalname);
@@ -1930,9 +1930,7 @@ router.post(
         status,
         count: createdRows.length,
         usage: guestPhotoUsage(uploadedCount + createdRows.length, settings.maxUploads),
-        message: settings.approvalRequired
-          ? "Thanks! Your photos were uploaded and are waiting for the couple to approve."
-          : "Thanks! Your photos were uploaded.",
+        message: "Thanks! Your photos were uploaded and are waiting for the couple to approve.",
       });
     } catch (err) {
       req.log.error(err, "guestPhotoDropPublicUpload failed");

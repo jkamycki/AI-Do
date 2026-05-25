@@ -364,12 +364,19 @@ export default function GuestPhotoDrop() {
                     Approved photos appear in the published wedding website's Gallery section under Guest Uploads when this is set to Wedding website only or Portal + website.
                   </div>
                 </div>
-                <SettingSwitch
-                  title="Require approval"
-                  description="New uploads stay private until you approve them."
-                  checked={settings.approvalRequired}
-                  onCheckedChange={(checked) => updateDraftAndSave({ approvalRequired: checked })}
-                />
+                <div className="rounded-2xl border border-[#E6A6B7]/45 bg-[#FFF7F2]/70 p-4">
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F7DDE2] text-[#8D294D]">
+                      <Check className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <p className="font-bold text-[#5B0F2A]">Approval required</p>
+                      <p className="mt-1 text-sm leading-6 text-[#6F3E54]">
+                        New uploads always stay private until you approve them.
+                      </p>
+                    </div>
+                  </div>
+                </div>
                 <div className="rounded-2xl border border-[#E6A6B7]/45 bg-[#FFF7F2]/70 p-4">
                   <Label className="text-sm font-bold text-[#5B0F2A]">Photos per upload</Label>
                   <Select value={String(settings.maxUploads)} onValueChange={(value) => updateDraftAndSave({ maxUploads: Number(value) })}>
