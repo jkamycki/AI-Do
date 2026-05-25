@@ -155,6 +155,22 @@ function attachedGuestFromPlusOneNoteText(notes?: string | null) {
   return match?.[1]?.trim() || null;
 }
 
+function initialsForGuestName(name: string): string {
+  const parts = name
+    .trim()
+    .split(/\s+/)
+    .map((part) => part.replace(/[^A-Za-z0-9]/g, ""))
+    .filter(Boolean);
+  if (parts.length === 0) return "Guest";
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
+  return `${first}${last}`.toUpperCase() || "Guest";
+}
+
+function unnamedPlusOneLabel(guestName: string): string {
+  return `${initialsForGuestName(guestName)} Plus one`;
+}
+
 function seatingDisplayRows(guestNames: string[], seatingGuests: Guest[]) {
   const seatingGuestByName = new Map(
     seatingGuests.map((guest) => [normalizeSeatDisplayName(guest.name), guest]),
@@ -165,7 +181,7 @@ function seatingDisplayRows(guestNames: string[], seatingGuests: Guest[]) {
     const cleanPlusOneName = guest?.plusOneName?.trim();
     return [{
       name: guestName,
-      plusOneLabel: guest?.plusOne ? (cleanPlusOneName ? `+ ${cleanPlusOneName}` : "+1") : null,
+      plusOneLabel: guest?.plusOne ? (cleanPlusOneName ? `+ ${cleanPlusOneName}` : unnamedPlusOneLabel(guestName)) : null,
     }];
   });
 }
@@ -175,9 +191,8 @@ function seatingPreviewSeats(guestNames: string[], seatingGuests: Guest[], seats
   const assigned = rows.flatMap<PreviewSeat>((row) => {
     const seats: PreviewSeat[] = [{ label: row.name, moveName: row.name }];
     if (row.plusOneLabel) {
-      const plusOneName = row.plusOneLabel.replace(/^\+\s*/, "").trim();
       seats.push({
-        label: plusOneName && plusOneName !== "1" ? plusOneName : `${row.name}'s plus-one`,
+        label: row.plusOneLabel.replace(/^\+\s*/, ""),
         moveName: row.name,
         isPlusOne: true,
       });
