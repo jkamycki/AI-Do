@@ -359,6 +359,29 @@ function mergeGuestPhotoDropSettings(
   return next;
 }
 
+const GUEST_PHOTO_CUSTOM_TEXT_KEYS = [
+  "_guestPhotoDropEnabled",
+  "_guestPhotoGalleryEnabled",
+  "_guestPhotoDisplayMode",
+  "_guestPhotoApprovalRequired",
+  "_guestPhotoMaxUploads",
+  "_guestPhotoTitle",
+  "_guestPhotoInstructions",
+] as const;
+
+function preserveGuestPhotoDropCustomText(
+  current: WebsiteCustomText | null | undefined,
+  incoming: WebsiteCustomText,
+): WebsiteCustomText {
+  const next = { ...incoming };
+  const existing = current ?? {};
+  for (const key of GUEST_PHOTO_CUSTOM_TEXT_KEYS) {
+    if (existing[key] !== undefined) next[key] = existing[key];
+    else delete next[key];
+  }
+  return next;
+}
+
 function publicGuestPhotoUrl(row: typeof weddingWebsites.$inferSelect, raw: string): string {
   return websiteMediaUrl(row, raw) ?? raw;
 }
@@ -1194,7 +1217,9 @@ router.put("/website/update", requireAuth, async (req, res) => {
     if (typeof body.accentColor === "string") updates.accentColor = body.accentColor;
     if (body.colorPalette && typeof body.colorPalette === "object") updates.colorPalette = body.colorPalette;
     if (body.sectionsEnabled && typeof body.sectionsEnabled === "object") updates.sectionsEnabled = body.sectionsEnabled;
-    if (body.customText && typeof body.customText === "object") updates.customText = body.customText;
+    if (body.customText && typeof body.customText === "object") {
+      updates.customText = preserveGuestPhotoDropCustomText(existing.customText, body.customText);
+    }
     if (body.textStyles && typeof body.textStyles === "object") updates.textStyles = body.textStyles;
     if (body.textPositions && typeof body.textPositions === "object") updates.textPositions = body.textPositions;
     if (Array.isArray(body.galleryImages)) {
