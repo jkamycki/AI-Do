@@ -813,3 +813,21 @@ export const websiteRsvps = pgTable("website_rsvps", {
 });
 
 export type WebsiteRsvp = typeof websiteRsvps.$inferSelect;
+
+export const guestPhotoUploads = pgTable("guest_photo_uploads", {
+  id: serial("id").primaryKey(),
+  websiteId: integer("website_id").notNull(),
+  profileId: integer("profile_id").notNull(),
+  guestName: text("guest_name").notNull(),
+  guestEmail: text("guest_email"),
+  note: text("note"),
+  imageUrl: text("image_url").notNull(),
+  originalName: text("original_name"),
+  contentType: text("content_type"),
+  fileSize: integer("file_size"),
+  status: text("status").notNull().default("pending"),
+  uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
+  approvedAt: timestamp("approved_at"),
+});
+
+export type GuestPhotoUpload = typeof guestPhotoUploads.$inferSelect;

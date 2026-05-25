@@ -38,6 +38,7 @@ const WebsiteEditor = lazy(() => import("@/pages/WebsiteEditor"));
 const WeddingParty = lazy(() => import("@/pages/WeddingParty"));
 const SharedWorkspace = lazy(() => import("@/pages/SharedWorkspace"));
 const GuestListAndInvitations = lazy(() => import("@/pages/GuestListAndInvitations"));
+const GuestPhotoDrop = lazy(() => import("@/pages/GuestPhotoDrop"));
 const Hotels = lazy(() => import("@/pages/Hotels"));
 const Contracts = lazy(() => import("@/pages/Contracts"));
 const DocumentLibrary = lazy(() => import("@/pages/DocumentLibrary"));
@@ -1865,6 +1866,7 @@ function Router() {
         <Route path="/operations-center" component={() => <ProtectedRoute component={OperationsCenter} />} />
         <Route path="/seating-chart" component={() => <ProtectedRoute component={SeatingChart} maintenanceSection="portal-seating-chart" />} />
         <Route path="/guests/:profileId?" component={() => <ProtectedRoute component={GuestListAndInvitations} maintenanceSection="portal-guests" />} />
+        <Route path="/guest-photo-drop" component={() => <ProtectedRoute component={GuestPhotoDrop} maintenanceSection="portal-guests" />} />
         <Route path="/wedding-party" component={() => <ProtectedRoute component={WeddingParty} maintenanceSection="portal-wedding-party" />} />
         <Route path="/hotels" component={() => <ProtectedRoute component={Hotels} maintenanceSection="portal-hotels" />} />
         <Route path="/contracts" component={() => <ProtectedRoute component={Contracts} />} />

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import RequirementsSelector, {
+import {
   emptyRequirementsSelectorValue,
   formatRequirementsForPrompt,
   normalizeRequirementsSelectorValue,
@@ -488,11 +488,6 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
           </div>
         )}
       </div>
-
-      <RequirementsSelector
-        value={requirements}
-        onChange={(nextRequirements) => update({ requirements: nextRequirements })}
-      />
 
       <div className="space-y-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

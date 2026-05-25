@@ -1,9 +1,10 @@
 import { Router, type Request, type Response } from "express";
+import multer from "multer";
 import { scrypt, randomBytes, timingSafeEqual, createHmac } from "node:crypto";
 import { promisify } from "node:util";
 import { Readable } from "node:stream";
 import rateLimit from "express-rate-limit";
-import { db, weddingWebsites, weddingProfiles, guests, websiteRsvps, weddingParty, hotelBlocks, invitationCustomizations } from "@workspace/db";
+import { db, weddingWebsites, weddingProfiles, guests, websiteRsvps, weddingParty, hotelBlocks, invitationCustomizations, guestPhotoUploads } from "@workspace/db";
 import type { WeddingProfile, WebsiteSectionsEnabled, WebsiteCustomText, WebsiteGalleryImage, WebsiteHeroImage, WebsiteTextStyles, WebsiteTextPositions } from "@workspace/db";
 import { and, eq, ilike, desc, not } from "drizzle-orm";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
@@ -56,6 +57,40 @@ const websiteUnlockLimiter = rateLimit({
   legacyHeaders: false,
   validate: { xForwardedForHeader: false },
   message: { error: "Too many password attempts. Please wait a minute and try again." },
+});
+
+const guestPhotoPublicLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 12,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+  message: { error: "Too many photo uploads. Please wait a few minutes and try again." },
+});
+
+const GUEST_PHOTO_MAX_FILES = 5;
+const GUEST_PHOTO_MAX_FILE_BYTES = 5 * 1024 * 1024;
+const GUEST_PHOTO_ALLOWED_MIMES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+]);
+
+const guestPhotoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: GUEST_PHOTO_MAX_FILE_BYTES, files: GUEST_PHOTO_MAX_FILES },
+  fileFilter: (_req, file, cb) => {
+    const mime = (file.mimetype || "").toLowerCase();
+    const name = (file.originalname || "").toLowerCase();
+    const extensionOk = /\.(jpe?g|png|webp|heic|heif)$/.test(name);
+    if (GUEST_PHOTO_ALLOWED_MIMES.has(mime) || extensionOk) {
+      cb(null, true);
+      return;
+    }
+    cb(new Error("Please upload JPG, PNG, WEBP, or HEIC photos only."));
+  },
 });
 
 const router = Router();
@@ -191,9 +226,120 @@ function mapWebsiteMedia<T extends { url: string }>(
   }));
 }
 
+type GuestPhotoDropSettings = {
+  enabled: boolean;
+  galleryEnabled: boolean;
+  displayMode: "portal" | "website" | "both";
+  approvalRequired: boolean;
+  maxUploads: number;
+  uploadLimitMb: number;
+  title: string;
+  instructions: string;
+};
+
+const DEFAULT_GUEST_PHOTO_SETTINGS: GuestPhotoDropSettings = {
+  enabled: false,
+  galleryEnabled: true,
+  displayMode: "both",
+  approvalRequired: true,
+  maxUploads: 5,
+  uploadLimitMb: 5,
+  title: "Guest Photo Drop",
+  instructions: "Share your favorite moments from the wedding day. The couple will review photos before they appear on the website.",
+};
+
+function boolSetting(value: unknown, fallback: boolean): boolean {
+  if (value === true || value === "true") return true;
+  if (value === false || value === "false") return false;
+  return fallback;
+}
+
+function guestPhotoDisplayMode(value: unknown, galleryEnabled: boolean): GuestPhotoDropSettings["displayMode"] {
+  if (value === "portal" || value === "website" || value === "both") return value;
+  return galleryEnabled ? "both" : "portal";
+}
+
+function guestPhotoShowsOnWebsite(settings: Pick<GuestPhotoDropSettings, "enabled" | "displayMode">): boolean {
+  return settings.enabled && (settings.displayMode === "website" || settings.displayMode === "both");
+}
+
+function guestPhotoDropSettings(customText: WebsiteCustomText | null | undefined): GuestPhotoDropSettings {
+  const text = customText ?? {};
+  const maxUploadsRaw = Number(text._guestPhotoMaxUploads);
+  const maxUploads = Number.isFinite(maxUploadsRaw)
+    ? Math.max(1, Math.min(GUEST_PHOTO_MAX_FILES, Math.floor(maxUploadsRaw)))
+    : DEFAULT_GUEST_PHOTO_SETTINGS.maxUploads;
+  const legacyGalleryEnabled = boolSetting(text._guestPhotoGalleryEnabled, DEFAULT_GUEST_PHOTO_SETTINGS.galleryEnabled);
+  const displayMode = guestPhotoDisplayMode(text._guestPhotoDisplayMode, legacyGalleryEnabled);
+  return {
+    enabled: boolSetting(text._guestPhotoDropEnabled, DEFAULT_GUEST_PHOTO_SETTINGS.enabled),
+    galleryEnabled: displayMode === "website" || displayMode === "both",
+    displayMode,
+    approvalRequired: boolSetting(text._guestPhotoApprovalRequired, DEFAULT_GUEST_PHOTO_SETTINGS.approvalRequired),
+    maxUploads,
+    uploadLimitMb: DEFAULT_GUEST_PHOTO_SETTINGS.uploadLimitMb,
+    title: typeof text._guestPhotoTitle === "string" && text._guestPhotoTitle.trim()
+      ? text._guestPhotoTitle.trim().slice(0, 80)
+      : DEFAULT_GUEST_PHOTO_SETTINGS.title,
+    instructions: typeof text._guestPhotoInstructions === "string" && text._guestPhotoInstructions.trim()
+      ? text._guestPhotoInstructions.trim().slice(0, 500)
+      : DEFAULT_GUEST_PHOTO_SETTINGS.instructions,
+  };
+}
+
+function mergeGuestPhotoDropSettings(
+  current: WebsiteCustomText,
+  patch: Partial<GuestPhotoDropSettings>,
+): WebsiteCustomText {
+  const next = { ...current };
+  if (typeof patch.enabled === "boolean") next._guestPhotoDropEnabled = String(patch.enabled);
+  if (patch.displayMode === "portal" || patch.displayMode === "website" || patch.displayMode === "both") {
+    next._guestPhotoDisplayMode = patch.displayMode;
+    next._guestPhotoGalleryEnabled = String(patch.displayMode === "website" || patch.displayMode === "both");
+  } else if (typeof patch.galleryEnabled === "boolean") {
+    next._guestPhotoGalleryEnabled = String(patch.galleryEnabled);
+    next._guestPhotoDisplayMode = patch.galleryEnabled ? "both" : "portal";
+  }
+  if (typeof patch.approvalRequired === "boolean") next._guestPhotoApprovalRequired = String(patch.approvalRequired);
+  if (typeof patch.maxUploads === "number" && Number.isFinite(patch.maxUploads)) {
+    next._guestPhotoMaxUploads = String(Math.max(1, Math.min(GUEST_PHOTO_MAX_FILES, Math.floor(patch.maxUploads))));
+  }
+  if (typeof patch.title === "string") next._guestPhotoTitle = patch.title.trim().slice(0, 80);
+  if (typeof patch.instructions === "string") next._guestPhotoInstructions = patch.instructions.trim().slice(0, 500);
+  return next;
+}
+
+function publicGuestPhotoUrl(row: typeof weddingWebsites.$inferSelect, raw: string): string {
+  return websiteMediaUrl(row, raw) ?? raw;
+}
+
+function serializeGuestPhotoUpload(
+  row: typeof guestPhotoUploads.$inferSelect,
+  site: typeof weddingWebsites.$inferSelect,
+  includeEmail = false,
+  allowPublicImageUrl = true,
+) {
+  const publicImageUrl = row.status === "approved" && allowPublicImageUrl ? publicGuestPhotoUrl(site, row.imageUrl) : null;
+  return {
+    id: row.id,
+    guestName: row.guestName,
+    ...(includeEmail ? { guestEmail: row.guestEmail } : {}),
+    note: row.note,
+    imageUrl: includeEmail ? row.imageUrl : publicImageUrl ?? "",
+    publicImageUrl,
+    originalName: row.originalName,
+    contentType: row.contentType,
+    fileSize: row.fileSize,
+    status: row.status,
+    uploadedAt: row.uploadedAt.toISOString(),
+    approvedAt: row.approvedAt?.toISOString() ?? null,
+  };
+}
+
 function collectWebsiteMediaPaths(
   row: typeof weddingWebsites.$inferSelect,
   party: Array<{ photoUrl: string | null }>,
+  extraMedia: Array<string | null | undefined> = [],
 ): Set<string> {
   const paths = new Set<string>();
   const add = (raw: unknown) => {
@@ -204,6 +350,7 @@ function collectWebsiteMediaPaths(
   for (const image of row.heroImages ?? []) add(image.url);
   for (const image of row.galleryImages ?? []) add(image.url);
   for (const member of party) add(member.photoUrl);
+  for (const media of extraMedia) add(media);
   return paths;
 }
 
@@ -296,6 +443,14 @@ function normalizeWebsiteTranslationText(value: unknown): Record<string, string>
   return out;
 }
 
+function cleanGuestPhotoFileName(name: string): string {
+  return (name || "guest-photo")
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 140) || "guest-photo";
+}
+
 async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelect) {
   const [profile] = await db
     .select()
@@ -350,6 +505,16 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
   if (invitationColors.rsvpHotelBlockId !== undefined && invitationColors.rsvpHotelBlockId !== null) {
     customText._rsvpHotelBlockId = String(invitationColors.rsvpHotelBlockId);
   }
+  const guestPhotoSettings = guestPhotoDropSettings(customText);
+  const showGuestPhotosOnWebsite = guestPhotoShowsOnWebsite(guestPhotoSettings);
+  const approvedGuestPhotos = showGuestPhotosOnWebsite
+    ? await db
+      .select()
+      .from(guestPhotoUploads)
+      .where(and(eq(guestPhotoUploads.websiteId, row.id), eq(guestPhotoUploads.status, "approved")))
+      .orderBy(desc(guestPhotoUploads.uploadedAt))
+      .limit(120)
+    : [];
 
   return {
     slug: row.slug,
@@ -366,6 +531,18 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
     galleryImages: mapWebsiteMedia(row, row.galleryImages),
     heroImages: mapWebsiteMedia(row, row.heroImages ?? []),
     heroImage: websiteMediaUrl(row, row.heroImage) ?? row.heroImage,
+    guestPhotoDrop: guestPhotoSettings.enabled
+      ? {
+        ...guestPhotoSettings,
+        galleryEnabled: showGuestPhotosOnWebsite,
+        photos: approvedGuestPhotos.map((photo) => serializeGuestPhotoUpload(photo, row, false, showGuestPhotosOnWebsite)),
+      }
+      : {
+        ...guestPhotoSettings,
+        enabled: false,
+        galleryEnabled: false,
+        photos: [],
+      },
     portalParty: portalParty.map((member) => ({
       ...member,
       photoUrl: websiteMediaUrl(row, member.photoUrl) ?? member.photoUrl,
@@ -616,6 +793,138 @@ router.get("/website/me", requireAuth, async (req, res) => {
     res.json({ ...serialize(row), portalParty: partyMembers });
   } catch (err) {
     req.log.error(err, "getWebsite failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ---------- Guest Photo Drop management ----------
+
+router.get("/website/photo-drop", requireAuth, async (req, res) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(404).json({ error: "Wedding profile not found" });
+
+    const [site] = await db
+      .select()
+      .from(weddingWebsites)
+      .where(eq(weddingWebsites.profileId, profile.id))
+      .limit(1);
+    if (!site) return res.status(404).json({ error: "Website not created yet" });
+
+    const uploads = await db
+      .select()
+      .from(guestPhotoUploads)
+      .where(eq(guestPhotoUploads.websiteId, site.id))
+      .orderBy(desc(guestPhotoUploads.uploadedAt));
+    const settings = guestPhotoDropSettings(site.customText);
+    const publicUploadUrl = `${buildFrontendOrigin(req).replace(/\/+$/, "")}/w/${site.slug}/guest-photo-drop`;
+
+    res.json({
+      website: serialize(site),
+      settings,
+      publicUploadUrl,
+      summary: {
+        total: uploads.length,
+        pending: uploads.filter((u) => u.status === "pending").length,
+        approved: uploads.filter((u) => u.status === "approved").length,
+        hidden: uploads.filter((u) => u.status === "hidden").length,
+      },
+      uploads: uploads.map((upload) => serializeGuestPhotoUpload(upload, site, true, guestPhotoShowsOnWebsite(settings))),
+    });
+  } catch (err) {
+    req.log.error(err, "guestPhotoDropGet failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.put("/website/photo-drop/settings", requireAuth, async (req, res) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(404).json({ error: "Wedding profile not found" });
+
+    const [site] = await db
+      .select()
+      .from(weddingWebsites)
+      .where(eq(weddingWebsites.profileId, profile.id))
+      .limit(1);
+    if (!site) return res.status(404).json({ error: "Website not created yet" });
+
+    const body = (req.body ?? {}) as Partial<GuestPhotoDropSettings>;
+    const customText = mergeGuestPhotoDropSettings(site.customText ?? {}, body);
+    const [updated] = await db
+      .update(weddingWebsites)
+      .set({ customText, lastUpdated: new Date() })
+      .where(and(eq(weddingWebsites.id, site.id), eq(weddingWebsites.profileId, profile.id)))
+      .returning();
+
+    res.json({ settings: guestPhotoDropSettings(updated.customText), website: serialize(updated) });
+  } catch (err) {
+    req.log.error(err, "guestPhotoDropSettings failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.put("/website/photo-drop/uploads/:id", requireAuth, async (req, res) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(404).json({ error: "Wedding profile not found" });
+
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid photo id" });
+    const status = String(req.body?.status ?? "").trim().toLowerCase();
+    if (!["pending", "approved", "hidden"].includes(status)) return res.status(400).json({ error: "Invalid status" });
+
+    const [site] = await db
+      .select()
+      .from(weddingWebsites)
+      .where(eq(weddingWebsites.profileId, profile.id))
+      .limit(1);
+    if (!site) return res.status(404).json({ error: "Website not created yet" });
+
+    const [updated] = await db
+      .update(guestPhotoUploads)
+      .set({ status, approvedAt: status === "approved" ? new Date() : null })
+      .where(and(eq(guestPhotoUploads.id, id), eq(guestPhotoUploads.websiteId, site.id), eq(guestPhotoUploads.profileId, profile.id)))
+      .returning();
+    if (!updated) return res.status(404).json({ error: "Photo not found" });
+
+    res.json({ upload: serializeGuestPhotoUpload(updated, site, true) });
+  } catch (err) {
+    req.log.error(err, "guestPhotoDropUpdateUpload failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/website/photo-drop/uploads/:id", requireAuth, async (req, res) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(404).json({ error: "Wedding profile not found" });
+
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid photo id" });
+    const [site] = await db
+      .select({ id: weddingWebsites.id })
+      .from(weddingWebsites)
+      .where(eq(weddingWebsites.profileId, profile.id))
+      .limit(1);
+    if (!site) return res.status(404).json({ error: "Website not created yet" });
+
+    const [deleted] = await db
+      .delete(guestPhotoUploads)
+      .where(and(eq(guestPhotoUploads.id, id), eq(guestPhotoUploads.websiteId, site.id), eq(guestPhotoUploads.profileId, profile.id)))
+      .returning({ id: guestPhotoUploads.id });
+    if (!deleted) return res.status(404).json({ error: "Photo not found" });
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error(err, "guestPhotoDropDeleteUpload failed");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -1113,7 +1422,14 @@ router.get("/website/public/:slug/media/*objectPath", async (req: Request, res: 
       .select({ photoUrl: weddingParty.photoUrl })
       .from(weddingParty)
       .where(eq(weddingParty.profileId, row.profileId));
-    if (!collectWebsiteMediaPaths(row, party).has(objectPath)) {
+    const guestPhotoSettings = guestPhotoDropSettings(row.customText);
+    const photoRows = guestPhotoShowsOnWebsite(guestPhotoSettings)
+      ? await db
+        .select({ imageUrl: guestPhotoUploads.imageUrl })
+        .from(guestPhotoUploads)
+        .where(and(eq(guestPhotoUploads.websiteId, row.id), eq(guestPhotoUploads.status, "approved")))
+      : [];
+    if (!collectWebsiteMediaPaths(row, party, photoRows.map((photo) => photo.imageUrl)).has(objectPath)) {
       return res.status(404).json({ error: "Not found" });
     }
 
@@ -1329,6 +1645,101 @@ async function normalizeHotelRsvp(
   }
   return update;
 }
+
+// POST /api/website/public/:slug/photo-drop
+// Public upload endpoint for the wedding-day QR code. The site must be
+// published, the couple must have Guest Photo Drop enabled, and photos are
+// private until approved unless the couple disables approval.
+router.post(
+  "/website/public/:slug/photo-drop",
+  guestPhotoPublicLimiter,
+  (req, res, next) => {
+    guestPhotoUpload.array("photos", GUEST_PHOTO_MAX_FILES)(req, res, (err) => {
+      if (!err) return next();
+      const code = (err as { code?: string })?.code;
+      if (code === "LIMIT_FILE_SIZE") {
+        return res.status(413).json({ error: "Each photo must be 5 MB or smaller." });
+      }
+      if (code === "LIMIT_FILE_COUNT") {
+        return res.status(400).json({ error: `You can upload up to ${GUEST_PHOTO_MAX_FILES} photos at once.` });
+      }
+      const msg = err instanceof Error ? err.message : "Invalid photo upload.";
+      req.log?.warn({ error: msg }, "Guest photo upload rejected");
+      return res.status(400).json({ error: msg });
+    });
+  },
+  async (req, res) => {
+    try {
+      if (await sendMaintenanceIfActive(res, "wedding-website")) return;
+      const slug = String(req.params.slug ?? "").toLowerCase();
+      const r = await resolvePublishedSite(slug, req);
+      if (!r.ok) return res.status(r.status).json({ error: r.status === 401 ? "Password required" : "Not found" });
+
+      const settings = guestPhotoDropSettings(r.site.customText);
+      if (!settings.enabled) return res.status(404).json({ error: "Guest photo sharing is not available for this wedding." });
+
+      const files = Array.isArray(req.files) ? (req.files as Express.Multer.File[]) : [];
+      if (files.length === 0) return res.status(400).json({ error: "Please choose at least one photo." });
+      if (files.length > settings.maxUploads) {
+        return res.status(400).json({ error: `Please upload no more than ${settings.maxUploads} photos at once.` });
+      }
+
+      const cleanName = String(req.body?.guestName ?? "").trim().replace(/\s+/g, " ").slice(0, 120);
+      if (!cleanName) return res.status(400).json({ error: "Please enter your name before uploading." });
+      const cleanEmail = String(req.body?.guestEmail ?? "").trim().toLowerCase().slice(0, 200);
+      if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+        return res.status(400).json({ error: "Email address looks invalid." });
+      }
+      const note = String(req.body?.note ?? "").trim().slice(0, 500);
+
+      const [profile] = await db
+        .select({ id: weddingProfiles.id, userId: weddingProfiles.userId })
+        .from(weddingProfiles)
+        .where(eq(weddingProfiles.id, r.site.profileId))
+        .limit(1);
+      if (!profile) return res.status(404).json({ error: "Wedding profile not found" });
+
+      const status = settings.approvalRequired ? "pending" : "approved";
+      const createdRows: Array<typeof guestPhotoUploads.$inferSelect> = [];
+      for (const file of files) {
+        const originalName = cleanGuestPhotoFileName(file.originalname);
+        const fileUrl = await objectStorageService.uploadObjectEntityFile(file.buffer, originalName, file.mimetype || "image/jpeg", {
+          owner: profile.userId,
+          visibility: "private",
+        });
+        const [created] = await db
+          .insert(guestPhotoUploads)
+          .values({
+            websiteId: r.site.id,
+            profileId: r.site.profileId,
+            guestName: cleanName,
+            guestEmail: cleanEmail || null,
+            note: note || null,
+            imageUrl: fileUrl,
+            originalName,
+            contentType: file.mimetype || "image/jpeg",
+            fileSize: file.size,
+            status,
+            approvedAt: status === "approved" ? new Date() : null,
+          })
+          .returning();
+        createdRows.push(created);
+      }
+
+      res.status(201).json({
+        success: true,
+        status,
+        count: createdRows.length,
+        message: settings.approvalRequired
+          ? "Thanks! Your photos were uploaded and are waiting for the couple to approve."
+          : "Thanks! Your photos were uploaded.",
+      });
+    } catch (err) {
+      req.log.error(err, "guestPhotoDropPublicUpload failed");
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+);
 
 // GET /api/website/public/:slug/guests/search?q=name
 // Returns guests on this wedding's list whose name fuzzy-matches the query.

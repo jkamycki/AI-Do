@@ -37,6 +37,7 @@ const routePrefetchers: Record<string, () => Promise<unknown>> = {
   "/budget": () => import("@/pages/Budget"),
   "/documents": () => import("@/pages/DocumentLibrary"),
   "/guests": () => import("@/pages/GuestListAndInvitations"),
+  "/guest-photo-drop": () => import("@/pages/GuestPhotoDrop"),
   "/wedding-party": () => import("@/pages/WeddingParty"),
   "/seating-chart": () => import("@/pages/SeatingChart"),
   "/hotels": () => import("@/pages/Hotels"),
@@ -315,7 +316,7 @@ export function Sidebar() {
 
   useEffect(() => {
     if (!isSignedIn) return;
-    const warmRoutes = ["/dashboard", "/profile", "/budget", "/vendors", "/guests", "/timeline", "/checklist"];
+    const warmRoutes = ["/dashboard", "/profile", "/budget", "/vendors", "/guests", "/guest-photo-drop", "/timeline", "/checklist"];
     const warm = () => warmRoutes.forEach(prefetchSidebarRoute);
     const idleId =
       "requestIdleCallback" in window
@@ -379,6 +380,7 @@ export function Sidebar() {
       defaultOpen: false,
       items: [
         { href: "/guests", label: t("nav.guests", { defaultValue: "Guest List & Invitations" }) },
+        { href: "/guest-photo-drop", label: t("sidebar.guest_photo_drop", { defaultValue: "Guest Photo Drop" }) },
         { href: "/wedding-party", label: t("nav.party", { defaultValue: "Wedding Party" }) },
         { href: "/seating-chart", label: t("nav.seating", { defaultValue: "Seating Chart" }) },
         { href: "/hotels", label: t("nav.hotels", { defaultValue: "Hotel Blocks" }) },
@@ -386,10 +388,10 @@ export function Sidebar() {
     },
     {
       id: "day-of",
-      label: t("sidebar.day_of_section", { defaultValue: "Day-Of" }),
+      label: t("sidebar.day_of_section", { defaultValue: "Wedding Day" }),
       defaultOpen: true,
       items: [
-        { href: "/day-of", label: t("sidebar.day_of_planner", { defaultValue: "Day-Of Planner" }) },
+        { href: "/day-of", label: t("sidebar.day_of_planner", { defaultValue: "Coordinator Plan" }) },
       ],
     },
     {

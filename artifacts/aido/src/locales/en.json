@@ -99,6 +99,9 @@
     "light_palette_mode": "Light palette mode",
     "switch_to_light": "Switch to light mode",
     "switch_to_dark": "Switch to dark mode",
+    "day_of_section": "Wedding Day",
+    "day_of_planner": "Coordinator Plan",
+    "guest_photo_drop": "Guest Photo Drop",
     "settings_section": "Settings & Support",
     "account_collaborators": "Account & Collaborators",
     "sign_out": "Sign Out"

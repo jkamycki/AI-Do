@@ -1,4 +1,4 @@
-import { useEffect, useState, useId, useRef } from "react";
+import { useEffect, useState, useId, useRef, type KeyboardEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
 import { useGetGuests, useGetProfile, getGetGuestsQueryKey, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
@@ -170,16 +170,6 @@ function seatingDisplayRows(guestNames: string[], seatingGuests: Guest[]) {
   });
 }
 
-function tableDisplayLabel(index: number) {
-  let value = index;
-  let label = "";
-  do {
-    label = String.fromCharCode(65 + (value % 26)) + label;
-    value = Math.floor(value / 26) - 1;
-  } while (value >= 0);
-  return label;
-}
-
 function seatingPreviewSeats(guestNames: string[], seatingGuests: Guest[], seatsPerTable: number) {
   const rows = seatingDisplayRows(guestNames, seatingGuests);
   const assigned = rows.flatMap<PreviewSeat>((row) => {
@@ -187,7 +177,7 @@ function seatingPreviewSeats(guestNames: string[], seatingGuests: Guest[], seats
     if (row.plusOneLabel) {
       const plusOneName = row.plusOneLabel.replace(/^\+\s*/, "").trim();
       seats.push({
-        label: plusOneName && plusOneName !== "1" ? plusOneName : "Plus one",
+        label: plusOneName && plusOneName !== "1" ? plusOneName : `${row.name}'s plus-one`,
         moveName: row.name,
         isPlusOne: true,
       });
@@ -469,21 +459,60 @@ function SeatingPreviewTable({
   seatsPerTable,
   seatingGuests,
   onMoveGuest,
+  onUpdateTable,
 }: {
   table: SeatingTable;
   index: number;
   seatsPerTable: number;
   seatingGuests: Guest[];
   onMoveGuest: (fromTableNumber: number, toTableNumber: number, guestName: string) => void;
+  onUpdateTable: (tableNumber: number, updates: { tableName?: string; theme?: string }) => void;
 }) {
   const [dragOver, setDragOver] = useState(false);
   const seatTotal = Math.max(2, Math.min(20, Math.round(seatsPerTable)));
   const { seats, overflow, assignedCount } = seatingPreviewSeats(table.guests, seatingGuests, seatTotal);
-  const tableLabel = tableDisplayLabel(index);
+  const tableLabel = String(table.tableNumber);
+  const defaultTableName = `Table ${table.tableNumber}`;
+  const customTableName = table.tableName?.trim() && table.tableName.trim() !== defaultTableName
+    ? table.tableName.trim()
+    : "";
+  const [nameDraft, setNameDraft] = useState(customTableName);
+  const [descriptionDraft, setDescriptionDraft] = useState(table.theme ?? "");
   const tableSize = seatTotal > 14 ? 124 : seatTotal > 10 ? 116 : 104;
   const seatSize = seatTotal > 14 ? 20 : 23;
   const stageSize = tableSize + 58;
   const accent = TABLE_ACCENTS[index % TABLE_ACCENTS.length];
+
+  useEffect(() => {
+    setNameDraft(customTableName);
+    setDescriptionDraft(table.theme ?? "");
+  }, [customTableName, table.theme]);
+
+  const commitName = () => {
+    const nextName = nameDraft.trim() || defaultTableName;
+    if (nextName !== table.tableName) {
+      onUpdateTable(table.tableNumber, { tableName: nextName });
+    }
+  };
+
+  const commitDescription = () => {
+    const nextDescription = descriptionDraft.trim();
+    if (nextDescription !== (table.theme ?? "")) {
+      onUpdateTable(table.tableNumber, { theme: nextDescription });
+    }
+  };
+
+  const handleFieldKeyDown = (e: KeyboardEvent<HTMLInputElement>, commit: () => void, reset: () => void) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      commit();
+      e.currentTarget.blur();
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      reset();
+    }
+  };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -507,14 +536,39 @@ function SeatingPreviewTable({
       onDrop={handleDrop}
       className={`rounded-2xl border bg-white/85 p-3 shadow-[0_12px_30px_rgba(141,41,77,0.08)] transition-all ${dragOver ? "ring-2 ring-primary/70 scale-[1.01]" : "border-primary/10"}`}
     >
-      <div className="flex items-center justify-between gap-3 mb-2">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/70">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="min-w-0 flex-1">
+          <p className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.18em] text-primary/70">
             Table {tableLabel}
           </p>
-          <p className="text-sm font-semibold text-foreground truncate">
-            {table.tableName || `Table ${table.tableNumber}`}
-          </p>
+          <div className="mt-2 grid gap-2">
+            <label className="relative block">
+              <span className="sr-only">Table name</span>
+              <Input
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onBlur={commitName}
+                onKeyDown={(e) => handleFieldKeyDown(e, commitName, () => setNameDraft(customTableName))}
+                placeholder={`Name ${defaultTableName}`}
+                className="h-9 rounded-xl border-primary/15 bg-white/80 pr-8 text-sm font-semibold shadow-sm placeholder:text-muted-foreground/55 focus-visible:ring-primary/25"
+                data-testid={`input-preview-table-name-${table.tableNumber}`}
+              />
+              <Pencil className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-primary/45" />
+            </label>
+            <label className="relative block">
+              <span className="sr-only">Table description</span>
+              <Input
+                value={descriptionDraft}
+                onChange={(e) => setDescriptionDraft(e.target.value)}
+                onBlur={commitDescription}
+                onKeyDown={(e) => handleFieldKeyDown(e, commitDescription, () => setDescriptionDraft(table.theme ?? ""))}
+                placeholder="Add a description for this table"
+                className="h-9 rounded-xl border-primary/15 bg-white/70 pr-8 text-xs shadow-sm placeholder:text-muted-foreground/55 focus-visible:ring-primary/25"
+                data-testid={`input-preview-table-description-${table.tableNumber}`}
+              />
+              <Pencil className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-primary/35" />
+            </label>
+          </div>
         </div>
         <Badge variant={assignedCount > seatTotal ? "destructive" : "secondary"} className="rounded-full">
           {Math.min(assignedCount, seatTotal)} / {seatTotal}
@@ -581,7 +635,7 @@ function SeatingPreviewTable({
                 e.dataTransfer.effectAllowed = "move";
               }}
               className={`grid grid-cols-[2rem_1fr] border-t border-primary/10 ${seat ? "cursor-grab active:cursor-grabbing hover:bg-primary/5" : "text-muted-foreground/55"}`}
-              title={seat ? "Drag to another table" : "Open seat"}
+              title={seat ? (seat.isPlusOne ? `Linked to ${seat.moveName}; drag to move both seats` : "Drag to another table") : "Open seat"}
             >
               <div className="border-r border-primary/10 px-2 py-1 tabular-nums">{seatIndex + 1}</div>
               <div className="px-2 py-1 truncate">
@@ -612,12 +666,14 @@ function SeatingFloorPlanPreview({
   seatsPerTable,
   seatingGuests,
   onMoveGuest,
+  onUpdateTable,
 }: {
   tables: SeatingTable[];
   tableCount: number;
   seatsPerTable: number;
   seatingGuests: Guest[];
   onMoveGuest: (fromTableNumber: number, toTableNumber: number, guestName: string) => void;
+  onUpdateTable: (tableNumber: number, updates: { tableName?: string; theme?: string }) => void;
 }) {
   const { t } = useTranslation();
   const seatTotal = Math.max(2, Math.min(20, Math.round(seatsPerTable)));
@@ -663,12 +719,13 @@ function SeatingFloorPlanPreview({
                 seatsPerTable={seatTotal}
                 seatingGuests={seatingGuests}
                 onMoveGuest={onMoveGuest}
+                onUpdateTable={onUpdateTable}
               />
             ))}
           </div>
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          {t("seating.floor_plan_drag_hint", { defaultValue: "Tip: drag a guest name in the preview or in the table cards below to move them to another table." })}
+          {t("seating.floor_plan_drag_hint", { defaultValue: "Tip: edit table names and descriptions here, then drag a guest name to move them between tables." })}
         </p>
       </CardContent>
     </Card>
@@ -824,7 +881,7 @@ export default function SeatingChartPage() {
     setChartDirty(true);
   };
 
-  const updateTable = (tableNumber: number, updates: { theme?: string }) => {
+  const updateTable = (tableNumber: number, updates: { tableName?: string; theme?: string }) => {
     if (!result) return;
     const tables = result.tables.map(t =>
       t.tableNumber === tableNumber ? { ...t, ...updates } : t
@@ -1890,30 +1947,8 @@ export default function SeatingChartPage() {
             seatsPerTable={seatsPerTable}
             seatingGuests={guests}
             onMoveGuest={moveGuest}
+            onUpdateTable={updateTable}
           />
-
-          <div>
-            <h3 className="font-serif text-xl font-semibold text-foreground">
-              {t("seating.editable_table_cards", { defaultValue: "Editable Table Assignments" })}
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              {t("seating.editable_table_cards_desc", { defaultValue: "Use these cards for detailed edits, table notes, and quick move menus." })}
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {result.tables.map((table, i) => (
-              <TableCard
-                key={table.tableNumber}
-                table={table}
-                index={i}
-                allTables={result.tables}
-                seatingGuests={guests}
-                onMoveGuest={moveGuest}
-                onUpdateTable={updateTable}
-              />
-            ))}
-          </div>
 
           <div className="flex items-center justify-center gap-6 pt-2 text-sm text-muted-foreground border-t border-border/50">
             <span>{t("seating.guests_seated", { n: result.totalSeated })}</span>

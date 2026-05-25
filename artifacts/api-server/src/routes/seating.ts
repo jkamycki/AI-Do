@@ -122,6 +122,12 @@ type SeatingGenerationResult = {
   totalSeated: number;
 };
 
+type SeparationPair = {
+  leftName: string;
+  rightName: string;
+  source: "relationship" | "notes";
+};
+
 function extractJsonObject(raw: string): unknown {
   try {
     return JSON.parse(raw);
@@ -138,6 +144,182 @@ function extractJsonObject(raw: string): unknown {
 function attachedGuestFromPlusOneNote(notes?: string | null) {
   const match = (notes ?? "").match(/^Plus one for\s+(.+)$/i);
   return match?.[1]?.trim() || null;
+}
+
+function normalizePersonName(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function cleanRuleName(value: string): string {
+  return value
+    .replace(/["'“”‘’]/g, "")
+    .replace(/\b(?:please|guest|guests|person|people|named|called|the)\b/gi, " ")
+    .replace(/\b(?:at|on|in)\s+(?:the\s+)?same\s+table\b/gi, " ")
+    .replace(/\b(?:same\s+table|together|near\s+each\s+other)\b/gi, " ")
+    .replace(/[.,;:!?]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseSeparationNotePairs(additionalNotes?: string): Array<{ left: string; right: string }> {
+  const notes = (additionalNotes ?? "").trim();
+  if (!notes) return [];
+
+  const patterns: RegExp[] = [
+    /\b(?:do\s*not|don't|dont|never)\s+(?:put|seat|place)\s+(.+?)\s+(?:and|&|\+)\s+(.+?)\s+(?:at|on|in)\s+(?:the\s+)?same\s+table\b/i,
+    /\b(?:do\s*not|don't|dont|never)\s+(?:put|seat|place)\s+(.+?)\s+(?:with|next\s+to|near)\s+(.+?)$/i,
+    /\b(?:keep|seat)\s+(.+?)\s+(?:away|apart|separate)\s+from\s+(.+?)$/i,
+    /\bseparate\s+(.+?)\s+(?:and|&|\+)\s+(.+?)$/i,
+    /\b(.+?)\s+(?:and|&|\+)\s+(.+?)\s+(?:should|must|can)\s*(?:not|n't)\s+(?:sit|be\s+seated|be|go)\s+(?:together|at|on|in)\b/i,
+  ];
+
+  return notes
+    .split(/[\n.;]+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .flatMap((line) => {
+      for (const pattern of patterns) {
+        const match = line.match(pattern);
+        if (!match) continue;
+        const left = cleanRuleName(match[1] ?? "");
+        const right = cleanRuleName(match[2] ?? "");
+        if (left && right) return [{ left, right }];
+      }
+      return [];
+    });
+}
+
+function resolveGuestNamesFromRuleToken(token: string, inputGuests: Guest[]): string[] {
+  const tokenKey = normalizePersonName(token);
+  if (!tokenKey) return [];
+
+  return inputGuests
+    .map((guest) => guest.name?.trim())
+    .filter((name): name is string => Boolean(name))
+    .filter((name) => {
+      const nameKey = normalizePersonName(name);
+      const nameParts = nameKey.split(" ").filter(Boolean);
+      return nameKey === tokenKey || nameParts.includes(tokenKey);
+    });
+}
+
+function collectSeparationPairs(inputGuests: Guest[], additionalNotes?: string): SeparationPair[] {
+  const guestById = new Map(inputGuests.map((guest) => [guest.id, guest]));
+  const pairByKey = new Map<string, SeparationPair>();
+  const addPair = (leftName: string, rightName: string, source: SeparationPair["source"]) => {
+    const left = leftName.trim();
+    const right = rightName.trim();
+    const leftKey = normalizePersonName(left);
+    const rightKey = normalizePersonName(right);
+    if (!leftKey || !rightKey || leftKey === rightKey) return;
+    const key = [leftKey, rightKey].sort().join("::");
+    if (!pairByKey.has(key)) {
+      pairByKey.set(key, { leftName: left, rightName: right, source });
+    }
+  };
+
+  for (const guest of inputGuests) {
+    for (const targetId of guest.avoidIds ?? []) {
+      const target = guestById.get(targetId);
+      if (target?.name) addPair(guest.name, target.name, "relationship");
+    }
+  }
+
+  for (const notePair of parseSeparationNotePairs(additionalNotes)) {
+    const leftMatches = resolveGuestNamesFromRuleToken(notePair.left, inputGuests);
+    const rightMatches = resolveGuestNamesFromRuleToken(notePair.right, inputGuests);
+    for (const leftName of leftMatches) {
+      for (const rightName of rightMatches) {
+        addPair(leftName, rightName, "notes");
+      }
+    }
+  }
+
+  return [...pairByKey.values()];
+}
+
+function tableContainsGuest(table: Table, guestKey: string): boolean {
+  return (table.guests ?? []).some((guestName) => normalizePersonName(guestName) === guestKey);
+}
+
+function tableWouldViolatePair(tableGuests: string[], movingGuestName: string, pairs: SeparationPair[]): boolean {
+  const movingKey = normalizePersonName(movingGuestName);
+  const destinationKeys = new Set(tableGuests.map(normalizePersonName));
+  return pairs.some((pair) => {
+    const leftKey = normalizePersonName(pair.leftName);
+    const rightKey = normalizePersonName(pair.rightName);
+    if (movingKey === leftKey) return destinationKeys.has(rightKey);
+    if (movingKey === rightKey) return destinationKeys.has(leftKey);
+    return false;
+  });
+}
+
+function enforceSeparationPairs(
+  tables: Table[],
+  inputGuests: Guest[],
+  tableCount: number,
+  seatsPerTable: number,
+  additionalNotes?: string,
+): { tables: Table[]; insights: string[]; warnings: string[] } {
+  const pairs = collectSeparationPairs(inputGuests, additionalNotes);
+  if (pairs.length === 0) return { tables, insights: [], warnings: [] };
+
+  const weights = seatWeightByName(inputGuests);
+  const working = tables.map((table) => ({ ...table, guests: [...(table.guests ?? [])] }));
+  while (working.length < tableCount) {
+    const tableNumber = working.length + 1;
+    working.push({ tableNumber, tableName: `Table ${tableNumber}`, guests: [], theme: "" });
+  }
+
+  const moveGuestAway = (guestName: string, fromIndex: number): boolean => {
+    const seatsNeeded = weights.get(guestName.trim().toLowerCase()) ?? 1;
+    const destination = working
+      .map((table, index) => ({ table, index }))
+      .filter(({ index }) => index !== fromIndex)
+      .filter(({ table }) => tableSeatCount(table.guests, weights) + seatsNeeded <= seatsPerTable)
+      .filter(({ table }) => !tableWouldViolatePair(table.guests, guestName, pairs))
+      .sort((a, b) => tableSeatCount(a.table.guests, weights) - tableSeatCount(b.table.guests, weights))[0];
+
+    if (!destination) return false;
+
+    const guestKey = normalizePersonName(guestName);
+    const guestIndex = working[fromIndex].guests.findIndex((name) => normalizePersonName(name) === guestKey);
+    if (guestIndex < 0) return false;
+    const [canonicalName] = working[fromIndex].guests.splice(guestIndex, 1);
+    if (!canonicalName) return false;
+    destination.table.guests.push(canonicalName);
+    return true;
+  };
+
+  const applied = new Set<string>();
+  const warnings: string[] = [];
+  for (const pair of pairs) {
+    const leftKey = normalizePersonName(pair.leftName);
+    const rightKey = normalizePersonName(pair.rightName);
+    const leftIndex = working.findIndex((table) => tableContainsGuest(table, leftKey));
+    const rightIndex = working.findIndex((table) => tableContainsGuest(table, rightKey));
+    if (leftIndex < 0 || rightIndex < 0 || leftIndex !== rightIndex) continue;
+
+    const movedRight = moveGuestAway(pair.rightName, rightIndex);
+    const movedLeft = movedRight ? false : moveGuestAway(pair.leftName, leftIndex);
+    if (movedRight || movedLeft) {
+      applied.add(`Kept ${pair.leftName} and ${pair.rightName} at separate tables.`);
+    } else {
+      warnings.push(`Could not separate ${pair.leftName} and ${pair.rightName}; every available table would exceed capacity or create another conflict.`);
+    }
+  }
+
+  return {
+    tables: working.filter((table) => table.guests.length > 0),
+    insights: [...applied],
+    warnings,
+  };
 }
 
 function fallbackSeatingChart(
@@ -400,6 +582,7 @@ Rules:
 4. Group family members and friend groups together
 5. A +1 is not a separate table entry. Treat a guest marked +1 as taking 2 seats at that guest's table. If the +1 has a name, keep that person with the named guest but do not list them as a separate guest in JSON.
 6. Consider placing potential conflict groups at opposite sides of the room (note table order matters)
+7. Treat ADDITIONAL NOTES that say people should not sit together as hard seating constraints.
 
 Return ONLY valid JSON:
 {
@@ -442,8 +625,19 @@ Use only the exact guest names from the list. Never write separate plus-one name
     result.tables = enforceTableCapacity(result.tables, requestedTableCount, requestedSeatsPerTable, guests);
     const seatedAfterCap = result.tables.reduce((n, t) => n + tableSeatCount(t.guests, weights), 0);
     result.tables = backfillUnseatedGuests(result.tables, guests, requestedTableCount, requestedSeatsPerTable);
-    const totalAfterBackfill = result.tables.reduce((n, t) => n + tableSeatCount(t.guests, weights), 0);
     const warnings = [...(result.warnings ?? [])];
+    const insights = [...(result.insights ?? [])];
+    const separationResult = enforceSeparationPairs(
+      result.tables,
+      guests,
+      requestedTableCount,
+      requestedSeatsPerTable,
+      additionalNotes,
+    );
+    result.tables = separationResult.tables;
+    insights.push(...separationResult.insights);
+    warnings.push(...separationResult.warnings);
+    const totalAfterBackfill = result.tables.reduce((n, t) => n + tableSeatCount(t.guests, weights), 0);
     if (overflowed) {
       warnings.push(`Some tables exceeded the ${requestedSeatsPerTable}-seat cap; overflow guests were moved to other tables.`);
     }
@@ -451,6 +645,7 @@ Use only the exact guest names from the list. Never write separate plus-one name
       const added = totalAfterBackfill - seatedAfterCap;
       warnings.push(`Backfilled ${added} guest${added === 1 ? "" : "s"} the AI didn't place — review their tables before saving.`);
     }
+    result.insights = insights;
     result.warnings = warnings;
     result.totalSeated = totalAfterBackfill;
 

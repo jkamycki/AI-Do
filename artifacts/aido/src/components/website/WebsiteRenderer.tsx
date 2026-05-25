@@ -4,6 +4,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type MouseEvent as ReactMouseEvent,
 } from "react";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
@@ -26,6 +27,8 @@ import {
   Bed,
   Share2,
   Check,
+  UploadCloud,
+  Camera,
 } from "lucide-react";
 import {
   EditableText,
@@ -48,6 +51,7 @@ const SECTION_TO_URL: Record<string, string> = {
   registry: "registry",
   weddingParty: "wedding-party",
   gallery: "gallery",
+  photoDrop: "guest-photo-drop",
   faq: "faq",
   rsvp: "rsvp",
 };
@@ -126,6 +130,25 @@ export interface WebsiteRendererPayload {
   }>;
   mealOptions?: Array<{ value: string; label: string }>;
   galleryImages: Array<{ url: string; caption?: string; order: number }>;
+  guestPhotoDrop?: {
+    enabled: boolean;
+    galleryEnabled: boolean;
+    displayMode?: "portal" | "website" | "both";
+    approvalRequired: boolean;
+    maxUploads: number;
+    uploadLimitMb: number;
+    title: string;
+    instructions: string;
+    photos: Array<{
+      id: number;
+      guestName: string;
+      note?: string | null;
+      imageUrl: string;
+      publicImageUrl?: string;
+      status: string;
+      uploadedAt: string;
+    }>;
+  };
   heroImages?: Array<{ url: string; order: number }>;
   heroImage: string | null;
   couple: {
@@ -3212,6 +3235,233 @@ function Gallery({
   );
 }
 
+function GuestPhotoDropSection({
+  data,
+  slug,
+  password,
+}: {
+  data: WebsiteRendererPayload;
+  slug?: string;
+  password?: string | null;
+}) {
+  const drop = data.guestPhotoDrop;
+  const labelColor = sectionTextColor(data, "gallery");
+  const photos = drop?.photos ?? [];
+  const [guestName, setGuestName] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [note, setNote] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const maxUploads = drop?.maxUploads ?? 5;
+  const limitMb = drop?.uploadLimitMb ?? 5;
+
+  if (!drop?.enabled) return null;
+
+  const submitPhotos = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!slug) {
+      setError("Photo sharing is available from the published wedding website.");
+      return;
+    }
+    if (!guestName.trim()) {
+      setError("Please enter your name.");
+      return;
+    }
+    if (files.length === 0) {
+      setError("Please choose at least one photo.");
+      return;
+    }
+    if (files.length > maxUploads) {
+      setError(`Please choose no more than ${maxUploads} photos.`);
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    setMessage(null);
+    const form = new FormData();
+    form.append("guestName", guestName.trim());
+    if (guestEmail.trim()) form.append("guestEmail", guestEmail.trim());
+    if (note.trim()) form.append("note", note.trim());
+    files.forEach((file) => form.append("photos", file));
+    try {
+      const response = await apiFetch(`/api/website/public/${encodeURIComponent(slug)}/photo-drop`, {
+        method: "POST",
+        headers: password ? { "X-Site-Password": password } : undefined,
+        body: form,
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error((body as { error?: string })?.error || "Upload failed.");
+      setMessage((body as { message?: string })?.message || "Thanks! Your photos were uploaded.");
+      setFiles([]);
+      setNote("");
+      const input = document.getElementById("guest-photo-upload") as HTMLInputElement | null;
+      if (input) input.value = "";
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <SectionShell
+      id="photoDrop"
+      titleKey="guest_photos_title"
+      defaultTitle="Guest Photos"
+      icon={<Camera className="h-4 w-4" />}
+      data={data}
+      ctx={NOOP_CTX}
+    >
+      {lightboxIndex !== null && photos.length > 0 && (
+        <Lightbox
+          images={photos.map((photo) => ({ url: photo.publicImageUrl || photo.imageUrl, caption: photo.note || photo.guestName }))}
+          startIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
+      <div className="mx-auto max-w-2xl text-center">
+        <h2
+          className="text-4xl sm:text-5xl leading-tight"
+          style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.primary }}
+        >
+          {drop.title}
+        </h2>
+        <p
+          className="mt-4 text-base leading-7"
+          style={{ color: labelColor, fontFamily: bodyFontStack(bodyFont(data)) }}
+        >
+          {drop.instructions}
+        </p>
+      </div>
+
+      <form
+        onSubmit={submitPhotos}
+        className="mx-auto mt-10 grid max-w-2xl gap-4 rounded-3xl border bg-white/80 p-5 shadow-[0_22px_60px_rgba(91,15,42,0.12)] sm:p-7"
+        style={{ borderColor: `${data.colorPalette.primary}26` }}
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="grid gap-1.5 text-sm font-semibold" style={{ color: data.colorPalette.text }}>
+            Your name
+            <input
+              value={guestName}
+              onChange={(event) => setGuestName(event.target.value)}
+              maxLength={120}
+              className="h-12 rounded-2xl border bg-white px-4 text-base outline-none focus:ring-2"
+              style={{ borderColor: `${data.colorPalette.primary}30`, ["--tw-ring-color" as string]: data.colorPalette.secondary }}
+              placeholder="Jane Smith"
+            />
+          </label>
+          <label className="grid gap-1.5 text-sm font-semibold" style={{ color: data.colorPalette.text }}>
+            Email optional
+            <input
+              type="email"
+              value={guestEmail}
+              onChange={(event) => setGuestEmail(event.target.value)}
+              maxLength={200}
+              className="h-12 rounded-2xl border bg-white px-4 text-base outline-none focus:ring-2"
+              style={{ borderColor: `${data.colorPalette.primary}30`, ["--tw-ring-color" as string]: data.colorPalette.secondary }}
+              placeholder="you@example.com"
+            />
+          </label>
+        </div>
+        <label className="grid gap-1.5 text-sm font-semibold" style={{ color: data.colorPalette.text }}>
+          Note optional
+          <textarea
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            maxLength={500}
+            rows={3}
+            className="rounded-2xl border bg-white px-4 py-3 text-base outline-none focus:ring-2"
+            style={{ borderColor: `${data.colorPalette.primary}30`, ["--tw-ring-color" as string]: data.colorPalette.secondary }}
+            placeholder="A tiny caption or memory from the day"
+          />
+        </label>
+        <label
+          htmlFor="guest-photo-upload"
+          className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed bg-white/70 px-4 py-8 text-center transition hover:bg-white"
+          style={{ borderColor: `${data.colorPalette.primary}35`, color: labelColor }}
+        >
+          <UploadCloud className="mb-3 h-9 w-9" style={{ color: data.colorPalette.primary }} />
+          <span className="text-sm font-bold" style={{ color: data.colorPalette.text }}>
+            Choose up to {maxUploads} photos
+          </span>
+          <span className="mt-1 text-xs">JPG, PNG, WEBP, or HEIC. {limitMb} MB max each.</span>
+          <input
+            id="guest-photo-upload"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+            multiple
+            className="sr-only"
+            onChange={(event) => {
+              const next = Array.from(event.target.files ?? []).slice(0, maxUploads);
+              setFiles(next);
+            }}
+          />
+        </label>
+        {files.length > 0 && (
+          <div className="rounded-2xl bg-[#FFF7F2] px-4 py-3 text-sm" style={{ color: data.colorPalette.text }}>
+            {files.map((file) => file.name).join(", ")}
+          </div>
+        )}
+        {error && (
+          <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </p>
+        )}
+        {message && (
+          <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            {message}
+          </p>
+        )}
+        <button
+          type="submit"
+          disabled={submitting}
+          className="inline-flex min-h-12 items-center justify-center rounded-full px-6 text-sm font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          style={{ background: data.colorPalette.primary }}
+        >
+          {submitting ? "Uploading..." : "Upload Photos"}
+        </button>
+      </form>
+
+      {drop.galleryEnabled && photos.length > 0 && (
+        <div className="mt-14">
+          <h3
+            className="mb-6 text-center text-3xl"
+            style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.primary }}
+          >
+            Shared Moments
+          </h3>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            {photos.map((photo, index) => (
+              <button
+                key={photo.id}
+                type="button"
+                onClick={() => setLightboxIndex(index)}
+                className="group relative aspect-square overflow-hidden rounded-2xl border bg-white shadow-sm"
+                style={{ borderColor: `${data.colorPalette.primary}22` }}
+              >
+                <AuthMediaImage
+                  src={photo.publicImageUrl || photo.imageUrl}
+                  alt={photo.note || `Photo from ${photo.guestName}`}
+                  className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                  loading="lazy"
+                />
+                <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent px-2 pb-2 pt-8 text-left text-xs font-semibold text-white">
+                  {photo.guestName}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </SectionShell>
+  );
+}
+
 export type WeddingPartySide = "groom" | "bride" | "family";
 
 export interface WeddingPartyMember {
@@ -3770,6 +4020,8 @@ function TopNav({
     items.push({ id: "weddingParty", label: navLabel("_navWeddingParty", "Wedding Party") });
   if (data.sectionsEnabled.gallery)
     items.push({ id: "gallery", label: navLabel("_navGallery", "Gallery") });
+  if (data.guestPhotoDrop?.enabled)
+    items.push({ id: "photoDrop", label: navLabel("_navGuestPhotos", "Guest Photos") });
   if (data.sectionsEnabled.faq) items.push({ id: "faq", label: navLabel("_navFaq", "FAQ") });
   if (data.sectionsEnabled.rsvp !== false)
     items.push({ id: "rsvp", label: navLabel("_navRsvp", "RSVP") });
@@ -4036,9 +4288,41 @@ export function WebsiteRenderer({
     enabled && (showAll || currentSection === id);
   // In previewMode, force scroll-based nav so TopNav buttons don't navigate away
   const navSlug = previewMode ? undefined : slug;
+  const handlePreviewNavigation = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!previewMode || !onSectionChange) return;
+    const target = event.target instanceof Element ? event.target : null;
+    const anchor = target?.closest("a[href]") as HTMLAnchorElement | null;
+    if (!anchor) return;
+
+    const rawHref = anchor.getAttribute("href") ?? "";
+    if (!rawHref) return;
+
+    let nextSection: string | null = null;
+    if (rawHref.startsWith("#")) {
+      nextSection = rawHref.slice(1) || "home";
+    } else {
+      let url: URL;
+      try {
+        url = new URL(rawHref, window.location.origin);
+      } catch {
+        return;
+      }
+      const parts = url.pathname.split("/").filter(Boolean);
+      if (parts[0] === "w") {
+        nextSection = sectionFromUrlSegment(parts[2] ?? "");
+      }
+    }
+
+    if (!nextSection) return;
+    event.preventDefault();
+    event.stopPropagation();
+    onSectionChange(nextSection);
+    scrollContainer?.scrollTo({ top: 0, behavior: "auto" });
+  };
 
   return (
     <div
+      onClickCapture={handlePreviewNavigation}
       style={{
         background: data.colorPalette.background,
         color: data.colorPalette.text,
@@ -4079,6 +4363,13 @@ export function WebsiteRenderer({
       {show("faq", data.sectionsEnabled.faq) && <Faq data={data} ctx={ctx} />}
       {show("gallery", data.sectionsEnabled.gallery) && (
         <Gallery data={data} ctx={ctx} />
+      )}
+      {show("photoDrop", data.guestPhotoDrop?.enabled === true) && (
+        <GuestPhotoDropSection
+          data={data}
+          slug={slug}
+          password={password}
+        />
       )}
       {show("rsvp", data.sectionsEnabled.rsvp !== false) &&
         (slug ? (
