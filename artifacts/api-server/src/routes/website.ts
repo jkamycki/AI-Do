@@ -78,7 +78,6 @@ const guestPhotoUsageLimiter = rateLimit({
 });
 
 const GUEST_PHOTO_MAX_FILES = 5;
-const GUEST_PHOTO_DEVICE_TOTAL_LIMIT = 5;
 const GUEST_PHOTO_MAX_FILE_BYTES = 5 * 1024 * 1024;
 const GUEST_PHOTO_ALLOWED_MIMES = new Set([
   "image/jpeg",
@@ -395,12 +394,13 @@ async function countGuestPhotoUploadsForKey(websiteId: number, uploaderKey: stri
   return Number(row?.count ?? 0);
 }
 
-function guestPhotoUsage(uploadedCount: number) {
-  const used = Math.max(0, Math.min(GUEST_PHOTO_DEVICE_TOTAL_LIMIT, Math.floor(uploadedCount)));
+function guestPhotoUsage(uploadedCount: number, totalLimit: number) {
+  const limit = Math.max(1, Math.min(GUEST_PHOTO_MAX_FILES, Math.floor(totalLimit)));
+  const used = Math.max(0, Math.min(limit, Math.floor(uploadedCount)));
   return {
-    limit: GUEST_PHOTO_DEVICE_TOTAL_LIMIT,
+    limit,
     uploadedCount: used,
-    remaining: Math.max(0, GUEST_PHOTO_DEVICE_TOTAL_LIMIT - used),
+    remaining: Math.max(0, limit - used),
   };
 }
 
@@ -1817,7 +1817,7 @@ router.post("/website/public/:slug/photo-drop/usage", guestPhotoUsageLimiter, as
 
     const uploaderKey = guestPhotoUploadKey(req, r.site, req.body?.deviceId);
     const uploadedCount = await countGuestPhotoUploadsForKey(r.site.id, uploaderKey);
-    const usage = guestPhotoUsage(uploadedCount);
+    const usage = guestPhotoUsage(uploadedCount, settings.maxUploads);
     res.json({
       ...usage,
       maxPerUpload: Math.max(0, Math.min(settings.maxUploads, usage.remaining)),
@@ -1867,10 +1867,10 @@ router.post(
       }
       const uploaderKey = guestPhotoUploadKey(req, r.site, req.body?.deviceId);
       const uploadedCount = await countGuestPhotoUploadsForKey(r.site.id, uploaderKey);
-      const usageBeforeUpload = guestPhotoUsage(uploadedCount);
+      const usageBeforeUpload = guestPhotoUsage(uploadedCount, settings.maxUploads);
       if (usageBeforeUpload.remaining <= 0) {
         return res.status(409).json({
-          error: `This phone has already uploaded ${GUEST_PHOTO_DEVICE_TOTAL_LIMIT} photos for this wedding.`,
+          error: `This phone has already uploaded ${usageBeforeUpload.limit} photos for this wedding.`,
           usage: usageBeforeUpload,
         });
       }
@@ -1928,7 +1928,7 @@ router.post(
         success: true,
         status,
         count: createdRows.length,
-        usage: guestPhotoUsage(uploadedCount + createdRows.length),
+        usage: guestPhotoUsage(uploadedCount + createdRows.length, settings.maxUploads),
         message: settings.approvalRequired
           ? "Thanks! Your photos were uploaded and are waiting for the couple to approve."
           : "Thanks! Your photos were uploaded.",
