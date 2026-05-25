@@ -8,7 +8,9 @@ import {
   useGetGuests,
   useGetProfile,
   useGetTimeline,
+  useListVendors,
 } from "@workspace/api-client-react";
+import type { Vendor } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,12 +45,11 @@ import {
   RefreshCw,
   RotateCcw,
   Save,
-  Shirt,
   Siren,
   Sparkles,
   Trash2,
-  UserPlus,
   UsersRound,
+  UserPlus,
   Wand2,
   X,
 } from "lucide-react";
@@ -75,8 +76,6 @@ type DayOfTab =
   | "music"
   | "speeches"
   | "setup"
-  | "attire"
-  | "people"
   | "packing";
 
 type BinderSectionId = Exclude<DayOfTab, "timeline" | "packing">;
@@ -164,8 +163,6 @@ const DAY_OF_TABS: Array<{ id: DayOfTab; label: string; icon: ComponentType<{ cl
   { id: "music", label: "Music", icon: Music },
   { id: "speeches", label: "Speeches", icon: Mic2 },
   { id: "setup", label: "Setup", icon: ClipboardList },
-  { id: "attire", label: "Attire", icon: Shirt },
-  { id: "people", label: "Vendors & Party", icon: UsersRound },
   { id: "packing", label: "Packing", icon: ListChecks },
 ];
 
@@ -297,33 +294,6 @@ const BINDER_SECTIONS: Record<BinderSectionId, BinderSection> = {
       { id: "cleanup", title: "Strike and pickup", helper: "Who packs decor, returns rentals, takes gifts, and handles leftovers." },
     ],
   },
-  attire: {
-    id: "attire",
-    title: "Attire",
-    description: "Outfits, accessories, touch-ups, and backup wardrobe details.",
-    icon: Shirt,
-    items: [
-      { id: "couple-attire", title: "Couple attire", helper: "Outfits, accessories, steaming, bustle, backup shirt, or outfit change." },
-      { id: "wedding-party", title: "Wedding party attire", helper: "Colors, shoes, ties, jewelry, getting-ready deadline, and backups." },
-      { id: "beauty", title: "Beauty touch-up plan", helper: "Lip color, blotting papers, hair pins, fragrance, and who carries them." },
-    ],
-  },
-  people: {
-    id: "people",
-    title: "Vendors & Party",
-    description: "A calm contact sheet for the people keeping the day moving.",
-    icon: UsersRound,
-    items: [
-      { id: "point-person", title: "Day-of point person", helper: "Primary contact for questions so the couple is not interrupted." },
-      { id: "vendor-contacts", title: "Vendor contact sheet", helper: "Lead names, phone numbers, arrival times, and final balances." },
-      { id: "family-vips", title: "Family and VIP notes", helper: "Photo wrangler, sensitive dynamics, accessibility needs, or special honors." },
-      {
-        id: "wedding-party-duties",
-        title: "Wedding party assignments",
-        helper: "Who carries items, signs license, gives tips, handles gifts, or cues guests.",
-      },
-    ],
-  },
 };
 
 function toDisplayTime(raw: any): string {
@@ -379,6 +349,25 @@ function downloadBlob(blob: Blob, filename: string) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+function pdfCell(value: unknown, fallback = "TBD"): string {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return fallback;
+}
+
+function vendorContactRows(vendors: Vendor[]) {
+  return vendors
+    .map((vendor) => ({
+      vendor: pdfCell(vendor.name, "Vendor"),
+      category: pdfCell(vendor.category, "Vendor"),
+      lead: pdfCell((vendor as any).primaryContact, "Lead TBD"),
+      phone: pdfCell((vendor as any).phone, "Phone TBD"),
+      email: pdfCell((vendor as any).email, "Email TBD"),
+      arrival: "Arrival: __________",
+    }))
+    .sort((a, b) => a.category.localeCompare(b.category) || a.vendor.localeCompare(b.vendor));
 }
 
 function makeId(prefix: string) {
@@ -833,6 +822,7 @@ function DayOfInner() {
   const { data: timeline, isLoading: isLoadingTimeline } = useGetTimeline();
   const { data: profile } = useGetProfile();
   const { data: guestListData } = useGetGuests();
+  const { data: vendors = [] } = useListVendors();
   const { activeWorkspace } = useWorkspace();
   const getAdvice = useEmergencyAdvice();
   const generateTimeline = useGenerateTimeline();
@@ -1181,10 +1171,16 @@ function DayOfInner() {
       const muted = "#7B5364";
       let y = margin;
 
+      const paintPageBackground = () => {
+        doc.setFillColor("#FFF9F5");
+        doc.rect(0, 0, pageWidth, pageHeight, "F");
+      };
+
       const ensurePage = (needed = 32) => {
         if (y + needed <= pageHeight - margin) return;
         doc.addPage();
         y = margin;
+        paintPageBackground();
       };
 
       const writeWrapped = (text: string, x: number, width: number, lineHeight = 14) => {
@@ -1193,8 +1189,7 @@ function DayOfInner() {
         y += lines.length * lineHeight;
       };
 
-      doc.setFillColor("#FFF9F5");
-      doc.rect(0, 0, pageWidth, pageHeight, "F");
+      paintPageBackground();
       doc.setFont("times", "bold");
       doc.setFontSize(28);
       doc.setTextColor(burgundy);
@@ -1257,8 +1252,84 @@ function DayOfInner() {
         });
       });
 
-      ensurePage(56);
+      doc.addPage();
+      y = margin;
+      paintPageBackground();
+      doc.setFont("times", "bold");
+      doc.setFontSize(22);
+      doc.setTextColor(burgundy);
+      doc.text("Vendor Contact Sheet", margin, y);
+      y += 18;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(muted);
+      writeWrapped("Quick day-of reference for vendor names, lead contacts, phone numbers, and arrival check-ins. Fill in arrival times after final confirmation.", margin, contentWidth);
       y += 8;
+      const contacts = vendorContactRows(vendors as Vendor[]);
+      if (contacts.length === 0) {
+        doc.setTextColor(ink);
+        writeWrapped("No vendors have been added yet. Add vendors in the Vendor List to populate this page.", margin, contentWidth);
+      } else {
+        const fitText = (value: string, width: number) => {
+          if (doc.getTextWidth(value) <= width) return value;
+          let next = value;
+          while (next.length > 3 && doc.getTextWidth(`${next}...`) > width) {
+            next = next.slice(0, -1);
+          }
+          return `${next.trimEnd()}...`;
+        };
+        const columns = [
+          { label: "Vendor", x: margin + 12, width: 132 },
+          { label: "Category", x: margin + 150, width: 82 },
+          { label: "Lead", x: margin + 238, width: 108 },
+          { label: "Phone", x: margin + 352, width: 88 },
+          { label: "Arrival", x: margin + 446, width: 70 },
+        ];
+        const rowHeight = 26;
+        const headerY = y;
+
+        doc.setFillColor("#FFFFFF");
+        doc.roundedRect(margin, headerY - 4, contentWidth, 28, 10, 10, "F");
+        doc.setDrawColor(235, 203, 210);
+        doc.roundedRect(margin, headerY - 4, contentWidth, 28, 10, 10, "S");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(burgundy);
+        columns.forEach((column) => doc.text(column.label.toUpperCase(), column.x, headerY + 13));
+        y += 32;
+
+        const maxRows = Math.max(0, Math.floor((pageHeight - margin - y - 24) / rowHeight));
+        const visibleContacts = contacts.slice(0, maxRows);
+        visibleContacts.forEach((row, index) => {
+          const rowY = y + index * rowHeight;
+          if (index % 2 === 0) {
+            doc.setFillColor("#FFFFFF");
+            doc.rect(margin, rowY - 8, contentWidth, rowHeight, "F");
+          }
+          doc.setDrawColor(245, 222, 226);
+          doc.line(margin, rowY + 17, margin + contentWidth, rowY + 17);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(8.5);
+          doc.setTextColor(ink);
+          doc.text(fitText(row.vendor, columns[0].width), columns[0].x, rowY + 8);
+          doc.text(fitText(row.category, columns[1].width), columns[1].x, rowY + 8);
+          doc.text(fitText(row.lead, columns[2].width), columns[2].x, rowY + 8);
+          doc.text(fitText(row.phone, columns[3].width), columns[3].x, rowY + 8);
+          doc.text("________", columns[4].x, rowY + 8);
+        });
+        y += visibleContacts.length * rowHeight + 8;
+
+        if (contacts.length > visibleContacts.length) {
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(8.5);
+          doc.setTextColor(muted);
+          doc.text(`${contacts.length - visibleContacts.length} more vendors are saved in the Vendor List.`, margin, y);
+        }
+      }
+
+      doc.addPage();
+      y = margin;
+      paintPageBackground();
       doc.setFont("times", "bold");
       doc.setFontSize(18);
       doc.setTextColor(burgundy);
@@ -1326,7 +1397,7 @@ function DayOfInner() {
             </h1>
             <p className="mt-3 max-w-2xl text-base leading-7 text-[#7B5364]">
               A cleaner run-of-show binder for your timeline, ceremony cues, music, speeches,
-              setup details, attire, contacts, and packing.
+              setup details, vendor contacts, and packing.
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
               <Button
