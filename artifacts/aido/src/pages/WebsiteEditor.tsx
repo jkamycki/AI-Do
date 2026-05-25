@@ -1799,38 +1799,56 @@ export default function WebsiteEditor() {
           </div>
           {editingRecord.published && (
             <div className="mt-3 space-y-2">
-              <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 text-xs">
-                <Globe className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                <a
-                  href={publicUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="truncate flex-1 font-mono hover:underline"
-                  onClick={(e) => {
-                    // Flush and save before opening the published site so the
-                    // visitor sees the latest edits rather than a stale snapshot.
-                    // requestAnimationFrame waits one paint so flushPendingEditableCommits'
-                    // state update lands in recordRef before saveNow reads it.
-                    e.preventDefault();
-                    flushPendingEditableCommits();
-                    requestAnimationFrame(() => saveNow(true).then(() => window.open(publicUrl, "_blank", "noopener,noreferrer")));
-                  }}
-                >
-                  {publicUrl}
-                </a>
-                <Button size="sm" variant="ghost" className="h-6 px-2" onClick={copyLink}>
-                  {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 px-2"
-                  onClick={() => setQrOpen((v) => !v)}
-                  title={qrOpen ? t("website_editor.hide_qr", { defaultValue: "Hide QR code" }) : t("website_editor.generate_qr", { defaultValue: "Generate QR code" })}
-                >
-                  <QrCode className="h-3 w-3" />
-                </Button>
-              </div>
+              {qrOpen ? (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 text-xs">
+                  <QrCode className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                  <span className="flex-1 font-semibold text-[#5B0F2A]">
+                    QR Code Generator
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2"
+                    onClick={() => setQrOpen(false)}
+                    title={t("website_editor.hide_qr", { defaultValue: "Hide QR code" })}
+                  >
+                    Hide
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 text-xs">
+                  <Globe className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                  <a
+                    href={publicUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="truncate flex-1 font-mono hover:underline"
+                    onClick={(e) => {
+                      // Flush and save before opening the published site so the
+                      // visitor sees the latest edits rather than a stale snapshot.
+                      // requestAnimationFrame waits one paint so flushPendingEditableCommits'
+                      // state update lands in recordRef before saveNow reads it.
+                      e.preventDefault();
+                      flushPendingEditableCommits();
+                      requestAnimationFrame(() => saveNow(true).then(() => window.open(publicUrl, "_blank", "noopener,noreferrer")));
+                    }}
+                  >
+                    {publicUrl}
+                  </a>
+                  <Button size="sm" variant="ghost" className="h-6 px-2" onClick={copyLink}>
+                    {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2"
+                    onClick={() => setQrOpen(true)}
+                    title={t("website_editor.generate_qr", { defaultValue: "Generate QR code" })}
+                  >
+                    <QrCode className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
               {qrOpen && (
                 <div className="rounded-md border bg-background p-3">
                   <QrCodeSection publicUrl={publicUrl} published={editingRecord.published} />

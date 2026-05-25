@@ -12,6 +12,8 @@ import {
   Loader2,
   QrCode,
   RefreshCw,
+  RotateCcw,
+  Sparkles,
   Trash2,
   UploadCloud,
 } from "lucide-react";
@@ -91,6 +93,24 @@ const displayModeCopy: Record<GuestPhotoSettings["displayMode"], { label: string
   },
 };
 
+const GENERIC_GUEST_PHOTO_INSTRUCTIONS: Record<GuestPhotoSettings["displayMode"], string> = {
+  portal:
+    "Share your favorite wedding day moments here. Add a caption if you'd like, and the couple will review every photo privately.",
+  website:
+    "Share your favorite wedding day moments here. Add a caption if you'd like, and once the couple approves your photos, they may appear in the wedding website gallery.",
+  both:
+    "Share your favorite wedding day moments here. Add a caption if you'd like, and once the couple approves your photos, they may appear in the couple's gallery.",
+};
+
+const GENERIC_GUEST_PHOTO_INSTRUCTION_SET = new Set<string>([
+  ...Object.values(GENERIC_GUEST_PHOTO_INSTRUCTIONS),
+  "Share your favorite moments from the wedding day. The couple will review photos before they appear on the website.",
+]);
+
+function genericGuestPhotoInstructions(displayMode: GuestPhotoSettings["displayMode"]) {
+  return GENERIC_GUEST_PHOTO_INSTRUCTIONS[displayMode] ?? GENERIC_GUEST_PHOTO_INSTRUCTIONS.both;
+}
+
 async function readJson<T>(response: Response): Promise<T> {
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -142,6 +162,7 @@ export default function GuestPhotoDrop() {
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
   const [draft, setDraft] = useState<GuestPhotoSettings | null>(null);
+  const [generatingInstructions, setGeneratingInstructions] = useState(false);
 
   const photoDropQuery = useQuery<GuestPhotoDropData>({
     queryKey: ["guest-photo-drop"],
@@ -244,6 +265,61 @@ export default function GuestPhotoDrop() {
     const next = { ...settings, ...patch };
     setDraft(next);
     saveSettings.mutate(next);
+  };
+
+  const updateDisplayMode = (value: GuestPhotoSettings["displayMode"]) => {
+    if (!settings) return;
+    const shouldRefreshInstructions =
+      !settings.instructions.trim() || GENERIC_GUEST_PHOTO_INSTRUCTION_SET.has(settings.instructions.trim());
+    updateDraftAndSave({
+      displayMode: value,
+      galleryEnabled: value === "website" || value === "both",
+      ...(shouldRefreshInstructions ? { instructions: genericGuestPhotoInstructions(value) } : {}),
+    });
+  };
+
+  const generateGuestInstructions = async () => {
+    if (!settings) return;
+    setGeneratingInstructions(true);
+    try {
+      const body = await readJson<{ text: string }>(
+        await authFetch("/api/ai/generate-text", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            currentText: settings.instructions,
+            context: [
+              "Guest Photo Drop public upload page for a wedding planning app.",
+              `Public page title: ${settings.title || "Guest Photo Drop"}.`,
+              `Guests can upload up to ${settings.maxUploads} photo${settings.maxUploads === 1 ? "" : "s"} from each phone.`,
+              "Photos always require couple approval before they appear in the gallery.",
+              displayMode === "portal"
+                ? "Destination: portal only. Do not mention the wedding website or a public gallery."
+                : displayMode === "website"
+                  ? "Destination: wedding website only. It is okay to mention the wedding website gallery after approval."
+                  : "Destination: portal and wedding website. It is okay to mention the couple's gallery after approval.",
+              "Do not ask guests for email addresses.",
+            ].join(" "),
+            prompt:
+              "Write warm, polished guest instructions for wedding day photo uploads. Keep it to 1-2 short sentences. Mention sharing memories and adding a caption if they want. Match the destination rules exactly.",
+          }),
+        }),
+      );
+      const text = body.text?.trim().slice(0, 500);
+      if (!text) throw new Error("AI returned an empty message.");
+      updateDraft({ instructions: text });
+      toast({ title: "Guest instructions generated" });
+    } catch {
+      updateDraft({
+        instructions: genericGuestPhotoInstructions(displayMode),
+      });
+      toast({
+        title: "Added a suggested message",
+        description: "AI was unavailable, so A.I Do filled in a polished default you can edit.",
+      });
+    } finally {
+      setGeneratingInstructions(false);
+    }
   };
 
   const copyPublicUrl = async () => {
@@ -367,10 +443,7 @@ export default function GuestPhotoDrop() {
                   <Label className="text-sm font-bold text-[#5B0F2A]">Where approved photos show</Label>
                   <Select
                     value={displayMode}
-                    onValueChange={(value: GuestPhotoSettings["displayMode"]) => updateDraftAndSave({
-                      displayMode: value,
-                      galleryEnabled: value === "website" || value === "both",
-                    })}
+                    onValueChange={(value: GuestPhotoSettings["displayMode"]) => updateDisplayMode(value)}
                   >
                     <SelectTrigger className="mt-2 rounded-xl border-[#E6A6B7]/70 bg-white">
                       <SelectValue />
@@ -427,7 +500,36 @@ export default function GuestPhotoDrop() {
                   />
                 </label>
                 <label className="grid gap-2">
-                  <span className="text-sm font-bold text-[#5B0F2A]">Guest instructions</span>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="text-sm font-bold text-[#5B0F2A]">Guest instructions</span>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={generateGuestInstructions}
+                        disabled={generatingInstructions}
+                        className="h-9 rounded-full border-[#E6A6B7]/70 bg-white/85 px-3 text-xs font-bold text-[#8D294D] hover:bg-[#F7DDE2]/50"
+                      >
+                        {generatingInstructions ? (
+                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Sparkles className="mr-1.5 h-3.5 w-3.5 text-[#D4A373]" />
+                        )}
+                        Generate with AI
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => updateDraft({ instructions: genericGuestPhotoInstructions(displayMode) })}
+                        className="h-9 rounded-full border-[#E6A6B7]/70 bg-white/85 px-3 text-xs font-bold text-[#8D294D] hover:bg-[#F7DDE2]/50"
+                      >
+                        <RotateCcw className="mr-1.5 h-3.5 w-3.5 text-[#D4A373]" />
+                        Reset default
+                      </Button>
+                    </div>
+                  </div>
                   <textarea
                     value={settings.instructions}
                     maxLength={500}
