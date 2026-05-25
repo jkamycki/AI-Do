@@ -797,6 +797,65 @@ router.get("/website/me", requireAuth, async (req, res) => {
   }
 });
 
+// ---------- GET /api/website/media/* ----------
+//
+// Editor-only media bridge. Website images may be older uploads without ACL
+// metadata, or they may be edited by a collaborator whose Clerk id is not the
+// original object owner. This route still requires an authenticated planner and
+// only streams objects that are already referenced by that planner's website.
+router.get("/website/media/*objectPath", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(404).json({ error: "Wedding profile not found" });
+
+    const rawPath = req.params.objectPath;
+    const mediaPath = Array.isArray(rawPath) ? rawPath.join("/") : String(rawPath ?? "");
+    const objectPath = normalizePrivateMediaPath(`/objects/${mediaPath}`);
+    if (!objectPath) return res.status(400).json({ error: "Invalid media path" });
+    if (objectPath.includes("..") || objectPath.includes("\\")) {
+      return res.status(400).json({ error: "Invalid media path" });
+    }
+
+    const [row] = await db
+      .select()
+      .from(weddingWebsites)
+      .where(eq(weddingWebsites.profileId, profile.id))
+      .limit(1);
+    if (!row) return res.status(404).json({ error: "Website not found" });
+
+    const party = await db
+      .select({ photoUrl: weddingParty.photoUrl })
+      .from(weddingParty)
+      .where(eq(weddingParty.profileId, profile.id));
+    const photoRows = await db
+      .select({ imageUrl: guestPhotoUploads.imageUrl })
+      .from(guestPhotoUploads)
+      .where(eq(guestPhotoUploads.websiteId, row.id));
+
+    if (!collectWebsiteMediaPaths(row, party, photoRows.map((photo) => photo.imageUrl)).has(objectPath)) {
+      return res.status(404).json({ error: "Not found" });
+    }
+
+    const file = await objectStorageService.getObjectEntityFile(objectPath);
+    const response = await objectStorageService.downloadObject(file);
+    res.status(response.status);
+    response.headers.forEach((value, key) => res.setHeader(key, value));
+    if (response.body) {
+      Readable.fromWeb(response.body as ReadableStream<Uint8Array>).pipe(res);
+    } else {
+      res.end();
+    }
+  } catch (err) {
+    if (err instanceof ObjectNotFoundError) {
+      return res.status(404).json({ error: "Not found" });
+    }
+    req.log.error(err, "websiteEditorMedia failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ---------- Guest Photo Drop management ----------
 
 router.get("/website/photo-drop", requireAuth, async (req, res) => {

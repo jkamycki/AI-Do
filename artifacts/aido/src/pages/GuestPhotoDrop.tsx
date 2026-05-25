@@ -182,6 +182,13 @@ export default function GuestPhotoDrop() {
     setDraft({ ...settings, ...patch });
   };
 
+  const updateDraftAndSave = (patch: Partial<GuestPhotoSettings>) => {
+    if (!settings) return;
+    const next = { ...settings, ...patch };
+    setDraft(next);
+    saveSettings.mutate(next);
+  };
+
   const copyPublicUrl = async () => {
     if (!publicUrl) return;
     await navigator.clipboard.writeText(publicUrl).catch(() => null);
@@ -275,13 +282,13 @@ export default function GuestPhotoDrop() {
                   title="Turn on Guest Photo Drop"
                   description="Guests can open the QR link and upload photos."
                   checked={settings.enabled}
-                  onCheckedChange={(checked) => updateDraft({ enabled: checked })}
+                  onCheckedChange={(checked) => updateDraftAndSave({ enabled: checked })}
                 />
                 <div className="rounded-2xl border border-[#E6A6B7]/45 bg-[#FFF7F2]/70 p-4">
                   <Label className="text-sm font-bold text-[#5B0F2A]">Where approved photos show</Label>
                   <Select
                     value={displayMode}
-                    onValueChange={(value: GuestPhotoSettings["displayMode"]) => updateDraft({
+                    onValueChange={(value: GuestPhotoSettings["displayMode"]) => updateDraftAndSave({
                       displayMode: value,
                       galleryEnabled: value === "website" || value === "both",
                     })}
@@ -301,11 +308,11 @@ export default function GuestPhotoDrop() {
                   title="Require approval"
                   description="New uploads stay private until you approve them."
                   checked={settings.approvalRequired}
-                  onCheckedChange={(checked) => updateDraft({ approvalRequired: checked })}
+                  onCheckedChange={(checked) => updateDraftAndSave({ approvalRequired: checked })}
                 />
                 <div className="rounded-2xl border border-[#E6A6B7]/45 bg-[#FFF7F2]/70 p-4">
                   <Label className="text-sm font-bold text-[#5B0F2A]">Photos per upload</Label>
-                  <Select value={String(settings.maxUploads)} onValueChange={(value) => updateDraft({ maxUploads: Number(value) })}>
+                  <Select value={String(settings.maxUploads)} onValueChange={(value) => updateDraftAndSave({ maxUploads: Number(value) })}>
                     <SelectTrigger className="mt-2 rounded-xl border-[#E6A6B7]/70 bg-white">
                       <SelectValue />
                     </SelectTrigger>

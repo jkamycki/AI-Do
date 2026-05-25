@@ -1512,7 +1512,7 @@ const PORTAL_TRACKING_ROUTES: Array<{ pattern: RegExp } & PortalTrackingContext>
   { pattern: /^\/mood-board\/?$/, feature: "Mood Board", section: "Planning", tool: "Mood Board Builder", step: "Viewed mood board" },
   { pattern: /^\/guests(?:\/[^/]+)?\/?$/, feature: "Guest List & Invitations", section: "Guest Experience", tool: "Guest List & Invitations", step: "Viewed guest list and invitations" },
   { pattern: /^\/seating-chart\/?$/, feature: "Seating Chart", section: "Guest Experience", tool: "Seating Chart", step: "Viewed seating chart" },
-  { pattern: /^\/wedding-party\/?$/, feature: "Wedding Party", section: "Guest Experience", tool: "Wedding Party", step: "Viewed wedding party" },
+  { pattern: /^\/wedding-party\/?$/, feature: "Wedding Party", section: "Wedding Day", tool: "Wedding Party", step: "Viewed wedding party" },
   { pattern: /^\/hotels\/?$/, feature: "Hotel Blocks", section: "Guest Experience", tool: "Hotel Blocks", step: "Viewed hotel blocks" },
   { pattern: /^\/website-editor\/?$/, feature: "Website Editor", section: "Guest Website Builder", tool: "Website Editor", step: "Viewed website editor" },
   { pattern: /^\/w\/[^/]+(?:\/[^/]+)?\/?$/, feature: "Public Website", section: "Website", tool: "Website Preview", step: "Viewed public website" },

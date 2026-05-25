@@ -93,6 +93,41 @@ const sanitizeWebsiteSlug = (value: string) =>
     .replace(/-{2,}/g, "-")
     .slice(0, 60);
 
+function editorMediaSrc(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (/^(blob:|data:)/i.test(url)) return url;
+
+  let path = url;
+  try {
+    path = new URL(url).pathname;
+  } catch {
+    // Relative paths are handled below.
+  }
+
+  const apiStoragePrefix = "/api/storage/objects/";
+  const storagePrefix = "/storage/objects/";
+  const objectPrefix = "/objects/";
+  let tail: string | null = null;
+  if (path.startsWith(apiStoragePrefix)) tail = path.slice(apiStoragePrefix.length);
+  else if (path.startsWith(storagePrefix)) tail = path.slice(storagePrefix.length);
+  else if (path.startsWith(objectPrefix)) tail = path.slice(objectPrefix.length);
+
+  if (!tail) return url;
+  const safeTail = tail
+    .split(/[?#]/)[0]
+    .split("/")
+    .filter(Boolean)
+    .map((part) => {
+      try {
+        return encodeURIComponent(decodeURIComponent(part));
+      } catch {
+        return encodeURIComponent(part);
+      }
+    })
+    .join("/");
+  return safeTail ? `/api/website/media/${safeTail}` : url;
+}
+
 function formatProfileTime(time: string | null | undefined): string {
   if (!time) return "Not set";
   const match = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
@@ -2587,7 +2622,7 @@ export default function WebsiteEditor() {
             {editingRecord.heroImage && (
               <div className="relative aspect-square rounded-md overflow-hidden">
                 <AuthMediaImage
-                  src={editingRecord.heroImage}
+                  src={editorMediaSrc(editingRecord.heroImage)}
                   alt="Main"
                   className="w-full h-full object-cover"
                   style={(() => {
@@ -2626,7 +2661,7 @@ export default function WebsiteEditor() {
             {(editingRecord.heroImages ?? []).map((img, i) => (
               <div key={i} className="relative aspect-square rounded-md overflow-hidden">
                 <AuthMediaImage
-                  src={img.url}
+                  src={editorMediaSrc(img.url)}
                   alt=""
                   className="w-full h-full object-cover"
                   style={(() => {
@@ -2697,7 +2732,7 @@ export default function WebsiteEditor() {
               <div key={i} className="flex flex-col gap-1">
                 <div className="relative aspect-square rounded-md overflow-hidden">
                   <AuthMediaImage
-                    src={img.url}
+                    src={editorMediaSrc(img.url)}
                     alt=""
                     className="w-full h-full object-cover"
                   />
@@ -2757,7 +2792,7 @@ export default function WebsiteEditor() {
                 <span>Synced from your Wedding Party portal ({editingRecord.portalParty.length} member{editingRecord.portalParty.length !== 1 ? "s" : ""})</span>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Members are managed in the <strong>Wedding Party</strong> section of this portal. Changes there sync here automatically.
+                Members are managed under <strong>Wedding Day - Wedding Party</strong> in this portal. Changes there sync here automatically.
               </p>
             </div>
           ) : (
@@ -3235,7 +3270,7 @@ export default function WebsiteEditor() {
           a home-page photo stays centered when the hero crops to fit. */}
       <HeroPhotoPositionDialog
         open={!!positioningUrl}
-        imageUrl={positioningUrl}
+        imageUrl={editorMediaSrc(positioningUrl)}
         device={previewDevice}
         initialPosition={positioningUrl ? readHeroFocals()[positioningUrl] ?? null : null}
         initialZoom={positioningUrl ? readHeroZooms()[positioningUrl] ?? null : null}
