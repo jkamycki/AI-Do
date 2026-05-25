@@ -508,7 +508,7 @@ export default function PublicGuestPhotoDrop() {
               <div className="pb-5">
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#8D294D]">Wedding Website</p>
                 <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[#6F3E54]">
-                  See the celebration details and approved guest photos on {coupleName(data)}&apos;s wedding website.
+                  See the celebration details now. After approval from the bride and groom, guest photos will appear on {coupleName(data)}&apos;s wedding website.
                 </p>
                 <a
                   href={weddingWebsiteUrl}
