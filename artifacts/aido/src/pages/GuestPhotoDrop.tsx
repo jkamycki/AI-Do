@@ -44,6 +44,7 @@ type GuestPhotoUpload = {
   guestName: string;
   guestEmail?: string | null;
   note?: string | null;
+  caption?: string | null;
   imageUrl: string;
   publicImageUrl?: string | null;
   originalName?: string | null;
@@ -541,10 +542,14 @@ function UploadQueue({
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {uploads.map((upload) => (
               <div key={upload.id} className="overflow-hidden rounded-3xl border border-[#E6A6B7]/45 bg-white shadow-sm">
+                {(() => {
+                  const caption = upload.caption ?? upload.note;
+                  return (
+                    <>
                 <div className="aspect-[4/3] bg-[#FFF7F2]">
                   <AuthMediaImage
                     src={upload.imageUrl}
-                    alt={upload.note || `Photo from ${upload.guestName}`}
+                    alt={caption || `Photo from ${upload.guestName}`}
                     className="h-full w-full object-cover"
                     loading="lazy"
                   />
@@ -561,7 +566,12 @@ function UploadQueue({
                       {upload.status}
                     </Badge>
                   </div>
-                  {upload.note && <p className="text-sm leading-6 text-[#6F3E54]">{upload.note}</p>}
+                  {caption && (
+                    <div className="rounded-2xl border border-[#E6A6B7]/35 bg-[#FFF7F2]/70 px-3 py-2">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#8D294D]">Caption</p>
+                      <p className="mt-1 text-sm leading-6 text-[#6F3E54]">{caption}</p>
+                    </div>
+                  )}
                   {upload.guestEmail && <p className="truncate text-xs text-[#6F3E54]">{upload.guestEmail}</p>}
                   <div className="grid grid-cols-3 gap-2">
                     <Button
@@ -592,6 +602,9 @@ function UploadQueue({
                     </Button>
                   </div>
                 </div>
+                    </>
+                  );
+                })()}
               </div>
             ))}
           </div>

@@ -416,6 +416,7 @@ function serializeGuestPhotoUpload(
     guestName: row.guestName,
     ...(includeEmail ? { guestEmail: row.guestEmail } : {}),
     note: row.note,
+    caption: row.note,
     imageUrl: includeEmail ? row.imageUrl : publicImageUrl ?? "",
     publicImageUrl,
     originalName: row.originalName,
@@ -1887,7 +1888,7 @@ router.post(
       if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
         return res.status(400).json({ error: "Email address looks invalid." });
       }
-      const note = String(req.body?.note ?? "").trim().slice(0, 500);
+      const caption = String(req.body?.caption ?? req.body?.note ?? "").trim().slice(0, 500);
 
       const [profile] = await db
         .select({ id: weddingProfiles.id, userId: weddingProfiles.userId })
@@ -1911,7 +1912,7 @@ router.post(
             profileId: r.site.profileId,
             guestName: cleanName,
             guestEmail: cleanEmail || null,
-            note: note || null,
+            note: caption || null,
             imageUrl: fileUrl,
             originalName,
             contentType: file.mimetype || "image/jpeg",

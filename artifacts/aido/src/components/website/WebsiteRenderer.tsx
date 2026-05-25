@@ -144,6 +144,7 @@ export interface WebsiteRendererPayload {
       id: number;
       guestName: string;
       note?: string | null;
+      caption?: string | null;
       imageUrl: string;
       publicImageUrl?: string;
       status: string;
@@ -2942,7 +2943,7 @@ function Gallery({
       .map((photo) => ({
         id: photo.id,
         url: photo.publicImageUrl || photo.imageUrl,
-        caption: photo.note || `Photo from ${photo.guestName}`,
+        caption: photo.caption || photo.note || `Photo from ${photo.guestName}`,
         guestName: photo.guestName,
       }))
       .filter((photo) => photo.url)
@@ -3296,8 +3297,11 @@ function Gallery({
                   className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                   loading="lazy"
                 />
-                <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent px-2 pb-2 pt-8 text-left text-xs font-semibold text-white">
-                  {photo.guestName}
+                <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 pb-2 pt-10 text-left text-white">
+                  <span className="block text-xs font-semibold leading-4">{photo.caption}</span>
+                  {photo.caption !== `Photo from ${photo.guestName}` && (
+                    <span className="block text-[10px] leading-4 opacity-80">From {photo.guestName}</span>
+                  )}
                 </span>
               </button>
             ))}
@@ -3329,7 +3333,7 @@ function GuestPhotoDropSection({
   const photos = drop?.photos ?? [];
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
-  const [note, setNote] = useState("");
+  const [caption, setCaption] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -3413,7 +3417,7 @@ function GuestPhotoDropSection({
     const form = new FormData();
     form.append("guestName", guestName.trim());
     if (guestEmail.trim()) form.append("guestEmail", guestEmail.trim());
-    if (note.trim()) form.append("note", note.trim());
+    if (caption.trim()) form.append("caption", caption.trim());
     if (deviceId) form.append("deviceId", deviceId);
     files.forEach((file) => form.append("photos", file));
     try {
@@ -3427,7 +3431,7 @@ function GuestPhotoDropSection({
       setMessage((body as { message?: string })?.message || "Thanks! Your photos were uploaded.");
       if ((body as { usage?: GuestPhotoUsage }).usage) setUsage((body as { usage: GuestPhotoUsage }).usage);
       setFiles([]);
-      setNote("");
+      setCaption("");
       const input = document.getElementById("guest-photo-upload") as HTMLInputElement | null;
       if (input) input.value = "";
     } catch (err) {
@@ -3448,7 +3452,10 @@ function GuestPhotoDropSection({
     >
       {lightboxIndex !== null && photos.length > 0 && (
         <Lightbox
-          images={photos.map((photo) => ({ url: photo.publicImageUrl || photo.imageUrl, caption: photo.note || photo.guestName }))}
+          images={photos.map((photo) => ({
+            url: photo.publicImageUrl || photo.imageUrl,
+            caption: photo.caption || photo.note || `Photo from ${photo.guestName}`,
+          }))}
           startIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
         />
@@ -3499,10 +3506,10 @@ function GuestPhotoDropSection({
           </label>
         </div>
         <label className="grid gap-1.5 text-sm font-semibold" style={{ color: data.colorPalette.text }}>
-          Note optional
+          Add a caption
           <textarea
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
+            value={caption}
+            onChange={(event) => setCaption(event.target.value)}
             maxLength={500}
             rows={3}
             className="rounded-2xl border bg-white px-4 py-3 text-base outline-none focus:ring-2"
@@ -3590,12 +3597,17 @@ function GuestPhotoDropSection({
               >
                 <AuthMediaImage
                   src={photo.publicImageUrl || photo.imageUrl}
-                  alt={photo.note || `Photo from ${photo.guestName}`}
+                  alt={photo.caption || photo.note || `Photo from ${photo.guestName}`}
                   className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                   loading="lazy"
                 />
-                <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent px-2 pb-2 pt-8 text-left text-xs font-semibold text-white">
-                  {photo.guestName}
+                <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 pb-2 pt-10 text-left text-white">
+                  <span className="block text-xs font-semibold leading-4">
+                    {photo.caption || photo.note || `Photo from ${photo.guestName}`}
+                  </span>
+                  {(photo.caption || photo.note) && (
+                    <span className="block text-[10px] leading-4 opacity-80">From {photo.guestName}</span>
+                  )}
                 </span>
               </button>
             ))}

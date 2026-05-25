@@ -111,7 +111,7 @@ export default function PublicGuestPhotoDrop() {
 
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
-  const [note, setNote] = useState("");
+  const [caption, setCaption] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
@@ -281,7 +281,7 @@ export default function PublicGuestPhotoDrop() {
     const form = new FormData();
     form.append("guestName", guestName.trim());
     if (guestEmail.trim()) form.append("guestEmail", guestEmail.trim());
-    if (note.trim()) form.append("note", note.trim());
+    if (caption.trim()) form.append("caption", caption.trim());
     if (deviceId) form.append("deviceId", deviceId);
     files.forEach((file) => form.append("photos", file));
     try {
@@ -295,7 +295,7 @@ export default function PublicGuestPhotoDrop() {
       setSuccess((body as { message?: string })?.message || "Your photos were sent. Thank you!");
       if ((body as { usage?: PhotoDropUsage }).usage) setUsage((body as { usage: PhotoDropUsage }).usage);
       setFiles([]);
-      setNote("");
+      setCaption("");
       if (cameraInputRef.current) cameraInputRef.current.value = "";
       if (libraryInputRef.current) libraryInputRef.current.value = "";
     } catch (err) {
@@ -455,13 +455,13 @@ export default function PublicGuestPhotoDrop() {
               />
             </label>
             <label className="grid gap-1.5 text-sm font-bold text-[#5B0F2A]">
-              Note optional
+              Add a caption
               <textarea
-                value={note}
-                onChange={(event) => setNote(event.target.value)}
+                value={caption}
+                onChange={(event) => setCaption(event.target.value)}
                 maxLength={500}
                 rows={3}
-                placeholder="A quick caption or memory"
+                placeholder="A quick caption or memory from the day"
                 className="rounded-2xl border border-[#E6A6B7]/70 bg-white px-4 py-3 text-base font-normal outline-none focus:ring-2 focus:ring-[#F7DDE2]"
               />
             </label>
