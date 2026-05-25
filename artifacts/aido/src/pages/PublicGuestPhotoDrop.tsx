@@ -4,6 +4,7 @@ import { useRoute } from "wouter";
 import { Camera, CheckCircle2, Heart, ImagePlus, Loader2, Lock, UploadCloud, X } from "lucide-react";
 import { apiFetch } from "@/lib/authFetch";
 import { getGuestPhotoDeviceId } from "@/lib/guestPhotoDevice";
+import { publishedWebsiteUrl } from "@/lib/publicUrls";
 
 type PublicPhotoDropPayload = {
   slug: string;
@@ -128,6 +129,7 @@ export default function PublicGuestPhotoDrop() {
   const photosLeftAfterSelection = Math.max(0, photosLeft - files.length);
   const primary = data?.colorPalette?.primary || "#8D294D";
   const accent = data?.colorPalette?.accent || "#D4A373";
+  const weddingGalleryUrl = slug ? publishedWebsiteUrl(slug, "gallery") : "";
 
   useEffect(() => {
     if (!slug) return;
@@ -454,7 +456,24 @@ export default function PublicGuestPhotoDrop() {
             </label>
 
             {submitError && <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{submitError}</p>}
-            {success && <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{success}</p>}
+            {success && (
+              <div className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                <p className="font-bold">{success}</p>
+                <p className="mt-1 leading-6">
+                  {drop.approvalRequired
+                    ? "Once the couple approves your photos, they will appear in the Gallery section on the wedding website."
+                    : "Your approved photos will appear in the Gallery section on the wedding website."}
+                </p>
+                {photosLeft <= 0 && weddingGalleryUrl && (
+                  <a
+                    href={weddingGalleryUrl}
+                    className="mt-3 inline-flex min-h-10 items-center justify-center rounded-full bg-[#8D294D] px-4 text-sm font-bold text-white"
+                  >
+                    View the wedding gallery
+                  </a>
+                )}
+              </div>
+            )}
 
             <button
               type="submit"

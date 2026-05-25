@@ -40,6 +40,7 @@ import { RsvpFlow } from "./RsvpFlow";
 import { apiFetch, authFetch } from "@/lib/authFetch";
 import { resolveMediaUrl, isMediaAuthRequired } from "@/lib/mediaUrl";
 import { getGuestPhotoDeviceId } from "@/lib/guestPhotoDevice";
+import { publishedWebsiteUrl } from "@/lib/publicUrls";
 import { AuthMediaImage } from "@/components/AuthMediaImage";
 
 // camelCase section id <-> kebab-case URL slug
@@ -3347,6 +3348,7 @@ function GuestPhotoDropSection({
   const photosLeft = usage?.remaining ?? totalPhotoLimit;
   const maxSelectable = Math.max(0, Math.min(maxUploads, photosLeft));
   const photosLeftAfterSelection = Math.max(0, photosLeft - files.length);
+  const weddingGalleryUrl = slug ? publishedWebsiteUrl(slug, "gallery") : "";
 
   useEffect(() => {
     if (!slug) return;
@@ -3550,9 +3552,23 @@ function GuestPhotoDropSection({
           </p>
         )}
         {message && (
-          <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            {message}
-          </p>
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+            <p className="font-bold">{message}</p>
+            <p className="mt-1 leading-6">
+              {drop.approvalRequired
+                ? "Once the couple approves your photos, they will appear in the Gallery section on this wedding website."
+                : "Your approved photos will appear in the Gallery section on this wedding website."}
+            </p>
+            {photosLeft <= 0 && weddingGalleryUrl && (
+              <a
+                href={weddingGalleryUrl}
+                className="mt-3 inline-flex min-h-10 items-center justify-center rounded-full px-4 text-sm font-bold text-white"
+                style={{ background: data.colorPalette.primary }}
+              >
+                View the wedding gallery
+              </a>
+            )}
+          </div>
         )}
         <button
           type="submit"

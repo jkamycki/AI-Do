@@ -359,6 +359,10 @@ export default function GuestPhotoDrop() {
                     </SelectContent>
                   </Select>
                   <p className="mt-2 text-xs leading-5 text-[#6F3E54]">{displayModeCopy[displayMode].description}</p>
+                  <div className="mt-3 rounded-xl border border-[#D4A373]/35 bg-white/70 px-3 py-2 text-xs leading-5 text-[#6F3E54]">
+                    <span className="font-bold text-[#8D294D]">Website placement:</span>{" "}
+                    Approved photos appear in the published wedding website's Gallery section under Guest Uploads when this is set to Wedding website only or Portal + website.
+                  </div>
                 </div>
                 <SettingSwitch
                   title="Require approval"
