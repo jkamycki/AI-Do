@@ -5,6 +5,7 @@ import {
   getGetTimelineQueryKey,
   useEmergencyAdvice,
   useGenerateTimeline,
+  useGetGuests,
   useGetProfile,
   useGetTimeline,
 } from "@workspace/api-client-react";
@@ -31,6 +32,8 @@ import {
   Clock,
   Download,
   FileDown,
+  Gem,
+  GripVertical,
   ListChecks,
   MapPin,
   Mic2,
@@ -44,7 +47,9 @@ import {
   Siren,
   Sparkles,
   Trash2,
+  UserPlus,
   UsersRound,
+  Wand2,
   X,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -97,6 +102,62 @@ interface BinderSection {
   items: BinderSectionItem[];
 }
 
+type CeremonySectionId = "processional" | "rings" | "officiant" | "recessional";
+
+interface ProcessionalEntry {
+  id: string;
+  personName: string;
+  role: string;
+  walksWith: string;
+  notes: string;
+}
+
+interface KeepsakeItem {
+  id: string;
+  label: string;
+  checked: boolean;
+  custom?: boolean;
+}
+
+interface ReadingCue {
+  id: string;
+  readerName: string;
+  title: string;
+}
+
+interface FamilyPhotoGroup {
+  id: string;
+  groupName: string;
+  members: string;
+}
+
+interface CeremonyPlan {
+  processional: ProcessionalEntry[];
+  ringsAndVows: {
+    ringHolder: string;
+    vowHolder: string;
+    printedVows: boolean;
+    remindToPrintVows: boolean;
+    keepsakes: KeepsakeItem[];
+  };
+  officiantCues: {
+    licenseSigning: boolean;
+    licenseSigningTime: string;
+    unpluggedAnnouncement: boolean;
+    unpluggedScript: string;
+    readings: ReadingCue[];
+    pronunciationNotes: string;
+    specialAnnouncement: string;
+    specialAnnouncementNotes: string;
+  };
+  recessional: {
+    coupleExitsTo: string;
+    weddingPartyExitOrder: ProcessionalEntry[];
+    familyPhotoGroups: FamilyPhotoGroup[];
+    guestFlow: string;
+  };
+}
+
 const DAY_OF_TABS: Array<{ id: DayOfTab; label: string; icon: ComponentType<{ className?: string }> }> = [
   { id: "timeline", label: "Timeline", icon: Clock },
   { id: "ceremony", label: "Ceremony", icon: CalendarDays },
@@ -127,6 +188,49 @@ const DEFAULT_PACKING_ITEMS: BinderChecklistItem[] = [
     note: "Invitation suite, perfume/cologne, jewelry, heirlooms.",
     completed: false,
   },
+];
+
+const CEREMONY_ROLES = [
+  "Bride",
+  "Groom",
+  "Partner",
+  "Parent",
+  "Grandparent",
+  "Maid of Honor",
+  "Best Man",
+  "Wedding Party",
+  "Bridesmaid",
+  "Groomsman",
+  "Flower Girl",
+  "Ring Bearer",
+  "Officiant",
+  "Reader",
+  "Usher",
+  "Other",
+];
+
+const COUPLE_EXIT_OPTIONS = ["Aisle", "Cocktail hour", "Private room", "Photo location", "Receiving line", "Reception entrance"];
+const GUEST_FLOW_OPTIONS = ["Cocktail hour", "Reception", "Outdoor area", "Lobby", "Photo area", "Transportation pickup"];
+const SPECIAL_ANNOUNCEMENTS = [
+  "None",
+  "Unplugged ceremony",
+  "Reserved seating",
+  "Moment of silence",
+  "No flash photography",
+  "Cocktail hour directions",
+  "Reception directions",
+  "Custom",
+];
+
+const DEFAULT_UNPLUGGED_SCRIPT =
+  "The couple invites you to be fully present during the ceremony. Please silence and put away phones and cameras until the recessional.";
+
+const DEFAULT_KEEPSAKES: KeepsakeItem[] = [
+  { id: "rings", label: "Wedding rings", checked: true },
+  { id: "printed-vows", label: "Printed vows", checked: true },
+  { id: "marriage-license", label: "Marriage license", checked: true },
+  { id: "heirloom", label: "Family heirloom or unity item", checked: false },
+  { id: "vow-books", label: "Vow books", checked: false },
 ];
 
 const BINDER_SECTIONS: Record<BinderSectionId, BinderSection> = {
@@ -277,6 +381,399 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+function makeId(prefix: string) {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return `${prefix}-${crypto.randomUUID()}`;
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function blankProcessionalEntry(role = "Partner"): ProcessionalEntry {
+  return { id: makeId("processional"), personName: "", role, walksWith: "None", notes: "" };
+}
+
+function blankReadingCue(): ReadingCue {
+  return { id: makeId("reading"), readerName: "", title: "" };
+}
+
+function blankFamilyPhotoGroup(): FamilyPhotoGroup {
+  return { id: makeId("photo-group"), groupName: "", members: "" };
+}
+
+function createDefaultCeremonyPlan(): CeremonyPlan {
+  return {
+    processional: [
+      { id: makeId("processional"), personName: "", role: "Officiant", walksWith: "None", notes: "Already standing at the front." },
+      blankProcessionalEntry("Parent"),
+      blankProcessionalEntry("Partner"),
+    ],
+    ringsAndVows: {
+      ringHolder: "",
+      vowHolder: "",
+      printedVows: true,
+      remindToPrintVows: true,
+      keepsakes: DEFAULT_KEEPSAKES.map((item) => ({ ...item })),
+    },
+    officiantCues: {
+      licenseSigning: true,
+      licenseSigningTime: "After ceremony",
+      unpluggedAnnouncement: true,
+      unpluggedScript: DEFAULT_UNPLUGGED_SCRIPT,
+      readings: [blankReadingCue()],
+      pronunciationNotes: "",
+      specialAnnouncement: "Cocktail hour directions",
+      specialAnnouncementNotes: "",
+    },
+    recessional: {
+      coupleExitsTo: "Cocktail hour",
+      weddingPartyExitOrder: [],
+      familyPhotoGroups: [
+        { id: makeId("photo-group"), groupName: "Immediate family", members: "" },
+        { id: makeId("photo-group"), groupName: "Wedding party", members: "" },
+      ],
+      guestFlow: "Cocktail hour",
+    },
+  };
+}
+
+function normalizeProcessionalEntry(value: unknown, index: number): ProcessionalEntry {
+  const row = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return {
+    id: String(row.id ?? makeId(`processional-${index + 1}`)),
+    personName: String(row.personName ?? ""),
+    role: String(row.role ?? "Partner"),
+    walksWith: String(row.walksWith ?? "None"),
+    notes: String(row.notes ?? ""),
+  };
+}
+
+function normalizeKeepsake(value: unknown, index: number): KeepsakeItem {
+  const row = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return {
+    id: String(row.id ?? makeId(`keepsake-${index + 1}`)),
+    label: String(row.label ?? "Keepsake"),
+    checked: Boolean(row.checked),
+    custom: Boolean(row.custom),
+  };
+}
+
+function normalizeReading(value: unknown, index: number): ReadingCue {
+  const row = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return {
+    id: String(row.id ?? makeId(`reading-${index + 1}`)),
+    readerName: String(row.readerName ?? ""),
+    title: String(row.title ?? ""),
+  };
+}
+
+function normalizeFamilyPhotoGroup(value: unknown, index: number): FamilyPhotoGroup {
+  const row = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return {
+    id: String(row.id ?? makeId(`photo-group-${index + 1}`)),
+    groupName: String(row.groupName ?? ""),
+    members: String(row.members ?? ""),
+  };
+}
+
+function normalizeCeremonyPlan(value: unknown): CeremonyPlan {
+  const fallback = createDefaultCeremonyPlan();
+  const row = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const ringsAndVows = row.ringsAndVows && typeof row.ringsAndVows === "object" ? row.ringsAndVows as Record<string, unknown> : {};
+  const officiantCues = row.officiantCues && typeof row.officiantCues === "object" ? row.officiantCues as Record<string, unknown> : {};
+  const recessional = row.recessional && typeof row.recessional === "object" ? row.recessional as Record<string, unknown> : {};
+
+  return {
+    processional: Array.isArray(row.processional) ? row.processional.map(normalizeProcessionalEntry) : fallback.processional,
+    ringsAndVows: {
+      ringHolder: String(ringsAndVows.ringHolder ?? ""),
+      vowHolder: String(ringsAndVows.vowHolder ?? ""),
+      printedVows: typeof ringsAndVows.printedVows === "boolean" ? ringsAndVows.printedVows : fallback.ringsAndVows.printedVows,
+      remindToPrintVows:
+        typeof ringsAndVows.remindToPrintVows === "boolean" ? ringsAndVows.remindToPrintVows : fallback.ringsAndVows.remindToPrintVows,
+      keepsakes: Array.isArray(ringsAndVows.keepsakes)
+        ? ringsAndVows.keepsakes.map(normalizeKeepsake)
+        : fallback.ringsAndVows.keepsakes,
+    },
+    officiantCues: {
+      licenseSigning:
+        typeof officiantCues.licenseSigning === "boolean" ? officiantCues.licenseSigning : fallback.officiantCues.licenseSigning,
+      licenseSigningTime: String(officiantCues.licenseSigningTime ?? fallback.officiantCues.licenseSigningTime),
+      unpluggedAnnouncement:
+        typeof officiantCues.unpluggedAnnouncement === "boolean"
+          ? officiantCues.unpluggedAnnouncement
+          : fallback.officiantCues.unpluggedAnnouncement,
+      unpluggedScript: String(officiantCues.unpluggedScript ?? fallback.officiantCues.unpluggedScript),
+      readings: Array.isArray(officiantCues.readings) ? officiantCues.readings.map(normalizeReading) : fallback.officiantCues.readings,
+      pronunciationNotes: String(officiantCues.pronunciationNotes ?? ""),
+      specialAnnouncement: String(officiantCues.specialAnnouncement ?? fallback.officiantCues.specialAnnouncement),
+      specialAnnouncementNotes: String(officiantCues.specialAnnouncementNotes ?? ""),
+    },
+    recessional: {
+      coupleExitsTo: String(recessional.coupleExitsTo ?? fallback.recessional.coupleExitsTo),
+      weddingPartyExitOrder: Array.isArray(recessional.weddingPartyExitOrder)
+        ? recessional.weddingPartyExitOrder.map(normalizeProcessionalEntry)
+        : fallback.recessional.weddingPartyExitOrder,
+      familyPhotoGroups: Array.isArray(recessional.familyPhotoGroups)
+        ? recessional.familyPhotoGroups.map(normalizeFamilyPhotoGroup)
+        : fallback.recessional.familyPhotoGroups,
+      guestFlow: String(recessional.guestFlow ?? fallback.recessional.guestFlow),
+    },
+  };
+}
+
+function moveItem<T>(items: T[], fromIndex: number, toIndex: number): T[] {
+  if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= items.length || toIndex >= items.length) return items;
+  const next = [...items];
+  const [moved] = next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, moved);
+  return next;
+}
+
+function buildTraditionalProcessional(profile: any, guestNames: string[]): ProcessionalEntry[] {
+  const partner2 = String(profile?.partner2Name ?? "").trim();
+  const partner1 = String(profile?.partner1Name ?? "").trim();
+  const parentNames = guestNames.filter((name) => /\b(parent|mother|father|mom|dad|grand)/i.test(name)).slice(0, 2);
+  return [
+    { id: makeId("processional"), personName: "", role: "Officiant", walksWith: "None", notes: "Standing at the front before music begins." },
+    ...parentNames.map((name) => ({ id: makeId("processional"), personName: name, role: "Parent", walksWith: "None", notes: "Seated before wedding party enters." })),
+    { id: makeId("processional"), personName: "", role: "Wedding Party", walksWith: "Partnered attendant", notes: "Attendants enter in pairs or one at a time." },
+    { id: makeId("processional"), personName: "", role: "Flower Girl", walksWith: "Ring Bearer", notes: "" },
+    { id: makeId("processional"), personName: "", role: "Ring Bearer", walksWith: "Flower Girl", notes: "" },
+    { id: makeId("processional"), personName: partner2, role: "Partner", walksWith: "Parent or escort", notes: "Pause at aisle before entrance." },
+    { id: makeId("processional"), personName: partner1, role: "Partner", walksWith: "None", notes: "Enter last unless your ceremony uses a different tradition." },
+  ];
+}
+
+function createSuggestedCeremonyPlan(section: CeremonySectionId, currentPlan: CeremonyPlan, profile: any, guestNames: string[]): CeremonyPlan {
+  const partner2 = String(profile?.partner2Name ?? "").trim();
+  const partner1 = String(profile?.partner1Name ?? "").trim();
+  const suggested = normalizeCeremonyPlan(currentPlan);
+  if (section === "processional") {
+    suggested.processional = buildTraditionalProcessional(profile, guestNames);
+  }
+  if (section === "rings") {
+    suggested.ringsAndVows = {
+      ...suggested.ringsAndVows,
+      ringHolder: suggested.ringsAndVows.ringHolder || guestNames[0] || "",
+      vowHolder: suggested.ringsAndVows.vowHolder || partner2 || partner1 || "",
+      printedVows: true,
+      remindToPrintVows: true,
+      keepsakes: DEFAULT_KEEPSAKES.map((item) => ({ ...item, checked: item.checked || item.id === "vow-books" })),
+    };
+  }
+  if (section === "officiant") {
+    suggested.officiantCues = {
+      licenseSigning: true,
+      licenseSigningTime: "Immediately after ceremony",
+      unpluggedAnnouncement: true,
+      unpluggedScript: DEFAULT_UNPLUGGED_SCRIPT,
+      readings: suggested.officiantCues.readings.length
+        ? suggested.officiantCues.readings
+        : [{ id: makeId("reading"), readerName: guestNames[1] || "", title: "Short reading or blessing" }],
+      pronunciationNotes: suggested.officiantCues.pronunciationNotes,
+      specialAnnouncement: "Cocktail hour directions",
+      specialAnnouncementNotes: "Invite guests to follow venue staff or signage after the recessional.",
+    };
+  }
+  if (section === "recessional") {
+    suggested.recessional = {
+      coupleExitsTo: "Private room",
+      weddingPartyExitOrder:
+        suggested.recessional.weddingPartyExitOrder.length > 0
+          ? suggested.recessional.weddingPartyExitOrder
+          : [
+              { id: makeId("exit"), personName: partner2 && partner1 ? `${partner2} & ${partner1}` : "Couple", role: "Partner", walksWith: "Each other", notes: "Exit first." },
+              { id: makeId("exit"), personName: "", role: "Wedding Party", walksWith: "Paired attendants", notes: "Follow couple down aisle." },
+              { id: makeId("exit"), personName: "", role: "Parent", walksWith: "Family", notes: "Immediate family follows wedding party." },
+            ],
+      familyPhotoGroups:
+        suggested.recessional.familyPhotoGroups.length > 0
+          ? suggested.recessional.familyPhotoGroups
+          : [
+              { id: makeId("photo-group"), groupName: "Couple with immediate family", members: "Parents, siblings, grandparents" },
+              { id: makeId("photo-group"), groupName: "Couple with wedding party", members: "All attendants, flower girl, ring bearer" },
+            ],
+      guestFlow: "Cocktail hour",
+    };
+  }
+  return suggested;
+}
+
+function summarizeCeremonyPlanForPdf(plan: CeremonyPlan, itemId: string): string {
+  if (itemId === "processional") {
+    return plan.processional
+      .map((entry, index) => `${index + 1}. ${entry.personName || entry.role}${entry.walksWith && entry.walksWith !== "None" ? ` with ${entry.walksWith}` : ""}${entry.notes ? ` - ${entry.notes}` : ""}`)
+      .join("\n");
+  }
+  if (itemId === "rings") {
+    const keepsakes = plan.ringsAndVows.keepsakes.filter((item) => item.checked).map((item) => item.label).join(", ") || "None selected";
+    return `Ring holder: ${plan.ringsAndVows.ringHolder || "TBD"}\nVow holder: ${plan.ringsAndVows.vowHolder || "TBD"}\nPrinted vows: ${plan.ringsAndVows.printedVows ? "Yes" : "No"}\nPrint reminder: ${plan.ringsAndVows.remindToPrintVows ? "On" : "Off"}\nKeepsakes: ${keepsakes}`;
+  }
+  if (itemId === "officiant") {
+    const readings = plan.officiantCues.readings
+      .filter((reading) => reading.readerName || reading.title)
+      .map((reading) => `${reading.readerName || "Reader TBD"} - ${reading.title || "Reading TBD"}`)
+      .join("; ");
+    return `License signing: ${plan.officiantCues.licenseSigning ? plan.officiantCues.licenseSigningTime || "Yes" : "No"}\nUnplugged announcement: ${plan.officiantCues.unpluggedAnnouncement ? plan.officiantCues.unpluggedScript : "No"}\nReadings: ${readings || "None listed"}\nPronunciation notes: ${plan.officiantCues.pronunciationNotes || "None"}\nAnnouncement: ${plan.officiantCues.specialAnnouncement}${plan.officiantCues.specialAnnouncementNotes ? ` - ${plan.officiantCues.specialAnnouncementNotes}` : ""}`;
+  }
+  if (itemId === "recessional") {
+    const exitOrder = plan.recessional.weddingPartyExitOrder.map((entry, index) => `${index + 1}. ${entry.personName || entry.role}`).join("; ");
+    const groups = plan.recessional.familyPhotoGroups.map((group) => `${group.groupName}: ${group.members || "Members TBD"}`).join("; ");
+    return `Couple exits to: ${plan.recessional.coupleExitsTo}\nWedding party exit order: ${exitOrder || "TBD"}\nFamily photo groups: ${groups || "TBD"}\nGuest flow: ${plan.recessional.guestFlow}`;
+  }
+  return "";
+}
+
+function FieldHint({ children }: { children: React.ReactNode }) {
+  return <p className="mt-1 text-xs leading-5 text-[#8A6670]">{children}</p>;
+}
+
+function FieldLabel({ label, children, hint }: { label: string; children: React.ReactNode; hint?: React.ReactNode }) {
+  return (
+    <label className="grid gap-1.5 text-sm font-bold text-[#4C2730]">
+      {label}
+      {children}
+      {hint ? <FieldHint>{hint}</FieldHint> : null}
+    </label>
+  );
+}
+
+function SelectInput({
+  value,
+  onChange,
+  options,
+  placeholder,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+  placeholder?: string;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      className="h-11 rounded-2xl border border-[#E8C9D4] bg-white px-3 text-sm font-semibold text-[#4C2730] outline-none focus:ring-2 focus:ring-[#F7DDE2]"
+    >
+      {placeholder ? <option value="">{placeholder}</option> : null}
+      {options.map((option) => (
+        <option key={option} value={option}>
+          {option}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function GuestNameInput({
+  value,
+  onChange,
+  options,
+  placeholder,
+  listId,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+  placeholder: string;
+  listId: string;
+}) {
+  return (
+    <>
+      <Input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        list={listId}
+        placeholder={placeholder}
+        className="h-11 rounded-2xl border-[#E8C9D4] bg-white"
+      />
+      <datalist id={listId}>
+        {options.map((option) => (
+          <option key={option} value={option} />
+        ))}
+      </datalist>
+    </>
+  );
+}
+
+function ToggleCard({
+  checked,
+  onChange,
+  title,
+  description,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  title: string;
+  description: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={`rounded-2xl border p-4 text-left transition ${
+        checked ? "border-[#8D294D] bg-[#F7DDE2]/65 shadow-sm" : "border-[#E8C9D4] bg-white hover:bg-[#FFF7F2]"
+      }`}
+    >
+      <span className="flex items-center gap-3">
+        <span
+          className={`flex h-5 w-5 items-center justify-center rounded-md border ${
+            checked ? "border-[#8D294D] bg-[#8D294D] text-white" : "border-[#D5AEBB] bg-white text-transparent"
+          }`}
+        >
+          <CheckCircle2 className="h-3.5 w-3.5" />
+        </span>
+        <span className="font-bold text-[#4C2730]">{title}</span>
+      </span>
+      <span className="mt-2 block text-xs leading-5 text-[#7B5364]">{description}</span>
+    </button>
+  );
+}
+
+function CeremonySectionCard({
+  icon: Icon,
+  title,
+  helper,
+  section,
+  suggestingSection,
+  onGenerate,
+  children,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  title: string;
+  helper: string;
+  section: CeremonySectionId;
+  suggestingSection: CeremonySectionId | null;
+  onGenerate: (section: CeremonySectionId) => void;
+  children: React.ReactNode;
+}) {
+  const isGenerating = suggestingSection === section;
+  return (
+    <article className="rounded-[1.5rem] border border-[#EBCBD2] bg-white p-5 shadow-[0_12px_28px_rgba(141,41,77,0.08)]">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="rounded-2xl bg-[#F7DDE2] p-3 text-[#8D294D]">
+            <Icon className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="font-serif text-2xl font-bold text-[#4C2730]">{title}</h3>
+            <p className="mt-1 text-sm leading-6 text-[#7B5364]">{helper}</p>
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="gap-2 rounded-full border-[#E8C9D4] text-[#8D294D] hover:bg-[#F7DDE2]"
+          onClick={() => onGenerate(section)}
+          disabled={isGenerating}
+        >
+          {isGenerating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+          Generate Suggested Plan
+        </Button>
+      </div>
+      <div className="mt-5">{children}</div>
+    </article>
+  );
+}
+
 class DayOfErrorBoundary extends Component<
   { children: React.ReactNode },
   { error: Error | null }
@@ -335,6 +832,7 @@ function DayOfInner() {
   const { t } = useTranslation();
   const { data: timeline, isLoading: isLoadingTimeline } = useGetTimeline();
   const { data: profile } = useGetProfile();
+  const { data: guestListData } = useGetGuests();
   const { activeWorkspace } = useWorkspace();
   const getAdvice = useEmergencyAdvice();
   const generateTimeline = useGenerateTimeline();
@@ -355,6 +853,9 @@ function DayOfInner() {
   const [activeTab, setActiveTab] = useState<DayOfTab>("timeline");
   const [packingItems, setPackingItems] = useState<BinderChecklistItem[]>(DEFAULT_PACKING_ITEMS);
   const [binderNotes, setBinderNotes] = useState<Record<string, string>>({});
+  const [ceremonyPlan, setCeremonyPlan] = useState<CeremonyPlan>(() => createDefaultCeremonyPlan());
+  const [suggestingSection, setSuggestingSection] = useState<CeremonySectionId | null>(null);
+  const [newKeepsakeLabel, setNewKeepsakeLabel] = useState("");
   const [newPackingItem, setNewPackingItem] = useState("");
   const [isExportingTimelinePdf, setIsExportingTimelinePdf] = useState(false);
   const [isExportingBinderPdf, setIsExportingBinderPdf] = useState(false);
@@ -362,6 +863,14 @@ function DayOfInner() {
   const titleRef = useRef<HTMLInputElement>(null);
 
   const storageKey = getBinderStorageKey(profile?.id);
+  const guestNameOptions = Array.from(
+    new Set(
+      (((guestListData as any)?.guests ?? []) as Array<{ name?: string; plusOneName?: string | null }>)
+        .flatMap((guest) => [guest.name, guest.plusOneName])
+        .filter((name): name is string => typeof name === "string" && name.trim().length > 0)
+        .map((name) => name.trim())
+    )
+  ).sort((a, b) => a.localeCompare(b));
 
   useEffect(() => {
     if (timeline?.events) {
@@ -386,9 +895,11 @@ function DayOfInner() {
         const parsed = JSON.parse(raw) as {
           packingItems?: BinderChecklistItem[];
           binderNotes?: Record<string, string>;
+          ceremonyPlan?: unknown;
         };
         if (Array.isArray(parsed.packingItems)) setPackingItems(parsed.packingItems);
         if (parsed.binderNotes && typeof parsed.binderNotes === "object") setBinderNotes(parsed.binderNotes);
+        if (parsed.ceremonyPlan) setCeremonyPlan(normalizeCeremonyPlan(parsed.ceremonyPlan));
       }
     } catch {
       // Keep the default binder if locally stored data is malformed.
@@ -400,11 +911,11 @@ function DayOfInner() {
   useEffect(() => {
     if (!storageKey || loadedStorageKey !== storageKey) return;
     try {
-      localStorage.setItem(storageKey, JSON.stringify({ packingItems, binderNotes }));
+      localStorage.setItem(storageKey, JSON.stringify({ packingItems, binderNotes, ceremonyPlan }));
     } catch {
       // Non-blocking local convenience storage.
     }
-  }, [storageKey, loadedStorageKey, packingItems, binderNotes]);
+  }, [storageKey, loadedStorageKey, packingItems, binderNotes, ceremonyPlan]);
 
   const handleEmergencySubmit = () => {
     if (!emergencyText.trim()) return;
@@ -545,6 +1056,59 @@ function DayOfInner() {
     setBinderNotes((notes) => ({ ...notes, [key]: value }));
   };
 
+  const updateCeremonyPlan = (patch: Partial<CeremonyPlan>) => {
+    setCeremonyPlan((plan) => normalizeCeremonyPlan({ ...plan, ...patch }));
+  };
+
+  const updateRingsAndVows = (patch: Partial<CeremonyPlan["ringsAndVows"]>) => {
+    setCeremonyPlan((plan) => ({
+      ...plan,
+      ringsAndVows: { ...plan.ringsAndVows, ...patch },
+    }));
+  };
+
+  const updateOfficiantCues = (patch: Partial<CeremonyPlan["officiantCues"]>) => {
+    setCeremonyPlan((plan) => ({
+      ...plan,
+      officiantCues: { ...plan.officiantCues, ...patch },
+    }));
+  };
+
+  const updateRecessional = (patch: Partial<CeremonyPlan["recessional"]>) => {
+    setCeremonyPlan((plan) => ({
+      ...plan,
+      recessional: { ...plan.recessional, ...patch },
+    }));
+  };
+
+  const generateCeremonySuggestion = async (section: CeremonySectionId) => {
+    setSuggestingSection(section);
+    try {
+      const response = await authFetch("/api/dayof/ceremony-suggestions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ section, currentPlan: ceremonyPlan }),
+      });
+      if (!response.ok) throw new Error("Suggestion failed");
+      const body = await response.json() as { plan?: unknown };
+      setCeremonyPlan(normalizeCeremonyPlan(body.plan));
+      toast({ title: "Suggested ceremony plan added" });
+    } catch {
+      setCeremonyPlan(createSuggestedCeremonyPlan(section, ceremonyPlan, profile, guestNameOptions));
+      toast({
+        title: "Starter suggestion added",
+        description: "Aria could not reach the AI service, so A.I Do filled a polished starter plan you can edit.",
+      });
+    } finally {
+      setSuggestingSection(null);
+    }
+  };
+
+  const useTraditionalOrder = () => {
+    updateCeremonyPlan({ processional: buildTraditionalProcessional(profile, guestNameOptions) });
+    toast({ title: "Traditional processional order added" });
+  };
+
   const togglePackingItem = (id: string) => {
     setPackingItems((items) =>
       items.map((item) => (item.id === id ? { ...item, completed: !item.completed } : item))
@@ -678,7 +1242,10 @@ function DayOfInner() {
         y += 4;
         section.items.forEach((item) => {
           ensurePage(54);
-          const note = binderNotes[`${section.id}.${item.id}`]?.trim();
+          const note =
+            section.id === "ceremony"
+              ? summarizeCeremonyPlanForPdf(ceremonyPlan, item.id).trim()
+              : binderNotes[`${section.id}.${item.id}`]?.trim();
           doc.setFont("helvetica", "bold");
           doc.setTextColor(ink);
           doc.text(item.title, margin, y);
@@ -1039,7 +1606,558 @@ function DayOfInner() {
           </section>
         )}
 
-        {activeSection && (
+        {activeTab === "ceremony" && (
+          <section className="space-y-4">
+            <div className="rounded-[1.75rem] border border-[#EBCBD2] bg-white p-5 shadow-[0_12px_28px_rgba(141,41,77,0.08)]">
+              <div className="flex items-start gap-4">
+                <div className="rounded-2xl bg-[#F7DDE2] p-3 text-[#8D294D]">
+                  <CalendarDays className="h-6 w-6" />
+                </div>
+                <div>
+                  <h2 className="font-serif text-3xl font-bold text-[#4C2730]">Ceremony Plan</h2>
+                  <p className="mt-1 text-sm leading-6 text-[#7B5364]">
+                    Keep the ceremony sequence, handoffs, and officiant notes in one structured plan.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <CeremonySectionCard
+              icon={UsersRound}
+              title="Processional order"
+              helper="Who walks, with whom, and in what order."
+              section="processional"
+              suggestingSection={suggestingSection}
+              onGenerate={generateCeremonySuggestion}
+            >
+              <div className="mb-4 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  className="gap-2 rounded-full bg-[#8D294D] hover:bg-[#7a2140]"
+                  onClick={() => updateCeremonyPlan({ processional: [...ceremonyPlan.processional, blankProcessionalEntry()] })}
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Add Person
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-2 rounded-full border-[#E8C9D4] text-[#8D294D] hover:bg-[#F7DDE2]"
+                  onClick={useTraditionalOrder}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Use Traditional Order
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {ceremonyPlan.processional.map((entry, index) => {
+                  const walkOptions = Array.from(new Set(["None", ...guestNameOptions.filter((name) => name !== entry.personName), "Partnered attendant", "Parent or escort"]));
+                  return (
+                    <div
+                      key={entry.id}
+                      draggable
+                      onDragStart={(event) => event.dataTransfer.setData("text/plain", String(index))}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        const from = Number(event.dataTransfer.getData("text/plain"));
+                        updateCeremonyPlan({ processional: moveItem(ceremonyPlan.processional, from, index) });
+                      }}
+                      className="rounded-2xl border border-[#E8C9D4] bg-[#FFFDFC] p-3"
+                    >
+                      <div className="grid gap-3 lg:grid-cols-[auto_1.25fr_1fr_1fr_auto] lg:items-start">
+                        <div className="flex items-center gap-2 pt-2 text-[#A65A73]">
+                          <GripVertical className="h-5 w-5" />
+                          <span className="text-xs font-bold">{index + 1}</span>
+                        </div>
+                        <FieldLabel label="Person name" hint="Start typing to use a saved guest name. Example: Stacy's mom.">
+                          <GuestNameInput
+                            value={entry.personName}
+                            onChange={(value) =>
+                              updateCeremonyPlan({
+                                processional: ceremonyPlan.processional.map((item, i) => (i === index ? { ...item, personName: value } : item)),
+                              })
+                            }
+                            options={guestNameOptions}
+                            placeholder="Type or choose guest"
+                            listId={`processional-guest-${entry.id}`}
+                          />
+                        </FieldLabel>
+                        <FieldLabel label="Role" hint="Example: Parent, Officiant, Flower Girl.">
+                          <SelectInput
+                            value={entry.role}
+                            options={CEREMONY_ROLES}
+                            onChange={(value) =>
+                              updateCeremonyPlan({
+                                processional: ceremonyPlan.processional.map((item, i) => (i === index ? { ...item, role: value } : item)),
+                              })
+                            }
+                          />
+                        </FieldLabel>
+                        <FieldLabel label="Walks with" hint="Choose None for solo entrances.">
+                          <SelectInput
+                            value={entry.walksWith}
+                            options={walkOptions}
+                            onChange={(value) =>
+                              updateCeremonyPlan({
+                                processional: ceremonyPlan.processional.map((item, i) => (i === index ? { ...item, walksWith: value } : item)),
+                              })
+                            }
+                          />
+                        </FieldLabel>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="mt-7 rounded-full text-[#A65A73] hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() =>
+                            updateCeremonyPlan({ processional: ceremonyPlan.processional.filter((item) => item.id !== entry.id) })
+                          }
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <details className="mt-3">
+                        <summary className="cursor-pointer text-xs font-bold uppercase tracking-[0.16em] text-[#A65A73]">
+                          Optional notes
+                        </summary>
+                        <Textarea
+                          value={entry.notes}
+                          onChange={(event) =>
+                            updateCeremonyPlan({
+                              processional: ceremonyPlan.processional.map((item, i) => (i === index ? { ...item, notes: event.target.value } : item)),
+                            })
+                          }
+                          className="mt-2 min-h-[72px] resize-none rounded-2xl border-[#E8C9D4] bg-white"
+                          placeholder="Example: Pause at aisle entrance until music changes."
+                        />
+                      </details>
+                    </div>
+                  );
+                })}
+              </div>
+            </CeremonySectionCard>
+
+            <CeremonySectionCard
+              icon={Gem}
+              title="Rings and vows"
+              helper="Who has the rings, printed vows, and ceremony keepsakes."
+              section="rings"
+              suggestingSection={suggestingSection}
+              onGenerate={generateCeremonySuggestion}
+            >
+              <div className="grid gap-4 md:grid-cols-2">
+                <FieldLabel label="Ring holder" hint="Example: Best Man, Maid of Honor, or officiant.">
+                  <SelectInput
+                    value={ceremonyPlan.ringsAndVows.ringHolder}
+                    placeholder="Choose guest"
+                    options={guestNameOptions}
+                    onChange={(value) => updateRingsAndVows({ ringHolder: value })}
+                  />
+                </FieldLabel>
+                <FieldLabel label="Vow holder" hint="Example: couple keeps vow books, or officiant holds copies.">
+                  <SelectInput
+                    value={ceremonyPlan.ringsAndVows.vowHolder}
+                    placeholder="Choose guest"
+                    options={guestNameOptions}
+                    onChange={(value) => updateRingsAndVows({ vowHolder: value })}
+                  />
+                </FieldLabel>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <ToggleCard
+                  checked={ceremonyPlan.ringsAndVows.printedVows}
+                  onChange={(checked) => updateRingsAndVows({ printedVows: checked })}
+                  title="Printed vows"
+                  description="Turn on if physical vow cards or vow books are part of the ceremony."
+                />
+                <ToggleCard
+                  checked={ceremonyPlan.ringsAndVows.remindToPrintVows}
+                  onChange={(checked) => updateRingsAndVows({ remindToPrintVows: checked })}
+                  title="Remind me to print vows"
+                  description="Keeps this visible in your day-of prep so it does not get missed."
+                />
+              </div>
+              <div className="mt-5 rounded-2xl border border-[#E8C9D4] bg-[#FFF7F2]/60 p-4">
+                <p className="font-bold text-[#4C2730]">Keepsakes checklist</p>
+                <FieldHint>Examples: rings, vow books, marriage license, unity candle, family heirloom.</FieldHint>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {ceremonyPlan.ringsAndVows.keepsakes.map((item) => (
+                    <label key={item.id} className="flex items-center gap-3 rounded-2xl bg-white px-3 py-2 text-sm font-semibold text-[#4C2730]">
+                      <input
+                        type="checkbox"
+                        checked={item.checked}
+                        onChange={(event) =>
+                          updateRingsAndVows({
+                            keepsakes: ceremonyPlan.ringsAndVows.keepsakes.map((keepsake) =>
+                              keepsake.id === item.id ? { ...keepsake, checked: event.target.checked } : keepsake
+                            ),
+                          })
+                        }
+                        className="h-4 w-4 accent-[#8D294D]"
+                      />
+                      <span className="min-w-0 flex-1">{item.label}</span>
+                      {item.custom && (
+                        <button
+                          type="button"
+                          className="text-[#A65A73] hover:text-destructive"
+                          onClick={() =>
+                            updateRingsAndVows({
+                              keepsakes: ceremonyPlan.ringsAndVows.keepsakes.filter((keepsake) => keepsake.id !== item.id),
+                            })
+                          }
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </label>
+                  ))}
+                </div>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    value={newKeepsakeLabel}
+                    onChange={(event) => setNewKeepsakeLabel(event.target.value)}
+                    placeholder="Add custom keepsake, e.g. unity glass"
+                    className="h-11 rounded-full border-[#E8C9D4] bg-white"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2 rounded-full border-[#E8C9D4] text-[#8D294D] hover:bg-[#F7DDE2]"
+                    onClick={() => {
+                      const label = newKeepsakeLabel.trim();
+                      if (!label) return;
+                      updateRingsAndVows({
+                        keepsakes: [...ceremonyPlan.ringsAndVows.keepsakes, { id: makeId("keepsake"), label, checked: true, custom: true }],
+                      });
+                      setNewKeepsakeLabel("");
+                    }}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add
+                  </Button>
+                </div>
+              </div>
+            </CeremonySectionCard>
+
+            <CeremonySectionCard
+              icon={Mic2}
+              title="Officiant cues"
+              helper="License signing, announcements, unplugged ceremony note, or special readings."
+              section="officiant"
+              suggestingSection={suggestingSection}
+              onGenerate={generateCeremonySuggestion}
+            >
+              <div className="grid gap-3 md:grid-cols-2">
+                <ToggleCard
+                  checked={ceremonyPlan.officiantCues.licenseSigning}
+                  onChange={(checked) => updateOfficiantCues({ licenseSigning: checked })}
+                  title="License signing"
+                  description="Track whether the license needs a specific signing moment."
+                />
+                <ToggleCard
+                  checked={ceremonyPlan.officiantCues.unpluggedAnnouncement}
+                  onChange={(checked) => updateOfficiantCues({ unpluggedAnnouncement: checked })}
+                  title="Unplugged ceremony announcement"
+                  description="Show a script the officiant can read before the processional."
+                />
+              </div>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <FieldLabel label="License signing time" hint="Example: Immediately after ceremony or during cocktail hour.">
+                  <Input
+                    value={ceremonyPlan.officiantCues.licenseSigningTime}
+                    onChange={(event) => updateOfficiantCues({ licenseSigningTime: event.target.value })}
+                    disabled={!ceremonyPlan.officiantCues.licenseSigning}
+                    placeholder="Immediately after ceremony"
+                    className="h-11 rounded-2xl border-[#E8C9D4] bg-white"
+                  />
+                </FieldLabel>
+                <FieldLabel label="Special announcement" hint="Example: Cocktail hour directions.">
+                  <SelectInput
+                    value={ceremonyPlan.officiantCues.specialAnnouncement}
+                    options={SPECIAL_ANNOUNCEMENTS}
+                    onChange={(value) => updateOfficiantCues({ specialAnnouncement: value })}
+                  />
+                </FieldLabel>
+              </div>
+              {ceremonyPlan.officiantCues.unpluggedAnnouncement && (
+                <div className="mt-4 rounded-2xl border border-[#E8C9D4] bg-[#FFF7F2]/70 p-4">
+                  <p className="text-sm font-bold text-[#4C2730]">Script preview</p>
+                  <Textarea
+                    value={ceremonyPlan.officiantCues.unpluggedScript}
+                    onChange={(event) => updateOfficiantCues({ unpluggedScript: event.target.value })}
+                    className="mt-2 min-h-[86px] resize-none rounded-2xl border-[#E8C9D4] bg-white"
+                    placeholder={DEFAULT_UNPLUGGED_SCRIPT}
+                  />
+                </div>
+              )}
+              <div className="mt-5 rounded-2xl border border-[#E8C9D4] bg-white p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-bold text-[#4C2730]">Readings</p>
+                    <FieldHint>Add each reader and the title of their reading.</FieldHint>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2 rounded-full border-[#E8C9D4] text-[#8D294D]"
+                    onClick={() => updateOfficiantCues({ readings: [...ceremonyPlan.officiantCues.readings, blankReadingCue()] })}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Reading
+                  </Button>
+                </div>
+                <div className="mt-3 space-y-3">
+                  {ceremonyPlan.officiantCues.readings.map((reading, index) => (
+                    <div key={reading.id} className="grid gap-3 rounded-2xl bg-[#FFFDFC] p-3 md:grid-cols-[1fr_1fr_auto]">
+                      <FieldLabel label="Reader name">
+                        <GuestNameInput
+                          value={reading.readerName}
+                          onChange={(value) =>
+                            updateOfficiantCues({
+                              readings: ceremonyPlan.officiantCues.readings.map((item, i) => (i === index ? { ...item, readerName: value } : item)),
+                            })
+                          }
+                          options={guestNameOptions}
+                          placeholder="Choose reader"
+                          listId={`reading-guest-${reading.id}`}
+                        />
+                      </FieldLabel>
+                      <FieldLabel label="Reading title">
+                        <Input
+                          value={reading.title}
+                          onChange={(event) =>
+                            updateOfficiantCues({
+                              readings: ceremonyPlan.officiantCues.readings.map((item, i) => (i === index ? { ...item, title: event.target.value } : item)),
+                            })
+                          }
+                          placeholder="Example: Love Is Patient"
+                          className="h-11 rounded-2xl border-[#E8C9D4] bg-white"
+                        />
+                      </FieldLabel>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="mt-7 rounded-full text-[#A65A73] hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() =>
+                          updateOfficiantCues({ readings: ceremonyPlan.officiantCues.readings.filter((item) => item.id !== reading.id) })
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <details className="mt-4 rounded-2xl border border-[#E8C9D4] bg-[#FFFDFC] p-4">
+                <summary className="cursor-pointer text-sm font-bold text-[#8D294D]">Advanced officiant notes</summary>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <FieldLabel label="Pronunciation notes" hint="Example: Last name is pronounced Lah-MARE.">
+                    <Textarea
+                      value={ceremonyPlan.officiantCues.pronunciationNotes}
+                      onChange={(event) => updateOfficiantCues({ pronunciationNotes: event.target.value })}
+                      className="min-h-[80px] resize-none rounded-2xl border-[#E8C9D4] bg-white"
+                      placeholder="Names, cultural terms, or ceremony wording..."
+                    />
+                  </FieldLabel>
+                  <FieldLabel label="Special announcement notes" hint="Example: Mention shuttle pickup by the fountain.">
+                    <Textarea
+                      value={ceremonyPlan.officiantCues.specialAnnouncementNotes}
+                      onChange={(event) => updateOfficiantCues({ specialAnnouncementNotes: event.target.value })}
+                      className="min-h-[80px] resize-none rounded-2xl border-[#E8C9D4] bg-white"
+                      placeholder="Add details only the officiant needs..."
+                    />
+                  </FieldLabel>
+                </div>
+              </details>
+            </CeremonySectionCard>
+
+            <CeremonySectionCard
+              icon={ClipboardList}
+              title="Recessional and photo handoff"
+              helper="Where the couple, party, and family go immediately after the ceremony."
+              section="recessional"
+              suggestingSection={suggestingSection}
+              onGenerate={generateCeremonySuggestion}
+            >
+              <div className="grid gap-4 md:grid-cols-2">
+                <FieldLabel label="Couple exits to" hint="Example: private room for a quiet moment before photos.">
+                  <SelectInput
+                    value={ceremonyPlan.recessional.coupleExitsTo}
+                    options={COUPLE_EXIT_OPTIONS}
+                    onChange={(value) => updateRecessional({ coupleExitsTo: value })}
+                  />
+                </FieldLabel>
+                <FieldLabel label="Guest flow" hint="Example: cocktail hour while family photos happen.">
+                  <SelectInput
+                    value={ceremonyPlan.recessional.guestFlow}
+                    options={GUEST_FLOW_OPTIONS}
+                    onChange={(value) => updateRecessional({ guestFlow: value })}
+                  />
+                </FieldLabel>
+              </div>
+              <div className="mt-5 rounded-2xl border border-[#E8C9D4] bg-[#FFF7F2]/60 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="font-bold text-[#4C2730]">Wedding party exit order</p>
+                    <FieldHint>Drag rows into the order people should leave the ceremony.</FieldHint>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2 rounded-full border-[#E8C9D4] text-[#8D294D]"
+                    onClick={() =>
+                      updateRecessional({
+                        weddingPartyExitOrder: [...ceremonyPlan.recessional.weddingPartyExitOrder, blankProcessionalEntry("Wedding Party")],
+                      })
+                    }
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Exit
+                  </Button>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {ceremonyPlan.recessional.weddingPartyExitOrder.map((entry, index) => (
+                    <div
+                      key={entry.id}
+                      draggable
+                      onDragStart={(event) => event.dataTransfer.setData("text/plain", String(index))}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        const from = Number(event.dataTransfer.getData("text/plain"));
+                        updateRecessional({ weddingPartyExitOrder: moveItem(ceremonyPlan.recessional.weddingPartyExitOrder, from, index) });
+                      }}
+                      className="grid gap-3 rounded-2xl bg-white p-3 md:grid-cols-[auto_1fr_1fr_auto]"
+                    >
+                      <div className="flex items-center gap-2 text-[#A65A73]">
+                        <GripVertical className="h-5 w-5" />
+                        <span className="text-xs font-bold">{index + 1}</span>
+                      </div>
+                      <GuestNameInput
+                        value={entry.personName}
+                        onChange={(value) =>
+                          updateRecessional({
+                            weddingPartyExitOrder: ceremonyPlan.recessional.weddingPartyExitOrder.map((item, i) =>
+                              i === index ? { ...item, personName: value } : item
+                            ),
+                          })
+                        }
+                        options={guestNameOptions}
+                        placeholder="Person or group"
+                        listId={`exit-guest-${entry.id}`}
+                      />
+                      <SelectInput
+                        value={entry.role}
+                        options={CEREMONY_ROLES}
+                        onChange={(value) =>
+                          updateRecessional({
+                            weddingPartyExitOrder: ceremonyPlan.recessional.weddingPartyExitOrder.map((item, i) =>
+                              i === index ? { ...item, role: value } : item
+                            ),
+                          })
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full text-[#A65A73] hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() =>
+                          updateRecessional({
+                            weddingPartyExitOrder: ceremonyPlan.recessional.weddingPartyExitOrder.filter((item) => item.id !== entry.id),
+                          })
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  {ceremonyPlan.recessional.weddingPartyExitOrder.length === 0 && (
+                    <p className="rounded-2xl bg-white px-4 py-3 text-sm text-[#7B5364]">
+                      Add the couple, wedding party, and immediate family in the order they should exit.
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="mt-5 rounded-2xl border border-[#E8C9D4] bg-white p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="font-bold text-[#4C2730]">Family photo groups</p>
+                    <FieldHint>Repeatable groups keep the photographer handoff clear.</FieldHint>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2 rounded-full border-[#E8C9D4] text-[#8D294D]"
+                    onClick={() =>
+                      updateRecessional({ familyPhotoGroups: [...ceremonyPlan.recessional.familyPhotoGroups, blankFamilyPhotoGroup()] })
+                    }
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Group
+                  </Button>
+                </div>
+                <div className="mt-3 space-y-3">
+                  {ceremonyPlan.recessional.familyPhotoGroups.map((group, index) => (
+                    <div key={group.id} className="grid gap-3 rounded-2xl bg-[#FFFDFC] p-3 md:grid-cols-[0.9fr_1.3fr_auto]">
+                      <FieldLabel label="Group name">
+                        <Input
+                          value={group.groupName}
+                          onChange={(event) =>
+                            updateRecessional({
+                              familyPhotoGroups: ceremonyPlan.recessional.familyPhotoGroups.map((item, i) =>
+                                i === index ? { ...item, groupName: event.target.value } : item
+                              ),
+                            })
+                          }
+                          placeholder="Immediate family"
+                          className="h-11 rounded-2xl border-[#E8C9D4] bg-white"
+                        />
+                      </FieldLabel>
+                      <FieldLabel label="Members" hint="Example: couple, parents, siblings, grandparents.">
+                        <Input
+                          value={group.members}
+                          onChange={(event) =>
+                            updateRecessional({
+                              familyPhotoGroups: ceremonyPlan.recessional.familyPhotoGroups.map((item, i) =>
+                                i === index ? { ...item, members: event.target.value } : item
+                              ),
+                            })
+                          }
+                          placeholder="List names or relationship groups"
+                          className="h-11 rounded-2xl border-[#E8C9D4] bg-white"
+                        />
+                      </FieldLabel>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="mt-7 rounded-full text-[#A65A73] hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() =>
+                          updateRecessional({
+                            familyPhotoGroups: ceremonyPlan.recessional.familyPhotoGroups.filter((item) => item.id !== group.id),
+                          })
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <details className="mt-5 rounded-2xl border border-[#E8C9D4] bg-[#FFFDFC] p-4">
+                <summary className="cursor-pointer text-sm font-bold text-[#8D294D]">Structured JSON preview</summary>
+                <pre className="mt-3 max-h-72 overflow-auto rounded-2xl bg-[#2C1821] p-4 text-xs leading-5 text-[#FFF7F2]">
+                  {JSON.stringify(ceremonyPlan, null, 2)}
+                </pre>
+              </details>
+            </CeremonySectionCard>
+          </section>
+        )}
+
+        {activeSection && activeSection.id !== "ceremony" && (
           <section className="space-y-4">
             <div className="rounded-[1.75rem] border border-[#EBCBD2] bg-white p-5 shadow-[0_12px_28px_rgba(141,41,77,0.08)]">
               <div className="flex items-start gap-4">
