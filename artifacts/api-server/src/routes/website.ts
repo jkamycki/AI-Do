@@ -819,7 +819,7 @@ router.get("/website/photo-drop", requireAuth, async (req, res) => {
       .where(eq(guestPhotoUploads.websiteId, site.id))
       .orderBy(desc(guestPhotoUploads.uploadedAt));
     const settings = guestPhotoDropSettings(site.customText);
-    const publicUploadUrl = `${buildFrontendOrigin(req).replace(/\/+$/, "")}/w/${site.slug}/guest-photo-drop`;
+    const publicUploadUrl = `${buildFrontendOrigin(req).replace(/\/+$/, "")}/photo-drop/${site.slug}`;
 
     res.json({
       website: serialize(site),

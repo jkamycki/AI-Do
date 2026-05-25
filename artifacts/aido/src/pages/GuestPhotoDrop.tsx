@@ -16,7 +16,7 @@ import {
   UploadCloud,
 } from "lucide-react";
 import { authFetch } from "@/lib/authFetch";
-import { publishedWebsiteUrl } from "@/lib/publicUrls";
+import { publicAppOrigin } from "@/lib/publicUrls";
 import { qrSvgDataUrl } from "@/lib/localQr";
 import { AuthMediaImage } from "@/components/AuthMediaImage";
 import { Button } from "@/components/ui/button";
@@ -119,7 +119,7 @@ export default function GuestPhotoDrop() {
   const settings = draft ?? data?.settings ?? null;
   const publicUrl = useMemo(() => {
     if (!data?.website.slug) return "";
-    return data.publicUploadUrl || publishedWebsiteUrl(data.website.slug, "guest-photo-drop");
+    return data.publicUploadUrl || `${publicAppOrigin()}/photo-drop/${data.website.slug}`;
   }, [data?.publicUploadUrl, data?.website.slug]);
   const qrUrl = useMemo(() => publicUrl ? qrSvgDataUrl(publicUrl, 10, 4) : "", [publicUrl]);
 

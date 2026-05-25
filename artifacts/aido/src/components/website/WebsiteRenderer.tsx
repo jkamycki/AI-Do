@@ -2936,6 +2936,16 @@ function Gallery({
   const images = (data.galleryImages ?? [])
     .slice()
     .sort((a, b) => a.order - b.order);
+  const guestUploads = data.guestPhotoDrop?.galleryEnabled
+    ? (data.guestPhotoDrop.photos ?? [])
+      .map((photo) => ({
+        id: photo.id,
+        url: photo.publicImageUrl || photo.imageUrl,
+        caption: photo.note || `Photo from ${photo.guestName}`,
+        guestName: photo.guestName,
+      }))
+      .filter((photo) => photo.url)
+    : [];
   const photoFilter = photoFilterCss(data.customText._photoFilter);
   const animation = data.customText._galleryAnimation ?? "grid";
   const speed = data.customText._galleryAnimationSpeed ?? "medium";
@@ -2947,6 +2957,7 @@ function Gallery({
   const entrance: "none" | "fade-in" | "slide-up" | "zoom-in" | "puzzle" =
     animation === "grid" ? "puzzle" : "none";
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [guestLightboxIndex, setGuestLightboxIndex] = useState<number | null>(null);
 
   // Slideshow auto-advance. Hooks must run unconditionally — bail out inside.
   const [activeIdx, setActiveIdx] = useState(0);
@@ -3013,7 +3024,7 @@ function Gallery({
     return () => obs.disconnect();
   }, [entrance]);
 
-  if (images.length === 0 && !ctx.editable) return null;
+  if (images.length === 0 && guestUploads.length === 0 && !ctx.editable) return null;
 
   const renderHoverIcon = () => (
     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
@@ -3065,6 +3076,13 @@ function Gallery({
           images={images}
           startIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
+        />
+      )}
+      {guestLightboxIndex !== null && guestUploads.length > 0 && (
+        <Lightbox
+          images={guestUploads}
+          startIndex={guestLightboxIndex}
+          onClose={() => setGuestLightboxIndex(null)}
         />
       )}
       <EditableText
@@ -3230,6 +3248,60 @@ function Gallery({
             </div>
           ))}
         </div>
+      )}
+      {guestUploads.length > 0 && (
+        <section
+          aria-labelledby="guest-uploads-heading"
+          className="mt-14 rounded-[2rem] border bg-white/70 p-4 shadow-[0_18px_55px_rgba(91,15,42,0.10)] sm:p-6"
+          style={{ borderColor: `${data.colorPalette.primary}22` }}
+        >
+          <div className="mb-6 flex flex-col gap-2 text-center sm:text-left">
+            <p
+              className="text-xs font-bold uppercase tracking-[0.22em]"
+              style={{ color: data.colorPalette.accent }}
+            >
+              Shared by guests
+            </p>
+            <h3
+              id="guest-uploads-heading"
+              className="text-3xl sm:text-4xl"
+              style={{ fontFamily: fontStack(headingFont(data)), color: data.colorPalette.primary }}
+            >
+              Guest Uploads
+            </h3>
+            <p
+              className="max-w-2xl text-sm leading-6"
+              style={{ color: labelColor, fontFamily: bodyFontStack(bodyFont(data)) }}
+            >
+              Candid moments collected through the couple's wedding day QR code.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            {guestUploads.map((photo, index) => (
+              <button
+                key={photo.id}
+                type="button"
+                onClick={() => setGuestLightboxIndex(index)}
+                className="group relative aspect-square overflow-hidden rounded-2xl border bg-white shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                style={{
+                  borderColor: `${data.colorPalette.primary}22`,
+                  ["--tw-ring-color" as string]: data.colorPalette.primary,
+                }}
+                aria-label={photo.caption}
+              >
+                <AuthMediaImage
+                  src={photo.url}
+                  alt={photo.caption}
+                  className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                  loading="lazy"
+                />
+                <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent px-2 pb-2 pt-8 text-left text-xs font-semibold text-white">
+                  {photo.guestName}
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
       )}
     </SectionShell>
   );
@@ -4020,8 +4092,6 @@ function TopNav({
     items.push({ id: "weddingParty", label: navLabel("_navWeddingParty", "Wedding Party") });
   if (data.sectionsEnabled.gallery)
     items.push({ id: "gallery", label: navLabel("_navGallery", "Gallery") });
-  if (data.guestPhotoDrop?.enabled)
-    items.push({ id: "photoDrop", label: navLabel("_navGuestPhotos", "Guest Photos") });
   if (data.sectionsEnabled.faq) items.push({ id: "faq", label: navLabel("_navFaq", "FAQ") });
   if (data.sectionsEnabled.rsvp !== false)
     items.push({ id: "rsvp", label: navLabel("_navRsvp", "RSVP") });

@@ -34,6 +34,7 @@ const Rsvp = lazy(() => import("@/pages/Rsvp"));
 const SharedRsvp = lazy(() => import("@/pages/SharedRsvp"));
 const SaveTheDate = lazy(() => import("@/pages/SaveTheDate"));
 const PublicWebsite = lazy(() => import("@/pages/PublicWebsite"));
+const PublicGuestPhotoDrop = lazy(() => import("@/pages/PublicGuestPhotoDrop"));
 const WebsiteEditor = lazy(() => import("@/pages/WebsiteEditor"));
 const WeddingParty = lazy(() => import("@/pages/WeddingParty"));
 const SharedWorkspace = lazy(() => import("@/pages/SharedWorkspace"));
@@ -1849,6 +1850,7 @@ function Router() {
         <Route path="/save-the-date/shared-invite/:slug" component={SaveTheDate} />
         <Route path="/save-the-date/shared/:slug" component={SaveTheDate} />
         <Route path="/save-the-date/:token" component={SaveTheDate} />
+        <Route path="/photo-drop/:slug" component={PublicGuestPhotoDrop} />
         <Route path="/w/:slug" component={PublicWebsite} />
         <Route path="/w/:slug/:section" component={PublicWebsite} />
         <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} maintenanceSection="portal-dashboard" />} />
