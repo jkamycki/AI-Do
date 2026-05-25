@@ -8,6 +8,7 @@ import { publishedWebsiteUrl } from "@/lib/publicUrls";
 
 type PublicPhotoDropPayload = {
   slug: string;
+  websitePublished?: boolean;
   colorPalette?: {
     primary?: string;
     secondary?: string;
@@ -132,8 +133,8 @@ export default function PublicGuestPhotoDrop() {
   const photosLeftAfterSelection = Math.max(0, photosLeft - files.length);
   const primary = data?.colorPalette?.primary || "#8D294D";
   const accent = data?.colorPalette?.accent || "#D4A373";
-  const weddingWebsiteUrl = slug ? publishedWebsiteUrl(slug) : "";
-  const weddingGalleryUrl = slug ? publishedWebsiteUrl(slug, "gallery") : "";
+  const weddingWebsiteUrl = slug && data?.websitePublished ? publishedWebsiteUrl(slug) : "";
+  const weddingGalleryUrl = slug && data?.websitePublished ? publishedWebsiteUrl(slug, "gallery") : "";
   const displayWeddingWebsiteUrl = weddingWebsiteUrl.replace(/^https?:\/\//, "");
 
   useEffect(() => {
@@ -147,7 +148,7 @@ export default function PublicGuestPhotoDrop() {
     setError(null);
     setNeedsPassword(false);
     setData(null);
-    apiFetch(`/api/website/public/${encodeURIComponent(slug)}`)
+    apiFetch(`/api/website/public/${encodeURIComponent(slug)}/photo-drop`)
       .then(async (response) => {
         if (response.status === 401) {
           const body = await response.json().catch(() => ({}));
@@ -157,7 +158,7 @@ export default function PublicGuestPhotoDrop() {
           }
         }
         if (response.status === 404) {
-          setError("This photo drop is not available yet.");
+          setError("We could not find this photo drop. Please ask the couple for their latest QR code.");
           return;
         }
         if (!response.ok) {
@@ -474,9 +475,12 @@ export default function PublicGuestPhotoDrop() {
               <div className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
                 <p className="font-bold">{success}</p>
                 <p className="mt-1 leading-6">
-                  {drop.approvalRequired
-                    ? "Once the couple approves your photos, they will appear in the Gallery section on the wedding website."
-                    : "Your approved photos will appear in the Gallery section on the wedding website."}
+                  {weddingGalleryUrl
+                    ? (drop.approvalRequired
+                      ? "Once the couple approves your photos, they will appear in the Gallery section on the wedding website."
+                      : "Your approved photos will appear in the Gallery section on the wedding website."
+                    )
+                    : "Once the couple approves your photos, they will be saved for the couple to review."}
                 </p>
                 {photosLeft <= 0 && weddingGalleryUrl && (
                   <a

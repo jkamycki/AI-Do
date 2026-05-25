@@ -386,6 +386,38 @@ function publicGuestPhotoUrl(row: typeof weddingWebsites.$inferSelect, raw: stri
   return websiteMediaUrl(row, raw) ?? raw;
 }
 
+async function buildPublicPhotoDropPayload(row: typeof weddingWebsites.$inferSelect) {
+  const [profile] = await db
+    .select()
+    .from(weddingProfiles)
+    .where(eq(weddingProfiles.id, row.profileId))
+    .limit(1);
+  if (!profile) return null;
+
+  return {
+    slug: row.slug,
+    websitePublished: row.published,
+    colorPalette: row.colorPalette,
+    couple: {
+      partner1Name: profile.partner1Name,
+      partner2Name: profile.partner2Name,
+      weddingDate: profile.weddingDate,
+      venue: profile.venue,
+    },
+    guestPhotoDrop: guestPhotoDropSettings(row.customText),
+  };
+}
+
+async function resolveGuestPhotoDropSite(slug: string) {
+  const [row] = await db
+    .select()
+    .from(weddingWebsites)
+    .where(eq(weddingWebsites.slug, slug.toLowerCase()))
+    .limit(1);
+  if (!row) return { ok: false as const, status: 404 };
+  return { ok: true as const, site: row, settings: guestPhotoDropSettings(row.customText) };
+}
+
 function cleanGuestPhotoDeviceId(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
   const value = raw.trim().slice(0, 160);
@@ -1723,6 +1755,30 @@ router.post("/website/public/:slug/unlock", websiteUnlockLimiter, async (req, re
   }
 });
 
+// ---------- GET /api/website/public/:slug/photo-drop ----------
+//
+// Dedicated public payload for the QR-code photo uploader. This intentionally
+// does not depend on the full wedding website being published or unlocked:
+// if the couple turned on Guest Photo Drop, the wedding-day upload link should
+// stay reliable for guests scanning a sign at the event.
+router.get("/website/public/:slug/photo-drop", guestPhotoUsageLimiter, async (req, res) => {
+  try {
+    if (await sendMaintenanceIfActive(res, "wedding-website")) return;
+    const slug = String(req.params.slug ?? "").toLowerCase();
+    if (!slug) return res.status(400).json({ error: "Slug required" });
+
+    const r = await resolveGuestPhotoDropSite(slug);
+    if (!r.ok) return res.status(r.status).json({ error: "Photo drop not found" });
+
+    const payload = await buildPublicPhotoDropPayload(r.site);
+    if (!payload) return res.status(404).json({ error: "Photo drop not found" });
+    res.json(payload);
+  } catch (err) {
+    req.log.error(err, "publicGuestPhotoDrop failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ---------- Public RSVP integration ----------
 //
 // Guests on the wedding website RSVP without a personalized token. They type
@@ -1835,10 +1891,10 @@ router.post("/website/public/:slug/photo-drop/usage", guestPhotoUsageLimiter, as
   try {
     if (await sendMaintenanceIfActive(res, "wedding-website")) return;
     const slug = String(req.params.slug ?? "").toLowerCase();
-    const r = await resolvePublishedSite(slug, req);
-    if (!r.ok) return res.status(r.status).json({ error: r.status === 401 ? "Password required" : "Not found" });
+    const r = await resolveGuestPhotoDropSite(slug);
+    if (!r.ok) return res.status(r.status).json({ error: "Photo drop not found" });
 
-    const settings = guestPhotoDropSettings(r.site.customText);
+    const settings = r.settings;
     if (!settings.enabled) return res.status(404).json({ error: "Guest photo sharing is not available for this wedding." });
 
     const uploaderKey = guestPhotoUploadKey(req, r.site, req.body?.deviceId);
@@ -1880,10 +1936,10 @@ router.post(
     try {
       if (await sendMaintenanceIfActive(res, "wedding-website")) return;
       const slug = String(req.params.slug ?? "").toLowerCase();
-      const r = await resolvePublishedSite(slug, req);
-      if (!r.ok) return res.status(r.status).json({ error: r.status === 401 ? "Password required" : "Not found" });
+      const r = await resolveGuestPhotoDropSite(slug);
+      if (!r.ok) return res.status(r.status).json({ error: "Photo drop not found" });
 
-      const settings = guestPhotoDropSettings(r.site.customText);
+      const settings = r.settings;
       if (!settings.enabled) return res.status(404).json({ error: "Guest photo sharing is not available for this wedding." });
 
       const files = Array.isArray(req.files) ? (req.files as Express.Multer.File[]) : [];
