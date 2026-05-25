@@ -51,6 +51,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
               id: checklistItems.id,
               task: checklistItems.task,
               month: checklistItems.month,
+              dueDate: checklistItems.dueDate,
               isCompleted: checklistItems.isCompleted,
             })
             .from(checklistItems)
@@ -93,6 +94,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
       id: number;
       task: string;
       month: string;
+      dueDate: string | null;
       isCompleted: boolean;
     }>;
     const guestRows = summaryRows[4] as Array<{
@@ -182,13 +184,18 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
       return null;
     }
 
-    let upcomingTasks: { id: number; task: string; month: string; isCompleted: boolean }[] = [];
+    let upcomingTasks: { id: number; task: string; month: string; dueDate: string | null; isCompleted: boolean }[] = [];
     if (hasProfile && hasChecklist) {
       const weddingDate = new Date(profiles[0].weddingDate + "T12:00:00");
       const today = new Date();
       upcomingTasks = allChecklistItems
         .filter(item => {
           if (item.isCompleted) return false;
+          if (item.dueDate) {
+            const due = new Date(`${item.dueDate}T12:00:00`);
+            const diffDays = (due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
+            return diffDays <= 45;
+          }
           const months = parseMonthsFromLabel(item.month);
           if (months === null) return false;
           const due = new Date(weddingDate);
@@ -197,8 +204,9 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
           const diffDays = (due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
           return diffDays <= 45;
         })
+        .sort((a, b) => String(a.dueDate ?? "").localeCompare(String(b.dueDate ?? "")))
         .slice(0, 5)
-        .map(item => ({ id: item.id, task: item.task, month: item.month, isCompleted: item.isCompleted }));
+        .map(item => ({ id: item.id, task: item.task, month: item.month, dueDate: item.dueDate, isCompleted: item.isCompleted }));
     }
 
     const profile = hasProfile ? {

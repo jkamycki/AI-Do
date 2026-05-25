@@ -2785,8 +2785,9 @@ function Registry({
 function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   type FaqItem = { question: string; answer: string };
   let items: FaqItem[] = [];
+  const labelColor = sectionTextColor(data, "faq");
+
   try {
-    const labelColor = sectionTextColor(data, "faq");
     const raw = data.customText.faq_items_json;
     if (raw) {
       const parsed = JSON.parse(raw) as FaqItem[];

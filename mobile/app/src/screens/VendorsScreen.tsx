@@ -16,7 +16,7 @@ import { StatusPill } from '../components/StatusPill';
 import { usePlanningData } from '../state/PlanningDataContext';
 import { fonts, spacing, useAppTheme } from '../theme';
 import { VendorStatus } from '../types';
-import { formatCurrency, formatShortDate } from '../utils/format';
+import { formatCurrency, formatShortDate, isDateInputValid } from '../utils/format';
 
 const vendorStatuses: VendorStatus[] = ['Pending', 'Signed', 'Ongoing', 'Completed'];
 
@@ -25,7 +25,12 @@ export function VendorsScreen() {
   const { addDocument, addVendor, data, loading, recordVendorPayment, refresh, scheduleVendorPayment, updateVendor } = usePlanningData();
   const [addOpen, setAddOpen] = useState(false);
   const [scheduleVendorId, setScheduleVendorId] = useState<string | null>(null);
+  const [paymentVendorId, setPaymentVendorId] = useState<string | null>(null);
   const [paymentDate, setPaymentDate] = useState('');
+  const [scheduleError, setScheduleError] = useState('');
+  const [vendorError, setVendorError] = useState('');
+  const [vendorPaymentError, setVendorPaymentError] = useState('');
+  const [vendorPaymentForm, setVendorPaymentForm] = useState({ amount: '', date: '', note: '' });
   const [vendorForm, setVendorForm] = useState({
     category: '',
     committed: '',
@@ -37,6 +42,7 @@ export function VendorsScreen() {
   const totalPaid = data.vendors.reduce((sum, vendor) => sum + vendor.paid, 0);
   const committed = data.vendors.reduce((sum, vendor) => sum + vendor.committed, 0);
   const scheduleVendor = useMemo(() => data.vendors.find((vendor) => vendor.id === scheduleVendorId), [data.vendors, scheduleVendorId]);
+  const paymentVendor = useMemo(() => data.vendors.find((vendor) => vendor.id === paymentVendorId), [data.vendors, paymentVendorId]);
 
   function setVendorField(key: keyof typeof vendorForm, value: string) {
     setVendorForm((current) => ({ ...current, [key]: value }));
@@ -47,6 +53,12 @@ export function VendorsScreen() {
     const paidAmount = Number.parseFloat(vendorForm.paid) || 0;
 
     if (!vendorForm.name.trim() || !vendorForm.category.trim() || committedAmount <= 0) {
+      setVendorError('Add a vendor name, category, and valid committed total.');
+      return;
+    }
+
+    if (vendorForm.nextPaymentDate.trim() && !isDateInputValid(vendorForm.nextPaymentDate)) {
+      setVendorError('Use a valid next payment date in YYYY-MM-DD format.');
       return;
     }
 
@@ -59,16 +71,46 @@ export function VendorsScreen() {
       status: paidAmount >= committedAmount ? 'Completed' : 'Pending',
     });
     setVendorForm({ category: '', committed: '', name: '', nextPaymentDate: '', paid: '' });
+    setVendorError('');
     setAddOpen(false);
   }
 
-  function markVendorPaid(vendorId: string) {
+  function openVendorPayment(vendorId: string, payBalance = false) {
     const vendor = data.vendors.find((item) => item.id === vendorId);
-    if (!vendor || vendor.remaining <= 0) {
+    if (!vendor) {
       return;
     }
 
-    recordVendorPayment(vendorId, vendor.remaining, 'Balance marked paid in mobile app');
+    setVendorPaymentForm({
+      amount: payBalance ? String(vendor.remaining) : '',
+      date: new Date().toISOString().split('T')[0],
+      note: payBalance ? 'Balance marked paid in mobile app' : '',
+    });
+    setVendorPaymentError('');
+    setPaymentVendorId(vendorId);
+  }
+
+  function saveVendorPayment() {
+    const amount = Number.parseFloat(vendorPaymentForm.amount) || 0;
+    if (!paymentVendorId || amount <= 0) {
+      setVendorPaymentError('Enter a valid payment amount.');
+      return;
+    }
+
+    if (!isDateInputValid(vendorPaymentForm.date)) {
+      setVendorPaymentError('Add a valid payment date in YYYY-MM-DD format.');
+      return;
+    }
+
+    recordVendorPayment(
+      paymentVendorId,
+      amount,
+      vendorPaymentForm.note.trim() || 'Payment recorded in mobile app',
+      vendorPaymentForm.date.trim(),
+    );
+    setVendorPaymentForm({ amount: '', date: '', note: '' });
+    setVendorPaymentError('');
+    setPaymentVendorId(null);
   }
 
   function createReceipt(vendorId: string) {
@@ -87,10 +129,18 @@ export function VendorsScreen() {
   }
 
   function saveScheduleDate() {
-    if (scheduleVendorId && paymentDate.trim()) {
-      scheduleVendorPayment(scheduleVendorId, paymentDate.trim());
+    if (!scheduleVendorId) {
+      return;
     }
+
+    if (!isDateInputValid(paymentDate)) {
+      setScheduleError('Add a valid date in YYYY-MM-DD format.');
+      return;
+    }
+
+    scheduleVendorPayment(scheduleVendorId, paymentDate.trim());
     setPaymentDate('');
+    setScheduleError('');
     setScheduleVendorId(null);
   }
 
@@ -103,7 +153,14 @@ export function VendorsScreen() {
           <Text style={[styles.quickAddTitle, { color: colors.text }]}>Vendor Workspace</Text>
           <Text style={[styles.quickAddMeta, { color: colors.muted }]}>Add vendors, track payments, and create receipts without leaving the app.</Text>
         </View>
-        <PrimaryButton icon="add" label="Add Vendor" onPress={() => setAddOpen(true)} />
+        <PrimaryButton
+          icon="add"
+          label="Add Vendor"
+          onPress={() => {
+            setVendorError('');
+            setAddOpen(true);
+          }}
+        />
       </Card>
 
       <View style={styles.metricRow}>
@@ -167,12 +224,14 @@ export function VendorsScreen() {
           )}
 
           <View style={styles.actions}>
-            <PrimaryButton icon="checkmark-circle-outline" label="Mark Paid" onPress={() => markVendorPaid(vendor.id)} />
+            <PrimaryButton icon="card-outline" label="Add Payment" onPress={() => openVendorPayment(vendor.id)} />
+            <PrimaryButton icon="checkmark-circle-outline" label="Mark Paid" onPress={() => openVendorPayment(vendor.id, true)} variant="gold" />
             <PrimaryButton
               icon="calendar-outline"
               label="Schedule"
               onPress={() => {
                 setPaymentDate(vendor.nextPaymentDate ?? '');
+                setScheduleError('');
                 setScheduleVendorId(vendor.id);
               }}
               variant="ghost"
@@ -199,7 +258,21 @@ export function VendorsScreen() {
           placeholder="YYYY-MM-DD"
           value={vendorForm.nextPaymentDate}
         />
+        {vendorError ? <Text style={[styles.errorText, { color: colors.danger }]}>{vendorError}</Text> : null}
         <PrimaryButton icon="checkmark-outline" label="Save Vendor" onPress={saveVendor} />
+      </FormSheet>
+
+      <FormSheet
+        onClose={() => setPaymentVendorId(null)}
+        subtitle={paymentVendor ? `Record a payment for ${paymentVendor.name}. A payment date is required.` : undefined}
+        title="Record Vendor Payment"
+        visible={Boolean(paymentVendorId)}
+      >
+        <FormField keyboardType="numeric" label="Payment amount" onChangeText={(value) => setVendorPaymentForm((current) => ({ ...current, amount: value }))} placeholder="500" value={vendorPaymentForm.amount} />
+        <FormField label="Payment date" onChangeText={(value) => setVendorPaymentForm((current) => ({ ...current, date: value }))} placeholder="YYYY-MM-DD" value={vendorPaymentForm.date} />
+        <FormField label="Note" onChangeText={(value) => setVendorPaymentForm((current) => ({ ...current, note: value }))} placeholder="Deposit, retainer, balance..." value={vendorPaymentForm.note} />
+        {vendorPaymentError ? <Text style={[styles.errorText, { color: colors.danger }]}>{vendorPaymentError}</Text> : null}
+        <PrimaryButton icon="checkmark-outline" label="Save Payment" onPress={saveVendorPayment} />
       </FormSheet>
 
       <FormSheet
@@ -209,6 +282,7 @@ export function VendorsScreen() {
         visible={Boolean(scheduleVendorId)}
       >
         <FormField label="Next payment date" onChangeText={setPaymentDate} placeholder="YYYY-MM-DD" value={paymentDate} />
+        {scheduleError ? <Text style={[styles.errorText, { color: colors.danger }]}>{scheduleError}</Text> : null}
         <PrimaryButton icon="calendar-outline" label="Save Schedule" onPress={saveScheduleDate} />
       </FormSheet>
     </Screen>
@@ -266,6 +340,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: spacing.md,
+  },
+  errorText: {
+    fontFamily: fonts.semibold,
+    fontSize: 13,
   },
   label: {
     fontFamily: fonts.semibold,

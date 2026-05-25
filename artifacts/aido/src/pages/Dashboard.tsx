@@ -1228,6 +1228,12 @@ function DashboardContent() {
                 <div>
                   <span className="text-sm text-amber-900 dark:text-amber-200 font-medium">{task.task}</span>
                   <span className="text-xs text-amber-600 dark:text-amber-400 ml-2">{task.month}</span>
+                  {task.dueDate && (
+                    <span className="text-xs text-amber-700 dark:text-amber-300 ml-2 inline-flex items-center gap-1">
+                      <CalendarDays className="h-3 w-3" />
+                      {formatDate(task.dueDate)}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}

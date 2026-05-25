@@ -100,7 +100,7 @@ export function SettingsScreen() {
             ))}
           </View>
           <Text style={[styles.helper, { color: colors.muted }]}>
-            In-app notifications stay available through the bell and app alerts.
+            Checklist tasks need a deadline to trigger email reminders. In-app reminders stay visible through the app activity feed.
           </Text>
         </View>
       </Card>

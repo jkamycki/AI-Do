@@ -10,8 +10,30 @@ import { getRequestLanguage } from "../../lib/language";
 
 const router = Router();
 
-type ChecklistTask = { month: string; task: string; description: string };
+type ChecklistTask = { month: string; task: string; description: string; dueDate?: string | null };
 type ChecklistTranslationItem = ChecklistTask & { id?: number };
+
+function normalizeChecklistDueDate(value: unknown): string | null {
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return null;
+  const parsed = new Date(`${trimmed}T00:00:00.000Z`);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === trimmed ? trimmed : null;
+}
+
+function serializeChecklistItem(item: typeof checklistItems.$inferSelect) {
+  return {
+    id: item.id,
+    month: item.month,
+    task: item.task,
+    description: item.description,
+    dueDate: item.dueDate ?? null,
+    isCompleted: item.isCompleted,
+    completedAt: item.completedAt?.toISOString() ?? undefined,
+    resolveNote: item.resolveNote ?? undefined,
+  };
+}
 
 function normalizeChecklistTranslationItems(value: unknown): ChecklistTranslationItem[] {
   if (!Array.isArray(value)) return [];
@@ -22,6 +44,7 @@ function normalizeChecklistTranslationItems(value: unknown): ChecklistTranslatio
       month: String(row.month ?? ""),
       task: String(row.task ?? ""),
       description: String(row.description ?? ""),
+      dueDate: normalizeChecklistDueDate(row.dueDate),
     };
   }).filter(item => item.month.trim() || item.task.trim() || item.description.trim());
 }
@@ -127,15 +150,7 @@ router.get("/checklist", requireAuth, async (req, res) => {
       : [];
 
     res.json({
-      items: items.map(item => ({
-        id: item.id,
-        month: item.month,
-        task: item.task,
-        description: item.description,
-        isCompleted: item.isCompleted,
-        completedAt: item.completedAt?.toISOString() ?? undefined,
-        resolveNote: item.resolveNote ?? undefined,
-      })),
+      items: items.map(serializeChecklistItem),
       generatedAt: new Date().toISOString(),
     });
   } catch (err) {
@@ -244,6 +259,7 @@ If a checklist focus / prompt is provided, make the generated tasks visibly refl
       month: t.month,
       task: t.task,
       description: t.description,
+      dueDate: t.dueDate ?? null,
     })).filter(item => !existingTaskKeys.has(normalizeTaskText(item.task)));
 
     if (insertData.length > 0) {
@@ -257,15 +273,7 @@ If a checklist focus / prompt is provided, make the generated tasks visibly refl
       .orderBy(asc(checklistItems.id));
 
     res.json({
-      items: items.map(item => ({
-        id: item.id,
-        month: item.month,
-        task: item.task,
-        description: item.description,
-        isCompleted: item.isCompleted,
-        completedAt: item.completedAt?.toISOString() ?? undefined,
-        resolveNote: item.resolveNote ?? undefined,
-      })),
+      items: items.map(serializeChecklistItem),
       generatedAt: new Date().toISOString(),
     });
   } catch (err) {
@@ -304,15 +312,7 @@ If a checklist focus / prompt is provided, make the generated tasks visibly refl
           .where(eq(checklistItems.profileId, profile.id))
           .orderBy(asc(checklistItems.id));
         res.json({
-          items: items.map(item => ({
-            id: item.id,
-            month: item.month,
-            task: item.task,
-            description: item.description,
-            isCompleted: item.isCompleted,
-            completedAt: item.completedAt?.toISOString() ?? undefined,
-            resolveNote: item.resolveNote ?? undefined,
-          })),
+          items: items.map(serializeChecklistItem),
           generatedAt: new Date().toISOString(),
         });
         return;
@@ -410,7 +410,7 @@ router.patch("/checklist/items/:id", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-    const { isCompleted, task, description, month, resolveNote } = req.body;
+    const { isCompleted, task, description, month, resolveNote, dueDate } = req.body;
 
     const updates: Record<string, unknown> = {};
     if (isCompleted !== undefined) {
@@ -423,6 +423,15 @@ router.patch("/checklist/items/:id", requireAuth, async (req, res) => {
     if (task !== undefined) updates.task = task;
     if (description !== undefined) updates.description = description;
     if (month !== undefined) updates.month = month;
+    if (dueDate !== undefined) {
+      const nextDueDate = normalizeChecklistDueDate(dueDate);
+      if (dueDate && !nextDueDate) {
+        res.status(400).json({ error: "dueDate must be YYYY-MM-DD" });
+        return;
+      }
+      updates.dueDate = nextDueDate;
+      updates.reminderSentAt = null;
+    }
     if (resolveNote !== undefined) {
       const trimmed = typeof resolveNote === "string" ? resolveNote.trim() : "";
       updates.resolveNote = trimmed.length > 0 ? trimmed : null;
@@ -443,15 +452,7 @@ router.patch("/checklist/items/:id", requireAuth, async (req, res) => {
       trackEvent(req.userId!, "checklist_item_completed", { taskId: item.id, task: item.task });
     }
     logActivity(item.profileId, req.userId!, `${isCompleted !== undefined ? (isCompleted ? "Completed" : "Unchecked") : "Edited"}: ${item.task}`, "checklist", { taskId: item.id });
-    res.json({
-      id: item.id,
-      month: item.month,
-      task: item.task,
-      description: item.description,
-      isCompleted: item.isCompleted,
-      completedAt: item.completedAt?.toISOString() ?? undefined,
-      resolveNote: item.resolveNote ?? undefined,
-    });
+    res.json(serializeChecklistItem(item));
   } catch (err) {
     req.log.error(err, "Failed to update checklist item");
     res.status(500).json({ error: "Internal server error" });
@@ -493,23 +494,23 @@ router.post("/checklist/items", requireAuth, async (req, res) => {
     const profile = await resolveProfile(req);
     if (!profile) return res.status(404).json({ error: "Profile not found" });
 
-    const { task, description, month } = req.body;
+    const { task, description, month, dueDate } = req.body;
     if (!task?.trim() || !month?.trim()) return res.status(400).json({ error: "task and month are required" });
+    const nextDueDate = normalizeChecklistDueDate(dueDate);
+    if (dueDate && !nextDueDate) return res.status(400).json({ error: "dueDate must be YYYY-MM-DD" });
 
     const [item] = await db
       .insert(checklistItems)
-      .values({ profileId: profile.id, task: task.trim(), description: description?.trim() ?? "", month: month.trim() })
+      .values({
+        profileId: profile.id,
+        task: task.trim(),
+        description: description?.trim() ?? "",
+        month: month.trim(),
+        dueDate: nextDueDate,
+      })
       .returning();
 
-    res.json({
-      id: item.id,
-      month: item.month,
-      task: item.task,
-      description: item.description,
-      isCompleted: item.isCompleted,
-      completedAt: item.completedAt?.toISOString() ?? undefined,
-      resolveNote: item.resolveNote ?? undefined,
-    });
+    res.json(serializeChecklistItem(item));
   } catch (err) {
     req.log.error(err, "Failed to add checklist item");
     res.status(500).json({ error: "Internal server error" });

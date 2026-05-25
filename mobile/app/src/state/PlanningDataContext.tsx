@@ -214,10 +214,20 @@ export function PlanningDataProvider({ children }: { children: ReactNode }) {
   }, [data, hydrated]);
 
   const toggleTask = useCallback((taskId: string) => {
-    setData((current) => ({
-      ...current,
-      tasks: current.tasks.map((task) => (task.id === taskId ? { ...task, completed: !task.completed } : task)),
-    }));
+    setData((current) => {
+      const task = current.tasks.find((item) => item.id === taskId);
+      const nextCompleted = !task?.completed;
+
+      return withActivity(
+        {
+          ...current,
+          tasks: current.tasks.map((item) => (item.id === taskId ? { ...item, completed: !item.completed } : item)),
+        },
+        nextCompleted ? 'Completed checklist task' : 'Reopened checklist task',
+        `${task?.title ?? 'A checklist item'} was ${nextCompleted ? 'marked complete' : 'reopened'}.`,
+        'update',
+      );
+    });
   }, []);
 
   const updateProfile = useCallback((profile: Partial<CoupleProfile>) => {
@@ -363,6 +373,11 @@ export function PlanningDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const recordVendorPayment = useCallback((vendorId: string, amount: number, note: string, date?: string) => {
+    const cleanDate = date?.trim();
+    if (!cleanDate) {
+      return;
+    }
+
     setData((current) => ({
       ...current,
       vendors: current.vendors.map((vendor) => {
@@ -378,7 +393,7 @@ export function PlanningDataProvider({ children }: { children: ReactNode }) {
             {
               id: createId('payment'),
               amount,
-              date: date || today(),
+              date: cleanDate,
               note: note || 'Mobile payment entry',
             },
           ],
@@ -392,10 +407,17 @@ export function PlanningDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const scheduleVendorPayment = useCallback((vendorId: string, date: string) => {
-    setData((current) => ({
-      ...current,
-      vendors: current.vendors.map((vendor) => (vendor.id === vendorId ? { ...vendor, nextPaymentDate: date } : vendor)),
-    }));
+    setData((current) => {
+      const vendor = current.vendors.find((item) => item.id === vendorId);
+      return withActivity(
+        {
+          ...current,
+          vendors: current.vendors.map((item) => (item.id === vendorId ? { ...item, nextPaymentDate: date } : item)),
+        },
+        'Scheduled vendor payment',
+        `${vendor?.name ?? 'Vendor'} next payment date was updated.`,
+      );
+    });
   }, []);
 
   const addBudgetExpense = useCallback((expense: Omit<BudgetExpense, 'id' | 'paid' | 'payments'> & Partial<Pick<BudgetExpense, 'paid' | 'payments'>>) => {
@@ -434,6 +456,11 @@ export function PlanningDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const recordBudgetPayment = useCallback((expenseId: string, amount: number, note: string, date?: string) => {
+    const cleanDate = date?.trim();
+    if (!cleanDate) {
+      return;
+    }
+
     setData((current) => ({
       ...current,
       budget: current.budget.map((expense) => {
@@ -449,7 +476,7 @@ export function PlanningDataProvider({ children }: { children: ReactNode }) {
             {
               id: createId('budget-payment'),
               amount,
-              date: date || today(),
+              date: cleanDate,
               note: note || 'Mobile payment entry',
             },
           ],
@@ -508,24 +535,46 @@ export function PlanningDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addTask = useCallback((task: Omit<Task, 'id' | 'completed'> & Partial<Pick<Task, 'completed'>>) => {
-    setData((current) => ({
-      ...current,
-      tasks: [{ id: createId('task'), completed: false, ...task }, ...current.tasks],
-    }));
+    setData((current) =>
+      withActivity(
+        {
+          ...current,
+          tasks: [{ id: createId('task'), completed: false, ...task }, ...current.tasks],
+        },
+        'Created checklist task',
+        `${task.title} was added to the mobile checklist.`,
+        'create',
+      ),
+    );
   }, []);
 
   const updateTask = useCallback((taskId: string, patch: Partial<Task>) => {
-    setData((current) => ({
-      ...current,
-      tasks: current.tasks.map((task) => (task.id === taskId ? { ...task, ...patch } : task)),
-    }));
+    setData((current) => {
+      const task = current.tasks.find((item) => item.id === taskId);
+      return withActivity(
+        {
+          ...current,
+          tasks: current.tasks.map((item) => (item.id === taskId ? { ...item, ...patch } : item)),
+        },
+        'Updated checklist task',
+        `${patch.title ?? task?.title ?? 'A checklist item'} was edited.`,
+      );
+    });
   }, []);
 
   const deleteTask = useCallback((taskId: string) => {
-    setData((current) => ({
-      ...current,
-      tasks: current.tasks.filter((task) => task.id !== taskId),
-    }));
+    setData((current) => {
+      const task = current.tasks.find((item) => item.id === taskId);
+      return withActivity(
+        {
+          ...current,
+          tasks: current.tasks.filter((item) => item.id !== taskId),
+        },
+        'Deleted checklist task',
+        `${task?.title ?? 'A checklist item'} was removed.`,
+        'delete',
+      );
+    });
   }, []);
 
   const updateRsvp = useCallback((guestId: string, rsvp: RsvpStatus) => {

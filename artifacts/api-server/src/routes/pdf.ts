@@ -311,6 +311,7 @@ router.post("/pdf/checklist", requireAuth, async (req, res) => {
         month?: string;
         task?: string;
         description?: string;
+        dueDate?: string | null;
         isCompleted?: boolean;
         resolveNote?: string;
       }>;
@@ -375,15 +376,19 @@ router.post("/pdf/checklist", requireAuth, async (req, res) => {
       for (const item of monthItems) {
         const task = cleanText(item.task, "Untitled task");
         const description = cleanText(item.description);
+        const dueDate = cleanText(item.dueDate ?? "");
         const note = cleanText(item.resolveNote);
         const taskH = doc.font("Helvetica-Bold").fontSize(10.5).heightOfString(task, { width: textW, lineGap: 1 });
         const descH = description
           ? doc.font("Helvetica").fontSize(8.8).heightOfString(description, { width: textW, lineGap: 2 })
           : 0;
+        const dueH = dueDate
+          ? doc.font("Helvetica-Bold").fontSize(7.8).heightOfString(`Due: ${dueDate}`, { width: textW, lineGap: 1 })
+          : 0;
         const noteH = note
           ? doc.font("Helvetica-Oblique").fontSize(8.3).heightOfString(`Note: ${note}`, { width: textW, lineGap: 1 })
           : 0;
-        const rowH = Math.max(44, 18 + taskH + (description ? 5 + descH : 0) + (note ? 6 + noteH : 0));
+        const rowH = Math.max(44, 18 + taskH + (description ? 5 + descH : 0) + (dueDate ? 4 + dueH : 0) + (note ? 6 + noteH : 0));
 
         ensurePdfSpace(doc, rowH + 8, "Planning Checklist (continued)");
         const rowY = doc.y;
@@ -403,6 +408,11 @@ router.post("/pdf/checklist", requireAuth, async (req, res) => {
           doc.fillColor(TEXT_MEDIUM).font("Helvetica").fontSize(8.8)
             .text(description, textX, textY, { width: textW, lineGap: 2 });
           textY += descH + 6;
+        }
+        if (dueDate) {
+          doc.fillColor(BRAND_PRIMARY).font("Helvetica-Bold").fontSize(7.8)
+            .text(`Due: ${dueDate}`, textX, textY, { width: textW, lineGap: 1 });
+          textY += dueH + 6;
         }
         if (note) {
           doc.fillColor(BRAND_MUTED).font("Helvetica-Oblique").fontSize(8.3)

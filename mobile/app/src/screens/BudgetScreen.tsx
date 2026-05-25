@@ -14,7 +14,7 @@ import { SectionHeader } from '../components/SectionHeader';
 import { StatusPill } from '../components/StatusPill';
 import { usePlanningData } from '../state/PlanningDataContext';
 import { fonts, spacing, useAppTheme } from '../theme';
-import { formatCurrency, formatShortDate } from '../utils/format';
+import { formatCurrency, formatShortDate, isDateInputValid } from '../utils/format';
 
 export function BudgetScreen() {
   const { colors } = useAppTheme();
@@ -27,6 +27,7 @@ export function BudgetScreen() {
   const [dueForm, setDueForm] = useState({ amount: '', date: '' });
   const [expenseError, setExpenseError] = useState('');
   const [paymentError, setPaymentError] = useState('');
+  const [dueError, setDueError] = useState('');
   const total = data.budget.reduce((sum, item) => sum + item.total, 0);
   const paid = data.budget.reduce((sum, item) => sum + item.paid, 0);
   const remaining = total - paid;
@@ -52,6 +53,11 @@ export function BudgetScreen() {
       return;
     }
 
+    if (dueAmount > 0 && !isDateInputValid(expenseForm.dueDate)) {
+      setExpenseError('Use a valid due date in YYYY-MM-DD format.');
+      return;
+    }
+
     addBudgetExpense({
       category: expenseForm.category.trim(),
       nextPayment: expenseForm.dueDate.trim() && dueAmount > 0 ? { amount: dueAmount, date: expenseForm.dueDate.trim() } : undefined,
@@ -70,8 +76,8 @@ export function BudgetScreen() {
       return;
     }
 
-    if (!paymentForm.date.trim()) {
-      setPaymentError('Add a payment date before saving.');
+    if (!isDateInputValid(paymentForm.date)) {
+      setPaymentError('Add a valid payment date in YYYY-MM-DD format.');
       return;
     }
 
@@ -83,10 +89,19 @@ export function BudgetScreen() {
 
   function saveNextDue() {
     const amount = Number.parseFloat(dueForm.amount) || 0;
-    if (dueExpenseId && dueForm.date.trim() && amount > 0) {
-      updateBudgetExpense(dueExpenseId, { nextPayment: { amount, date: dueForm.date.trim() } });
+    if (!dueExpenseId || amount <= 0) {
+      setDueError('Enter a valid amount due.');
+      return;
     }
+
+    if (!isDateInputValid(dueForm.date)) {
+      setDueError('Add a valid due date in YYYY-MM-DD format.');
+      return;
+    }
+
+    updateBudgetExpense(dueExpenseId, { nextPayment: { amount, date: dueForm.date.trim() } });
     setDueForm({ amount: '', date: '' });
+    setDueError('');
     setDueExpenseId(null);
   }
 
@@ -178,6 +193,7 @@ export function BudgetScreen() {
                     amount: expense.nextPayment?.amount ? String(expense.nextPayment.amount) : '',
                     date: expense.nextPayment?.date ?? '',
                   });
+                  setDueError('');
                   setDueExpenseId(expense.id);
                 }}
                 variant="ghost"
@@ -218,6 +234,7 @@ export function BudgetScreen() {
       >
         <FormField keyboardType="numeric" label="Amount due" onChangeText={(value) => setDueForm((current) => ({ ...current, amount: value }))} placeholder="1000" value={dueForm.amount} />
         <FormField label="Due date" onChangeText={(value) => setDueForm((current) => ({ ...current, date: value }))} placeholder="YYYY-MM-DD" value={dueForm.date} />
+        {dueError ? <Text style={[styles.errorText, { color: colors.danger }]}>{dueError}</Text> : null}
         <PrimaryButton icon="time-outline" label="Save Due Date" onPress={saveNextDue} />
       </FormSheet>
     </Screen>

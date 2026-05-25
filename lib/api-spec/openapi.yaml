@@ -1515,10 +1515,13 @@ components:
           type: string
         task:
           type: string
-        description:
-          type: string
-        isCompleted:
-          type: boolean
+          description:
+            type: string
+          dueDate:
+            type: string
+            nullable: true
+          isCompleted:
+            type: boolean
         completedAt:
           type: string
         resolveNote:
@@ -1552,8 +1555,17 @@ components:
       properties:
         isCompleted:
           type: boolean
-      required:
-        - isCompleted
+        task:
+          type: string
+        description:
+          type: string
+        month:
+          type: string
+        dueDate:
+          type: string
+          nullable: true
+        resolveNote:
+          type: string
 
     EmergencyAdviceBody:
       type: object
@@ -2113,12 +2125,16 @@ components:
                 type: string
               month:
                 type: string
+              dueDate:
+                type: string
+                nullable: true
               isCompleted:
                 type: boolean
             required:
               - id
               - task
               - month
+              - dueDate
               - isCompleted
         profile:
           nullable: true

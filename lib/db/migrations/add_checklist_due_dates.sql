@@ -1,0 +1,3 @@
+ALTER TABLE checklist_items
+  ADD COLUMN IF NOT EXISTS due_date TEXT,
+  ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMP;

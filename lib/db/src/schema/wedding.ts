@@ -111,9 +111,11 @@ export const checklistItems = pgTable("checklist_items", {
   month: text("month").notNull(),
   task: text("task").notNull(),
   description: text("description").notNull(),
+  dueDate: text("due_date"),
   isCompleted: boolean("is_completed").notNull().default(false),
   completedAt: timestamp("completed_at"),
   resolveNote: text("resolve_note"),
+  reminderSentAt: timestamp("reminder_sent_at"),
 });
 
 export type ChecklistItem = typeof checklistItems.$inferSelect;

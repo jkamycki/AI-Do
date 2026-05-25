@@ -1361,6 +1361,15 @@ function formatAriaDate(value: string | null | undefined): string {
   return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
+function normalizeChecklistDueDate(value: unknown): string | null {
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return null;
+  const parsed = new Date(`${trimmed}T00:00:00.000Z`);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === trimmed ? trimmed : null;
+}
+
 async function buildCurrentWeddingWorkReply(req: Request): Promise<string> {
   const profile = await resolveProfile(req);
   if (!profile) {
@@ -1936,8 +1945,8 @@ const TOOLS = [
   { type:"function" as const, function:{ name:"mark_vendor_payment_paid", description:"Mark payment paid. Pass paymentId or vendorName+matchLabel.", parameters:{ type:"object", properties:{ paymentId:{type:"number"}, vendorName:{type:"string"}, matchLabel:{type:"string"}, isPaid:{type:"boolean"} } } } },
   { type:"function" as const, function:{ name:"delete_vendor_payment", description:"Delete payment milestone. Pass paymentId or vendorName+matchLabel.", parameters:{ type:"object", properties:{ paymentId:{type:"number"}, vendorName:{type:"string"}, matchLabel:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"generate_checklist", description:"Generate or rebuild the user's full wedding checklist from their wedding profile, wedding date, wedding vibe, and guest count. Use when the user asks to create, generate, build, reset, or make a checklist, to-do list, planning tasks, or wedding task plan.", parameters:{ type:"object", properties:{} } } },
-  { type:"function" as const, function:{ name:"add_checklist_item", description:"Add checklist task. Required: task, month.", parameters:{ type:"object", properties:{ task:{type:"string"}, description:{type:"string"}, month:{type:"string"} }, required:["task","month"] } } },
-  { type:"function" as const, function:{ name:"update_checklist_item", description:"Update checklist item. Pass itemId or matchTask.", parameters:{ type:"object", properties:{ itemId:{type:"number"}, matchTask:{type:"string"}, task:{type:"string"}, description:{type:"string"}, month:{type:"string"} } } } },
+  { type:"function" as const, function:{ name:"add_checklist_item", description:"Add checklist task. Required: task, month. Optional dueDate must be YYYY-MM-DD.", parameters:{ type:"object", properties:{ task:{type:"string"}, description:{type:"string"}, month:{type:"string"}, dueDate:{type:"string", description:"Optional deadline in YYYY-MM-DD format."} }, required:["task","month"] } } },
+  { type:"function" as const, function:{ name:"update_checklist_item", description:"Update checklist item. Pass itemId or matchTask. Optional dueDate must be YYYY-MM-DD; pass empty string to clear it.", parameters:{ type:"object", properties:{ itemId:{type:"number"}, matchTask:{type:"string"}, task:{type:"string"}, description:{type:"string"}, month:{type:"string"}, dueDate:{type:"string", description:"Optional deadline in YYYY-MM-DD format, or empty to clear."} } } } },
   { type:"function" as const, function:{ name:"toggle_checklist_item", description:"Toggle checklist item complete/incomplete. Pass itemId or matchTask.", parameters:{ type:"object", properties:{ itemId:{type:"number"}, matchTask:{type:"string"}, isCompleted:{type:"boolean"} } } } },
   { type:"function" as const, function:{ name:"delete_checklist_item", description:"Delete checklist item. Pass itemId or matchTask.", parameters:{ type:"object", properties:{ itemId:{type:"number"}, matchTask:{type:"string"} } } } },
   { type:"function" as const, function:{ name:"list_checklist", description:"List all checklist items.", parameters:{ type:"object", properties:{} } } },
@@ -3675,13 +3684,16 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
       const task = String(args.task ?? "").trim();
       const month = String(args.month ?? "").trim();
       if (!task || !month) return { ok: false, error: "task and month are required" };
+      const dueDate = normalizeChecklistDueDate(args.dueDate);
+      if (args.dueDate && !dueDate) return { ok: false, error: "dueDate must be YYYY-MM-DD" };
       const [item] = await db.insert(checklistItems).values({
         profileId: profile.id,
         task,
         month,
         description: args.description ? String(args.description) : "",
+        dueDate,
       }).returning();
-      return { ok: true, data: { id: item.id, task: item.task, month: item.month } };
+      return { ok: true, data: { id: item.id, task: item.task, month: item.month, dueDate: item.dueDate } };
     }
 
     if (name === "generate_checklist") {
@@ -3823,17 +3835,23 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         if (args.task !== undefined) updates.task = String(args.task);
         if (args.description !== undefined) updates.description = String(args.description);
         if (args.month !== undefined) updates.month = String(args.month);
+        if (args.dueDate !== undefined) {
+          const dueDate = normalizeChecklistDueDate(args.dueDate);
+          if (args.dueDate && !dueDate) return { ok: false, error: "dueDate must be YYYY-MM-DD" };
+          updates.dueDate = dueDate;
+          updates.reminderSentAt = null;
+        }
       }
       if (Object.keys(updates).length === 0) return { ok: false, error: "Nothing to update" };
       const [updated] = await db.update(checklistItems).set(updates)
         .where(and(eq(checklistItems.id, item.id), eq(checklistItems.profileId, profile.id))).returning();
-      return { ok: true, data: { id: updated.id, task: updated.task, isCompleted: updated.isCompleted } };
+      return { ok: true, data: { id: updated.id, task: updated.task, isCompleted: updated.isCompleted, dueDate: updated.dueDate } };
     }
 
     if (name === "list_checklist") {
       const profile = await resolveProfile(req);
       if (!profile) return { ok: false, error: "No wedding profile yet." };
-      const items = await db.select({ id: checklistItems.id, task: checklistItems.task, month: checklistItems.month, isCompleted: checklistItems.isCompleted })
+      const items = await db.select({ id: checklistItems.id, task: checklistItems.task, month: checklistItems.month, dueDate: checklistItems.dueDate, isCompleted: checklistItems.isCompleted })
         .from(checklistItems).where(eq(checklistItems.profileId, profile.id));
       return { ok: true, data: { items } };
     }

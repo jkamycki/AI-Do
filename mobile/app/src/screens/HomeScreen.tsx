@@ -9,7 +9,7 @@ import { Screen } from '../components/Screen';
 import { StatusPill } from '../components/StatusPill';
 import { usePlanningData } from '../state/PlanningDataContext';
 import { fonts, radii, spacing, useAppTheme } from '../theme';
-import { daysUntil, formatCurrency, formatShortDate } from '../utils/format';
+import { daysFromToday, daysUntil, formatCurrency, formatDeadlineLabel, formatShortDate } from '../utils/format';
 
 type RouteName =
   | 'Aria'
@@ -38,7 +38,10 @@ export function HomeScreen() {
   const confirmedGuests = data.guests.filter((guest) => guest.rsvp === 'Confirmed').length;
   const pendingGuests = data.guests.filter((guest) => guest.rsvp === 'Pending').length;
   const unsignedContracts = data.contracts.filter((contract) => contract.status !== 'Signed').length;
-  const dueTasks = data.tasks.filter((task) => !task.completed).slice(0, 3);
+  const dueTasks = data.tasks
+    .filter((task) => !task.completed)
+    .sort((a, b) => (daysFromToday(a.dueDate) ?? 9999) - (daysFromToday(b.dueDate) ?? 9999))
+    .slice(0, 3);
   const nextPayment = data.budget
     .filter((item) => item.nextPayment)
     .sort((a, b) => String(a.nextPayment?.date).localeCompare(String(b.nextPayment?.date)))[0];
@@ -136,7 +139,9 @@ export function HomeScreen() {
             </View>
             <View style={styles.taskCopy}>
               <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
-              <Text style={[styles.taskMeta, { color: colors.muted }]}>{task.category} - due {formatShortDate(task.dueDate)}</Text>
+              <Text style={[styles.taskMeta, { color: colors.muted }]}>
+                {task.category} - {task.dueDate ? `${formatShortDate(task.dueDate)} (${formatDeadlineLabel(task.dueDate)})` : 'No deadline'}
+              </Text>
             </View>
             <Ionicons color={colors.accent} name="chevron-forward" size={20} />
           </Card>

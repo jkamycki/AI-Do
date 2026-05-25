@@ -284,6 +284,7 @@ export interface ChecklistItem {
   month: string;
   task: string;
   description: string;
+  dueDate?: string | null;
   isCompleted: boolean;
   completedAt?: string;
   resolveNote?: string;
@@ -303,7 +304,12 @@ export interface GenerateChecklistBody {
 }
 
 export interface ToggleChecklistItemBody {
-  isCompleted: boolean;
+  isCompleted?: boolean;
+  task?: string;
+  description?: string;
+  month?: string;
+  dueDate?: string | null;
+  resolveNote?: string;
 }
 
 export interface EmergencyAdviceBody {
@@ -574,6 +580,7 @@ export type DashboardSummaryUpcomingTasksItem = {
   id: number;
   task: string;
   month: string;
+  dueDate: string | null;
   isCompleted: boolean;
 };
 

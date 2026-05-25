@@ -13,6 +13,7 @@ import { StatusPill } from '../components/StatusPill';
 import { usePlanningData } from '../state/PlanningDataContext';
 import { fonts, radii, spacing, useAppTheme } from '../theme';
 import { GuestPhotoDisplayMode } from '../types';
+import { slugifyCoupleName } from '../utils/format';
 
 const destinationCopy: Record<GuestPhotoDisplayMode, { label: string; detail: string; preview: string }> = {
   portal: {
@@ -53,8 +54,9 @@ export function GuestPhotoDropScreen() {
   const pending = data.guestPhotoUploads.filter((upload) => upload.status === 'Pending').length;
   const approved = data.guestPhotoUploads.filter((upload) => upload.status === 'Approved').length;
   const websiteEnabled = settings.displayMode === 'website' || settings.displayMode === 'both';
-  const publicUrl = 'aidowedding.net/photo-drop/stacy-rick';
-  const selectedShareUrl = settings.selectedQrTarget === 'rsvp' ? 'aidowedding.net/w/stacy-rick#rsvp' : 'aidowedding.net/w/stacy-rick';
+  const coupleSlug = slugifyCoupleName(data.profile.coupleName);
+  const publicUrl = `aidowedding.net/photo-drop/${coupleSlug}`;
+  const weddingUrl = `aidowedding.net/w/${coupleSlug}`;
 
   function setDestination(displayMode: GuestPhotoDisplayMode) {
     const shouldReplaceInstructions = !instructions.trim() || instructions.toLowerCase().includes('website') || instructions.toLowerCase().includes('gallery');
@@ -121,19 +123,9 @@ export function GuestPhotoDropScreen() {
           </View>
         </View>
         <Text style={[styles.qrUrl, { backgroundColor: colors.primarySoft, color: colors.text }]}>{publicUrl}</Text>
-        <View style={styles.choiceRow}>
-          <FilterPill
-            active={settings.selectedQrTarget === 'website'}
-            label="Website QR"
-            onPress={() => updateGuestPhotoDropSettings({ selectedQrTarget: 'website' })}
-          />
-          <FilterPill
-            active={settings.selectedQrTarget === 'rsvp'}
-            label="RSVP QR"
-            onPress={() => updateGuestPhotoDropSettings({ selectedQrTarget: 'rsvp' })}
-          />
-        </View>
-        <Text style={[styles.helper, { color: colors.muted }]}>Current share QR target: {selectedShareUrl}</Text>
+        <Text style={[styles.helper, { color: colors.muted }]}>
+          This QR always opens the camera-friendly guest upload page. Website and RSVP QR choices live in Website Editor.
+        </Text>
       </Card>
 
       <Card style={styles.cardGap}>
@@ -146,7 +138,10 @@ export function GuestPhotoDropScreen() {
         <Text style={[styles.helper, { color: colors.muted }]}>{destinationCopy[settings.displayMode].detail}</Text>
         <View style={[styles.previewNote, { backgroundColor: colors.cardStrong, borderColor: colors.border }]}>
           <Ionicons color={websiteEnabled ? colors.accent : colors.primary} name={websiteEnabled ? 'globe-outline' : 'lock-closed-outline'} size={20} />
-          <Text style={[styles.previewText, { color: colors.text }]}>{destinationCopy[settings.displayMode].preview}</Text>
+          <Text style={[styles.previewText, { color: colors.text }]}>
+            {destinationCopy[settings.displayMode].preview}
+            {websiteEnabled ? ` Gallery link shown after upload: ${weddingUrl}` : ''}
+          </Text>
         </View>
       </Card>
 

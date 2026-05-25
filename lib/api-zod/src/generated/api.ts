@@ -390,6 +390,7 @@ export const GetChecklistResponse = zod.object({
   "month": zod.string(),
   "task": zod.string(),
   "description": zod.string(),
+  "dueDate": zod.string().nullable().optional(),
   "isCompleted": zod.boolean(),
   "completedAt": zod.string().optional(),
   "resolveNote": zod.string().optional()
@@ -414,6 +415,7 @@ export const GenerateChecklistResponse = zod.object({
   "month": zod.string(),
   "task": zod.string(),
   "description": zod.string(),
+  "dueDate": zod.string().nullable().optional(),
   "isCompleted": zod.boolean(),
   "completedAt": zod.string().optional(),
   "resolveNote": zod.string().optional()
@@ -430,7 +432,12 @@ export const ToggleChecklistItemParams = zod.object({
 })
 
 export const ToggleChecklistItemBody = zod.object({
-  "isCompleted": zod.boolean()
+  "isCompleted": zod.boolean().optional(),
+  "task": zod.string().optional(),
+  "description": zod.string().optional(),
+  "month": zod.string().optional(),
+  "dueDate": zod.string().nullable().optional(),
+  "resolveNote": zod.string().optional()
 })
 
 export const ToggleChecklistItemResponse = zod.object({
@@ -438,6 +445,7 @@ export const ToggleChecklistItemResponse = zod.object({
   "month": zod.string(),
   "task": zod.string(),
   "description": zod.string(),
+  "dueDate": zod.string().nullable().optional(),
   "isCompleted": zod.boolean(),
   "completedAt": zod.string().optional(),
   "resolveNote": zod.string().optional()
@@ -855,6 +863,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "id": zod.number(),
   "task": zod.string(),
   "month": zod.string(),
+  "dueDate": zod.string().nullable(),
   "isCompleted": zod.boolean()
 })).optional(),
   "profile": zod.object({

@@ -3,18 +3,25 @@ import { useNavigation } from '@react-navigation/native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '../components/Card';
+import { FilterPill } from '../components/FilterPill';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { ProgressBar } from '../components/ProgressBar';
 import { Screen } from '../components/Screen';
 import { SectionHeader } from '../components/SectionHeader';
 import { usePlanningData } from '../state/PlanningDataContext';
 import { fonts, radii, spacing, useAppTheme } from '../theme';
+import { slugifyCoupleName } from '../utils/format';
 
 export function WebsiteEditorScreen() {
   const navigation = useNavigation<any>();
   const { colors } = useAppTheme();
-  const { data, updateWebsiteSectionStatus } = usePlanningData();
+  const { data, updateGuestPhotoDropSettings, updateWebsiteSectionStatus } = usePlanningData();
   const ready = data.websiteSections.filter((section) => section.status !== 'Draft').length;
+  const coupleSlug = slugifyCoupleName(data.profile.coupleName);
+  const websiteUrl = `aidowedding.net/w/${coupleSlug}`;
+  const rsvpUrl = `${websiteUrl}#rsvp`;
+  const selectedQrUrl = data.guestPhotoDrop.selectedQrTarget === 'rsvp' ? rsvpUrl : websiteUrl;
+  const approvedGuestUploads = data.guestPhotoUploads.filter((upload) => upload.status === 'Approved').length;
 
   function publishAll() {
     data.websiteSections.forEach((section) => updateWebsiteSectionStatus(section.id, 'Published'));
@@ -28,13 +35,47 @@ export function WebsiteEditorScreen() {
         <View>
           <Text style={[styles.previewEyebrow, { color: colors.primary }]}>Public Site</Text>
           <Text style={[styles.previewTitle, { color: colors.text }]}>{data.profile.coupleName}</Text>
-          <Text style={[styles.previewMeta, { color: colors.muted }]}>aidowedding.net/w/stacy-rick</Text>
+          <Text style={[styles.previewMeta, { color: colors.muted }]}>{websiteUrl}</Text>
         </View>
         <ProgressBar value={(ready / data.websiteSections.length) * 100} />
         <View style={styles.actions}>
           <PrimaryButton icon="eye-outline" label="Preview" variant="ghost" />
           <PrimaryButton icon="cloud-upload-outline" label="Publish" onPress={publishAll} />
         </View>
+      </Card>
+
+      <Card style={styles.qrCard}>
+        <View style={styles.sectionHeader}>
+          <View style={[styles.iconWrap, { backgroundColor: colors.primarySoft }]}>
+            <Ionicons color={colors.primary} name="qr-code-outline" size={22} />
+          </View>
+          <View style={styles.sectionCopy}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Guest QR Codes</Text>
+            <Text style={[styles.sectionDesc, { color: colors.muted }]}>Choose one QR purpose at a time so invitations and signage stay clear.</Text>
+          </View>
+        </View>
+        <View style={styles.choiceRow}>
+          <FilterPill
+            active={data.guestPhotoDrop.selectedQrTarget === 'website'}
+            label="Website home"
+            onPress={() => updateGuestPhotoDropSettings({ selectedQrTarget: 'website' })}
+          />
+          <FilterPill
+            active={data.guestPhotoDrop.selectedQrTarget === 'rsvp'}
+            label="RSVP section"
+            onPress={() => updateGuestPhotoDropSettings({ selectedQrTarget: 'rsvp' })}
+          />
+        </View>
+        <View style={[styles.linkBox, { backgroundColor: colors.primarySoft }]}>
+          <Ionicons color={colors.primary} name="globe-outline" size={18} />
+          <Text style={[styles.linkText, { color: colors.text }]}>{selectedQrUrl}</Text>
+          <Ionicons color={colors.accent} name="qr-code-outline" size={20} />
+        </View>
+        <Text style={[styles.sectionDesc, { color: colors.muted }]}>
+          {data.guestPhotoDrop.selectedQrTarget === 'rsvp'
+            ? 'Use this QR on invitations and response reminders. Guests land directly where they can RSVP.'
+            : 'Use this QR on signs, detail cards, and general guest sharing. Guests land on the wedding website home page.'}
+        </Text>
       </Card>
 
       <Card style={styles.photoDropCard}>
@@ -44,11 +85,27 @@ export function WebsiteEditorScreen() {
         <View style={styles.sectionCopy}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Guest Photo Drop</Text>
           <Text style={[styles.sectionDesc, { color: colors.muted }]}>
-            QR upload page, captions, approval queue, download controls, and portal/website display settings.
+            QR upload page, captions, approval queue, download controls, and portal/website display settings. Approved website photos appear in Gallery under Guest Uploads.
           </Text>
         </View>
         <PrimaryButton icon="arrow-forward" label="Open" onPress={() => navigation.navigate('GuestPhotoDrop')} />
       </Card>
+
+      <Card style={styles.uploadsCard}>
+        <View style={styles.sectionHeader}>
+          <View style={[styles.iconWrap, { backgroundColor: colors.accentSoft }]}>
+            <Ionicons color={colors.accent} name="images-outline" size={22} />
+          </View>
+          <View style={styles.sectionCopy}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Guest Uploads Gallery</Text>
+            <Text style={[styles.sectionDesc, { color: colors.muted }]}>
+              {approvedGuestUploads} approved upload{approvedGuestUploads === 1 ? '' : 's'} ready for the portal
+              {data.guestPhotoDrop.displayMode === 'portal' ? '.' : ' and published wedding website.'}
+            </Text>
+          </View>
+        </View>
+      </Card>
+
 
       {data.websiteSections.map((section) => (
         <Card key={section.id} style={styles.sectionCard}>
@@ -105,6 +162,27 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
+  choiceRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  linkBox: {
+    alignItems: 'center',
+    borderRadius: radii.md,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    padding: spacing.md,
+  },
+  linkText: {
+    flex: 1,
+    fontFamily: fonts.semibold,
+    fontSize: 13,
+  },
+  qrCard: {
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
   sectionCard: {
     gap: spacing.md,
     marginBottom: spacing.md,
@@ -145,5 +223,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
+  },
+  uploadsCard: {
+    marginBottom: spacing.lg,
   },
 });

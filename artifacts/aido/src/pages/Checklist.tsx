@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CheckSquare, Wand2, ClipboardList, Pencil, Trash2, Plus, Check, X, RotateCcw, StickyNote, Download, Loader2 } from "lucide-react";
+import { CalendarDays, CheckSquare, Wand2, ClipboardList, Pencil, Trash2, Plus, Check, X, RotateCcw, StickyNote, Download, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Progress } from "@/components/ui/progress";
 
@@ -28,10 +28,60 @@ type ChecklistItem = {
   month: string;
   task: string;
   description: string;
+  dueDate?: string | null;
   isCompleted: boolean;
   completedAt?: string;
   resolveNote?: string;
 };
+
+function formatChecklistDueDate(value?: string | null): string | null {
+  if (!value) return null;
+  const parsed = new Date(`${value}T00:00:00`);
+  if (!Number.isFinite(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(parsed);
+}
+
+function parseChecklistDueDate(value?: string | null): Date | null {
+  if (!value) return null;
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isFinite(parsed.getTime()) ? parsed : null;
+}
+
+function checklistDeadlineMonth(value?: string | null): string | null {
+  const parsed = parseChecklistDueDate(value);
+  if (!parsed) return null;
+  return new Intl.DateTimeFormat(undefined, {
+    month: "long",
+    year: "numeric",
+  }).format(parsed);
+}
+
+function checklistDeadlineMonthKey(value?: string | null): string {
+  const parsed = parseChecklistDueDate(value);
+  return parsed ? parsed.toISOString().slice(0, 7) : "no-deadline";
+}
+
+function checklistDeadlineDelta(value?: string | null): number | null {
+  const parsed = parseChecklistDueDate(value);
+  if (!parsed) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  parsed.setHours(0, 0, 0, 0);
+  return Math.round((parsed.getTime() - today.getTime()) / 86400000);
+}
+
+function checklistDeadlineStatus(value?: string | null): string {
+  const delta = checklistDeadlineDelta(value);
+  if (delta === null) return "No deadline set";
+  if (delta < 0) return `${Math.abs(delta)} day${Math.abs(delta) === 1 ? "" : "s"} overdue`;
+  if (delta === 0) return "Due today";
+  if (delta === 1) return "Due tomorrow";
+  return `Due in ${delta} days`;
+}
 
 function checklistTranslationSignature(items: ChecklistItem[]): string {
   const raw = JSON.stringify(items.map((item) => ({
@@ -78,10 +128,12 @@ export default function Checklist() {
   const [editTask, setEditTask] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editMonth, setEditMonth] = useState("");
+  const [editDueDate, setEditDueDate] = useState("");
 
   const [addingToMonth, setAddingToMonth] = useState<string | null>(null);
   const [newTask, setNewTask] = useState("");
   const [newDescription, setNewDescription] = useState("");
+  const [newDueDate, setNewDueDate] = useState("");
 
   const [noteEditingId, setNoteEditingId] = useState<number | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
@@ -118,7 +170,7 @@ export default function Checklist() {
   });
 
   const addItem = useMutation({
-    mutationFn: async (data: { task: string; description: string; month: string }) => {
+    mutationFn: async (data: { task: string; description: string; month: string; dueDate?: string | null }) => {
       const r = await authFetch(`${API}/api/checklist/items`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -132,6 +184,7 @@ export default function Checklist() {
       setAddingToMonth(null);
       setNewTask("");
       setNewDescription("");
+      setNewDueDate("");
     },
     onError: () => toast({ title: t("checklist.could_not_add"), variant: "destructive" }),
   });
@@ -239,6 +292,7 @@ export default function Checklist() {
     setEditTask(item.task);
     setEditDescription(item.description);
     setEditMonth(item.month);
+    setEditDueDate(item.dueDate ?? "");
   }
 
   function cancelEdit() {
@@ -246,11 +300,20 @@ export default function Checklist() {
     setEditTask("");
     setEditDescription("");
     setEditMonth("");
+    setEditDueDate("");
   }
 
   function submitEdit() {
     if (!editingId) return;
-    updateItem.mutate({ id: editingId, data: { task: editTask.trim(), description: editDescription.trim(), month: editMonth.trim() } });
+    updateItem.mutate({
+      id: editingId,
+      data: {
+        task: editTask.trim(),
+        description: editDescription.trim(),
+        month: editMonth.trim(),
+        dueDate: editDueDate || null,
+      },
+    });
     cancelEdit();
   }
 
@@ -258,17 +321,24 @@ export default function Checklist() {
     setAddingToMonth(month);
     setNewTask("");
     setNewDescription("");
+    setNewDueDate("");
   }
 
   function cancelAdd() {
     setAddingToMonth(null);
     setNewTask("");
     setNewDescription("");
+    setNewDueDate("");
   }
 
   function submitAdd() {
     if (!addingToMonth || !newTask.trim()) return;
-    addItem.mutate({ task: newTask.trim(), description: newDescription.trim(), month: addingToMonth });
+    addItem.mutate({
+      task: newTask.trim(),
+      description: newDescription.trim(),
+      month: addingToMonth,
+      dueDate: newDueDate || null,
+    });
   }
 
   const handleDownloadPdf = async () => {
@@ -284,6 +354,7 @@ export default function Checklist() {
             month: item.month,
             task: item.task,
             description: item.description,
+            dueDate: item.dueDate,
             isCompleted: item.isCompleted,
             resolveNote: item.resolveNote,
           })),
@@ -407,11 +478,28 @@ export default function Checklist() {
   }
 
   const hasChecklist = sourceItems.length > 0;
-  const groupedItems = visibleItems.reduce((acc, item) => {
-    if (!acc[item.month]) acc[item.month] = [];
-    acc[item.month].push(item);
-    return acc;
-  }, {} as Record<string, ChecklistItem[]>);
+  const deadlineItems = visibleItems.filter((item) => parseChecklistDueDate(item.dueDate));
+  const undatedItems = visibleItems.filter((item) => !parseChecklistDueDate(item.dueDate));
+  const nextDeadlineItem = deadlineItems
+    .filter((item) => !item.isCompleted)
+    .sort((a, b) => checklistDeadlineMonthKey(a.dueDate).localeCompare(checklistDeadlineMonthKey(b.dueDate)) || String(a.dueDate).localeCompare(String(b.dueDate)))[0];
+  const groupedItems = Array.from(
+    visibleItems.reduce((acc, item) => {
+      const key = checklistDeadlineMonthKey(item.dueDate);
+      const label = checklistDeadlineMonth(item.dueDate) ?? t("checklist.no_deadline_month", { defaultValue: "No Deadline Yet" });
+      const existing = acc.get(key);
+      if (existing) {
+        existing.items.push(item);
+      } else {
+        acc.set(key, { key, label, items: [item] });
+      }
+      return acc;
+    }, new Map<string, { key: string; label: string; items: ChecklistItem[] }>()),
+  ).map(([, group]) => group).sort((a, b) => {
+    if (a.key === "no-deadline") return 1;
+    if (b.key === "no-deadline") return -1;
+    return a.key.localeCompare(b.key);
+  });
 
   const totalItems = sourceItems.length;
   const completedItems = sourceItems.filter(i => i.isCompleted).length;
@@ -577,13 +665,54 @@ export default function Checklist() {
             </CardContent>
           </Card>
 
+          <Card className="border border-primary/15 shadow-sm bg-card">
+            <CardContent className="p-5">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-2xl bg-primary/10 p-3 text-primary">
+                    <CalendarDays className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="font-serif text-2xl text-primary">
+                      {t("checklist.deadline_schedule_title", { defaultValue: "Deadline schedule" })}
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      {t("checklist.deadline_schedule_desc", {
+                        defaultValue: "Checklist items are grouped by deadline month. Email reminders use the reminder timing you set in Settings.",
+                      })}
+                    </p>
+                    {nextDeadlineItem && (
+                      <p className="mt-2 text-sm font-medium text-foreground">
+                        {t("checklist.next_deadline_label", { defaultValue: "Next deadline" })}: {nextDeadlineItem.task} · {checklistDeadlineStatus(nextDeadlineItem.dueDate)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-center sm:min-w-[210px]">
+                  <div className="rounded-2xl bg-primary/5 px-4 py-3">
+                    <div className="text-2xl font-serif text-primary">{deadlineItems.length}</div>
+                    <div className="text-xs font-medium text-muted-foreground">
+                      {t("checklist.with_deadlines", { defaultValue: "With deadlines" })}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl bg-muted/60 px-4 py-3">
+                    <div className="text-2xl font-serif text-foreground">{undatedItems.length}</div>
+                    <div className="text-xs font-medium text-muted-foreground">
+                      {t("checklist.need_deadlines", { defaultValue: "Need dates" })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="space-y-12">
-            {Object.entries(groupedItems).map(([month, items], index) => {
+            {groupedItems.map(({ key, label: month, items }, index) => {
               const monthCompleted = items.filter(i => i.isCompleted).length;
               const isAllCompleted = monthCompleted === items.length;
 
               return (
-                <div key={month} className="space-y-4 animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${index * 100}ms` }}>
+                <div key={key} className="space-y-4 animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${index * 100}ms` }}>
                   <div className="flex items-center gap-4">
                     <h3 className="text-2xl font-serif text-foreground">{month}</h3>
                     <div className="h-px bg-border flex-1" />
@@ -617,6 +746,25 @@ export default function Checklist() {
                                 placeholder={t("checklist.time_period_placeholder")}
                                 className="text-sm"
                               />
+                              <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4 space-y-2">
+                                <div>
+                                  <label className="text-sm font-semibold text-primary">
+                                    {t("checklist.deadline_section_title", { defaultValue: "Deadline and email reminder" })}
+                                  </label>
+                                  <p className="mt-1 text-xs text-muted-foreground">
+                                    {t("checklist.deadline_reminder_hint", {
+                                      defaultValue: "Enter the task deadline. Email reminders use the timing you set in Settings.",
+                                    })}
+                                  </p>
+                                </div>
+                                <Input
+                                  type="date"
+                                  value={editDueDate}
+                                  onChange={e => setEditDueDate(e.target.value)}
+                                  className="text-sm bg-background"
+                                  data-testid={`input-checklist-due-date-${item.id}`}
+                                />
+                              </div>
                               <div className="flex gap-2">
                                 <Button size="sm" onClick={submitEdit} disabled={!editTask.trim()}>
                                   <Check className="h-3.5 w-3.5 mr-1.5" /> {t("common.save")}
@@ -635,6 +783,17 @@ export default function Checklist() {
                                 <p className={`text-sm ${item.isCompleted ? 'text-muted-foreground/60' : 'text-muted-foreground'}`}>
                                   {item.description}
                                 </p>
+                                {item.dueDate && (
+                                  <div className="pt-1 flex items-center gap-1.5 text-xs font-medium text-primary">
+                                    <CalendarDays className="h-3.5 w-3.5" />
+                                    <span>
+                                      {t("checklist.deadline_display", {
+                                        defaultValue: "Due {{date}}",
+                                        date: formatChecklistDueDate(item.dueDate) ?? item.dueDate,
+                                      })}
+                                    </span>
+                                  </div>
+                                )}
                                 {noteEditingId === item.id ? (
                                   <div className="pt-2 space-y-2">
                                     <Textarea
@@ -738,6 +897,25 @@ export default function Checklist() {
                             placeholder={t("checklist.description_optional")}
                             className="text-sm resize-none min-h-[60px]"
                           />
+                          <div className="rounded-2xl border border-primary/15 bg-background/70 p-4 space-y-2">
+                            <div>
+                              <label className="text-sm font-semibold text-primary">
+                                {t("checklist.deadline_section_title", { defaultValue: "Deadline and email reminder" })}
+                              </label>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {t("checklist.deadline_reminder_hint", {
+                                  defaultValue: "Enter the task deadline. Email reminders use the timing you set in Settings.",
+                                })}
+                              </p>
+                            </div>
+                            <Input
+                              type="date"
+                              value={newDueDate}
+                              onChange={e => setNewDueDate(e.target.value)}
+                              className="text-sm bg-background"
+                              data-testid={`input-new-checklist-due-date-${month}`}
+                            />
+                          </div>
                           <div className="flex gap-2">
                             <Button size="sm" onClick={submitAdd} disabled={!newTask.trim() || addItem.isPending}>
                               <Plus className="h-3.5 w-3.5 mr-1.5" /> {t("checklist.add_task_button")}
