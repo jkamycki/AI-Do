@@ -132,7 +132,9 @@ export default function PublicGuestPhotoDrop() {
   const photosLeftAfterSelection = Math.max(0, photosLeft - files.length);
   const primary = data?.colorPalette?.primary || "#8D294D";
   const accent = data?.colorPalette?.accent || "#D4A373";
+  const weddingWebsiteUrl = slug ? publishedWebsiteUrl(slug) : "";
   const weddingGalleryUrl = slug ? publishedWebsiteUrl(slug, "gallery") : "";
+  const displayWeddingWebsiteUrl = weddingWebsiteUrl.replace(/^https?:\/\//, "");
 
   useEffect(() => {
     if (!slug) return;
@@ -358,10 +360,10 @@ export default function PublicGuestPhotoDrop() {
             <div className="absolute inset-0 -z-20 bg-gradient-to-br from-white/95 via-[#F7DDE2]/82 to-[#F2E2C6]/78" />
             <div className="absolute inset-x-0 bottom-0 -z-10 h-24 bg-gradient-to-t from-white via-white/80 to-transparent" />
             <div
-              className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg"
-              style={{ background: `linear-gradient(135deg, ${primary}, ${accent})` }}
+              className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-[1.35rem] border bg-white/90 p-2 shadow-[0_18px_42px_rgba(91,15,42,0.16)] backdrop-blur"
+              style={{ borderColor: `${accent}55`, boxShadow: `0 18px 42px ${primary}24` }}
             >
-              <Camera className="h-8 w-8" />
+              <img src="/logo.png" alt="A.I Do" className="h-full w-full object-contain" />
             </div>
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#8D294D]">{coupleName(data)}</p>
             <h1 className="mt-3 font-serif text-4xl font-bold leading-tight text-[#5B0F2A]">{drop.title || "Guest Photo Drop"}</h1>
@@ -496,6 +498,24 @@ export default function PublicGuestPhotoDrop() {
               {photosLeft <= 0 ? "Upload Limit Reached" : "Upload Photos"}
             </button>
           </form>
+          {weddingWebsiteUrl && (
+            <footer className="border-t border-[#F2C7D1]/70 bg-gradient-to-br from-white via-[#FFF7F2] to-[#F7DDE2]/45 px-5 py-6 text-center">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#8D294D]">Wedding Website</p>
+              <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[#6F3E54]">
+                See the celebration details and approved guest photos on {coupleName(data)}&apos;s wedding website.
+              </p>
+              <a
+                href={weddingWebsiteUrl}
+                className="mt-4 inline-flex min-h-11 max-w-full items-center justify-center rounded-full border border-[#E6A6B7]/70 bg-white px-5 text-sm font-bold text-[#8D294D] shadow-sm"
+              >
+                Visit Wedding Website
+              </a>
+              <p className="mx-auto mt-3 max-w-full break-all rounded-2xl bg-white/70 px-4 py-3 text-xs font-semibold text-[#5B0F2A]">
+                {displayWeddingWebsiteUrl}
+              </p>
+              <img src="/logo.png" alt="A.I Do" className="mx-auto mt-4 h-10 w-auto object-contain opacity-90" />
+            </footer>
+          )}
         </section>
       </div>
     </main>
