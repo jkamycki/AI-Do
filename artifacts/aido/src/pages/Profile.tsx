@@ -773,82 +773,77 @@ export default function Profile() {
                 />
               )}
 
-              {venueStatus !== "booked" && (
-                <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
-                  You can leave the venue fields blank for now. Once you choose a venue, switch the answer above to
-                  <span className="font-medium text-primary"> Yes</span> and fill in the final details.
-                </div>
-              )}
+              {venueStatus === "booked" && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="venue"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("profile.venue_name")}</FormLabel>
+                        <FormControl>
+                          <Input placeholder="The Historic Magnolia Estate" {...field} data-testid="input-venue" className="bg-background" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="venue"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("profile.venue_name")}</FormLabel>
-                    <FormControl>
-                      <Input placeholder={venueStatus === "booked" ? "The Historic Magnolia Estate" : "Optional until booked"} {...field} data-testid="input-venue" className="bg-background" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <FormField
+                    control={form.control}
+                    name="venueCountry"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("guests.country")}</FormLabel>
+                        <Select
+                          key={field.value || NO_COUNTRY}
+                          value={field.value ? field.value : NO_COUNTRY}
+                          onValueChange={(v) => field.onChange(v === NO_COUNTRY ? "" : v)}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="bg-background" data-testid="select-venue-country">
+                              <SelectValue placeholder={t("guests.country_placeholder")} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="max-h-72">
+                            <SelectItem value={NO_COUNTRY}>{t("guests.country_none")}</SelectItem>
+                            {COUNTRIES.map((c) => (
+                              <SelectItem key={c} value={c}>{c}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="venueCountry"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("guests.country")}</FormLabel>
-                    <Select
-                      key={field.value || NO_COUNTRY}
-                      value={field.value ? field.value : NO_COUNTRY}
-                      onValueChange={(v) => field.onChange(v === NO_COUNTRY ? "" : v)}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="bg-background" data-testid="select-venue-country">
-                          <SelectValue placeholder={t("guests.country_placeholder")} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent className="max-h-72">
-                        <SelectItem value={NO_COUNTRY}>{t("guests.country_none")}</SelectItem>
-                        {COUNTRIES.map((c) => (
-                          <SelectItem key={c} value={c}>{c}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("profile.street_address")}</FormLabel>
-                    <FormControl>
-                      <AddressAutocomplete
-                        value={field.value ?? ""}
-                        onChange={field.onChange}
-                        country={form.watch("venueCountry")}
-                        onSelect={(s) => {
-                          field.onChange(s.street);
-                          const fmt = getAddressFormat(form.watch("venueCountry"));
-                          form.setValue("venueCity", s.city, { shouldDirty: true });
-                          form.setValue("venueState", fmt.showState ? s.state : "", { shouldDirty: true });
-                          form.setValue("venueZip", fmt.showZip ? s.zip : "", { shouldDirty: true });
-                        }}
-                        placeholder="123 Magnolia Lane"
-                        id="input-location"
-                        className="bg-background"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <FormField
+                    control={form.control}
+                    name="location"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("profile.street_address")}</FormLabel>
+                        <FormControl>
+                          <AddressAutocomplete
+                            value={field.value ?? ""}
+                            onChange={field.onChange}
+                            country={form.watch("venueCountry")}
+                            onSelect={(s) => {
+                              field.onChange(s.street);
+                              const fmt = getAddressFormat(form.watch("venueCountry"));
+                              form.setValue("venueCity", s.city, { shouldDirty: true });
+                              form.setValue("venueState", fmt.showState ? s.state : "", { shouldDirty: true });
+                              form.setValue("venueZip", fmt.showZip ? s.zip : "", { shouldDirty: true });
+                            }}
+                            placeholder="123 Magnolia Lane"
+                            id="input-location"
+                            className="bg-background"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
               {(() => {
                 const fmt = getAddressFormat(form.watch("venueCountry"));
@@ -1024,6 +1019,8 @@ export default function Profile() {
                   </div>
                 )}
               </div>
+                </>
+              )}
 
               <div className="grid md:grid-cols-2 gap-6">
                 <FormField
