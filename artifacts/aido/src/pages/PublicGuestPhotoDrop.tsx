@@ -167,7 +167,8 @@ export default function PublicGuestPhotoDrop() {
   }, [slug]);
 
   useEffect(() => {
-    document.title = data ? `${coupleName(data)} Photo Drop` : "Guest Photo Drop";
+    const dropTitle = data?.guestPhotoDrop?.title?.trim();
+    document.title = data ? `${dropTitle || "Guest Photo Drop"} | ${coupleName(data)}` : "Guest Photo Drop";
   }, [data]);
 
   useEffect(() => {
@@ -351,8 +352,8 @@ export default function PublicGuestPhotoDrop() {
             >
               <Camera className="h-8 w-8" />
             </div>
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#8D294D]">Guest Photo Drop</p>
-            <h1 className="mt-3 font-serif text-4xl font-bold leading-tight text-[#5B0F2A]">{coupleName(data)}</h1>
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#8D294D]">{coupleName(data)}</p>
+            <h1 className="mt-3 font-serif text-4xl font-bold leading-tight text-[#5B0F2A]">{drop.title || "Guest Photo Drop"}</h1>
             <p className="mt-3 text-sm leading-6 text-[#6F3E54]">{drop.instructions}</p>
           </div>
 
