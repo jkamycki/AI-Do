@@ -39,6 +39,7 @@ import { isEditableHiddenMarker } from "./hiddenMarker";
 import { RsvpFlow } from "./RsvpFlow";
 import { apiFetch, authFetch } from "@/lib/authFetch";
 import { resolveMediaUrl, isMediaAuthRequired } from "@/lib/mediaUrl";
+import { getGuestPhotoDeviceId } from "@/lib/guestPhotoDevice";
 import { AuthMediaImage } from "@/components/AuthMediaImage";
 
 // camelCase section id <-> kebab-case URL slug
@@ -3307,6 +3308,13 @@ function Gallery({
   );
 }
 
+type GuestPhotoUsage = {
+  limit: number;
+  uploadedCount: number;
+  remaining: number;
+  maxPerUpload: number;
+};
+
 function GuestPhotoDropSection({
   data,
   slug,
@@ -3327,8 +3335,48 @@ function GuestPhotoDropSection({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [deviceId, setDeviceId] = useState("");
+  const [usage, setUsage] = useState<GuestPhotoUsage | null>(null);
+  const [usageLoading, setUsageLoading] = useState(false);
   const maxUploads = drop?.maxUploads ?? 5;
   const limitMb = drop?.uploadLimitMb ?? 5;
+  const totalPhotoLimit = usage?.limit ?? 5;
+  const photosLeft = usage?.remaining ?? totalPhotoLimit;
+  const maxSelectable = Math.max(0, Math.min(maxUploads, photosLeft));
+  const photosLeftAfterSelection = Math.max(0, photosLeft - files.length);
+
+  useEffect(() => {
+    if (!slug) return;
+    setDeviceId(getGuestPhotoDeviceId(slug));
+  }, [slug]);
+
+  useEffect(() => {
+    if (!slug || !deviceId || !drop?.enabled) return;
+    let cancelled = false;
+    setUsageLoading(true);
+    apiFetch(`/api/website/public/${encodeURIComponent(slug)}/photo-drop/usage`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(password ? { "X-Site-Password": password } : {}),
+      },
+      body: JSON.stringify({ deviceId }),
+    })
+      .then(async (response) => {
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error((body as { error?: string })?.error || "Could not check upload limit.");
+        if (!cancelled) setUsage(body as GuestPhotoUsage);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Could not check upload limit.");
+      })
+      .finally(() => {
+        if (!cancelled) setUsageLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, deviceId, drop?.enabled, password]);
 
   if (!drop?.enabled) return null;
 
@@ -3350,6 +3398,14 @@ function GuestPhotoDropSection({
       setError(`Please choose no more than ${maxUploads} photos.`);
       return;
     }
+    if (photosLeft <= 0) {
+      setError(`This phone has already uploaded ${totalPhotoLimit} photos for this wedding.`);
+      return;
+    }
+    if (files.length > photosLeft) {
+      setError(`This phone only has ${photosLeft} photo${photosLeft === 1 ? "" : "s"} left to upload.`);
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -3358,6 +3414,7 @@ function GuestPhotoDropSection({
     form.append("guestName", guestName.trim());
     if (guestEmail.trim()) form.append("guestEmail", guestEmail.trim());
     if (note.trim()) form.append("note", note.trim());
+    if (deviceId) form.append("deviceId", deviceId);
     files.forEach((file) => form.append("photos", file));
     try {
       const response = await apiFetch(`/api/website/public/${encodeURIComponent(slug)}/photo-drop`, {
@@ -3368,6 +3425,7 @@ function GuestPhotoDropSection({
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error((body as { error?: string })?.error || "Upload failed.");
       setMessage((body as { message?: string })?.message || "Thanks! Your photos were uploaded.");
+      if ((body as { usage?: GuestPhotoUsage }).usage) setUsage((body as { usage: GuestPhotoUsage }).usage);
       setFiles([]);
       setNote("");
       const input = document.getElementById("guest-photo-upload") as HTMLInputElement | null;
@@ -3459,24 +3517,38 @@ function GuestPhotoDropSection({
         >
           <UploadCloud className="mb-3 h-9 w-9" style={{ color: data.colorPalette.primary }} />
           <span className="text-sm font-bold" style={{ color: data.colorPalette.text }}>
-            Choose up to {maxUploads} photos
+            {photosLeft <= 0 ? "Upload limit reached" : `Choose up to ${maxSelectable} photos`}
           </span>
-          <span className="mt-1 text-xs">JPG, PNG, WEBP, or HEIC. {limitMb} MB max each.</span>
+          <span className="mt-1 text-xs">
+            {usageLoading
+              ? "Checking your upload limit..."
+              : `${photosLeft} of ${totalPhotoLimit} photo${totalPhotoLimit === 1 ? "" : "s"} left on this phone. ${limitMb} MB max each.`}
+          </span>
           <input
             id="guest-photo-upload"
             type="file"
             accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
             multiple
+            disabled={usageLoading || photosLeft <= 0}
             className="sr-only"
             onChange={(event) => {
-              const next = Array.from(event.target.files ?? []).slice(0, maxUploads);
+              const incoming = Array.from(event.target.files ?? []);
+              const next = incoming.slice(0, maxSelectable);
+              if (incoming.length > maxSelectable) {
+                setError(`This phone has room for ${maxSelectable} photo${maxSelectable === 1 ? "" : "s"} right now.`);
+              } else {
+                setError(null);
+              }
               setFiles(next);
             }}
           />
         </label>
         {files.length > 0 && (
-          <div className="rounded-2xl bg-[#FFF7F2] px-4 py-3 text-sm" style={{ color: data.colorPalette.text }}>
-            {files.map((file) => file.name).join(", ")}
+          <div className="space-y-1 rounded-2xl bg-[#FFF7F2] px-4 py-3 text-sm" style={{ color: data.colorPalette.text }}>
+            <p>{files.map((file) => file.name).join(", ")}</p>
+            <p className="text-xs font-semibold" style={{ color: data.colorPalette.primary }}>
+              After this upload: {photosLeftAfterSelection} photo{photosLeftAfterSelection === 1 ? "" : "s"} left.
+            </p>
           </div>
         )}
         {error && (
@@ -3491,11 +3563,11 @@ function GuestPhotoDropSection({
         )}
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || usageLoading || photosLeft <= 0}
           className="inline-flex min-h-12 items-center justify-center rounded-full px-6 text-sm font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           style={{ background: data.colorPalette.primary }}
         >
-          {submitting ? "Uploading..." : "Upload Photos"}
+          {photosLeft <= 0 ? "Upload Limit Reached" : submitting ? "Uploading..." : "Upload Photos"}
         </button>
       </form>
 

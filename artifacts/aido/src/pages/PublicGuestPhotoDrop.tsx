@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { useRoute } from "wouter";
 import { Camera, CheckCircle2, Heart, ImagePlus, Loader2, Lock, UploadCloud, X } from "lucide-react";
 import { apiFetch } from "@/lib/authFetch";
+import { getGuestPhotoDeviceId } from "@/lib/guestPhotoDevice";
 
 type PublicPhotoDropPayload = {
   slug: string;
@@ -28,6 +29,13 @@ type PublicPhotoDropPayload = {
     instructions: string;
     displayMode?: "portal" | "website" | "both";
   };
+};
+
+type PhotoDropUsage = {
+  limit: number;
+  uploadedCount: number;
+  remaining: number;
+  maxPerUpload: number;
 };
 
 function coupleName(data: PublicPhotoDropPayload | null) {
@@ -108,12 +116,24 @@ export default function PublicGuestPhotoDrop() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [deviceId, setDeviceId] = useState("");
+  const [usage, setUsage] = useState<PhotoDropUsage | null>(null);
+  const [usageLoading, setUsageLoading] = useState(false);
 
   const drop = data?.guestPhotoDrop;
   const maxUploads = drop?.maxUploads ?? 5;
   const uploadLimitMb = drop?.uploadLimitMb ?? 5;
+  const totalPhotoLimit = usage?.limit ?? 5;
+  const photosLeft = usage?.remaining ?? totalPhotoLimit;
+  const maxSelectable = Math.max(0, Math.min(maxUploads, photosLeft));
+  const photosLeftAfterSelection = Math.max(0, photosLeft - files.length);
   const primary = data?.colorPalette?.primary || "#8D294D";
   const accent = data?.colorPalette?.accent || "#D4A373";
+
+  useEffect(() => {
+    if (!slug) return;
+    setDeviceId(getGuestPhotoDeviceId(slug));
+  }, [slug]);
 
   useEffect(() => {
     if (!slug) return;
@@ -149,6 +169,34 @@ export default function PublicGuestPhotoDrop() {
     document.title = data ? `${coupleName(data)} Photo Drop` : "Guest Photo Drop";
   }, [data]);
 
+  useEffect(() => {
+    if (!slug || !deviceId || !drop?.enabled) return;
+    let cancelled = false;
+    setUsageLoading(true);
+    apiFetch(`/api/website/public/${encodeURIComponent(slug)}/photo-drop/usage`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(password ? { "X-Site-Password": password } : {}),
+      },
+      body: JSON.stringify({ deviceId }),
+    })
+      .then(async (response) => {
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error((body as { error?: string })?.error || "Could not check upload limit.");
+        if (!cancelled) setUsage(body as PhotoDropUsage);
+      })
+      .catch((err) => {
+        if (!cancelled) setSubmitError(err instanceof Error ? err.message : "Could not check upload limit.");
+      })
+      .finally(() => {
+        if (!cancelled) setUsageLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, deviceId, drop?.enabled, password]);
+
   const unlock = async (nextPassword: string) => {
     setUnlocking(true);
     setPasswordError(null);
@@ -182,6 +230,10 @@ export default function PublicGuestPhotoDrop() {
     if (incoming.length === 0) return;
     setSubmitError(null);
     setSuccess(null);
+    if (photosLeft <= 0) {
+      setSubmitError(`This phone has already uploaded ${totalPhotoLimit} photos for this wedding.`);
+      return;
+    }
     const limitBytes = uploadLimitMb * 1024 * 1024;
     const oversized = incoming.find((file) => file.size > limitBytes);
     if (oversized) {
@@ -193,7 +245,15 @@ export default function PublicGuestPhotoDrop() {
       setSubmitError("Please choose photos only.");
       return;
     }
-    setFiles((current) => [...current, ...imagesOnly].slice(0, maxUploads));
+    const remainingSelectionSlots = Math.max(0, maxSelectable - files.length);
+    if (remainingSelectionSlots <= 0) {
+      setSubmitError(`You can upload ${maxSelectable} photo${maxSelectable === 1 ? "" : "s"} in this submission.`);
+      return;
+    }
+    if (imagesOnly.length > remainingSelectionSlots) {
+      setSubmitError(`This phone has room for ${remainingSelectionSlots} more photo${remainingSelectionSlots === 1 ? "" : "s"} right now.`);
+    }
+    setFiles((current) => [...current, ...imagesOnly.slice(0, remainingSelectionSlots)]);
   };
 
   const submitPhotos = async (event: FormEvent) => {
@@ -207,6 +267,14 @@ export default function PublicGuestPhotoDrop() {
       setSubmitError("Please take or choose at least one photo.");
       return;
     }
+    if (photosLeft <= 0) {
+      setSubmitError(`This phone has already uploaded ${totalPhotoLimit} photos for this wedding.`);
+      return;
+    }
+    if (files.length > photosLeft) {
+      setSubmitError(`This phone only has ${photosLeft} photo${photosLeft === 1 ? "" : "s"} left to upload.`);
+      return;
+    }
     setSubmitting(true);
     setSubmitError(null);
     setSuccess(null);
@@ -214,6 +282,7 @@ export default function PublicGuestPhotoDrop() {
     form.append("guestName", guestName.trim());
     if (guestEmail.trim()) form.append("guestEmail", guestEmail.trim());
     if (note.trim()) form.append("note", note.trim());
+    if (deviceId) form.append("deviceId", deviceId);
     files.forEach((file) => form.append("photos", file));
     try {
       const response = await apiFetch(`/api/website/public/${encodeURIComponent(slug)}/photo-drop`, {
@@ -224,6 +293,7 @@ export default function PublicGuestPhotoDrop() {
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error((body as { error?: string })?.error || "Upload failed.");
       setSuccess((body as { message?: string })?.message || "Your photos were sent. Thank you!");
+      if ((body as { usage?: PhotoDropUsage }).usage) setUsage((body as { usage: PhotoDropUsage }).usage);
       setFiles([]);
       setNote("");
       if (cameraInputRef.current) cameraInputRef.current.value = "";
@@ -308,6 +378,7 @@ export default function PublicGuestPhotoDrop() {
               <button
                 type="button"
                 onClick={() => cameraInputRef.current?.click()}
+                disabled={usageLoading || photosLeft <= 0}
                 className="flex min-h-28 flex-col items-center justify-center rounded-[1.6rem] border border-[#E6A6B7]/60 bg-[#FFF7F2] px-3 text-center font-bold text-[#5B0F2A] shadow-sm"
               >
                 <Camera className="mb-2 h-7 w-7 text-[#8D294D]" />
@@ -316,6 +387,7 @@ export default function PublicGuestPhotoDrop() {
               <button
                 type="button"
                 onClick={() => libraryInputRef.current?.click()}
+                disabled={usageLoading || photosLeft <= 0}
                 className="flex min-h-28 flex-col items-center justify-center rounded-[1.6rem] border border-[#E6A6B7]/60 bg-[#FFF7F2] px-3 text-center font-bold text-[#5B0F2A] shadow-sm"
               >
                 <ImagePlus className="mb-2 h-7 w-7 text-[#D4A373]" />
@@ -323,9 +395,23 @@ export default function PublicGuestPhotoDrop() {
               </button>
             </div>
 
-            <p className="text-center text-xs leading-5 text-[#6F3E54]">
-              Add up to {maxUploads} photos. {uploadLimitMb} MB max each.
-            </p>
+            <div className="rounded-[1.5rem] border border-[#E6A6B7]/45 bg-[#FFF7F2]/80 px-4 py-3 text-center">
+              <p className="text-sm font-bold text-[#5B0F2A]">
+                {usageLoading
+                  ? "Checking your upload limit..."
+                  : `${photosLeft} of ${totalPhotoLimit} photo${totalPhotoLimit === 1 ? "" : "s"} left on this phone`}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-[#6F3E54]">
+                {photosLeft <= 0
+                  ? "This phone has reached the upload limit for this wedding."
+                  : `Choose up to ${maxSelectable} photo${maxSelectable === 1 ? "" : "s"} now. ${uploadLimitMb} MB max each.`}
+              </p>
+              {files.length > 0 && (
+                <p className="mt-1 text-xs font-semibold text-[#8D294D]">
+                  After this upload: {photosLeftAfterSelection} photo{photosLeftAfterSelection === 1 ? "" : "s"} left.
+                </p>
+              )}
+            </div>
 
             {files.length > 0 && (
               <div className="space-y-2 rounded-[1.5rem] border border-[#E6A6B7]/45 bg-[#FFF7F2]/80 p-3">
@@ -385,11 +471,11 @@ export default function PublicGuestPhotoDrop() {
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || usageLoading || photosLeft <= 0}
               className="inline-flex h-14 w-full items-center justify-center rounded-full bg-[#8D294D] px-5 text-base font-bold text-white shadow-lg shadow-[#8D294D]/20 transition hover:bg-[#762140] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {submitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UploadCloud className="mr-2 h-5 w-5" />}
-              Upload Photos
+              {photosLeft <= 0 ? "Upload Limit Reached" : "Upload Photos"}
             </button>
           </form>
         </section>

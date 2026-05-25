@@ -825,6 +825,7 @@ export const guestPhotoUploads = pgTable("guest_photo_uploads", {
   originalName: text("original_name"),
   contentType: text("content_type"),
   fileSize: integer("file_size"),
+  uploaderKey: text("uploader_key"),
   status: text("status").notNull().default("pending"),
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
   approvedAt: timestamp("approved_at"),

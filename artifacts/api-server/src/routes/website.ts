@@ -6,7 +6,7 @@ import { Readable } from "node:stream";
 import rateLimit from "express-rate-limit";
 import { db, weddingWebsites, weddingProfiles, guests, websiteRsvps, weddingParty, hotelBlocks, invitationCustomizations, guestPhotoUploads } from "@workspace/db";
 import type { WeddingProfile, WebsiteSectionsEnabled, WebsiteCustomText, WebsiteGalleryImage, WebsiteHeroImage, WebsiteTextStyles, WebsiteTextPositions } from "@workspace/db";
-import { and, eq, ilike, desc, not } from "drizzle-orm";
+import { and, eq, ilike, desc, not, sql } from "drizzle-orm";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../middlewares/requireAuth";
 import { publicRsvpLimiter } from "../middlewares/rateLimiter";
@@ -68,7 +68,17 @@ const guestPhotoPublicLimiter = rateLimit({
   message: { error: "Too many photo uploads. Please wait a few minutes and try again." },
 });
 
+const guestPhotoUsageLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+  message: { error: "Too many photo drop checks. Please wait a moment and try again." },
+});
+
 const GUEST_PHOTO_MAX_FILES = 5;
+const GUEST_PHOTO_DEVICE_TOTAL_LIMIT = 5;
 const GUEST_PHOTO_MAX_FILE_BYTES = 5 * 1024 * 1024;
 const GUEST_PHOTO_ALLOWED_MIMES = new Set([
   "image/jpeg",
@@ -352,6 +362,46 @@ function mergeGuestPhotoDropSettings(
 
 function publicGuestPhotoUrl(row: typeof weddingWebsites.$inferSelect, raw: string): string {
   return websiteMediaUrl(row, raw) ?? raw;
+}
+
+function cleanGuestPhotoDeviceId(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const value = raw.trim().slice(0, 160);
+  if (value.length < 16) return null;
+  return value;
+}
+
+function guestPhotoUploadKey(
+  req: Request,
+  site: typeof weddingWebsites.$inferSelect,
+  rawDeviceId: unknown,
+): string {
+  const deviceId = cleanGuestPhotoDeviceId(rawDeviceId);
+  const userAgent = String(req.headers["user-agent"] ?? "").slice(0, 220);
+  const forwardedFor = String(req.headers["x-forwarded-for"] ?? "").split(",")[0]?.trim();
+  const remoteAddress = forwardedFor || req.ip || req.socket.remoteAddress || "unknown";
+  const basis = deviceId ? `device:${deviceId}` : `fallback:${remoteAddress}:${userAgent}`;
+  return createHmac("sha256", invitationShareSecret())
+    .update(`guest-photo:${site.id}:${site.slug}:${basis}`)
+    .digest("base64url")
+    .slice(0, 48);
+}
+
+async function countGuestPhotoUploadsForKey(websiteId: number, uploaderKey: string): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(guestPhotoUploads)
+    .where(and(eq(guestPhotoUploads.websiteId, websiteId), eq(guestPhotoUploads.uploaderKey, uploaderKey)));
+  return Number(row?.count ?? 0);
+}
+
+function guestPhotoUsage(uploadedCount: number) {
+  const used = Math.max(0, Math.min(GUEST_PHOTO_DEVICE_TOTAL_LIMIT, Math.floor(uploadedCount)));
+  return {
+    limit: GUEST_PHOTO_DEVICE_TOTAL_LIMIT,
+    uploadedCount: used,
+    remaining: Math.max(0, GUEST_PHOTO_DEVICE_TOTAL_LIMIT - used),
+  };
 }
 
 function serializeGuestPhotoUpload(
@@ -1752,6 +1802,32 @@ async function normalizeHotelRsvp(
   return update;
 }
 
+// POST /api/website/public/:slug/photo-drop/usage
+// Returns how many upload slots this browser/device has left for the wedding.
+// The client stores a random local device id; the server stores only its HMAC.
+router.post("/website/public/:slug/photo-drop/usage", guestPhotoUsageLimiter, async (req, res) => {
+  try {
+    if (await sendMaintenanceIfActive(res, "wedding-website")) return;
+    const slug = String(req.params.slug ?? "").toLowerCase();
+    const r = await resolvePublishedSite(slug, req);
+    if (!r.ok) return res.status(r.status).json({ error: r.status === 401 ? "Password required" : "Not found" });
+
+    const settings = guestPhotoDropSettings(r.site.customText);
+    if (!settings.enabled) return res.status(404).json({ error: "Guest photo sharing is not available for this wedding." });
+
+    const uploaderKey = guestPhotoUploadKey(req, r.site, req.body?.deviceId);
+    const uploadedCount = await countGuestPhotoUploadsForKey(r.site.id, uploaderKey);
+    const usage = guestPhotoUsage(uploadedCount);
+    res.json({
+      ...usage,
+      maxPerUpload: Math.max(0, Math.min(settings.maxUploads, usage.remaining)),
+    });
+  } catch (err) {
+    req.log.error(err, "guestPhotoDropUsage failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // POST /api/website/public/:slug/photo-drop
 // Public upload endpoint for the wedding-day QR code. The site must be
 // published, the couple must have Guest Photo Drop enabled, and photos are
@@ -1789,6 +1865,21 @@ router.post(
       if (files.length > settings.maxUploads) {
         return res.status(400).json({ error: `Please upload no more than ${settings.maxUploads} photos at once.` });
       }
+      const uploaderKey = guestPhotoUploadKey(req, r.site, req.body?.deviceId);
+      const uploadedCount = await countGuestPhotoUploadsForKey(r.site.id, uploaderKey);
+      const usageBeforeUpload = guestPhotoUsage(uploadedCount);
+      if (usageBeforeUpload.remaining <= 0) {
+        return res.status(409).json({
+          error: `This phone has already uploaded ${GUEST_PHOTO_DEVICE_TOTAL_LIMIT} photos for this wedding.`,
+          usage: usageBeforeUpload,
+        });
+      }
+      if (files.length > usageBeforeUpload.remaining) {
+        return res.status(400).json({
+          error: `This phone has ${usageBeforeUpload.remaining} photo${usageBeforeUpload.remaining === 1 ? "" : "s"} left to upload. Please remove ${files.length - usageBeforeUpload.remaining} photo${files.length - usageBeforeUpload.remaining === 1 ? "" : "s"} and try again.`,
+          usage: usageBeforeUpload,
+        });
+      }
 
       const cleanName = String(req.body?.guestName ?? "").trim().replace(/\s+/g, " ").slice(0, 120);
       if (!cleanName) return res.status(400).json({ error: "Please enter your name before uploading." });
@@ -1825,6 +1916,7 @@ router.post(
             originalName,
             contentType: file.mimetype || "image/jpeg",
             fileSize: file.size,
+            uploaderKey,
             status,
             approvedAt: status === "approved" ? new Date() : null,
           })
@@ -1836,6 +1928,7 @@ router.post(
         success: true,
         status,
         count: createdRows.length,
+        usage: guestPhotoUsage(uploadedCount + createdRows.length),
         message: settings.approvalRequired
           ? "Thanks! Your photos were uploaded and are waiting for the couple to approve."
           : "Thanks! Your photos were uploaded.",
