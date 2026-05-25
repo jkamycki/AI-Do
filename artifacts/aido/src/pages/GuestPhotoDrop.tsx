@@ -103,6 +103,38 @@ function formatFileSize(size?: number | null) {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function summarizeUploads(uploads: GuestPhotoUpload[]): GuestPhotoDropData["summary"] {
+  return {
+    total: uploads.length,
+    pending: uploads.filter((upload) => upload.status === "pending").length,
+    approved: uploads.filter((upload) => upload.status === "approved").length,
+    hidden: uploads.filter((upload) => upload.status === "hidden").length,
+  };
+}
+
+function updateUploadInData(
+  data: GuestPhotoDropData | undefined,
+  id: number,
+  patch: Partial<GuestPhotoUpload>,
+): GuestPhotoDropData | undefined {
+  if (!data) return data;
+  let changed = false;
+  const uploads = data.uploads.map((upload) => {
+    if (upload.id !== id) return upload;
+    changed = true;
+    return { ...upload, ...patch };
+  });
+  if (!changed) return data;
+  return { ...data, uploads, summary: summarizeUploads(uploads) };
+}
+
+function removeUploadFromData(data: GuestPhotoDropData | undefined, id: number): GuestPhotoDropData | undefined {
+  if (!data) return data;
+  const uploads = data.uploads.filter((upload) => upload.id !== id);
+  if (uploads.length === data.uploads.length) return data;
+  return { ...data, uploads, summary: summarizeUploads(uploads) };
+}
+
 export default function GuestPhotoDrop() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -153,8 +185,22 @@ export default function GuestPhotoDrop() {
         body: JSON.stringify({ status }),
       }),
     ),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["guest-photo-drop"] }),
-    onError: (err) => {
+    onMutate: async ({ id, status }) => {
+      await queryClient.cancelQueries({ queryKey: ["guest-photo-drop"] });
+      const previous = queryClient.getQueryData<GuestPhotoDropData>(["guest-photo-drop"]);
+      queryClient.setQueryData<GuestPhotoDropData>(["guest-photo-drop"], (current) =>
+        updateUploadInData(current, id, { status }),
+      );
+      return { previous };
+    },
+    onSuccess: (body) => {
+      queryClient.setQueryData<GuestPhotoDropData>(["guest-photo-drop"], (current) =>
+        updateUploadInData(current, body.upload.id, body.upload),
+      );
+      queryClient.invalidateQueries({ queryKey: ["guest-photo-drop"] });
+    },
+    onError: (err, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(["guest-photo-drop"], context.previous);
       toast({
         title: "Could not update photo",
         description: err instanceof Error ? err.message : "Please try again.",
@@ -167,8 +213,17 @@ export default function GuestPhotoDrop() {
     mutationFn: async (id: number) => readJson<{ success: boolean }>(
       await authFetch(`/api/website/photo-drop/uploads/${id}`, { method: "DELETE" }),
     ),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["guest-photo-drop"] });
+      const previous = queryClient.getQueryData<GuestPhotoDropData>(["guest-photo-drop"]);
+      queryClient.setQueryData<GuestPhotoDropData>(["guest-photo-drop"], (current) =>
+        removeUploadFromData(current, id),
+      );
+      return { previous };
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["guest-photo-drop"] }),
-    onError: (err) => {
+    onError: (err, _id, context) => {
+      if (context?.previous) queryClient.setQueryData(["guest-photo-drop"], context.previous);
       toast({
         title: "Could not delete photo",
         description: err instanceof Error ? err.message : "Please try again.",
