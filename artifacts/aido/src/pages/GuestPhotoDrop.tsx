@@ -18,6 +18,7 @@ import {
 import { authFetch } from "@/lib/authFetch";
 import { publicAppOrigin } from "@/lib/publicUrls";
 import { qrSvgDataUrl } from "@/lib/localQr";
+import { downloadMediaFile, guestPhotoDownloadName } from "@/lib/mediaDownload";
 import { AuthMediaImage } from "@/components/AuthMediaImage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -252,6 +253,28 @@ export default function GuestPhotoDrop() {
     setTimeout(() => setCopied(false), 1600);
   };
 
+  const downloadUpload = async (upload: GuestPhotoUpload) => {
+    try {
+      await downloadMediaFile(
+        upload.imageUrl || upload.publicImageUrl,
+        guestPhotoDownloadName({
+          guestName: upload.guestName,
+          id: upload.id,
+          originalName: upload.originalName,
+          imageUrl: upload.imageUrl || upload.publicImageUrl,
+        }),
+        { authenticated: true },
+      );
+      toast({ title: "Photo download started" });
+    } catch (err) {
+      toast({
+        title: "Could not download photo",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (photoDropQuery.isLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -479,6 +502,7 @@ export default function GuestPhotoDrop() {
           onApprove={(id) => setUploadStatus.mutate({ id, status: "approved" })}
           onHide={(id) => setUploadStatus.mutate({ id, status: "hidden" })}
           onDelete={(id) => deleteUpload.mutate(id)}
+          onDownload={downloadUpload}
         />
 
         <UploadQueue
@@ -489,6 +513,7 @@ export default function GuestPhotoDrop() {
           onApprove={(id) => setUploadStatus.mutate({ id, status: "approved" })}
           onHide={(id) => setUploadStatus.mutate({ id, status: "hidden" })}
           onDelete={(id) => deleteUpload.mutate(id)}
+          onDownload={downloadUpload}
         />
       </div>
     </div>
@@ -525,6 +550,7 @@ function UploadQueue({
   onApprove,
   onHide,
   onDelete,
+  onDownload,
 }: {
   title: string;
   description: string;
@@ -533,6 +559,7 @@ function UploadQueue({
   onApprove: (id: number) => void;
   onHide: (id: number) => void;
   onDelete: (id: number) => void;
+  onDownload: (upload: GuestPhotoUpload) => void;
 }) {
   return (
     <Card className="border-[#E6A6B7]/40 bg-white/90 shadow-[0_24px_70px_rgba(91,15,42,0.10)]">
@@ -584,6 +611,16 @@ function UploadQueue({
                     </div>
                   )}
                   {upload.guestEmail && <p className="truncate text-xs text-[#6F3E54]">{upload.guestEmail}</p>}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onDownload(upload)}
+                    className="w-full rounded-full border-[#E6A6B7]/70 bg-white text-[#8D294D] hover:bg-[#F7DDE2]/50"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Download Photo
+                  </Button>
                   <div className="grid grid-cols-3 gap-2">
                     <Button
                       type="button"

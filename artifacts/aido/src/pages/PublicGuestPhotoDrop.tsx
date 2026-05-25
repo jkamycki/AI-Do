@@ -356,10 +356,10 @@ export default function PublicGuestPhotoDrop() {
               src={PHOTO_DROP_HERO_IMAGE}
               alt=""
               aria-hidden="true"
-              className="absolute inset-0 -z-30 h-full w-full object-cover opacity-55"
+              className="absolute inset-0 -z-30 h-full w-full object-cover opacity-80 contrast-125 saturate-150"
             />
-            <div className="absolute inset-0 -z-20 bg-gradient-to-br from-white/95 via-[#F7DDE2]/82 to-[#F2E2C6]/78" />
-            <div className="absolute inset-x-0 bottom-0 -z-10 h-24 bg-gradient-to-t from-white via-white/80 to-transparent" />
+            <div className="absolute inset-0 -z-20 bg-gradient-to-br from-white/72 via-[#F7DDE2]/48 to-[#F2E2C6]/38" />
+            <div className="absolute inset-x-0 bottom-0 -z-10 h-24 bg-gradient-to-t from-white via-white/70 to-transparent" />
             <div
               className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-[1.35rem] border bg-white/90 p-2 shadow-[0_18px_42px_rgba(91,15,42,0.16)] backdrop-blur"
               style={{ borderColor: `${accent}55`, boxShadow: `0 18px 42px ${primary}24` }}
@@ -502,24 +502,40 @@ export default function PublicGuestPhotoDrop() {
               {photosLeft <= 0 ? "Upload Limit Reached" : "Upload Photos"}
             </button>
           </form>
-          {weddingWebsiteUrl && (
-            <footer className="border-t border-[#F2C7D1]/70 bg-gradient-to-br from-white via-[#FFF7F2] to-[#F7DDE2]/45 px-5 py-6 text-center">
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#8D294D]">Wedding Website</p>
-              <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[#6F3E54]">
-                See the celebration details and approved guest photos on {coupleName(data)}&apos;s wedding website.
+          <footer className="border-t border-[#F2C7D1]/70 bg-gradient-to-br from-white via-[#FFF7F2] to-[#F7DDE2]/45 px-5 py-6 text-center">
+            {weddingWebsiteUrl && (
+              <div className="pb-5">
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#8D294D]">Wedding Website</p>
+                <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[#6F3E54]">
+                  See the celebration details and approved guest photos on {coupleName(data)}&apos;s wedding website.
+                </p>
+                <a
+                  href={weddingWebsiteUrl}
+                  className="mt-4 inline-flex min-h-11 max-w-full items-center justify-center rounded-full border border-[#E6A6B7]/70 bg-white px-5 text-sm font-bold text-[#8D294D] shadow-sm"
+                >
+                  Visit Wedding Website
+                </a>
+                <p className="mx-auto mt-3 max-w-full break-all rounded-2xl bg-white/70 px-4 py-3 text-xs font-semibold text-[#5B0F2A]">
+                  {displayWeddingWebsiteUrl}
+                </p>
+              </div>
+            )}
+            <div className="border-t border-[#F2C7D1]/60 pt-5">
+              <img src="/logo.png" alt="A.I Do" className="mx-auto h-11 w-auto object-contain opacity-95" />
+              <p className="mt-3 text-xs font-bold uppercase tracking-[0.22em] text-[#8D294D]">Powered by A.I Do</p>
+              <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-[#6F3E54]">
+                Create your wedding website, RSVP flow, and guest photo drop with A.I Do.
               </p>
               <a
-                href={weddingWebsiteUrl}
-                className="mt-4 inline-flex min-h-11 max-w-full items-center justify-center rounded-full border border-[#E6A6B7]/70 bg-white px-5 text-sm font-bold text-[#8D294D] shadow-sm"
+                href="https://aidowedding.net?utm_source=guest_photo_drop&utm_medium=public_footer"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex max-w-full items-center justify-center rounded-full bg-white px-4 py-2 text-sm font-bold text-[#8D294D] shadow-sm ring-1 ring-[#E6A6B7]/70"
               >
-                Visit Wedding Website
+                aidowedding.net
               </a>
-              <p className="mx-auto mt-3 max-w-full break-all rounded-2xl bg-white/70 px-4 py-3 text-xs font-semibold text-[#5B0F2A]">
-                {displayWeddingWebsiteUrl}
-              </p>
-              <img src="/logo.png" alt="A.I Do" className="mx-auto mt-4 h-10 w-auto object-contain opacity-90" />
-            </footer>
-          )}
+            </div>
+          </footer>
         </section>
       </div>
     </main>

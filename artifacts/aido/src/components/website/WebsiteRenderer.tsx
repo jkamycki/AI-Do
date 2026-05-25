@@ -29,6 +29,7 @@ import {
   Check,
   UploadCloud,
   Camera,
+  Download,
 } from "lucide-react";
 import {
   EditableText,
@@ -39,6 +40,7 @@ import { isEditableHiddenMarker } from "./hiddenMarker";
 import { RsvpFlow } from "./RsvpFlow";
 import { apiFetch, authFetch } from "@/lib/authFetch";
 import { resolveMediaUrl, isMediaAuthRequired } from "@/lib/mediaUrl";
+import { downloadMediaFile, guestPhotoDownloadName } from "@/lib/mediaDownload";
 import { getGuestPhotoDeviceId } from "@/lib/guestPhotoDevice";
 import { publishedWebsiteUrl } from "@/lib/publicUrls";
 import { AuthMediaImage } from "@/components/AuthMediaImage";
@@ -498,7 +500,7 @@ function Lightbox({
   startIndex,
   onClose,
 }: {
-  images: Array<{ url: string; caption?: string }>;
+  images: Array<{ url: string; caption?: string; downloadName?: string }>;
   startIndex: number;
   onClose: () => void;
 }) {
@@ -529,6 +531,19 @@ function Lightbox({
       >
         <X className="h-5 w-5" />
       </button>
+      {img.downloadName && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            void downloadMediaFile(img.url, img.downloadName!, { authenticated: false });
+          }}
+          className="absolute right-16 top-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/25"
+          aria-label="Download photo"
+        >
+          <Download className="h-4 w-4" />
+          <span className="hidden sm:inline">Download</span>
+        </button>
+      )}
       {index > 0 && (
         <button
           onClick={(e) => {
@@ -2946,6 +2961,11 @@ function Gallery({
         url: photo.publicImageUrl || photo.imageUrl,
         caption: photo.caption || photo.note || `Photo from ${photo.guestName}`,
         guestName: photo.guestName,
+        downloadName: guestPhotoDownloadName({
+          guestName: photo.guestName,
+          id: photo.id,
+          imageUrl: photo.publicImageUrl || photo.imageUrl,
+        }),
       }))
       .filter((photo) => photo.url)
     : [];
@@ -3034,6 +3054,9 @@ function Gallery({
       <ImageIcon className="h-6 w-6 text-white opacity-0 group-hover:opacity-80 transition-opacity" />
     </div>
   );
+  const downloadGuestUpload = (photo: (typeof guestUploads)[number]) => {
+    void downloadMediaFile(photo.url, photo.downloadName, { authenticated: false });
+  };
   // Captions use a shared style key so the user picks color/font/size once
   // in the inline toolbar and every gallery caption follows. Per-image text
   // commits flow through onGalleryCaptionChange so edits persist into the
@@ -3281,30 +3304,46 @@ function Gallery({
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {guestUploads.map((photo, index) => (
-              <button
+              <div
                 key={photo.id}
-                type="button"
-                onClick={() => setGuestLightboxIndex(index)}
                 className="group relative aspect-square overflow-hidden rounded-2xl border bg-white shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
                 style={{
                   borderColor: `${data.colorPalette.primary}22`,
                   ["--tw-ring-color" as string]: data.colorPalette.primary,
                 }}
-                aria-label={photo.caption}
               >
-                <AuthMediaImage
-                  src={photo.url}
-                  alt={photo.caption}
-                  className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                  loading="lazy"
-                />
-                <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 pb-2 pt-10 text-left text-white">
-                  <span className="block text-xs font-semibold leading-4">{photo.caption}</span>
-                  {photo.caption !== `Photo from ${photo.guestName}` && (
-                    <span className="block text-[10px] leading-4 opacity-80">From {photo.guestName}</span>
-                  )}
-                </span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setGuestLightboxIndex(index)}
+                  className="absolute inset-0 text-left focus:outline-none"
+                  aria-label={photo.caption}
+                >
+                  <AuthMediaImage
+                    src={photo.url}
+                    alt={photo.caption}
+                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                    loading="lazy"
+                  />
+                  <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 pb-2 pt-10 text-left text-white">
+                    <span className="block text-xs font-semibold leading-4">{photo.caption}</span>
+                    {photo.caption !== `Photo from ${photo.guestName}` && (
+                      <span className="block text-[10px] leading-4 opacity-80">From {photo.guestName}</span>
+                    )}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    downloadGuestUpload(photo);
+                  }}
+                  className="absolute right-2 top-2 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/92 text-[#5B0F2A] shadow-md transition hover:scale-105 hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                  style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}
+                  aria-label={`Download ${photo.caption}`}
+                >
+                  <Download className="h-4 w-4" />
+                </button>
+              </div>
             ))}
           </div>
         </section>
@@ -3441,6 +3480,19 @@ function GuestPhotoDropSection({
     }
   };
 
+  const downloadSharedMoment = (photo: (typeof photos)[number]) => {
+    const imageUrl = photo.publicImageUrl || photo.imageUrl;
+    void downloadMediaFile(
+      imageUrl,
+      guestPhotoDownloadName({
+        guestName: photo.guestName,
+        id: photo.id,
+        imageUrl,
+      }),
+      { authenticated: false },
+    );
+  };
+
   return (
     <SectionShell
       id="photoDrop"
@@ -3455,6 +3507,11 @@ function GuestPhotoDropSection({
           images={photos.map((photo) => ({
             url: photo.publicImageUrl || photo.imageUrl,
             caption: photo.caption || photo.note || `Photo from ${photo.guestName}`,
+            downloadName: guestPhotoDownloadName({
+              guestName: photo.guestName,
+              id: photo.id,
+              imageUrl: photo.publicImageUrl || photo.imageUrl,
+            }),
           }))}
           startIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
@@ -3590,28 +3647,45 @@ function GuestPhotoDropSection({
           </h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {photos.map((photo, index) => (
-              <button
+              <div
                 key={photo.id}
-                type="button"
-                onClick={() => setLightboxIndex(index)}
                 className="group relative aspect-square overflow-hidden rounded-2xl border bg-white shadow-sm"
                 style={{ borderColor: `${data.colorPalette.primary}22` }}
               >
-                <AuthMediaImage
-                  src={photo.publicImageUrl || photo.imageUrl}
-                  alt={photo.caption || photo.note || `Photo from ${photo.guestName}`}
-                  className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                  loading="lazy"
-                />
-                <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 pb-2 pt-10 text-left text-white">
-                  <span className="block text-xs font-semibold leading-4">
-                    {photo.caption || photo.note || `Photo from ${photo.guestName}`}
+                <button
+                  type="button"
+                  onClick={() => setLightboxIndex(index)}
+                  className="absolute inset-0 text-left focus:outline-none"
+                  aria-label={photo.caption || photo.note || `Photo from ${photo.guestName}`}
+                >
+                  <AuthMediaImage
+                    src={photo.publicImageUrl || photo.imageUrl}
+                    alt={photo.caption || photo.note || `Photo from ${photo.guestName}`}
+                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                    loading="lazy"
+                  />
+                  <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 pb-2 pt-10 text-left text-white">
+                    <span className="block text-xs font-semibold leading-4">
+                      {photo.caption || photo.note || `Photo from ${photo.guestName}`}
+                    </span>
+                    {(photo.caption || photo.note) && (
+                      <span className="block text-[10px] leading-4 opacity-80">From {photo.guestName}</span>
+                    )}
                   </span>
-                  {(photo.caption || photo.note) && (
-                    <span className="block text-[10px] leading-4 opacity-80">From {photo.guestName}</span>
-                  )}
-                </span>
-              </button>
+                </button>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    downloadSharedMoment(photo);
+                  }}
+                  className="absolute right-2 top-2 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/92 text-[#5B0F2A] shadow-md transition hover:scale-105 hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                  style={{ ["--tw-ring-color" as string]: data.colorPalette.primary }}
+                  aria-label={`Download ${photo.caption || photo.note || `photo from ${photo.guestName}`}`}
+                >
+                  <Download className="h-4 w-4" />
+                </button>
+              </div>
             ))}
           </div>
         </div>

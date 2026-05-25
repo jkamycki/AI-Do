@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { apiFetch } from "@/lib/authFetch";
 import { Link } from "wouter";
-import { ArrowDown, Calendar, CheckSquare, Clock3, Heart, Mail, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowDown, Armchair, BadgeDollarSign, Camera, CheckSquare, Clock3, FileSearch, Globe2, Heart, MailCheck, ShieldCheck, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { LanguagePicker } from "@/components/LanguagePicker";
@@ -13,10 +13,48 @@ const LANG_CODE_TO_NAME: Record<string, string> = Object.fromEntries(
 );
 
 const HERO_FEATURES = [
-  { icon: Calendar, labelKey: "features.checklist_title", fallback: "Smart Planning" },
-  { icon: Mail, labelKey: "features.emails_title", fallback: "Vendor Emails" },
-  { icon: CheckSquare, labelKey: "features.timeline_title", fallback: "Timeline Builder" },
-  { icon: Heart, labelKey: "landing.no_cc", fallback: "Stress Free" },
+  {
+    icon: BadgeDollarSign,
+    titleKey: "landing.feature_vendor_budget_title",
+    descKey: "landing.feature_vendor_budget_desc",
+    fallbackTitle: "Vendor & Budget Tracking",
+    fallbackDesc: "Track payments, contracts, and spending in one clean dashboard.",
+  },
+  {
+    icon: MailCheck,
+    titleKey: "landing.feature_guest_invite_title",
+    descKey: "landing.feature_guest_invite_desc",
+    fallbackTitle: "Guest List & Invitation Studio",
+    fallbackDesc: "Manage guests, invitations, and QR RSVPs from one place.",
+  },
+  {
+    icon: Globe2,
+    titleKey: "landing.feature_website_title",
+    descKey: "landing.feature_website_desc",
+    fallbackTitle: "Wedding Website Builder",
+    fallbackDesc: "Publish a personalized wedding website guests can view anywhere.",
+  },
+  {
+    icon: FileSearch,
+    titleKey: "landing.feature_contracts_title",
+    descKey: "landing.feature_contracts_desc",
+    fallbackTitle: "Contract Analyzer & Library",
+    fallbackDesc: "Let AI highlight red flags, payment schedules, and key details.",
+  },
+  {
+    icon: Armchair,
+    titleKey: "landing.feature_seating_title",
+    descKey: "landing.feature_seating_desc",
+    fallbackTitle: "AI Seating Chart Generator",
+    fallbackDesc: "Generate balanced tables from guests, relationships, and notes.",
+  },
+  {
+    icon: Camera,
+    titleKey: "landing.feature_photo_qr_title",
+    descKey: "landing.feature_photo_qr_desc",
+    fallbackTitle: "Wedding Day Photo QR Code",
+    fallbackDesc: "Guests scan, upload photos, and share memories without an app.",
+  },
 ];
 
 const HERO_REASSURANCE = [
@@ -165,15 +203,34 @@ export default function Landing() {
             </div>
           </div>
 
-          <div className="relative z-10 border-t border-[#E6A6B7]/30 bg-white/[0.45] px-4 py-8 backdrop-blur-sm">
-            <div className="mx-auto grid max-w-4xl grid-cols-2 gap-x-3 gap-y-8 sm:grid-cols-4">
-              {HERO_FEATURES.map(({ icon: Icon, labelKey, fallback }, index) => (
-                <div key={labelKey} className="flex min-h-24 flex-col items-center justify-center gap-3 border-[#E6A6B7]/40 text-[#8D294D] sm:border-l sm:first:border-l-0">
-                  <Icon className="h-11 w-11 stroke-[1.4] text-[#C85F82]" />
-                  <span className="max-w-28 text-balance text-center text-sm font-medium leading-snug sm:text-base">{t(labelKey, { defaultValue: fallback })}</span>
-                  {index === 1 && <span className="sr-only">Vendor email drafting</span>}
-                </div>
-              ))}
+          <div className="relative z-10 border-t border-[#E6A6B7]/30 bg-white/[0.5] px-4 py-10 backdrop-blur-sm">
+            <div className="mx-auto max-w-7xl">
+              <div className="mb-8 text-center">
+                <h2 className="font-serif text-3xl leading-tight text-[#8D294D] sm:text-4xl">
+                  {t("landing.top_features_title", { defaultValue: "Top features of A.I Do" })}
+                </h2>
+                <p className="mt-2 text-base text-[#6F3E54] sm:text-lg">
+                  {t("landing.top_features_subtitle", { defaultValue: "Simple to use. Powerful where it matters." })}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 overflow-hidden rounded-[28px] border border-[#E6A6B7]/35 bg-[#FFFDFB]/80 shadow-[0_18px_46px_rgba(141,41,77,0.1)] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                {HERO_FEATURES.map(({ icon: Icon, titleKey, descKey, fallbackTitle, fallbackDesc }) => (
+                  <div
+                    key={titleKey}
+                    className="flex min-h-56 flex-col items-center justify-start gap-3 border-b border-[#E6A6B7]/25 px-5 py-7 text-center text-[#8D294D] sm:border-l sm:[&:nth-child(2n+1)]:border-l-0 lg:[&:nth-child(2n+1)]:border-l lg:[&:nth-child(3n+1)]:border-l-0 xl:border-b-0 xl:[&:nth-child(n)]:border-l xl:first:border-l-0"
+                  >
+                    <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F7DDE2] text-[#C39B70] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_22px_rgba(141,41,77,0.1)]">
+                      <Icon className="h-8 w-8 stroke-[1.6]" />
+                    </span>
+                    <h3 className="text-balance text-base font-semibold leading-snug text-[#8D294D]">
+                      {t(titleKey, { defaultValue: fallbackTitle })}
+                    </h3>
+                    <p className="text-pretty text-sm leading-6 text-[#6F3E54]">
+                      {t(descKey, { defaultValue: fallbackDesc })}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>

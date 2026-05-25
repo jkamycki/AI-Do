@@ -29,22 +29,25 @@ import {
   AlertCircle,
   CalendarDays,
   CheckCircle2,
-  ChevronRight,
   ClipboardList,
   Clock,
   Download,
   FileDown,
   Gem,
   GripVertical,
+  Headphones,
   ListChecks,
   MapPin,
   Mic2,
   Music,
+  PackageCheck,
   Pencil,
+  PhoneCall,
   Plus,
   RefreshCw,
   RotateCcw,
   Save,
+  Shirt,
   Siren,
   Sparkles,
   Trash2,
@@ -76,6 +79,8 @@ type DayOfTab =
   | "music"
   | "speeches"
   | "setup"
+  | "attire"
+  | "vendors-party"
   | "packing";
 
 type BinderSectionId = Exclude<DayOfTab, "timeline" | "packing">;
@@ -157,12 +162,133 @@ interface CeremonyPlan {
   };
 }
 
+type StructuredBinderSectionId = Exclude<BinderSectionId, "ceremony">;
+
+interface MusicCue {
+  id: string;
+  moment: string;
+  song: string;
+  artist: string;
+  cueBy: string;
+  notes: string;
+}
+
+interface MusicPreference {
+  id: string;
+  song: string;
+  note: string;
+}
+
+interface MusicPlan {
+  preludeStart: string;
+  soundCheckTime: string;
+  cueOwner: string;
+  ceremonyCues: MusicCue[];
+  receptionCues: MusicCue[];
+  mustPlay: MusicPreference[];
+  doNotPlay: MusicPreference[];
+  notes: string;
+}
+
+interface SpeechSpeaker {
+  id: string;
+  speakerName: string;
+  role: string;
+  duration: string;
+  micType: string;
+  notes: string;
+}
+
+interface SpeechPlan {
+  toastStart: string;
+  hostName: string;
+  micPlan: string;
+  speakers: SpeechSpeaker[];
+  avNeeds: KeepsakeItem[];
+  timekeeper: string;
+  notes: string;
+}
+
+interface SetupTask {
+  id: string;
+  area: string;
+  task: string;
+  owner: string;
+  dueBy: string;
+  status: string;
+  notes: string;
+}
+
+interface SetupPlan {
+  loadInStart: string;
+  roomFlipTime: string;
+  venueContact: string;
+  cleanupOwner: string;
+  tasks: SetupTask[];
+  notes: string;
+}
+
+interface AttireItem {
+  id: string;
+  personName: string;
+  item: string;
+  location: string;
+  owner: string;
+  packed: boolean;
+  notes: string;
+}
+
+interface AttirePlan {
+  gettingReadyLocation: string;
+  attireLead: string;
+  finalSteamTime: string;
+  items: AttireItem[];
+  emergencyKit: KeepsakeItem[];
+  notes: string;
+}
+
+interface VendorRunbookContact {
+  id: string;
+  vendorName: string;
+  category: string;
+  leadName: string;
+  phone: string;
+  arrivalTime: string;
+  paymentStatus: string;
+  notes: string;
+}
+
+interface PartyContact {
+  id: string;
+  personName: string;
+  role: string;
+  phone: string;
+  arrivalTime: string;
+  duty: string;
+}
+
+interface VendorsPartyPlan {
+  vendors: VendorRunbookContact[];
+  party: PartyContact[];
+  handoffNotes: string;
+}
+
+interface DayOfRunbookPlan {
+  music: MusicPlan;
+  speeches: SpeechPlan;
+  setup: SetupPlan;
+  attire: AttirePlan;
+  vendorsParty: VendorsPartyPlan;
+}
+
 const DAY_OF_TABS: Array<{ id: DayOfTab; label: string; icon: ComponentType<{ className?: string }> }> = [
   { id: "timeline", label: "Timeline", icon: Clock },
   { id: "ceremony", label: "Ceremony", icon: CalendarDays },
   { id: "music", label: "Music", icon: Music },
   { id: "speeches", label: "Speeches", icon: Mic2 },
   { id: "setup", label: "Setup", icon: ClipboardList },
+  { id: "attire", label: "Attire", icon: Shirt },
+  { id: "vendors-party", label: "Vendors & Party", icon: UsersRound },
   { id: "packing", label: "Packing", icon: ListChecks },
 ];
 
@@ -230,6 +356,27 @@ const DEFAULT_KEEPSAKES: KeepsakeItem[] = [
   { id: "vow-books", label: "Vow books", checked: false },
 ];
 
+const MUSIC_MOMENTS = [
+  "Prelude",
+  "Family seating",
+  "Wedding party processional",
+  "Partner entrance",
+  "Recessional",
+  "Grand entrance",
+  "First dance",
+  "Parent dance",
+  "Cake cutting",
+  "Last song",
+  "Custom",
+];
+
+const SPEECH_ROLES = ["Host", "Parent", "Maid of Honor", "Best Man", "Partner", "Sibling", "Friend", "Officiant", "Other"];
+const MIC_OPTIONS = ["Handheld mic", "Lapel mic", "Podium mic", "DJ announces", "No mic needed"];
+const SETUP_AREAS = ["Venue access", "Ceremony", "Cocktail hour", "Reception", "Signage", "Tabletop", "Florals", "Rentals", "Cleanup"];
+const SETUP_STATUS = ["Not started", "Assigned", "Ready", "Complete"];
+const ATTIRE_DEFAULT_ITEMS = ["Dress / suit", "Veil / tie", "Shoes", "Jewelry", "Rings", "Undergarments", "Backup flats", "Getting-ready robe"];
+const VENDOR_PAYMENT_STATUSES = ["Confirmed", "Final payment due", "Tip prepared", "Paid in full", "No payment day-of"];
+
 const BINDER_SECTIONS: Record<BinderSectionId, BinderSection> = {
   ceremony: {
     id: "ceremony",
@@ -257,7 +404,7 @@ const BINDER_SECTIONS: Record<BinderSectionId, BinderSection> = {
     description: "A simple cue sheet for ceremony, reception, and must-play moments.",
     icon: Music,
     items: [
-      { id: "prelude", title: "Prelude and guest arrival", helper: "Playlist, live musician notes, volume, and start time." },
+      { id: "sound-check", title: "Sound check and cue owner", helper: "Who owns the music timeline and when audio is tested." },
       {
         id: "ceremony-cues",
         title: "Ceremony cue sheet",
@@ -292,6 +439,29 @@ const BINDER_SECTIONS: Record<BinderSectionId, BinderSection> = {
       { id: "decor", title: "Decor placement", helper: "Signage, guest book, card box, favors, candles, escort cards, and tables." },
       { id: "floor-plan", title: "Room flip and floor plan", helper: "Ceremony-to-reception transition, table counts, chair moves, and timing." },
       { id: "cleanup", title: "Strike and pickup", helper: "Who packs decor, returns rentals, takes gifts, and handles leftovers." },
+    ],
+  },
+  attire: {
+    id: "attire",
+    title: "Attire Prep",
+    description: "Getting-ready outfits, packed items, emergency kit, and who owns each handoff.",
+    icon: Shirt,
+    items: [
+      { id: "getting-ready", title: "Getting-ready plan", helper: "Where attire lives, who steams it, and when everyone gets dressed." },
+      { id: "outfit-checklist", title: "Outfit checklist", helper: "Track the outfit pieces, location, owner, and packed status." },
+      { id: "emergency-kit", title: "Emergency kit", helper: "Stain remover, sewing kit, tape, safety pins, tissues, and backup items." },
+    ],
+  },
+  "vendors-party": {
+    id: "vendors-party",
+    title: "Vendor Contact Sheet & Wedding Party",
+    description: "One practical contact sheet for vendor leads, arrival times, and wedding party duties.",
+    icon: UsersRound,
+    items: [
+      { id: "vendor-contact-sheet", title: "Vendor contact sheet", helper: "Names, categories, phone numbers, arrival times, and payment reminders." },
+      { id: "arrival-times", title: "Arrival and payment checks", helper: "Confirm load-in timing, balances, tips, and who greets each vendor." },
+      { id: "wedding-party-roles", title: "Wedding party responsibilities", helper: "Who handles rings, phone calls, gifts, bustle, family photos, and end-of-night items." },
+      { id: "handoff-contacts", title: "Handoff notes", helper: "The short list of who gets called before the couple gets interrupted." },
     ],
   },
 };
@@ -387,6 +557,127 @@ function blankFamilyPhotoGroup(): FamilyPhotoGroup {
   return { id: makeId("photo-group"), groupName: "", members: "" };
 }
 
+function blankMusicCue(moment = "Custom"): MusicCue {
+  return { id: makeId("music-cue"), moment, song: "", artist: "", cueBy: "", notes: "" };
+}
+
+function blankMusicPreference(): MusicPreference {
+  return { id: makeId("song"), song: "", note: "" };
+}
+
+function blankSpeechSpeaker(role = "Other"): SpeechSpeaker {
+  return { id: makeId("speaker"), speakerName: "", role, duration: "3 min", micType: "Handheld mic", notes: "" };
+}
+
+function blankSetupTask(area = "Reception"): SetupTask {
+  return { id: makeId("setup-task"), area, task: "", owner: "", dueBy: "", status: "Not started", notes: "" };
+}
+
+function blankAttireItem(item = ""): AttireItem {
+  return { id: makeId("attire"), personName: "", item, location: "", owner: "", packed: false, notes: "" };
+}
+
+function blankVendorContact(): VendorRunbookContact {
+  return {
+    id: makeId("vendor-contact"),
+    vendorName: "",
+    category: "",
+    leadName: "",
+    phone: "",
+    arrivalTime: "",
+    paymentStatus: "Confirmed",
+    notes: "",
+  };
+}
+
+function blankPartyContact(role = "Wedding Party"): PartyContact {
+  return { id: makeId("party-contact"), personName: "", role, phone: "", arrivalTime: "", duty: "" };
+}
+
+function vendorToRunbookContact(vendor: Vendor): VendorRunbookContact {
+  return {
+    id: makeId("vendor-contact"),
+    vendorName: String(vendor.name ?? ""),
+    category: String(vendor.category ?? "Vendor"),
+    leadName: String((vendor as any).primaryContact ?? ""),
+    phone: String((vendor as any).phone ?? ""),
+    arrivalTime: "",
+    paymentStatus: "Confirmed",
+    notes: String((vendor as any).notes ?? ""),
+  };
+}
+
+function createDefaultRunbookPlan(): DayOfRunbookPlan {
+  return {
+    music: {
+      preludeStart: "30 minutes before ceremony",
+      soundCheckTime: "Before guest arrival",
+      cueOwner: "DJ / band lead",
+      ceremonyCues: [
+        blankMusicCue("Prelude"),
+        blankMusicCue("Wedding party processional"),
+        blankMusicCue("Partner entrance"),
+        blankMusicCue("Recessional"),
+      ],
+      receptionCues: [
+        blankMusicCue("Grand entrance"),
+        blankMusicCue("First dance"),
+        blankMusicCue("Parent dance"),
+        blankMusicCue("Last song"),
+      ],
+      mustPlay: [{ id: makeId("song"), song: "", note: "Couple favorite or family request" }],
+      doNotPlay: [],
+      notes: "",
+    },
+    speeches: {
+      toastStart: "During dinner",
+      hostName: "",
+      micPlan: "Handheld mic",
+      speakers: [blankSpeechSpeaker("Parent"), blankSpeechSpeaker("Maid of Honor"), blankSpeechSpeaker("Best Man")],
+      avNeeds: [
+        { id: "wireless-mic", label: "Wireless mic tested", checked: true },
+        { id: "backup-batteries", label: "Backup batteries", checked: true },
+        { id: "podium", label: "Podium or clear speech spot", checked: false },
+        { id: "projector", label: "Projector or slideshow", checked: false },
+      ],
+      timekeeper: "",
+      notes: "",
+    },
+    setup: {
+      loadInStart: "Morning of wedding",
+      roomFlipTime: "",
+      venueContact: "",
+      cleanupOwner: "",
+      tasks: [
+        { ...blankSetupTask("Venue access"), task: "Confirm load-in door, parking, and vendor check-in spot", dueBy: "Before first vendor arrives", status: "Assigned" },
+        { ...blankSetupTask("Signage"), task: "Place welcome sign, card box, guest book, and seating display", dueBy: "Before guest arrival", status: "Not started" },
+        { ...blankSetupTask("Reception"), task: "Verify table numbers, place cards, favors, and candles", dueBy: "Before room reveal", status: "Not started" },
+      ],
+      notes: "",
+    },
+    attire: {
+      gettingReadyLocation: "",
+      attireLead: "",
+      finalSteamTime: "Before photos",
+      items: ATTIRE_DEFAULT_ITEMS.map((item) => blankAttireItem(item)),
+      emergencyKit: [
+        { id: "stain-remover", label: "Stain remover pen", checked: true },
+        { id: "safety-pins", label: "Safety pins", checked: true },
+        { id: "fashion-tape", label: "Fashion tape", checked: true },
+        { id: "sewing-kit", label: "Mini sewing kit", checked: true },
+        { id: "lint-roller", label: "Lint roller", checked: false },
+        { id: "backup-shoes", label: "Backup flats or socks", checked: false },
+      ],
+      notes: "",
+    },
+    vendorsParty: {
+      vendors: [],
+      party: [blankPartyContact("Maid of Honor"), blankPartyContact("Best Man"), blankPartyContact("Parent")],
+      handoffNotes: "",
+    },
+  };
+}
+
 function createDefaultCeremonyPlan(): CeremonyPlan {
   return {
     processional: [
@@ -459,6 +750,148 @@ function normalizeFamilyPhotoGroup(value: unknown, index: number): FamilyPhotoGr
     id: String(row.id ?? makeId(`photo-group-${index + 1}`)),
     groupName: String(row.groupName ?? ""),
     members: String(row.members ?? ""),
+  };
+}
+
+function normalizeString(value: unknown, fallback = ""): string {
+  return typeof value === "string" ? value : fallback;
+}
+
+function normalizeMusicCue(value: unknown, index: number): MusicCue {
+  const row = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return {
+    id: String(row.id ?? makeId(`music-cue-${index + 1}`)),
+    moment: normalizeString(row.moment, "Custom"),
+    song: normalizeString(row.song),
+    artist: normalizeString(row.artist),
+    cueBy: normalizeString(row.cueBy),
+    notes: normalizeString(row.notes),
+  };
+}
+
+function normalizeMusicPreference(value: unknown, index: number): MusicPreference {
+  const row = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return {
+    id: String(row.id ?? makeId(`song-${index + 1}`)),
+    song: normalizeString(row.song),
+    note: normalizeString(row.note),
+  };
+}
+
+function normalizeSpeechSpeaker(value: unknown, index: number): SpeechSpeaker {
+  const row = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return {
+    id: String(row.id ?? makeId(`speaker-${index + 1}`)),
+    speakerName: normalizeString(row.speakerName),
+    role: normalizeString(row.role, "Other"),
+    duration: normalizeString(row.duration, "3 min"),
+    micType: normalizeString(row.micType, "Handheld mic"),
+    notes: normalizeString(row.notes),
+  };
+}
+
+function normalizeSetupTask(value: unknown, index: number): SetupTask {
+  const row = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return {
+    id: String(row.id ?? makeId(`setup-task-${index + 1}`)),
+    area: normalizeString(row.area, "Reception"),
+    task: normalizeString(row.task),
+    owner: normalizeString(row.owner),
+    dueBy: normalizeString(row.dueBy),
+    status: normalizeString(row.status, "Not started"),
+    notes: normalizeString(row.notes),
+  };
+}
+
+function normalizeAttireItem(value: unknown, index: number): AttireItem {
+  const row = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return {
+    id: String(row.id ?? makeId(`attire-${index + 1}`)),
+    personName: normalizeString(row.personName),
+    item: normalizeString(row.item, "Attire item"),
+    location: normalizeString(row.location),
+    owner: normalizeString(row.owner),
+    packed: Boolean(row.packed),
+    notes: normalizeString(row.notes),
+  };
+}
+
+function normalizeVendorRunbookContact(value: unknown, index: number): VendorRunbookContact {
+  const row = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return {
+    id: String(row.id ?? makeId(`vendor-contact-${index + 1}`)),
+    vendorName: normalizeString(row.vendorName),
+    category: normalizeString(row.category, "Vendor"),
+    leadName: normalizeString(row.leadName),
+    phone: normalizeString(row.phone),
+    arrivalTime: normalizeString(row.arrivalTime),
+    paymentStatus: normalizeString(row.paymentStatus, "Confirmed"),
+    notes: normalizeString(row.notes),
+  };
+}
+
+function normalizePartyContact(value: unknown, index: number): PartyContact {
+  const row = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return {
+    id: String(row.id ?? makeId(`party-contact-${index + 1}`)),
+    personName: normalizeString(row.personName),
+    role: normalizeString(row.role, "Wedding Party"),
+    phone: normalizeString(row.phone),
+    arrivalTime: normalizeString(row.arrivalTime),
+    duty: normalizeString(row.duty),
+  };
+}
+
+function normalizeRunbookPlan(value: unknown): DayOfRunbookPlan {
+  const fallback = createDefaultRunbookPlan();
+  const row = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const music = row.music && typeof row.music === "object" ? row.music as Record<string, unknown> : {};
+  const speeches = row.speeches && typeof row.speeches === "object" ? row.speeches as Record<string, unknown> : {};
+  const setup = row.setup && typeof row.setup === "object" ? row.setup as Record<string, unknown> : {};
+  const attire = row.attire && typeof row.attire === "object" ? row.attire as Record<string, unknown> : {};
+  const vendorsParty = row.vendorsParty && typeof row.vendorsParty === "object" ? row.vendorsParty as Record<string, unknown> : {};
+
+  return {
+    music: {
+      preludeStart: normalizeString(music.preludeStart, fallback.music.preludeStart),
+      soundCheckTime: normalizeString(music.soundCheckTime, fallback.music.soundCheckTime),
+      cueOwner: normalizeString(music.cueOwner, fallback.music.cueOwner),
+      ceremonyCues: Array.isArray(music.ceremonyCues) ? music.ceremonyCues.map(normalizeMusicCue) : fallback.music.ceremonyCues,
+      receptionCues: Array.isArray(music.receptionCues) ? music.receptionCues.map(normalizeMusicCue) : fallback.music.receptionCues,
+      mustPlay: Array.isArray(music.mustPlay) ? music.mustPlay.map(normalizeMusicPreference) : fallback.music.mustPlay,
+      doNotPlay: Array.isArray(music.doNotPlay) ? music.doNotPlay.map(normalizeMusicPreference) : fallback.music.doNotPlay,
+      notes: normalizeString(music.notes),
+    },
+    speeches: {
+      toastStart: normalizeString(speeches.toastStart, fallback.speeches.toastStart),
+      hostName: normalizeString(speeches.hostName),
+      micPlan: normalizeString(speeches.micPlan, fallback.speeches.micPlan),
+      speakers: Array.isArray(speeches.speakers) ? speeches.speakers.map(normalizeSpeechSpeaker) : fallback.speeches.speakers,
+      avNeeds: Array.isArray(speeches.avNeeds) ? speeches.avNeeds.map(normalizeKeepsake) : fallback.speeches.avNeeds,
+      timekeeper: normalizeString(speeches.timekeeper),
+      notes: normalizeString(speeches.notes),
+    },
+    setup: {
+      loadInStart: normalizeString(setup.loadInStart, fallback.setup.loadInStart),
+      roomFlipTime: normalizeString(setup.roomFlipTime),
+      venueContact: normalizeString(setup.venueContact),
+      cleanupOwner: normalizeString(setup.cleanupOwner),
+      tasks: Array.isArray(setup.tasks) ? setup.tasks.map(normalizeSetupTask) : fallback.setup.tasks,
+      notes: normalizeString(setup.notes),
+    },
+    attire: {
+      gettingReadyLocation: normalizeString(attire.gettingReadyLocation),
+      attireLead: normalizeString(attire.attireLead),
+      finalSteamTime: normalizeString(attire.finalSteamTime, fallback.attire.finalSteamTime),
+      items: Array.isArray(attire.items) ? attire.items.map(normalizeAttireItem) : fallback.attire.items,
+      emergencyKit: Array.isArray(attire.emergencyKit) ? attire.emergencyKit.map(normalizeKeepsake) : fallback.attire.emergencyKit,
+      notes: normalizeString(attire.notes),
+    },
+    vendorsParty: {
+      vendors: Array.isArray(vendorsParty.vendors) ? vendorsParty.vendors.map(normalizeVendorRunbookContact) : fallback.vendorsParty.vendors,
+      party: Array.isArray(vendorsParty.party) ? vendorsParty.party.map(normalizePartyContact) : fallback.vendorsParty.party,
+      handoffNotes: normalizeString(vendorsParty.handoffNotes),
+    },
   };
 }
 
@@ -586,6 +1019,108 @@ function createSuggestedCeremonyPlan(section: CeremonySectionId, currentPlan: Ce
   return suggested;
 }
 
+function createSuggestedRunbookPlan(
+  section: StructuredBinderSectionId,
+  currentPlan: DayOfRunbookPlan,
+  profile: any,
+  guestNames: string[],
+  vendors: Vendor[]
+): DayOfRunbookPlan {
+  const suggested = normalizeRunbookPlan(currentPlan);
+  const partner2 = normalizeString(profile?.partner2Name, "Partner");
+  const partner1 = normalizeString(profile?.partner1Name, "Partner");
+  const venue = normalizeString(profile?.venue, "venue");
+
+  if (section === "music") {
+    suggested.music = {
+      ...suggested.music,
+      preludeStart: "30 minutes before ceremony",
+      soundCheckTime: "90 minutes before ceremony",
+      cueOwner: suggested.music.cueOwner || "DJ / band lead",
+      ceremonyCues: [
+        { ...blankMusicCue("Prelude"), song: "Instrumental playlist", cueBy: "DJ / musician", notes: "Start as guests arrive." },
+        { ...blankMusicCue("Wedding party processional"), cueBy: "Coordinator", notes: "Cue after family seating." },
+        { ...blankMusicCue("Partner entrance"), cueBy: "Coordinator", notes: `Hold doors until ${partner1 || "partner"} is ready.` },
+        { ...blankMusicCue("Recessional"), song: "Upbeat exit song", cueBy: "Officiant recessional line", notes: "Begin immediately after kiss / final blessing." },
+      ],
+      receptionCues: [
+        { ...blankMusicCue("Grand entrance"), cueBy: "DJ / MC", notes: "Confirm pronunciation before guests enter reception." },
+        { ...blankMusicCue("First dance"), cueBy: "DJ / MC", notes: "Couple enters dance floor before song starts." },
+        { ...blankMusicCue("Parent dance"), cueBy: "DJ / MC", notes: "Invite parent(s) by name." },
+        { ...blankMusicCue("Last song"), cueBy: "DJ / band lead", notes: "Announce final private dance or exit sendoff." },
+      ],
+      mustPlay: suggested.music.mustPlay.length ? suggested.music.mustPlay : [{ id: makeId("song"), song: "Couple favorite", note: "Must play during open dancing" }],
+      doNotPlay: suggested.music.doNotPlay,
+    };
+  }
+
+  if (section === "speeches") {
+    suggested.speeches = {
+      ...suggested.speeches,
+      toastStart: suggested.speeches.toastStart || "After salads are served",
+      hostName: suggested.speeches.hostName || "DJ / MC",
+      micPlan: suggested.speeches.micPlan || "Handheld mic",
+      speakers: suggested.speeches.speakers.length
+        ? suggested.speeches.speakers
+        : [
+            { ...blankSpeechSpeaker("Parent"), speakerName: guestNames[0] || "", duration: "3 min", notes: "Welcome guests and invite next speaker." },
+            { ...blankSpeechSpeaker("Maid of Honor"), speakerName: guestNames[1] || "", duration: "3 min", notes: "Keep mic nearby after speech." },
+            { ...blankSpeechSpeaker("Best Man"), speakerName: guestNames[2] || "", duration: "3 min", notes: "Final toast before dinner resumes." },
+          ],
+      avNeeds: suggested.speeches.avNeeds.map((item) => ({ ...item, checked: item.checked || item.id === "wireless-mic" || item.id === "backup-batteries" })),
+      timekeeper: suggested.speeches.timekeeper || "Coordinator or DJ",
+    };
+  }
+
+  if (section === "setup") {
+    suggested.setup = {
+      ...suggested.setup,
+      loadInStart: suggested.setup.loadInStart || "Venue access time",
+      roomFlipTime: suggested.setup.roomFlipTime || "Immediately after ceremony",
+      venueContact: suggested.setup.venueContact || venue,
+      cleanupOwner: suggested.setup.cleanupOwner || "Designated family member or coordinator",
+      tasks: suggested.setup.tasks.length
+        ? suggested.setup.tasks
+        : createDefaultRunbookPlan().setup.tasks,
+    };
+  }
+
+  if (section === "attire") {
+    suggested.attire = {
+      ...suggested.attire,
+      gettingReadyLocation: suggested.attire.gettingReadyLocation || `${venue} getting-ready suite`,
+      attireLead: suggested.attire.attireLead || guestNames[0] || "Maid of Honor / Best Man",
+      finalSteamTime: suggested.attire.finalSteamTime || "Before first look or portraits",
+      items: suggested.attire.items.length
+        ? suggested.attire.items
+        : [
+            { ...blankAttireItem("Wedding outfit"), personName: partner2, owner: guestNames[0] || "", location: "Getting-ready suite" },
+            { ...blankAttireItem("Wedding outfit"), personName: partner1, owner: guestNames[1] || "", location: "Getting-ready suite" },
+            { ...blankAttireItem("Rings"), owner: guestNames[2] || "", location: "With ring holder" },
+          ],
+      emergencyKit: suggested.attire.emergencyKit.map((item) => ({ ...item, checked: true })),
+    };
+  }
+
+  if (section === "vendors-party") {
+    suggested.vendorsParty = {
+      vendors: suggested.vendorsParty.vendors.length
+        ? suggested.vendorsParty.vendors
+        : (vendors as Vendor[]).slice(0, 12).map(vendorToRunbookContact),
+      party: suggested.vendorsParty.party.length
+        ? suggested.vendorsParty.party
+        : [
+            { ...blankPartyContact("Maid of Honor"), personName: guestNames[0] || "", duty: "Couple questions, bustle, emergency kit" },
+            { ...blankPartyContact("Best Man"), personName: guestNames[1] || "", duty: "Rings, tips, transportation checks" },
+            { ...blankPartyContact("Parent"), personName: guestNames[2] || "", duty: "Family photo gathering and guest support" },
+          ],
+      handoffNotes: suggested.vendorsParty.handoffNotes || "Call the wedding party contact before interrupting the couple unless urgent.",
+    };
+  }
+
+  return suggested;
+}
+
 function summarizeCeremonyPlanForPdf(plan: CeremonyPlan, itemId: string): string {
   if (itemId === "processional") {
     return plan.processional
@@ -608,6 +1143,64 @@ function summarizeCeremonyPlanForPdf(plan: CeremonyPlan, itemId: string): string
     const groups = plan.recessional.familyPhotoGroups.map((group) => `${group.groupName}: ${group.members || "Members TBD"}`).join("; ");
     return `Couple exits to: ${plan.recessional.coupleExitsTo}\nWedding party exit order: ${exitOrder || "TBD"}\nFamily photo groups: ${groups || "TBD"}\nGuest flow: ${plan.recessional.guestFlow}`;
   }
+  return "";
+}
+
+function summarizeRunbookForPdf(plan: DayOfRunbookPlan, sectionId: StructuredBinderSectionId, itemId: string, vendors: Vendor[]): string {
+  if (sectionId === "music") {
+    if (itemId === "sound-check") {
+      return `Prelude starts: ${plan.music.preludeStart || "TBD"}\nSound check: ${plan.music.soundCheckTime || "TBD"}\nCue owner: ${plan.music.cueOwner || "TBD"}\nNotes: ${plan.music.notes || "None"}`;
+    }
+    if (itemId === "ceremony-cues") {
+      return plan.music.ceremonyCues.map((cue, index) => `${index + 1}. ${cue.moment}: ${cue.song || "Song TBD"}${cue.artist ? ` by ${cue.artist}` : ""} | Cue by: ${cue.cueBy || "TBD"}${cue.notes ? ` | ${cue.notes}` : ""}`).join("\n");
+    }
+    if (itemId === "reception-moments") {
+      return plan.music.receptionCues.map((cue, index) => `${index + 1}. ${cue.moment}: ${cue.song || "Song TBD"}${cue.artist ? ` by ${cue.artist}` : ""} | Cue by: ${cue.cueBy || "TBD"}${cue.notes ? ` | ${cue.notes}` : ""}`).join("\n");
+    }
+    if (itemId === "do-not-play") {
+      const must = plan.music.mustPlay.map((song) => `Must play: ${song.song || "Song TBD"}${song.note ? ` (${song.note})` : ""}`).join("\n");
+      const avoid = plan.music.doNotPlay.map((song) => `Do not play: ${song.song || "Song TBD"}${song.note ? ` (${song.note})` : ""}`).join("\n");
+      return [must, avoid].filter(Boolean).join("\n") || "No song preferences listed.";
+    }
+  }
+
+  if (sectionId === "speeches") {
+    if (itemId === "speaker-order") {
+      return plan.speeches.speakers.map((speaker, index) => `${index + 1}. ${speaker.speakerName || speaker.role} (${speaker.role}) - ${speaker.duration || "Duration TBD"}${speaker.notes ? ` | ${speaker.notes}` : ""}`).join("\n");
+    }
+    if (itemId === "mic-plan") {
+      const needs = plan.speeches.avNeeds.filter((item) => item.checked).map((item) => item.label).join(", ") || "None selected";
+      return `Mic plan: ${plan.speeches.micPlan || "TBD"}\nHost / introducer: ${plan.speeches.hostName || "TBD"}\nAV needs: ${needs}`;
+    }
+    if (itemId === "time-limits") {
+      return `Toast start: ${plan.speeches.toastStart || "TBD"}\nTimekeeper: ${plan.speeches.timekeeper || "TBD"}\nNotes: ${plan.speeches.notes || "None"}`;
+    }
+  }
+
+  if (sectionId === "setup") {
+    if (itemId === "load-in") return `Load-in start: ${plan.setup.loadInStart || "TBD"}\nVenue contact: ${plan.setup.venueContact || "TBD"}`;
+    if (itemId === "floor-plan") return `Room flip time: ${plan.setup.roomFlipTime || "TBD"}\n${plan.setup.tasks.filter((task) => task.area === "Reception" || task.area === "Ceremony").map((task) => `${task.area}: ${task.task || "Task TBD"} (${task.status})`).join("\n")}`;
+    if (itemId === "cleanup") return `Cleanup owner: ${plan.setup.cleanupOwner || "TBD"}\nNotes: ${plan.setup.notes || "None"}`;
+    return plan.setup.tasks.map((task) => `${task.area}: ${task.task || "Task TBD"} | Owner: ${task.owner || "TBD"} | Due: ${task.dueBy || "TBD"} | ${task.status}${task.notes ? ` | ${task.notes}` : ""}`).join("\n");
+  }
+
+  if (sectionId === "attire") {
+    if (itemId === "getting-ready") return `Getting-ready location: ${plan.attire.gettingReadyLocation || "TBD"}\nAttire lead: ${plan.attire.attireLead || "TBD"}\nFinal steam time: ${plan.attire.finalSteamTime || "TBD"}`;
+    if (itemId === "emergency-kit") return plan.attire.emergencyKit.filter((item) => item.checked).map((item) => item.label).join(", ") || "No emergency kit items selected.";
+    return plan.attire.items.map((item) => `${item.packed ? "[x]" : "[ ]"} ${item.personName || "Person TBD"} - ${item.item || "Item TBD"} | Location: ${item.location || "TBD"} | Owner: ${item.owner || "TBD"}${item.notes ? ` | ${item.notes}` : ""}`).join("\n");
+  }
+
+  if (sectionId === "vendors-party") {
+    if (itemId === "vendor-contact-sheet" || itemId === "arrival-times") {
+      const contacts = plan.vendorsParty.vendors.length ? plan.vendorsParty.vendors : vendors.map(vendorToRunbookContact);
+      return contacts.map((vendor) => `${vendor.vendorName || "Vendor TBD"} (${vendor.category || "Vendor"}) | Lead: ${vendor.leadName || "TBD"} | Phone: ${vendor.phone || "TBD"} | Arrival: ${vendor.arrivalTime || "TBD"} | ${vendor.paymentStatus}`).join("\n");
+    }
+    if (itemId === "wedding-party-roles") {
+      return plan.vendorsParty.party.map((person) => `${person.personName || person.role} (${person.role}) | Phone: ${person.phone || "TBD"} | Arrival: ${person.arrivalTime || "TBD"} | Duty: ${person.duty || "TBD"}`).join("\n");
+    }
+    return plan.vendorsParty.handoffNotes || "No handoff notes yet.";
+  }
+
   return "";
 }
 
@@ -763,6 +1356,52 @@ function CeremonySectionCard({
   );
 }
 
+function RunbookSectionCard({
+  icon: Icon,
+  title,
+  helper,
+  section,
+  suggestingSection,
+  onGenerate,
+  children,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  title: string;
+  helper: string;
+  section: StructuredBinderSectionId;
+  suggestingSection: StructuredBinderSectionId | null;
+  onGenerate: (section: StructuredBinderSectionId) => void;
+  children: React.ReactNode;
+}) {
+  const isGenerating = suggestingSection === section;
+  return (
+    <article className="rounded-[1.5rem] border border-[#EBCBD2] bg-white p-5 shadow-[0_12px_28px_rgba(141,41,77,0.08)]">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="rounded-2xl bg-[#F7DDE2] p-3 text-[#8D294D]">
+            <Icon className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="font-serif text-2xl font-bold text-[#4C2730]">{title}</h3>
+            <p className="mt-1 text-sm leading-6 text-[#7B5364]">{helper}</p>
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="gap-2 rounded-full border-[#E8C9D4] text-[#8D294D] hover:bg-[#F7DDE2]"
+          onClick={() => onGenerate(section)}
+          disabled={isGenerating}
+        >
+          {isGenerating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+          Generate Suggested Plan
+        </Button>
+      </div>
+      <div className="mt-5">{children}</div>
+    </article>
+  );
+}
+
 class DayOfErrorBoundary extends Component<
   { children: React.ReactNode },
   { error: Error | null }
@@ -845,6 +1484,8 @@ function DayOfInner() {
   const [binderNotes, setBinderNotes] = useState<Record<string, string>>({});
   const [ceremonyPlan, setCeremonyPlan] = useState<CeremonyPlan>(() => createDefaultCeremonyPlan());
   const [suggestingSection, setSuggestingSection] = useState<CeremonySectionId | null>(null);
+  const [runbookPlan, setRunbookPlan] = useState<DayOfRunbookPlan>(() => createDefaultRunbookPlan());
+  const [suggestingRunbookSection, setSuggestingRunbookSection] = useState<StructuredBinderSectionId | null>(null);
   const [newKeepsakeLabel, setNewKeepsakeLabel] = useState("");
   const [newPackingItem, setNewPackingItem] = useState("");
   const [isExportingTimelinePdf, setIsExportingTimelinePdf] = useState(false);
@@ -886,10 +1527,12 @@ function DayOfInner() {
           packingItems?: BinderChecklistItem[];
           binderNotes?: Record<string, string>;
           ceremonyPlan?: unknown;
+          runbookPlan?: unknown;
         };
         if (Array.isArray(parsed.packingItems)) setPackingItems(parsed.packingItems);
         if (parsed.binderNotes && typeof parsed.binderNotes === "object") setBinderNotes(parsed.binderNotes);
         if (parsed.ceremonyPlan) setCeremonyPlan(normalizeCeremonyPlan(parsed.ceremonyPlan));
+        if (parsed.runbookPlan) setRunbookPlan(normalizeRunbookPlan(parsed.runbookPlan));
       }
     } catch {
       // Keep the default binder if locally stored data is malformed.
@@ -901,11 +1544,11 @@ function DayOfInner() {
   useEffect(() => {
     if (!storageKey || loadedStorageKey !== storageKey) return;
     try {
-      localStorage.setItem(storageKey, JSON.stringify({ packingItems, binderNotes, ceremonyPlan }));
+      localStorage.setItem(storageKey, JSON.stringify({ packingItems, binderNotes, ceremonyPlan, runbookPlan }));
     } catch {
       // Non-blocking local convenience storage.
     }
-  }, [storageKey, loadedStorageKey, packingItems, binderNotes, ceremonyPlan]);
+  }, [storageKey, loadedStorageKey, packingItems, binderNotes, ceremonyPlan, runbookPlan]);
 
   const handleEmergencySubmit = () => {
     if (!emergencyText.trim()) return;
@@ -1042,10 +1685,6 @@ function DayOfInner() {
     }
   };
 
-  const updateBinderNote = (key: string, value: string) => {
-    setBinderNotes((notes) => ({ ...notes, [key]: value }));
-  };
-
   const updateCeremonyPlan = (patch: Partial<CeremonyPlan>) => {
     setCeremonyPlan((plan) => normalizeCeremonyPlan({ ...plan, ...patch }));
   };
@@ -1069,6 +1708,14 @@ function DayOfInner() {
       ...plan,
       recessional: { ...plan.recessional, ...patch },
     }));
+  };
+
+  const updateRunbookSection = <K extends keyof DayOfRunbookPlan>(section: K, patch: Partial<DayOfRunbookPlan[K]>) => {
+    setRunbookPlan((plan) => normalizeRunbookPlan({ ...plan, [section]: { ...plan[section], ...patch } }));
+  };
+
+  const updateVendorParty = (patch: Partial<VendorsPartyPlan>) => {
+    updateRunbookSection("vendorsParty", patch);
   };
 
   const generateCeremonySuggestion = async (section: CeremonySectionId) => {
@@ -1097,6 +1744,28 @@ function DayOfInner() {
   const useTraditionalOrder = () => {
     updateCeremonyPlan({ processional: buildTraditionalProcessional(profile, guestNameOptions) });
     toast({ title: "Traditional processional order added" });
+  };
+
+  const generateRunbookSuggestion = (section: StructuredBinderSectionId) => {
+    setSuggestingRunbookSection(section);
+    window.setTimeout(() => {
+      setRunbookPlan((plan) => createSuggestedRunbookPlan(section, plan, profile, guestNameOptions, vendors as Vendor[]));
+      setSuggestingRunbookSection(null);
+      toast({ title: "Suggested day-of section added" });
+    }, 250);
+  };
+
+  const useSavedVendorsForBinder = () => {
+    const savedVendors = (vendors as Vendor[]).map(vendorToRunbookContact);
+    if (!savedVendors.length) {
+      toast({
+        title: "No saved vendors yet",
+        description: "Add vendors in your Vendor List, then pull them into the day-of contact sheet.",
+      });
+      return;
+    }
+    updateVendorParty({ vendors: savedVendors });
+    toast({ title: "Saved vendors added to contact sheet" });
   };
 
   const togglePackingItem = (id: string) => {
@@ -1240,7 +1909,7 @@ function DayOfInner() {
           const note =
             section.id === "ceremony"
               ? summarizeCeremonyPlanForPdf(ceremonyPlan, item.id).trim()
-              : binderNotes[`${section.id}.${item.id}`]?.trim();
+              : summarizeRunbookForPdf(runbookPlan, section.id, item.id, vendors as Vendor[]).trim() || binderNotes[`${section.id}.${item.id}`]?.trim();
           doc.setFont("helvetica", "bold");
           doc.setTextColor(ink);
           doc.text(item.title, margin, y);
@@ -2218,12 +2887,6 @@ function DayOfInner() {
                   ))}
                 </div>
               </div>
-              <details className="mt-5 rounded-2xl border border-[#E8C9D4] bg-[#FFFDFC] p-4">
-                <summary className="cursor-pointer text-sm font-bold text-[#8D294D]">Structured JSON preview</summary>
-                <pre className="mt-3 max-h-72 overflow-auto rounded-2xl bg-[#2C1821] p-4 text-xs leading-5 text-[#FFF7F2]">
-                  {JSON.stringify(ceremonyPlan, null, 2)}
-                </pre>
-              </details>
             </CeremonySectionCard>
           </section>
         )}
@@ -2242,31 +2905,666 @@ function DayOfInner() {
               </div>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-2">
-              {activeSection.items.map((item) => {
-                const noteKey = `${activeSection.id}.${item.id}`;
-                return (
-                  <article
-                    key={item.id}
-                    className="rounded-[1.5rem] border border-[#EBCBD2] bg-white p-5 shadow-[0_12px_28px_rgba(141,41,77,0.08)]"
+            {activeSection.id === "music" && (
+              <>
+                <RunbookSectionCard
+                  icon={Headphones}
+                  title="Sound check and cue owner"
+                  helper="Give one person ownership of the music timeline so cues are not scattered."
+                  section="music"
+                  suggestingSection={suggestingRunbookSection}
+                  onGenerate={generateRunbookSuggestion}
+                >
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <FieldLabel label="Prelude starts" hint="Example: 30 minutes before ceremony.">
+                      <Input
+                        value={runbookPlan.music.preludeStart}
+                        onChange={(event) => updateRunbookSection("music", { preludeStart: event.target.value })}
+                        className="h-11 rounded-2xl border-[#E8C9D4] bg-white"
+                        placeholder="30 minutes before ceremony"
+                      />
+                    </FieldLabel>
+                    <FieldLabel label="Sound check time" hint="Example: 90 minutes before ceremony.">
+                      <Input
+                        value={runbookPlan.music.soundCheckTime}
+                        onChange={(event) => updateRunbookSection("music", { soundCheckTime: event.target.value })}
+                        className="h-11 rounded-2xl border-[#E8C9D4] bg-white"
+                        placeholder="Before guest arrival"
+                      />
+                    </FieldLabel>
+                    <FieldLabel label="Cue owner" hint="Usually DJ, band leader, or coordinator.">
+                      <Input
+                        value={runbookPlan.music.cueOwner}
+                        onChange={(event) => updateRunbookSection("music", { cueOwner: event.target.value })}
+                        className="h-11 rounded-2xl border-[#E8C9D4] bg-white"
+                        placeholder="DJ / band lead"
+                      />
+                    </FieldLabel>
+                  </div>
+                </RunbookSectionCard>
+
+                {([
+                  ["ceremonyCues", "Ceremony cue sheet", "Processional, partner entrance, recessional, and any silence cues."],
+                  ["receptionCues", "Reception moments", "Introductions, first dance, parent dances, cake, bouquet, and last song."],
+                ] as const).map(([listKey, title, helper]) => (
+                  <RunbookSectionCard
+                    key={listKey}
+                    icon={Music}
+                    title={title}
+                    helper={helper}
+                    section="music"
+                    suggestingSection={suggestingRunbookSection}
+                    onGenerate={generateRunbookSuggestion}
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <h3 className="font-serif text-2xl font-bold text-[#4C2730]">{item.title}</h3>
-                        <p className="mt-1 text-sm leading-6 text-[#7B5364]">{item.helper}</p>
-                      </div>
-                      <ChevronRight className="mt-2 h-5 w-5 text-[#D4A373]" />
+                    <div className="mb-4 flex justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="gap-2 rounded-full border-[#E8C9D4] text-[#8D294D]"
+                        onClick={() => updateRunbookSection("music", { [listKey]: [...runbookPlan.music[listKey], blankMusicCue()] } as Partial<MusicPlan>)}
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add Cue
+                      </Button>
                     </div>
-                    <Textarea
-                      value={binderNotes[noteKey] ?? ""}
-                      onChange={(e) => updateBinderNote(noteKey, e.target.value)}
-                      className="mt-4 min-h-[112px] resize-none rounded-2xl border-[#E8C9D4] bg-[#FFFDFC]"
-                      placeholder="Add names, times, phone numbers, cues, or special instructions..."
-                    />
-                  </article>
-                );
-              })}
-            </div>
+                    <div className="space-y-3">
+                      {runbookPlan.music[listKey].map((cue, index) => (
+                        <div key={cue.id} className="rounded-2xl border border-[#E8C9D4] bg-[#FFFDFC] p-3">
+                          <div className="grid gap-3 lg:grid-cols-[1fr_1.1fr_1fr_1fr_auto] lg:items-start">
+                            <FieldLabel label="Moment" hint="Choose the cue moment.">
+                              <SelectInput
+                                value={cue.moment}
+                                options={MUSIC_MOMENTS}
+                                onChange={(value) =>
+                                  updateRunbookSection("music", {
+                                    [listKey]: runbookPlan.music[listKey].map((item, i) => (i === index ? { ...item, moment: value } : item)),
+                                  } as Partial<MusicPlan>)
+                                }
+                              />
+                            </FieldLabel>
+                            <FieldLabel label="Song" hint="Example: Canon in D, acoustic version.">
+                              <Input
+                                value={cue.song}
+                                onChange={(event) =>
+                                  updateRunbookSection("music", {
+                                    [listKey]: runbookPlan.music[listKey].map((item, i) => (i === index ? { ...item, song: event.target.value } : item)),
+                                  } as Partial<MusicPlan>)
+                                }
+                                className="h-11 rounded-2xl border-[#E8C9D4] bg-white"
+                                placeholder="Song title"
+                              />
+                            </FieldLabel>
+                            <FieldLabel label="Artist / version" hint="Optional, but helpful for DJs.">
+                              <Input
+                                value={cue.artist}
+                                onChange={(event) =>
+                                  updateRunbookSection("music", {
+                                    [listKey]: runbookPlan.music[listKey].map((item, i) => (i === index ? { ...item, artist: event.target.value } : item)),
+                                  } as Partial<MusicPlan>)
+                                }
+                                className="h-11 rounded-2xl border-[#E8C9D4] bg-white"
+                                placeholder="Artist or version"
+                              />
+                            </FieldLabel>
+                            <FieldLabel label="Cue by" hint="Who tells music to start.">
+                              <Input
+                                value={cue.cueBy}
+                                onChange={(event) =>
+                                  updateRunbookSection("music", {
+                                    [listKey]: runbookPlan.music[listKey].map((item, i) => (i === index ? { ...item, cueBy: event.target.value } : item)),
+                                  } as Partial<MusicPlan>)
+                                }
+                                className="h-11 rounded-2xl border-[#E8C9D4] bg-white"
+                                placeholder="Coordinator"
+                              />
+                            </FieldLabel>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="mt-7 rounded-full text-[#A65A73] hover:bg-destructive/10 hover:text-destructive"
+                              onClick={() =>
+                                updateRunbookSection("music", {
+                                  [listKey]: runbookPlan.music[listKey].filter((item) => item.id !== cue.id),
+                                } as Partial<MusicPlan>)
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <details className="mt-3">
+                            <summary className="cursor-pointer text-xs font-bold uppercase tracking-[0.16em] text-[#A65A73]">
+                              Optional cue notes
+                            </summary>
+                            <Textarea
+                              value={cue.notes}
+                              onChange={(event) =>
+                                updateRunbookSection("music", {
+                                  [listKey]: runbookPlan.music[listKey].map((item, i) => (i === index ? { ...item, notes: event.target.value } : item)),
+                                } as Partial<MusicPlan>)
+                              }
+                              className="mt-2 min-h-[72px] resize-none rounded-2xl border-[#E8C9D4] bg-white"
+                              placeholder="Example: Fade down after first chorus, wait for doors to open."
+                            />
+                          </details>
+                        </div>
+                      ))}
+                    </div>
+                  </RunbookSectionCard>
+                ))}
+
+                <RunbookSectionCard
+                  icon={Heart}
+                  title="Must-play and do-not-play"
+                  helper="Keep song preferences clear without burying them in a note box."
+                  section="music"
+                  suggestingSection={suggestingRunbookSection}
+                  onGenerate={generateRunbookSuggestion}
+                >
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    {([
+                      ["mustPlay", "Must play", "Song the couple really wants"],
+                      ["doNotPlay", "Do not play", "Song, artist, or genre to avoid"],
+                    ] as const).map(([listKey, title, placeholder]) => (
+                      <div key={listKey} className="rounded-2xl border border-[#E8C9D4] bg-[#FFF7F2]/60 p-4">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <p className="font-bold text-[#4C2730]">{title}</p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="gap-2 rounded-full border-[#E8C9D4] text-[#8D294D]"
+                            onClick={() =>
+                              updateRunbookSection("music", {
+                                [listKey]: [...runbookPlan.music[listKey], blankMusicPreference()],
+                              } as Partial<MusicPlan>)
+                            }
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            Add
+                          </Button>
+                        </div>
+                        <div className="space-y-2">
+                          {runbookPlan.music[listKey].map((song, index) => (
+                            <div key={song.id} className="grid gap-2 rounded-2xl bg-white p-3 md:grid-cols-[1fr_1fr_auto]">
+                              <Input
+                                value={song.song}
+                                onChange={(event) =>
+                                  updateRunbookSection("music", {
+                                    [listKey]: runbookPlan.music[listKey].map((item, i) => (i === index ? { ...item, song: event.target.value } : item)),
+                                  } as Partial<MusicPlan>)
+                                }
+                                className="h-10 rounded-xl border-[#E8C9D4]"
+                                placeholder={placeholder}
+                              />
+                              <Input
+                                value={song.note}
+                                onChange={(event) =>
+                                  updateRunbookSection("music", {
+                                    [listKey]: runbookPlan.music[listKey].map((item, i) => (i === index ? { ...item, note: event.target.value } : item)),
+                                  } as Partial<MusicPlan>)
+                                }
+                                className="h-10 rounded-xl border-[#E8C9D4]"
+                                placeholder="When / why"
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-full text-[#A65A73] hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() =>
+                                  updateRunbookSection("music", {
+                                    [listKey]: runbookPlan.music[listKey].filter((item) => item.id !== song.id),
+                                  } as Partial<MusicPlan>)
+                                }
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </RunbookSectionCard>
+              </>
+            )}
+
+            {activeSection.id === "speeches" && (
+              <>
+                <RunbookSectionCard
+                  icon={Mic2}
+                  title="Speaker order"
+                  helper="Drag speakers into order and keep time limits visible."
+                  section="speeches"
+                  suggestingSection={suggestingRunbookSection}
+                  onGenerate={generateRunbookSuggestion}
+                >
+                  <div className="mb-4 grid gap-4 md:grid-cols-3">
+                    <FieldLabel label="Toast start" hint="Example: after salads are served.">
+                      <Input
+                        value={runbookPlan.speeches.toastStart}
+                        onChange={(event) => updateRunbookSection("speeches", { toastStart: event.target.value })}
+                        className="h-11 rounded-2xl border-[#E8C9D4]"
+                        placeholder="During dinner"
+                      />
+                    </FieldLabel>
+                    <FieldLabel label="Host / introducer" hint="Usually DJ, MC, planner, or parent.">
+                      <GuestNameInput
+                        value={runbookPlan.speeches.hostName}
+                        onChange={(value) => updateRunbookSection("speeches", { hostName: value })}
+                        options={guestNameOptions}
+                        placeholder="Who introduces speakers"
+                        listId="speech-host-name"
+                      />
+                    </FieldLabel>
+                    <FieldLabel label="Timekeeper" hint="Who gently keeps speeches moving.">
+                      <Input
+                        value={runbookPlan.speeches.timekeeper}
+                        onChange={(event) => updateRunbookSection("speeches", { timekeeper: event.target.value })}
+                        className="h-11 rounded-2xl border-[#E8C9D4]"
+                        placeholder="Coordinator or DJ"
+                      />
+                    </FieldLabel>
+                  </div>
+                  <div className="mb-4 flex justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="gap-2 rounded-full border-[#E8C9D4] text-[#8D294D]"
+                      onClick={() => updateRunbookSection("speeches", { speakers: [...runbookPlan.speeches.speakers, blankSpeechSpeaker()] })}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Speaker
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    {runbookPlan.speeches.speakers.map((speaker, index) => (
+                      <div
+                        key={speaker.id}
+                        draggable
+                        onDragStart={(event) => event.dataTransfer.setData("text/plain", String(index))}
+                        onDragOver={(event) => event.preventDefault()}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          const from = Number(event.dataTransfer.getData("text/plain"));
+                          updateRunbookSection("speeches", { speakers: moveItem(runbookPlan.speeches.speakers, from, index) });
+                        }}
+                        className="rounded-2xl border border-[#E8C9D4] bg-[#FFFDFC] p-3"
+                      >
+                        <div className="grid gap-3 lg:grid-cols-[auto_1.1fr_1fr_0.8fr_1fr_auto] lg:items-start">
+                          <div className="flex items-center gap-2 pt-2 text-[#A65A73]">
+                            <GripVertical className="h-5 w-5" />
+                            <span className="text-xs font-bold">{index + 1}</span>
+                          </div>
+                          <FieldLabel label="Speaker">
+                            <GuestNameInput
+                              value={speaker.speakerName}
+                              onChange={(value) =>
+                                updateRunbookSection("speeches", {
+                                  speakers: runbookPlan.speeches.speakers.map((item, i) => (i === index ? { ...item, speakerName: value } : item)),
+                                })
+                              }
+                              options={guestNameOptions}
+                              placeholder="Choose or type name"
+                              listId={`speaker-name-${speaker.id}`}
+                            />
+                          </FieldLabel>
+                          <FieldLabel label="Role">
+                            <SelectInput
+                              value={speaker.role}
+                              options={SPEECH_ROLES}
+                              onChange={(value) =>
+                                updateRunbookSection("speeches", {
+                                  speakers: runbookPlan.speeches.speakers.map((item, i) => (i === index ? { ...item, role: value } : item)),
+                                })
+                              }
+                            />
+                          </FieldLabel>
+                          <FieldLabel label="Limit">
+                            <Input
+                              value={speaker.duration}
+                              onChange={(event) =>
+                                updateRunbookSection("speeches", {
+                                  speakers: runbookPlan.speeches.speakers.map((item, i) => (i === index ? { ...item, duration: event.target.value } : item)),
+                                })
+                              }
+                              className="h-11 rounded-2xl border-[#E8C9D4]"
+                              placeholder="3 min"
+                            />
+                          </FieldLabel>
+                          <FieldLabel label="Mic">
+                            <SelectInput
+                              value={speaker.micType}
+                              options={MIC_OPTIONS}
+                              onChange={(value) =>
+                                updateRunbookSection("speeches", {
+                                  speakers: runbookPlan.speeches.speakers.map((item, i) => (i === index ? { ...item, micType: value } : item)),
+                                })
+                              }
+                            />
+                          </FieldLabel>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="mt-7 rounded-full text-[#A65A73] hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() =>
+                              updateRunbookSection("speeches", {
+                                speakers: runbookPlan.speeches.speakers.filter((item) => item.id !== speaker.id),
+                              })
+                            }
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <Textarea
+                          value={speaker.notes}
+                          onChange={(event) =>
+                            updateRunbookSection("speeches", {
+                              speakers: runbookPlan.speeches.speakers.map((item, i) => (i === index ? { ...item, notes: event.target.value } : item)),
+                            })
+                          }
+                          className="mt-3 min-h-[72px] resize-none rounded-2xl border-[#E8C9D4] bg-white"
+                          placeholder="Example: Walk mic to parent table, remind speaker to toast at the end."
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </RunbookSectionCard>
+
+                <RunbookSectionCard
+                  icon={Headphones}
+                  title="Microphone and AV"
+                  helper="Structured AV checklist so the speaker moment is ready before dinner."
+                  section="speeches"
+                  suggestingSection={suggestingRunbookSection}
+                  onGenerate={generateRunbookSuggestion}
+                >
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FieldLabel label="Default mic plan" hint="What should be ready for most speakers.">
+                      <SelectInput
+                        value={runbookPlan.speeches.micPlan}
+                        options={MIC_OPTIONS}
+                        onChange={(value) => updateRunbookSection("speeches", { micPlan: value })}
+                      />
+                    </FieldLabel>
+                    <FieldLabel label="Optional notes" hint="Example: projector needed for welcome toast slideshow.">
+                      <Input
+                        value={runbookPlan.speeches.notes}
+                        onChange={(event) => updateRunbookSection("speeches", { notes: event.target.value })}
+                        className="h-11 rounded-2xl border-[#E8C9D4]"
+                        placeholder="AV or timing notes"
+                      />
+                    </FieldLabel>
+                  </div>
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    {runbookPlan.speeches.avNeeds.map((need) => (
+                      <label key={need.id} className="flex items-center gap-3 rounded-2xl border border-[#E8C9D4] bg-[#FFFDFC] px-3 py-2 text-sm font-semibold text-[#4C2730]">
+                        <input
+                          type="checkbox"
+                          checked={need.checked}
+                          onChange={(event) =>
+                            updateRunbookSection("speeches", {
+                              avNeeds: runbookPlan.speeches.avNeeds.map((item) => (item.id === need.id ? { ...item, checked: event.target.checked } : item)),
+                            })
+                          }
+                          className="h-4 w-4 accent-[#8D294D]"
+                        />
+                        {need.label}
+                      </label>
+                    ))}
+                  </div>
+                </RunbookSectionCard>
+              </>
+            )}
+
+            {activeSection.id === "setup" && (
+              <RunbookSectionCard
+                icon={PackageCheck}
+                title="Setup task board"
+                helper="Assign load-in, decor, room flip, and cleanup tasks with owners and due times."
+                section="setup"
+                suggestingSection={suggestingRunbookSection}
+                onGenerate={generateRunbookSuggestion}
+              >
+                <div className="grid gap-4 md:grid-cols-4">
+                  <FieldLabel label="Load-in starts">
+                    <Input value={runbookPlan.setup.loadInStart} onChange={(event) => updateRunbookSection("setup", { loadInStart: event.target.value })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="8:00 AM" />
+                  </FieldLabel>
+                  <FieldLabel label="Room flip time">
+                    <Input value={runbookPlan.setup.roomFlipTime} onChange={(event) => updateRunbookSection("setup", { roomFlipTime: event.target.value })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="After ceremony" />
+                  </FieldLabel>
+                  <FieldLabel label="Venue contact">
+                    <Input value={runbookPlan.setup.venueContact} onChange={(event) => updateRunbookSection("setup", { venueContact: event.target.value })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Venue manager" />
+                  </FieldLabel>
+                  <FieldLabel label="Cleanup owner">
+                    <Input value={runbookPlan.setup.cleanupOwner} onChange={(event) => updateRunbookSection("setup", { cleanupOwner: event.target.value })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Who takes items home" />
+                  </FieldLabel>
+                </div>
+                <div className="mt-5 flex justify-end">
+                  <Button type="button" variant="outline" className="gap-2 rounded-full border-[#E8C9D4] text-[#8D294D]" onClick={() => updateRunbookSection("setup", { tasks: [...runbookPlan.setup.tasks, blankSetupTask()] })}>
+                    <Plus className="h-4 w-4" />
+                    Add Setup Task
+                  </Button>
+                </div>
+                <div className="mt-3 space-y-3">
+                  {runbookPlan.setup.tasks.map((task, index) => (
+                    <div key={task.id} className="rounded-2xl border border-[#E8C9D4] bg-[#FFFDFC] p-3">
+                      <div className="grid gap-3 lg:grid-cols-[0.9fr_1.3fr_1fr_0.9fr_0.9fr_auto]">
+                        <FieldLabel label="Area">
+                          <SelectInput value={task.area} options={SETUP_AREAS} onChange={(value) => updateRunbookSection("setup", { tasks: runbookPlan.setup.tasks.map((item, i) => (i === index ? { ...item, area: value } : item)) })} />
+                        </FieldLabel>
+                        <FieldLabel label="Task" hint="Example: place card box on welcome table.">
+                          <Input value={task.task} onChange={(event) => updateRunbookSection("setup", { tasks: runbookPlan.setup.tasks.map((item, i) => (i === index ? { ...item, task: event.target.value } : item)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Setup task" />
+                        </FieldLabel>
+                        <FieldLabel label="Owner">
+                          <Input value={task.owner} onChange={(event) => updateRunbookSection("setup", { tasks: runbookPlan.setup.tasks.map((item, i) => (i === index ? { ...item, owner: event.target.value } : item)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Person or vendor" />
+                        </FieldLabel>
+                        <FieldLabel label="Due by">
+                          <Input value={task.dueBy} onChange={(event) => updateRunbookSection("setup", { tasks: runbookPlan.setup.tasks.map((item, i) => (i === index ? { ...item, dueBy: event.target.value } : item)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Before guests arrive" />
+                        </FieldLabel>
+                        <FieldLabel label="Status">
+                          <SelectInput value={task.status} options={SETUP_STATUS} onChange={(value) => updateRunbookSection("setup", { tasks: runbookPlan.setup.tasks.map((item, i) => (i === index ? { ...item, status: value } : item)) })} />
+                        </FieldLabel>
+                        <Button type="button" variant="ghost" size="icon" className="mt-7 rounded-full text-[#A65A73] hover:bg-destructive/10 hover:text-destructive" onClick={() => updateRunbookSection("setup", { tasks: runbookPlan.setup.tasks.filter((item) => item.id !== task.id) })}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <Textarea value={task.notes} onChange={(event) => updateRunbookSection("setup", { tasks: runbookPlan.setup.tasks.map((item, i) => (i === index ? { ...item, notes: event.target.value } : item)) })} className="mt-3 min-h-[72px] resize-none rounded-2xl border-[#E8C9D4]" placeholder="Optional details: loading dock, rental count, photo reference, or cleanup instruction." />
+                    </div>
+                  ))}
+                </div>
+              </RunbookSectionCard>
+            )}
+
+            {activeSection.id === "attire" && (
+              <>
+                <RunbookSectionCard
+                  icon={Shirt}
+                  title="Getting-ready plan"
+                  helper="Keep outfit prep, steaming, and handoffs out of the couple's head."
+                  section="attire"
+                  suggestingSection={suggestingRunbookSection}
+                  onGenerate={generateRunbookSuggestion}
+                >
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <FieldLabel label="Getting-ready location">
+                      <Input value={runbookPlan.attire.gettingReadyLocation} onChange={(event) => updateRunbookSection("attire", { gettingReadyLocation: event.target.value })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Hotel suite, venue suite..." />
+                    </FieldLabel>
+                    <FieldLabel label="Attire lead">
+                      <GuestNameInput value={runbookPlan.attire.attireLead} onChange={(value) => updateRunbookSection("attire", { attireLead: value })} options={guestNameOptions} placeholder="Who owns attire prep" listId="attire-lead" />
+                    </FieldLabel>
+                    <FieldLabel label="Final steam time">
+                      <Input value={runbookPlan.attire.finalSteamTime} onChange={(event) => updateRunbookSection("attire", { finalSteamTime: event.target.value })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Before first look" />
+                    </FieldLabel>
+                  </div>
+                </RunbookSectionCard>
+
+                <RunbookSectionCard
+                  icon={ListChecks}
+                  title="Outfit checklist"
+                  helper="Track each item, who owns it, and whether it is packed."
+                  section="attire"
+                  suggestingSection={suggestingRunbookSection}
+                  onGenerate={generateRunbookSuggestion}
+                >
+                  <div className="mb-4 flex justify-end">
+                    <Button type="button" variant="outline" className="gap-2 rounded-full border-[#E8C9D4] text-[#8D294D]" onClick={() => updateRunbookSection("attire", { items: [...runbookPlan.attire.items, blankAttireItem()] })}>
+                      <Plus className="h-4 w-4" />
+                      Add Item
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    {runbookPlan.attire.items.map((item, index) => (
+                      <div key={item.id} className="rounded-2xl border border-[#E8C9D4] bg-[#FFFDFC] p-3">
+                        <div className="grid gap-3 lg:grid-cols-[auto_1fr_1fr_1fr_1fr_auto]">
+                          <label className="mt-8 flex items-center gap-2 text-sm font-bold text-[#4C2730]">
+                            <input type="checkbox" checked={item.packed} onChange={(event) => updateRunbookSection("attire", { items: runbookPlan.attire.items.map((entry, i) => (i === index ? { ...entry, packed: event.target.checked } : entry)) })} className="h-4 w-4 accent-[#8D294D]" />
+                            Packed
+                          </label>
+                          <FieldLabel label="Person">
+                            <GuestNameInput value={item.personName} onChange={(value) => updateRunbookSection("attire", { items: runbookPlan.attire.items.map((entry, i) => (i === index ? { ...entry, personName: value } : entry)) })} options={guestNameOptions} placeholder="Name" listId={`attire-person-${item.id}`} />
+                          </FieldLabel>
+                          <FieldLabel label="Item">
+                            <Input value={item.item} onChange={(event) => updateRunbookSection("attire", { items: runbookPlan.attire.items.map((entry, i) => (i === index ? { ...entry, item: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Dress, shoes, veil..." />
+                          </FieldLabel>
+                          <FieldLabel label="Location">
+                            <Input value={item.location} onChange={(event) => updateRunbookSection("attire", { items: runbookPlan.attire.items.map((entry, i) => (i === index ? { ...entry, location: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Suite, bag, car..." />
+                          </FieldLabel>
+                          <FieldLabel label="Owner">
+                            <Input value={item.owner} onChange={(event) => updateRunbookSection("attire", { items: runbookPlan.attire.items.map((entry, i) => (i === index ? { ...entry, owner: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Who carries it" />
+                          </FieldLabel>
+                          <Button type="button" variant="ghost" size="icon" className="mt-7 rounded-full text-[#A65A73] hover:bg-destructive/10 hover:text-destructive" onClick={() => updateRunbookSection("attire", { items: runbookPlan.attire.items.filter((entry) => entry.id !== item.id) })}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </RunbookSectionCard>
+
+                <RunbookSectionCard
+                  icon={PackageCheck}
+                  title="Emergency kit"
+                  helper="Quick checkboxes for the most common outfit fixes."
+                  section="attire"
+                  suggestingSection={suggestingRunbookSection}
+                  onGenerate={generateRunbookSuggestion}
+                >
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {runbookPlan.attire.emergencyKit.map((kitItem) => (
+                      <label key={kitItem.id} className="flex items-center gap-3 rounded-2xl border border-[#E8C9D4] bg-[#FFFDFC] px-3 py-2 text-sm font-semibold text-[#4C2730]">
+                        <input type="checkbox" checked={kitItem.checked} onChange={(event) => updateRunbookSection("attire", { emergencyKit: runbookPlan.attire.emergencyKit.map((entry) => (entry.id === kitItem.id ? { ...entry, checked: event.target.checked } : entry)) })} className="h-4 w-4 accent-[#8D294D]" />
+                        {kitItem.label}
+                      </label>
+                    ))}
+                  </div>
+                </RunbookSectionCard>
+              </>
+            )}
+
+            {activeSection.id === "vendors-party" && (
+              <>
+                <RunbookSectionCard
+                  icon={PhoneCall}
+                  title="Vendor contact sheet"
+                  helper="A day-of-only contact page: names, phone numbers, arrival times, and payment reminders."
+                  section="vendors-party"
+                  suggestingSection={suggestingRunbookSection}
+                  onGenerate={generateRunbookSuggestion}
+                >
+                  <div className="mb-4 flex flex-wrap justify-end gap-2">
+                    <Button type="button" variant="outline" className="gap-2 rounded-full border-[#E8C9D4] text-[#8D294D]" onClick={useSavedVendorsForBinder}>
+                      <Sparkles className="h-4 w-4" />
+                      Use Saved Vendors
+                    </Button>
+                    <Button type="button" className="gap-2 rounded-full bg-[#8D294D] hover:bg-[#7a2140]" onClick={() => updateVendorParty({ vendors: [...runbookPlan.vendorsParty.vendors, blankVendorContact()] })}>
+                      <Plus className="h-4 w-4" />
+                      Add Vendor Contact
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    {runbookPlan.vendorsParty.vendors.map((vendor, index) => (
+                      <div key={vendor.id} className="rounded-2xl border border-[#E8C9D4] bg-[#FFFDFC] p-3">
+                        <div className="grid gap-3 lg:grid-cols-[1.1fr_0.9fr_1fr_0.9fr_0.9fr_1fr_auto]">
+                          <FieldLabel label="Vendor">
+                            <Input value={vendor.vendorName} onChange={(event) => updateVendorParty({ vendors: runbookPlan.vendorsParty.vendors.map((entry, i) => (i === index ? { ...entry, vendorName: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Vendor name" />
+                          </FieldLabel>
+                          <FieldLabel label="Category">
+                            <Input value={vendor.category} onChange={(event) => updateVendorParty({ vendors: runbookPlan.vendorsParty.vendors.map((entry, i) => (i === index ? { ...entry, category: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Florist, DJ..." />
+                          </FieldLabel>
+                          <FieldLabel label="Lead">
+                            <Input value={vendor.leadName} onChange={(event) => updateVendorParty({ vendors: runbookPlan.vendorsParty.vendors.map((entry, i) => (i === index ? { ...entry, leadName: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Contact name" />
+                          </FieldLabel>
+                          <FieldLabel label="Phone">
+                            <Input value={vendor.phone} onChange={(event) => updateVendorParty({ vendors: runbookPlan.vendorsParty.vendors.map((entry, i) => (i === index ? { ...entry, phone: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Phone" />
+                          </FieldLabel>
+                          <FieldLabel label="Arrival">
+                            <Input value={vendor.arrivalTime} onChange={(event) => updateVendorParty({ vendors: runbookPlan.vendorsParty.vendors.map((entry, i) => (i === index ? { ...entry, arrivalTime: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="10:00 AM" />
+                          </FieldLabel>
+                          <FieldLabel label="Payment">
+                            <SelectInput value={vendor.paymentStatus} options={VENDOR_PAYMENT_STATUSES} onChange={(value) => updateVendorParty({ vendors: runbookPlan.vendorsParty.vendors.map((entry, i) => (i === index ? { ...entry, paymentStatus: value } : entry)) })} />
+                          </FieldLabel>
+                          <Button type="button" variant="ghost" size="icon" className="mt-7 rounded-full text-[#A65A73] hover:bg-destructive/10 hover:text-destructive" onClick={() => updateVendorParty({ vendors: runbookPlan.vendorsParty.vendors.filter((entry) => entry.id !== vendor.id) })}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <Textarea value={vendor.notes} onChange={(event) => updateVendorParty({ vendors: runbookPlan.vendorsParty.vendors.map((entry, i) => (i === index ? { ...entry, notes: event.target.value } : entry)) })} className="mt-3 min-h-[72px] resize-none rounded-2xl border-[#E8C9D4]" placeholder="Access notes, final count, setup instruction, tip envelope, or emergency backup." />
+                      </div>
+                    ))}
+                    {runbookPlan.vendorsParty.vendors.length === 0 && (
+                      <p className="rounded-2xl border border-dashed border-[#E8C9D4] bg-[#FFF7F2] px-4 py-5 text-center text-sm text-[#7B5364]">
+                        Add day-of contacts manually or pull from your saved Vendor List.
+                      </p>
+                    )}
+                  </div>
+                </RunbookSectionCard>
+
+                <RunbookSectionCard
+                  icon={UsersRound}
+                  title="Wedding party responsibilities"
+                  helper="Assign who handles rings, calls, gifts, bustle, family photos, and end-of-night handoffs."
+                  section="vendors-party"
+                  suggestingSection={suggestingRunbookSection}
+                  onGenerate={generateRunbookSuggestion}
+                >
+                  <div className="mb-4 flex justify-end">
+                    <Button type="button" variant="outline" className="gap-2 rounded-full border-[#E8C9D4] text-[#8D294D]" onClick={() => updateVendorParty({ party: [...runbookPlan.vendorsParty.party, blankPartyContact()] })}>
+                      <Plus className="h-4 w-4" />
+                      Add Person
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    {runbookPlan.vendorsParty.party.map((person, index) => (
+                      <div key={person.id} className="grid gap-3 rounded-2xl border border-[#E8C9D4] bg-[#FFFDFC] p-3 lg:grid-cols-[1fr_0.9fr_0.9fr_0.9fr_1.4fr_auto]">
+                        <FieldLabel label="Person">
+                          <GuestNameInput value={person.personName} onChange={(value) => updateVendorParty({ party: runbookPlan.vendorsParty.party.map((entry, i) => (i === index ? { ...entry, personName: value } : entry)) })} options={guestNameOptions} placeholder="Name" listId={`party-person-${person.id}`} />
+                        </FieldLabel>
+                        <FieldLabel label="Role">
+                          <Input value={person.role} onChange={(event) => updateVendorParty({ party: runbookPlan.vendorsParty.party.map((entry, i) => (i === index ? { ...entry, role: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Maid of Honor" />
+                        </FieldLabel>
+                        <FieldLabel label="Phone">
+                          <Input value={person.phone} onChange={(event) => updateVendorParty({ party: runbookPlan.vendorsParty.party.map((entry, i) => (i === index ? { ...entry, phone: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Phone" />
+                        </FieldLabel>
+                        <FieldLabel label="Arrival">
+                          <Input value={person.arrivalTime} onChange={(event) => updateVendorParty({ party: runbookPlan.vendorsParty.party.map((entry, i) => (i === index ? { ...entry, arrivalTime: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="9:00 AM" />
+                        </FieldLabel>
+                        <FieldLabel label="Duty">
+                          <Input value={person.duty} onChange={(event) => updateVendorParty({ party: runbookPlan.vendorsParty.party.map((entry, i) => (i === index ? { ...entry, duty: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Family photos, rings, gifts..." />
+                        </FieldLabel>
+                        <Button type="button" variant="ghost" size="icon" className="mt-7 rounded-full text-[#A65A73] hover:bg-destructive/10 hover:text-destructive" onClick={() => updateVendorParty({ party: runbookPlan.vendorsParty.party.filter((entry) => entry.id !== person.id) })}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <FieldLabel label="Handoff notes" hint="Tell helpers who to call before interrupting the couple.">
+                    <Textarea value={runbookPlan.vendorsParty.handoffNotes} onChange={(event) => updateVendorParty({ handoffNotes: event.target.value })} className="mt-4 min-h-[92px] resize-none rounded-2xl border-[#E8C9D4]" placeholder="Example: Venue issues go to coordinator first. Family photo questions go to maid of honor." />
+                  </FieldLabel>
+                </RunbookSectionCard>
+              </>
+            )}
           </section>
         )}
 

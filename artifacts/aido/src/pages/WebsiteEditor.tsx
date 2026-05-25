@@ -3710,23 +3710,49 @@ function RegistryLinksEditor({
 const QR_SIZES = [
   { labelKey: "website_editor.qr_small", labelDefault: "Small (400px)", size: 400, desc: "Digital sharing, email" },
   { labelKey: "website_editor.qr_medium", labelDefault: "Medium (800px)", size: 800, desc: "Save-the-dates, small print" },
-  { labelKey: "website_editor.qr_large", labelDefault: "Large (1200px)", size: 1200, desc: "Invitations, 4×4\" print" },
+  { labelKey: "website_editor.qr_large", labelDefault: "Large (1200px)", size: 1200, desc: "Invitations, 4x4\" print" },
   { labelKey: "website_editor.qr_print", labelDefault: "Print (2000px)", size: 2000, desc: "Large signage, posters" },
+];
+
+type QrDestination = "website" | "rsvp";
+
+const QR_DESTINATIONS: Array<{
+  id: QrDestination;
+  label: string;
+  description: string;
+  helper: string;
+}> = [
+  {
+    id: "website",
+    label: "Website QR Code",
+    description: "Opens the wedding website home page.",
+    helper: "Best for signage, details cards, and general guest sharing.",
+  },
+  {
+    id: "rsvp",
+    label: "RSVP QR Code",
+    description: "Opens guests directly to the RSVP section.",
+    helper: "Best for invitations and response reminders.",
+  },
 ];
 
 function QrCodeSection({ publicUrl, published }: { publicUrl: string; published: boolean }) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [selectedSize, setSelectedSize] = useState(800);
+  const [destination, setDestination] = useState<QrDestination>("website");
+  const cleanPublicUrl = useMemo(() => publicUrl.replace(/\/+$/, ""), [publicUrl]);
+  const destinationUrl = destination === "rsvp" ? `${cleanPublicUrl}/rsvp` : cleanPublicUrl;
+  const selectedDestination = QR_DESTINATIONS.find((item) => item.id === destination) ?? QR_DESTINATIONS[0];
 
   const qrUrl = useMemo(
-    () => qrSvgDataUrl(publicUrl, Math.max(2, Math.round(selectedSize / 100)), 4),
-    [publicUrl, selectedSize],
+    () => qrSvgDataUrl(destinationUrl, Math.max(2, Math.round(selectedSize / 100)), 4),
+    [destinationUrl, selectedSize],
   );
 
   const copyLink = async () => {
     try {
-      await navigator.clipboard.writeText(publicUrl);
+      await navigator.clipboard.writeText(destinationUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
@@ -3753,8 +3779,35 @@ function QrCodeSection({ publicUrl, published }: { publicUrl: string; published:
 
   return (
     <div className="space-y-4">
+      <div className="grid gap-2">
+        {QR_DESTINATIONS.map((item) => {
+          const active = item.id === destination;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setDestination(item.id)}
+              className={`rounded-xl border px-3 py-3 text-left transition ${
+                active
+                  ? "border-[#8D294D] bg-[#F7DDE2]/45 shadow-sm"
+                  : "border-border bg-background hover:border-[#E6A6B7]"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-bold text-[#5B0F2A]">{item.label}</span>
+                {active && <Check className="h-4 w-4 text-[#8D294D]" />}
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{item.description}</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-[#8D294D]">{item.helper}</p>
+            </button>
+          );
+        })}
+      </div>
+
       <p className="text-xs text-muted-foreground leading-relaxed">
-        Print this QR code on physical invitations, save-the-dates, or wedding signage. Guests scan it to open your site instantly.
+        {destination === "rsvp"
+          ? "Print this RSVP QR code on invitations or response reminders. Guests scan it and land directly where they can respond."
+          : "Print this website QR code on details cards, signage, or save-the-dates. Guests scan it to open the wedding website home page."}
       </p>
 
       {/* Preview */}
@@ -3762,7 +3815,7 @@ function QrCodeSection({ publicUrl, published }: { publicUrl: string; published:
         <div className="rounded-xl border-2 border-border bg-white p-3 shadow-sm inline-block">
           <img
             src={qrUrl}
-            alt="Wedding website QR code"
+            alt={`${selectedDestination.label} preview`}
             className="w-40 h-40 block"
           />
         </div>
@@ -3771,7 +3824,7 @@ function QrCodeSection({ publicUrl, published }: { publicUrl: string; published:
       {/* URL + copy */}
       <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/50 text-[11px]">
         <Globe className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-        <span className="truncate flex-1 font-mono text-muted-foreground">{publicUrl}</span>
+        <span className="truncate flex-1 font-mono text-muted-foreground">{destinationUrl}</span>
         <Button size="sm" variant="ghost" className="h-6 px-1.5 flex-shrink-0" onClick={copyLink}>
           {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
         </Button>
@@ -3797,24 +3850,24 @@ function QrCodeSection({ publicUrl, published }: { publicUrl: string; published:
       {/* Download */}
       <a
         href={qrUrl}
-        download={`wedding-qr-${selectedSize}px.svg`}
+        download={`wedding-${destination}-qr-${selectedSize}px.svg`}
         target="_blank"
         rel="noopener noreferrer"
         className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
         style={{ background: "hsl(var(--primary))" }}
       >
         <Download className="h-4 w-4" />
-        Download {selectedSize}×{selectedSize}px
+        Download {selectedDestination.label}
       </a>
 
       {/* Print tips */}
       <div className="rounded-lg bg-muted/40 px-3 py-2.5 space-y-1">
         <p className="text-[11px] font-semibold text-foreground">Printing tips</p>
         <ul className="text-[11px] text-muted-foreground space-y-0.5 list-disc list-inside">
-          <li>Use 800px+ for print — 400px is fine for digital</li>
+          <li>Use 800px+ for print; 400px is fine for digital</li>
           <li>Keep a white border around the code (already included)</li>
           <li>Test by scanning with your phone before printing</li>
-          <li>Minimum print size: about 1×1 inch for reliable scanning</li>
+          <li>Minimum print size: about 1x1 inch for reliable scanning</li>
         </ul>
       </div>
     </div>
