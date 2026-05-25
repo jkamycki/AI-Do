@@ -626,7 +626,7 @@ function createDefaultRunbookPlan(): DayOfRunbookPlan {
         blankMusicCue("Parent dance"),
         blankMusicCue("Last song"),
       ],
-      mustPlay: [{ id: makeId("song"), song: "", note: "Couple favorite or family request" }],
+      mustPlay: [{ id: makeId("song"), song: "", note: "" }],
       doNotPlay: [],
       notes: "",
     },
@@ -1050,7 +1050,7 @@ function createSuggestedRunbookPlan(
         { ...blankMusicCue("Parent dance"), cueBy: "DJ / MC", notes: "Invite parent(s) by name." },
         { ...blankMusicCue("Last song"), cueBy: "DJ / band lead", notes: "Announce final private dance or exit sendoff." },
       ],
-      mustPlay: suggested.music.mustPlay.length ? suggested.music.mustPlay : [{ id: makeId("song"), song: "Couple favorite", note: "Must play during open dancing" }],
+      mustPlay: suggested.music.mustPlay.length ? suggested.music.mustPlay : [{ id: makeId("song"), song: "Couple favorite", note: "" }],
       doNotPlay: suggested.music.doNotPlay,
     };
   }
@@ -1159,8 +1159,8 @@ function summarizeRunbookForPdf(plan: DayOfRunbookPlan, sectionId: StructuredBin
       return plan.music.receptionCues.map((cue, index) => `${index + 1}. ${cue.moment}: ${cue.song || "Song TBD"}${cue.artist ? ` by ${cue.artist}` : ""} | Cue by: ${cue.cueBy || "TBD"}${cue.notes ? ` | ${cue.notes}` : ""}`).join("\n");
     }
     if (itemId === "do-not-play") {
-      const must = plan.music.mustPlay.map((song) => `Must play: ${song.song || "Song TBD"}${song.note ? ` (${song.note})` : ""}`).join("\n");
-      const avoid = plan.music.doNotPlay.map((song) => `Do not play: ${song.song || "Song TBD"}${song.note ? ` (${song.note})` : ""}`).join("\n");
+      const must = plan.music.mustPlay.map((song) => `Must play: ${song.song || "Song TBD"}`).join("\n");
+      const avoid = plan.music.doNotPlay.map((song) => `Do not play: ${song.song || "Song TBD"}`).join("\n");
       return [must, avoid].filter(Boolean).join("\n") || "No song preferences listed.";
     }
   }
@@ -3093,7 +3093,7 @@ function DayOfInner() {
                         </div>
                         <div className="space-y-2">
                           {musicPlan[listKey].map((song, index) => (
-                            <div key={song.id} className="grid gap-2 rounded-2xl bg-white p-3 md:grid-cols-[1fr_1fr_auto]">
+                            <div key={song.id} className="grid gap-2 rounded-2xl bg-white p-3 md:grid-cols-[1fr_auto]">
                               <Input
                                 value={song.song}
                                 onChange={(event) =>
@@ -3103,16 +3103,6 @@ function DayOfInner() {
                                 }
                                 className="h-10 rounded-xl border-[#E8C9D4]"
                                 placeholder={placeholder}
-                              />
-                              <Input
-                                value={song.note}
-                                onChange={(event) =>
-                                  updateRunbookSection("music", {
-                                    [listKey]: musicPlan[listKey].map((item, i) => (i === index ? { ...item, note: event.target.value } : item)),
-                                  } as Partial<MusicPlan>)
-                                }
-                                className="h-10 rounded-xl border-[#E8C9D4]"
-                                placeholder="When / why"
                               />
                               <Button
                                 type="button"
