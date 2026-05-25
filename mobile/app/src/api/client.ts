@@ -57,6 +57,11 @@ export function mergePlanningData(partial: Partial<PlanningData>): PlanningData 
       ...partial.settings,
     },
     activityLog: partial.activityLog ?? samplePlanningData.activityLog,
+    guestPhotoDrop: {
+      ...samplePlanningData.guestPhotoDrop,
+      ...partial.guestPhotoDrop,
+    },
+    guestPhotoUploads: partial.guestPhotoUploads ?? samplePlanningData.guestPhotoUploads,
   };
 }
 

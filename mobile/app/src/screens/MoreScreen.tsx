@@ -21,7 +21,8 @@ const planningItems: AppMapItem[] = [
   { icon: 'heart-outline', label: 'Profile', detail: 'Couple details, date, venue, notifications', route: 'ProfileSettings' },
   { icon: 'images-outline', label: 'Mood Board', detail: 'Palette, inspiration, vendor-ready style notes', route: 'MoodBoard' },
   { icon: 'calendar-clear-outline', label: 'Timeline', detail: 'Ceremony, reception, and production timing', route: 'Timeline' },
-  { icon: 'phone-portrait-outline', label: 'Day Of', detail: 'Run-of-show and owner assignments', route: 'DayOf' },
+  { icon: 'phone-portrait-outline', label: 'Day-Of Coordinator', detail: 'Run-of-show, ceremony, setup, vendor contacts, and packing', route: 'DayOf' },
+  { icon: 'person-add-outline', label: 'Wedding Party', detail: 'Roles, duties, attire status, and phone numbers for wedding-day support', route: 'WeddingParty' },
 ];
 
 const moneyItems: AppMapItem[] = [
@@ -36,11 +37,11 @@ const guestItems: AppMapItem[] = [
   { icon: 'mail-open-outline', label: 'Invitations & RSVP', detail: 'Save-the-dates, digital invites, response tracking', route: 'Invitations' },
   { icon: 'grid-outline', label: 'Seating Chart', detail: 'Tables, capacity, assignments, AI suggestions', route: 'SeatingChart' },
   { icon: 'bed-outline', label: 'Hotels', detail: 'Room blocks, rates, deadlines, shuttle notes', route: 'Hotels' },
-  { icon: 'person-add-outline', label: 'Wedding Party', detail: 'Roles, attire, duties, phone numbers', route: 'WeddingParty' },
 ];
 
 const publishingItems: AppMapItem[] = [
   { icon: 'globe-outline', label: 'Website Editor', detail: 'Guest site, travel, registry, publishing', route: 'WebsiteEditor' },
+  { icon: 'camera-outline', label: 'Guest Photo Drop', detail: 'Wedding-day QR uploads, approval queue, captions, and gallery destination', route: 'GuestPhotoDrop' },
   { icon: 'phone-portrait-outline', label: 'Website Portal', detail: 'Fallback access to the full authenticated website', route: 'WebPortal' },
   { icon: 'business-outline', label: 'Workspace Sharing', detail: 'Planner, partner, family, vendor access', route: 'Workspace' },
   { icon: 'settings-outline', label: 'Settings & Privacy', detail: 'Reminders, RSVP emails, Aria memory, data export', route: 'Settings' },

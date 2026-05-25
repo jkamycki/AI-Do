@@ -5,7 +5,7 @@ import { fonts, radii, spacing, useAppTheme } from '../theme';
 import { RsvpStatus, VendorStatus } from '../types';
 
 type StatusPillProps = {
-  status: VendorStatus | RsvpStatus | 'On Track' | 'Over Budget';
+  status: VendorStatus | RsvpStatus | 'Approved' | 'Hidden' | 'On Track' | 'Over Budget';
 };
 
 export function StatusPill({ status }: StatusPillProps) {
@@ -25,10 +25,10 @@ export function StatusPill({ status }: StatusPillProps) {
 }
 
 function getKind(status: StatusPillProps['status']) {
-  if (status === 'Paid' || status === 'Completed' || status === 'Signed' || status === 'Confirmed' || status === 'On Track') {
+  if (status === 'Paid' || status === 'Completed' || status === 'Signed' || status === 'Confirmed' || status === 'Approved' || status === 'On Track') {
     return 'success';
   }
-  if (status === 'Declined' || status === 'Over Budget') {
+  if (status === 'Declined' || status === 'Hidden' || status === 'Over Budget') {
     return 'danger';
   }
   if (status === 'Pending' || status === 'Ongoing' || status === 'Due Soon') {

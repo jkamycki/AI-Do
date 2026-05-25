@@ -14,7 +14,7 @@ import { DayOfChecklistItem } from '../types';
 
 type DayOfTab = 'Timeline' | DayOfChecklistItem['category'];
 
-const dayOfTabs: DayOfTab[] = ['Timeline', 'Ceremony', 'Music', 'Speeches', 'Setup', 'Attire', 'Vendors', 'Packing'];
+const dayOfTabs: DayOfTab[] = ['Timeline', 'Ceremony', 'Music', 'Speeches', 'Setup', 'Vendor Contacts', 'Packing'];
 
 export function DayOfScreen() {
   const { colors } = useAppTheme();
@@ -26,7 +26,7 @@ export function DayOfScreen() {
 
   return (
     <Screen>
-      <SectionHeader subtitle="A clean wedding-day command center for the timeline, owners, packing, music, setup, and vendor handoffs." title="Day Of" />
+      <SectionHeader subtitle="A clean wedding-day command center for the timeline, ceremony, music, speeches, setup, vendor contact sheet, and packing." title="Day-Of Coordinator" />
 
       <View style={styles.metricRow}>
         <MetricCard icon="calendar-clock" label="Events" value={data.dayOf.length.toString()} />
@@ -47,7 +47,7 @@ export function DayOfScreen() {
 
       <Card style={styles.binderCard}>
         <Text style={[styles.binderTitle, { color: colors.text }]}>Export and Regenerate</Text>
-        <Text style={[styles.binderText, { color: colors.muted }]}>Regenerate when ceremony time, photo flow, venue access, or vendor timing changes.</Text>
+          <Text style={[styles.binderText, { color: colors.muted }]}>Regenerate when ceremony time, music cues, setup tasks, vendor contacts, or photo flow changes.</Text>
         <View style={styles.binderActions}>
           <PrimaryButton icon="sparkles-outline" label="Ask Aria" onPress={() => respondAsAria('Regenerate my day-of coordinator binder')} variant="gold" />
           <PrimaryButton icon="document-text-outline" label="PDF" variant="ghost" />
@@ -82,7 +82,66 @@ export function DayOfScreen() {
               </Pressable>
             </View>
           ))
-        : checklistItems.map((item) => (
+        : activeTab === 'Vendor Contacts'
+          ? (
+            <View>
+              <Card style={styles.vendorSheetCard}>
+                <Text style={[styles.vendorSheetTitle, { color: colors.text }]}>Vendor Contact Sheet</Text>
+                <Text style={[styles.vendorSheetText, { color: colors.muted }]}>
+                  One planner-ready page for names, phone numbers, emails, arrival times, and day-of handoffs.
+                </Text>
+              </Card>
+              {data.vendors.map((vendor) => (
+                <Card key={vendor.id} style={styles.contactCard}>
+                  <View style={styles.contactHeader}>
+                    <View style={[styles.contactIcon, { backgroundColor: colors.primarySoft }]}>
+                      <Ionicons color={colors.primary} name="call-outline" size={21} />
+                    </View>
+                    <View style={styles.checklistCopy}>
+                      <Text style={[styles.checklistTitle, { color: colors.text }]}>{vendor.name}</Text>
+                      <Text style={[styles.checklistNote, { color: colors.muted }]}>{vendor.category} - arrives {vendor.arrivalTime ?? 'TBD'}</Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.contactLine, { color: colors.text }]}>{vendor.contactName ?? 'Primary contact'}</Text>
+                  <Text style={[styles.checklistNote, { color: colors.muted }]}>{vendor.phone ?? 'Phone TBD'} - {vendor.email ?? 'Email TBD'}</Text>
+                </Card>
+              ))}
+              {checklistItems.map((item) => (
+                <Pressable key={item.id} onPress={() => toggleDayOfChecklistItem(item.id)} style={({ pressed }) => ({ opacity: pressed ? 0.78 : 1 })}>
+                  <Card style={styles.checklistCard}>
+                    <View
+                      style={[
+                        styles.checkbox,
+                        {
+                          backgroundColor: item.completed ? colors.success : colors.cardStrong,
+                          borderColor: item.completed ? colors.success : colors.border,
+                        },
+                      ]}
+                    >
+                      {item.completed ? <Ionicons color={colors.cardStrong} name="checkmark" size={18} /> : null}
+                    </View>
+                    <View style={styles.checklistCopy}>
+                      <Text style={[styles.checklistTitle, { color: colors.text }]}>{item.title}</Text>
+                      <Text style={[styles.checklistNote, { color: colors.muted }]}>{item.note}</Text>
+                    </View>
+                  </Card>
+                </Pressable>
+              ))}
+            </View>
+          )
+          : (
+            <View>
+              <Card style={styles.suggestionCard}>
+                <View style={[styles.contactIcon, { backgroundColor: colors.primarySoft }]}>
+                  <Ionicons color={colors.primary} name="sparkles-outline" size={21} />
+                </View>
+                <View style={styles.checklistCopy}>
+                  <Text style={[styles.checklistTitle, { color: colors.text }]}>Smart Suggestions</Text>
+                  <Text style={[styles.checklistNote, { color: colors.muted }]}>Generate a structured plan for this section using your wedding details.</Text>
+                </View>
+                <PrimaryButton icon="sparkles-outline" label="Generate" onPress={() => respondAsAria(`Generate suggested ${activeTab} plan`)} variant="gold" />
+              </Card>
+              {checklistItems.map((item) => (
             <Pressable key={item.id} onPress={() => toggleDayOfChecklistItem(item.id)} style={({ pressed }) => ({ opacity: pressed ? 0.78 : 1 })}>
               <Card style={styles.checklistCard}>
                 <View
@@ -102,7 +161,9 @@ export function DayOfScreen() {
                 </View>
               </Card>
             </Pressable>
-          ))}
+              ))}
+            </View>
+          )}
     </Screen>
   );
 }
@@ -155,6 +216,26 @@ const styles = StyleSheet.create({
     fontFamily: fonts.semibold,
     fontSize: 16,
     lineHeight: 22,
+  },
+  contactCard: {
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  contactHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  contactIcon: {
+    alignItems: 'center',
+    borderRadius: radii.md,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
+  },
+  contactLine: {
+    fontFamily: fonts.semibold,
+    fontSize: 14,
   },
   dot: {
     borderRadius: 9,
@@ -232,8 +313,28 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginBottom: spacing.lg,
   },
+  suggestionCard: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
   timelineRow: {
     flexDirection: 'row',
     gap: spacing.md,
+  },
+  vendorSheetCard: {
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  vendorSheetText: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  vendorSheetTitle: {
+    fontFamily: fonts.headingSemi,
+    fontSize: 23,
   },
 });

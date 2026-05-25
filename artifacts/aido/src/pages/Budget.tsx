@@ -1822,14 +1822,14 @@ export default function Budget() {
                         key={v.id}
                         role="button"
                         tabIndex={0}
-                        aria-label={t("budget.open_vendor_row", { vendor: v.name, defaultValue: `Open ${v.name}` })}
-                        title={t("budget.open_vendor_row", { vendor: v.name, defaultValue: `Open ${v.name}` })}
+                        aria-label={t("budget.edit_vendor_row", { vendor: v.name, defaultValue: `Edit ${v.name}` })}
+                        title={t("budget.edit_vendor_row", { vendor: v.name, defaultValue: `Edit ${v.name}` })}
                         className="cursor-pointer"
-                        onClick={() => openVendorDetailFromBudget(v.id)}
+                        onClick={() => openVendorBudgetEdit(v)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
-                            openVendorDetailFromBudget(v.id);
+                            openVendorBudgetEdit(v);
                           }
                         }}
                       >

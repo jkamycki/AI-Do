@@ -48,14 +48,14 @@ export function SeatingChartScreen() {
         <PrimaryButton icon="sparkles-outline" label="Generate" onPress={() => respondAsAria('Generate seating suggestions from the guest list')} />
       </Card>
 
-      {data.seating.map((table, index) => {
+      {data.seating.map((table) => {
         const progress = table.capacity ? (table.assigned / table.capacity) * 100 : 0;
         const guests = data.guests.filter((guest) => guest.table.toLowerCase().includes(table.name.toLowerCase())).map((guest) => guest.name);
         return (
           <Card key={table.id} style={styles.tableCard}>
             <View style={styles.tableHeader}>
               <View style={[styles.tableIcon, { backgroundColor: colors.primarySoft }]}>
-                <Text style={[styles.tableLetter, { color: colors.primary }]}>{String.fromCharCode(65 + index)}</Text>
+                <Text style={[styles.tableLetter, { color: colors.primary }]}>{table.name.replace('Table ', '')}</Text>
               </View>
               <View style={styles.tableCopy}>
                 <Text style={[styles.tableName, { color: colors.text }]}>{table.name}</Text>

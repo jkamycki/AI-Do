@@ -11,6 +11,8 @@ import {
   AppSettings,
   DocumentItem,
   Guest,
+  GuestPhotoDropSettings,
+  GuestPhotoUpload,
   HotelBlock,
   InvitationSuite,
   PlanningData,
@@ -60,6 +62,8 @@ type PlanningDataContextValue = {
   updateTask: (taskId: string, patch: Partial<Task>) => void;
   updateVendor: (vendorId: string, patch: Partial<Vendor>) => void;
   updateWebsiteSectionStatus: (sectionId: string, status: WebsiteSection['status']) => void;
+  updateGuestPhotoDropSettings: (settings: Partial<GuestPhotoDropSettings>) => void;
+  updateGuestPhotoUploadStatus: (uploadId: string, status: GuestPhotoUpload['status']) => void;
 };
 
 const PlanningDataContext = createContext<PlanningDataContextValue | null>(null);
@@ -580,6 +584,37 @@ export function PlanningDataProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const updateGuestPhotoDropSettings = useCallback((settings: Partial<GuestPhotoDropSettings>) => {
+    setData((current) =>
+      withActivity(
+        {
+          ...current,
+          guestPhotoDrop: {
+            ...current.guestPhotoDrop,
+            ...settings,
+          },
+        },
+        'Updated guest photo drop',
+        'Guest upload QR settings, instructions, or photo destination changed.',
+      ),
+    );
+  }, []);
+
+  const updateGuestPhotoUploadStatus = useCallback((uploadId: string, status: GuestPhotoUpload['status']) => {
+    setData((current) => {
+      const upload = current.guestPhotoUploads.find((item) => item.id === uploadId);
+      return withActivity(
+        {
+          ...current,
+          guestPhotoUploads: current.guestPhotoUploads.map((item) => (item.id === uploadId ? { ...item, status } : item)),
+        },
+        `${status} guest photos`,
+        `${upload?.guestName ?? 'A guest'} photo upload was marked ${status.toLowerCase()}.`,
+        status === 'Hidden' ? 'delete' : 'update',
+      );
+    });
+  }, []);
+
   const updateInvitationStatus = useCallback((invitationId: string, status: InvitationSuite['status']) => {
     setData((current) => ({
       ...current,
@@ -667,6 +702,8 @@ export function PlanningDataProvider({ children }: { children: ReactNode }) {
       updateContractStatus,
       updateDocumentStatus,
       updateGuest,
+      updateGuestPhotoDropSettings,
+      updateGuestPhotoUploadStatus,
       updateHotelBlock,
       updateInvitationStatus,
       updateProfile,
@@ -706,6 +743,8 @@ export function PlanningDataProvider({ children }: { children: ReactNode }) {
       updateContractStatus,
       updateDocumentStatus,
       updateGuest,
+      updateGuestPhotoDropSettings,
+      updateGuestPhotoUploadStatus,
       updateHotelBlock,
       updateInvitationStatus,
       updateProfile,

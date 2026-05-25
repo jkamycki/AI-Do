@@ -21,6 +21,10 @@ export type Vendor = {
   nextPaymentDate?: string;
   status: VendorStatus;
   payments: Payment[];
+  contactName?: string;
+  phone?: string;
+  email?: string;
+  arrivalTime?: string;
 };
 
 export type BudgetExpense = {
@@ -136,10 +140,30 @@ export type DayOfEvent = {
 
 export type DayOfChecklistItem = {
   id: string;
-  category: 'Ceremony' | 'Music' | 'Speeches' | 'Setup' | 'Attire' | 'Vendors' | 'Packing';
+  category: 'Ceremony' | 'Music' | 'Speeches' | 'Setup' | 'Vendor Contacts' | 'Packing';
   title: string;
   note: string;
   completed: boolean;
+};
+
+export type GuestPhotoDisplayMode = 'portal' | 'website' | 'both';
+
+export type GuestPhotoDropSettings = {
+  enabled: boolean;
+  displayMode: GuestPhotoDisplayMode;
+  maxUploads: number;
+  title: string;
+  instructions: string;
+  selectedQrTarget: 'website' | 'rsvp';
+};
+
+export type GuestPhotoUpload = {
+  id: string;
+  guestName: string;
+  caption: string;
+  status: 'Pending' | 'Approved' | 'Hidden';
+  uploadedAt: string;
+  photoCount: number;
 };
 
 export type WebsiteSection = {
@@ -216,4 +240,6 @@ export type PlanningData = {
   helpResources: HelpResource[];
   settings: AppSettings;
   activityLog: ActivityLogEntry[];
+  guestPhotoDrop: GuestPhotoDropSettings;
+  guestPhotoUploads: GuestPhotoUpload[];
 };

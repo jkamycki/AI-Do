@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '../components/Card';
@@ -10,6 +11,7 @@ import { usePlanningData } from '../state/PlanningDataContext';
 import { fonts, radii, spacing, useAppTheme } from '../theme';
 
 export function WebsiteEditorScreen() {
+  const navigation = useNavigation<any>();
   const { colors } = useAppTheme();
   const { data, updateWebsiteSectionStatus } = usePlanningData();
   const ready = data.websiteSections.filter((section) => section.status !== 'Draft').length;
@@ -33,6 +35,19 @@ export function WebsiteEditorScreen() {
           <PrimaryButton icon="eye-outline" label="Preview" variant="ghost" />
           <PrimaryButton icon="cloud-upload-outline" label="Publish" onPress={publishAll} />
         </View>
+      </Card>
+
+      <Card style={styles.photoDropCard}>
+        <View style={[styles.iconWrap, { backgroundColor: colors.primarySoft }]}>
+          <Ionicons color={colors.primary} name="camera-outline" size={22} />
+        </View>
+        <View style={styles.sectionCopy}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Guest Photo Drop</Text>
+          <Text style={[styles.sectionDesc, { color: colors.muted }]}>
+            QR upload page, captions, approval queue, download controls, and portal/website display settings.
+          </Text>
+        </View>
+        <PrimaryButton icon="arrow-forward" label="Open" onPress={() => navigation.navigate('GuestPhotoDrop')} />
       </Card>
 
       {data.websiteSections.map((section) => (
@@ -62,6 +77,12 @@ export function WebsiteEditorScreen() {
 
 const styles = StyleSheet.create({
   previewCard: {
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  photoDropCard: {
+    alignItems: 'center',
+    flexDirection: 'row',
     gap: spacing.md,
     marginBottom: spacing.lg,
   },

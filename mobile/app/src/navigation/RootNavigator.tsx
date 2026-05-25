@@ -12,6 +12,7 @@ import { ContractsScreen } from '../screens/ContractsScreen';
 import { DayOfScreen } from '../screens/DayOfScreen';
 import { FilesScreen } from '../screens/FilesScreen';
 import { GuestsScreen } from '../screens/GuestsScreen';
+import { GuestPhotoDropScreen } from '../screens/GuestPhotoDropScreen';
 import { HelpScreen } from '../screens/HelpScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { HotelsScreen } from '../screens/HotelsScreen';
@@ -38,6 +39,7 @@ export type RootStackParamList = {
   MainTabs: undefined;
   Files: undefined;
   Help: undefined;
+  GuestPhotoDrop: undefined;
   Hotels: undefined;
   Invitations: undefined;
   MoodBoard: undefined;
@@ -186,8 +188,9 @@ export function RootNavigator() {
       <Stack.Screen component={WeddingPartyScreen} name="WeddingParty" options={{ title: 'Wedding Party' }} />
       <Stack.Screen component={SeatingChartScreen} name="SeatingChart" options={{ title: 'Seating Chart' }} />
       <Stack.Screen component={HotelsScreen} name="Hotels" options={{ title: 'Hotels' }} />
+      <Stack.Screen component={GuestPhotoDropScreen} name="GuestPhotoDrop" options={{ title: 'Guest Photo Drop' }} />
       <Stack.Screen component={AriaScreen} name="Aria" options={{ title: 'Aria' }} />
-      <Stack.Screen component={DayOfScreen} name="DayOf" options={{ title: 'Day Of' }} />
+      <Stack.Screen component={DayOfScreen} name="DayOf" options={{ title: 'Day-Of Coordinator' }} />
       <Stack.Screen component={WebsiteEditorScreen} name="WebsiteEditor" options={{ title: 'Website Editor' }} />
       <Stack.Screen component={InvitationsScreen} name="Invitations" options={{ title: 'Invitations' }} />
       <Stack.Screen component={WorkspaceScreen} name="Workspace" options={{ title: 'Workspace' }} />

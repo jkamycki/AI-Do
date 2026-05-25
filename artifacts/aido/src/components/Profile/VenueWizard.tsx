@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, ReactNode } from "react";
 import { Mail, Plus, Sparkles, Trash2, Upload, X } from "lucide-react";
 import { authFetch } from "@/lib/authFetch";
 import { Button } from "@/components/ui/button";
@@ -47,6 +47,7 @@ type VenueWizardProps = {
   value: VenueDiscoveryData;
   onChange: (value: VenueDiscoveryData) => void;
   coupleNames?: string;
+  prioritiesSlot?: ReactNode;
 };
 
 const STYLE_OPTIONS = ["Rustic", "Modern", "Ballroom", "Garden", "Coastal", "Industrial", "Boho", "Classic"];
@@ -90,7 +91,7 @@ function parseLocations(text: string) {
     .filter(Boolean);
 }
 
-export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: VenueWizardProps) {
+export function VenueWizard({ value, onChange, coupleNames = "our wedding", prioritiesSlot }: VenueWizardProps) {
   const [uploadError, setUploadError] = useState("");
   const [generatingPromptDraft, setGeneratingPromptDraft] = useState(false);
   const [generatingVenueOptions, setGeneratingVenueOptions] = useState(false);
@@ -444,6 +445,8 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding" }: Ve
           })}
         </div>
       </div>
+
+      {prioritiesSlot}
 
       <div className="space-y-3 rounded-lg border border-primary/15 bg-primary/5 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

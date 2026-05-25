@@ -35,6 +35,7 @@ import {
   FileDown,
   Gem,
   GripVertical,
+  Heart,
   Headphones,
   ListChecks,
   MapPin,

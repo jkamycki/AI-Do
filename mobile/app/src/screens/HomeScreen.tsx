@@ -18,6 +18,7 @@ type RouteName =
   | 'Contracts'
   | 'DayOf'
   | 'Files'
+  | 'GuestPhotoDrop'
   | 'Guests'
   | 'Invitations'
   | 'MoodBoard'
@@ -162,6 +163,7 @@ export function HomeScreen() {
         <View style={styles.vendorActions}>
           <MiniAction icon="receipt-outline" label="Contracts" onPress={() => go('Contracts')} />
           <MiniAction icon="mail-open-outline" label="Invites" onPress={() => go('Invitations')} />
+          <MiniAction icon="camera-outline" label="Photo QR" onPress={() => go('GuestPhotoDrop')} />
           <MiniAction icon="globe-outline" label="Website" onPress={() => go('WebsiteEditor')} />
         </View>
       </Card>
