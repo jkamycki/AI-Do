@@ -390,7 +390,7 @@ export function Sidebar() {
       label: t("sidebar.day_of_section", { defaultValue: "Wedding Day" }),
       defaultOpen: true,
       items: [
-        { href: "/day-of", label: t("sidebar.day_of_planner", { defaultValue: "Coordinator Plan" }) },
+        { href: "/day-of", label: t("sidebar.day_of_planner", { defaultValue: "Day-Of-Coordinator" }) },
         { href: "/wedding-party", label: t("nav.party", { defaultValue: "Wedding Party" }) },
       ],
     },
