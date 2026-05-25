@@ -2051,6 +2051,12 @@ function DayOfInner() {
   const activeSection =
     activeTab !== "timeline" && activeTab !== "packing" ? BINDER_SECTIONS[activeTab] : null;
   const ActiveSectionIcon = activeSection?.icon ?? ClipboardList;
+  const renderRunbookPlan = normalizeRunbookPlan(runbookPlan);
+  const musicPlan = renderRunbookPlan.music;
+  const speechPlan = renderRunbookPlan.speeches;
+  const setupPlan = renderRunbookPlan.setup;
+  const attirePlan = renderRunbookPlan.attire;
+  const vendorsPartyPlan = renderRunbookPlan.vendorsParty;
 
   return (
     <div className="mx-auto max-w-7xl px-4 pb-28 pt-6 sm:px-6 lg:px-8">
@@ -2918,7 +2924,7 @@ function DayOfInner() {
                   <div className="grid gap-4 md:grid-cols-3">
                     <FieldLabel label="Prelude starts" hint="Example: 30 minutes before ceremony.">
                       <Input
-                        value={runbookPlan.music.preludeStart}
+                        value={musicPlan.preludeStart}
                         onChange={(event) => updateRunbookSection("music", { preludeStart: event.target.value })}
                         className="h-11 rounded-2xl border-[#E8C9D4] bg-white"
                         placeholder="30 minutes before ceremony"
@@ -2926,7 +2932,7 @@ function DayOfInner() {
                     </FieldLabel>
                     <FieldLabel label="Sound check time" hint="Example: 90 minutes before ceremony.">
                       <Input
-                        value={runbookPlan.music.soundCheckTime}
+                        value={musicPlan.soundCheckTime}
                         onChange={(event) => updateRunbookSection("music", { soundCheckTime: event.target.value })}
                         className="h-11 rounded-2xl border-[#E8C9D4] bg-white"
                         placeholder="Before guest arrival"
@@ -2934,7 +2940,7 @@ function DayOfInner() {
                     </FieldLabel>
                     <FieldLabel label="Cue owner" hint="Usually DJ, band leader, or coordinator.">
                       <Input
-                        value={runbookPlan.music.cueOwner}
+                        value={musicPlan.cueOwner}
                         onChange={(event) => updateRunbookSection("music", { cueOwner: event.target.value })}
                         className="h-11 rounded-2xl border-[#E8C9D4] bg-white"
                         placeholder="DJ / band lead"
@@ -2961,14 +2967,14 @@ function DayOfInner() {
                         type="button"
                         variant="outline"
                         className="gap-2 rounded-full border-[#E8C9D4] text-[#8D294D]"
-                        onClick={() => updateRunbookSection("music", { [listKey]: [...runbookPlan.music[listKey], blankMusicCue()] } as Partial<MusicPlan>)}
+                        onClick={() => updateRunbookSection("music", { [listKey]: [...musicPlan[listKey], blankMusicCue()] } as Partial<MusicPlan>)}
                       >
                         <Plus className="h-4 w-4" />
                         Add Cue
                       </Button>
                     </div>
                     <div className="space-y-3">
-                      {runbookPlan.music[listKey].map((cue, index) => (
+                      {musicPlan[listKey].map((cue, index) => (
                         <div key={cue.id} className="rounded-2xl border border-[#E8C9D4] bg-[#FFFDFC] p-3">
                           <div className="grid gap-3 lg:grid-cols-[1fr_1.1fr_1fr_1fr_auto] lg:items-start">
                             <FieldLabel label="Moment" hint="Choose the cue moment.">
@@ -2977,7 +2983,7 @@ function DayOfInner() {
                                 options={MUSIC_MOMENTS}
                                 onChange={(value) =>
                                   updateRunbookSection("music", {
-                                    [listKey]: runbookPlan.music[listKey].map((item, i) => (i === index ? { ...item, moment: value } : item)),
+                                    [listKey]: musicPlan[listKey].map((item, i) => (i === index ? { ...item, moment: value } : item)),
                                   } as Partial<MusicPlan>)
                                 }
                               />
@@ -2987,7 +2993,7 @@ function DayOfInner() {
                                 value={cue.song}
                                 onChange={(event) =>
                                   updateRunbookSection("music", {
-                                    [listKey]: runbookPlan.music[listKey].map((item, i) => (i === index ? { ...item, song: event.target.value } : item)),
+                                    [listKey]: musicPlan[listKey].map((item, i) => (i === index ? { ...item, song: event.target.value } : item)),
                                   } as Partial<MusicPlan>)
                                 }
                                 className="h-11 rounded-2xl border-[#E8C9D4] bg-white"
@@ -2999,7 +3005,7 @@ function DayOfInner() {
                                 value={cue.artist}
                                 onChange={(event) =>
                                   updateRunbookSection("music", {
-                                    [listKey]: runbookPlan.music[listKey].map((item, i) => (i === index ? { ...item, artist: event.target.value } : item)),
+                                    [listKey]: musicPlan[listKey].map((item, i) => (i === index ? { ...item, artist: event.target.value } : item)),
                                   } as Partial<MusicPlan>)
                                 }
                                 className="h-11 rounded-2xl border-[#E8C9D4] bg-white"
@@ -3011,7 +3017,7 @@ function DayOfInner() {
                                 value={cue.cueBy}
                                 onChange={(event) =>
                                   updateRunbookSection("music", {
-                                    [listKey]: runbookPlan.music[listKey].map((item, i) => (i === index ? { ...item, cueBy: event.target.value } : item)),
+                                    [listKey]: musicPlan[listKey].map((item, i) => (i === index ? { ...item, cueBy: event.target.value } : item)),
                                   } as Partial<MusicPlan>)
                                 }
                                 className="h-11 rounded-2xl border-[#E8C9D4] bg-white"
@@ -3025,7 +3031,7 @@ function DayOfInner() {
                               className="mt-7 rounded-full text-[#A65A73] hover:bg-destructive/10 hover:text-destructive"
                               onClick={() =>
                                 updateRunbookSection("music", {
-                                  [listKey]: runbookPlan.music[listKey].filter((item) => item.id !== cue.id),
+                                  [listKey]: musicPlan[listKey].filter((item) => item.id !== cue.id),
                                 } as Partial<MusicPlan>)
                               }
                             >
@@ -3040,7 +3046,7 @@ function DayOfInner() {
                               value={cue.notes}
                               onChange={(event) =>
                                 updateRunbookSection("music", {
-                                  [listKey]: runbookPlan.music[listKey].map((item, i) => (i === index ? { ...item, notes: event.target.value } : item)),
+                                  [listKey]: musicPlan[listKey].map((item, i) => (i === index ? { ...item, notes: event.target.value } : item)),
                                 } as Partial<MusicPlan>)
                               }
                               className="mt-2 min-h-[72px] resize-none rounded-2xl border-[#E8C9D4] bg-white"
@@ -3076,7 +3082,7 @@ function DayOfInner() {
                             className="gap-2 rounded-full border-[#E8C9D4] text-[#8D294D]"
                             onClick={() =>
                               updateRunbookSection("music", {
-                                [listKey]: [...runbookPlan.music[listKey], blankMusicPreference()],
+                                [listKey]: [...musicPlan[listKey], blankMusicPreference()],
                               } as Partial<MusicPlan>)
                             }
                           >
@@ -3085,13 +3091,13 @@ function DayOfInner() {
                           </Button>
                         </div>
                         <div className="space-y-2">
-                          {runbookPlan.music[listKey].map((song, index) => (
+                          {musicPlan[listKey].map((song, index) => (
                             <div key={song.id} className="grid gap-2 rounded-2xl bg-white p-3 md:grid-cols-[1fr_1fr_auto]">
                               <Input
                                 value={song.song}
                                 onChange={(event) =>
                                   updateRunbookSection("music", {
-                                    [listKey]: runbookPlan.music[listKey].map((item, i) => (i === index ? { ...item, song: event.target.value } : item)),
+                                    [listKey]: musicPlan[listKey].map((item, i) => (i === index ? { ...item, song: event.target.value } : item)),
                                   } as Partial<MusicPlan>)
                                 }
                                 className="h-10 rounded-xl border-[#E8C9D4]"
@@ -3101,7 +3107,7 @@ function DayOfInner() {
                                 value={song.note}
                                 onChange={(event) =>
                                   updateRunbookSection("music", {
-                                    [listKey]: runbookPlan.music[listKey].map((item, i) => (i === index ? { ...item, note: event.target.value } : item)),
+                                    [listKey]: musicPlan[listKey].map((item, i) => (i === index ? { ...item, note: event.target.value } : item)),
                                   } as Partial<MusicPlan>)
                                 }
                                 className="h-10 rounded-xl border-[#E8C9D4]"
@@ -3114,7 +3120,7 @@ function DayOfInner() {
                                 className="rounded-full text-[#A65A73] hover:bg-destructive/10 hover:text-destructive"
                                 onClick={() =>
                                   updateRunbookSection("music", {
-                                    [listKey]: runbookPlan.music[listKey].filter((item) => item.id !== song.id),
+                                    [listKey]: musicPlan[listKey].filter((item) => item.id !== song.id),
                                   } as Partial<MusicPlan>)
                                 }
                               >
@@ -3143,7 +3149,7 @@ function DayOfInner() {
                   <div className="mb-4 grid gap-4 md:grid-cols-3">
                     <FieldLabel label="Toast start" hint="Example: after salads are served.">
                       <Input
-                        value={runbookPlan.speeches.toastStart}
+                        value={speechPlan.toastStart}
                         onChange={(event) => updateRunbookSection("speeches", { toastStart: event.target.value })}
                         className="h-11 rounded-2xl border-[#E8C9D4]"
                         placeholder="During dinner"
@@ -3151,7 +3157,7 @@ function DayOfInner() {
                     </FieldLabel>
                     <FieldLabel label="Host / introducer" hint="Usually DJ, MC, planner, or parent.">
                       <GuestNameInput
-                        value={runbookPlan.speeches.hostName}
+                        value={speechPlan.hostName}
                         onChange={(value) => updateRunbookSection("speeches", { hostName: value })}
                         options={guestNameOptions}
                         placeholder="Who introduces speakers"
@@ -3160,7 +3166,7 @@ function DayOfInner() {
                     </FieldLabel>
                     <FieldLabel label="Timekeeper" hint="Who gently keeps speeches moving.">
                       <Input
-                        value={runbookPlan.speeches.timekeeper}
+                        value={speechPlan.timekeeper}
                         onChange={(event) => updateRunbookSection("speeches", { timekeeper: event.target.value })}
                         className="h-11 rounded-2xl border-[#E8C9D4]"
                         placeholder="Coordinator or DJ"
@@ -3172,14 +3178,14 @@ function DayOfInner() {
                       type="button"
                       variant="outline"
                       className="gap-2 rounded-full border-[#E8C9D4] text-[#8D294D]"
-                      onClick={() => updateRunbookSection("speeches", { speakers: [...runbookPlan.speeches.speakers, blankSpeechSpeaker()] })}
+                      onClick={() => updateRunbookSection("speeches", { speakers: [...speechPlan.speakers, blankSpeechSpeaker()] })}
                     >
                       <Plus className="h-4 w-4" />
                       Add Speaker
                     </Button>
                   </div>
                   <div className="space-y-3">
-                    {runbookPlan.speeches.speakers.map((speaker, index) => (
+                    {speechPlan.speakers.map((speaker, index) => (
                       <div
                         key={speaker.id}
                         draggable
@@ -3188,7 +3194,7 @@ function DayOfInner() {
                         onDrop={(event) => {
                           event.preventDefault();
                           const from = Number(event.dataTransfer.getData("text/plain"));
-                          updateRunbookSection("speeches", { speakers: moveItem(runbookPlan.speeches.speakers, from, index) });
+                          updateRunbookSection("speeches", { speakers: moveItem(speechPlan.speakers, from, index) });
                         }}
                         className="rounded-2xl border border-[#E8C9D4] bg-[#FFFDFC] p-3"
                       >
@@ -3202,7 +3208,7 @@ function DayOfInner() {
                               value={speaker.speakerName}
                               onChange={(value) =>
                                 updateRunbookSection("speeches", {
-                                  speakers: runbookPlan.speeches.speakers.map((item, i) => (i === index ? { ...item, speakerName: value } : item)),
+                                  speakers: speechPlan.speakers.map((item, i) => (i === index ? { ...item, speakerName: value } : item)),
                                 })
                               }
                               options={guestNameOptions}
@@ -3216,7 +3222,7 @@ function DayOfInner() {
                               options={SPEECH_ROLES}
                               onChange={(value) =>
                                 updateRunbookSection("speeches", {
-                                  speakers: runbookPlan.speeches.speakers.map((item, i) => (i === index ? { ...item, role: value } : item)),
+                                  speakers: speechPlan.speakers.map((item, i) => (i === index ? { ...item, role: value } : item)),
                                 })
                               }
                             />
@@ -3226,7 +3232,7 @@ function DayOfInner() {
                               value={speaker.duration}
                               onChange={(event) =>
                                 updateRunbookSection("speeches", {
-                                  speakers: runbookPlan.speeches.speakers.map((item, i) => (i === index ? { ...item, duration: event.target.value } : item)),
+                                  speakers: speechPlan.speakers.map((item, i) => (i === index ? { ...item, duration: event.target.value } : item)),
                                 })
                               }
                               className="h-11 rounded-2xl border-[#E8C9D4]"
@@ -3239,7 +3245,7 @@ function DayOfInner() {
                               options={MIC_OPTIONS}
                               onChange={(value) =>
                                 updateRunbookSection("speeches", {
-                                  speakers: runbookPlan.speeches.speakers.map((item, i) => (i === index ? { ...item, micType: value } : item)),
+                                  speakers: speechPlan.speakers.map((item, i) => (i === index ? { ...item, micType: value } : item)),
                                 })
                               }
                             />
@@ -3251,7 +3257,7 @@ function DayOfInner() {
                             className="mt-7 rounded-full text-[#A65A73] hover:bg-destructive/10 hover:text-destructive"
                             onClick={() =>
                               updateRunbookSection("speeches", {
-                                speakers: runbookPlan.speeches.speakers.filter((item) => item.id !== speaker.id),
+                                speakers: speechPlan.speakers.filter((item) => item.id !== speaker.id),
                               })
                             }
                           >
@@ -3262,7 +3268,7 @@ function DayOfInner() {
                           value={speaker.notes}
                           onChange={(event) =>
                             updateRunbookSection("speeches", {
-                              speakers: runbookPlan.speeches.speakers.map((item, i) => (i === index ? { ...item, notes: event.target.value } : item)),
+                              speakers: speechPlan.speakers.map((item, i) => (i === index ? { ...item, notes: event.target.value } : item)),
                             })
                           }
                           className="mt-3 min-h-[72px] resize-none rounded-2xl border-[#E8C9D4] bg-white"
@@ -3284,14 +3290,14 @@ function DayOfInner() {
                   <div className="grid gap-4 md:grid-cols-2">
                     <FieldLabel label="Default mic plan" hint="What should be ready for most speakers.">
                       <SelectInput
-                        value={runbookPlan.speeches.micPlan}
+                        value={speechPlan.micPlan}
                         options={MIC_OPTIONS}
                         onChange={(value) => updateRunbookSection("speeches", { micPlan: value })}
                       />
                     </FieldLabel>
                     <FieldLabel label="Optional notes" hint="Example: projector needed for welcome toast slideshow.">
                       <Input
-                        value={runbookPlan.speeches.notes}
+                        value={speechPlan.notes}
                         onChange={(event) => updateRunbookSection("speeches", { notes: event.target.value })}
                         className="h-11 rounded-2xl border-[#E8C9D4]"
                         placeholder="AV or timing notes"
@@ -3299,14 +3305,14 @@ function DayOfInner() {
                     </FieldLabel>
                   </div>
                   <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                    {runbookPlan.speeches.avNeeds.map((need) => (
+                    {speechPlan.avNeeds.map((need) => (
                       <label key={need.id} className="flex items-center gap-3 rounded-2xl border border-[#E8C9D4] bg-[#FFFDFC] px-3 py-2 text-sm font-semibold text-[#4C2730]">
                         <input
                           type="checkbox"
                           checked={need.checked}
                           onChange={(event) =>
                             updateRunbookSection("speeches", {
-                              avNeeds: runbookPlan.speeches.avNeeds.map((item) => (item.id === need.id ? { ...item, checked: event.target.checked } : item)),
+                              avNeeds: speechPlan.avNeeds.map((item) => (item.id === need.id ? { ...item, checked: event.target.checked } : item)),
                             })
                           }
                           className="h-4 w-4 accent-[#8D294D]"
@@ -3330,48 +3336,48 @@ function DayOfInner() {
               >
                 <div className="grid gap-4 md:grid-cols-4">
                   <FieldLabel label="Load-in starts">
-                    <Input value={runbookPlan.setup.loadInStart} onChange={(event) => updateRunbookSection("setup", { loadInStart: event.target.value })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="8:00 AM" />
+                    <Input value={setupPlan.loadInStart} onChange={(event) => updateRunbookSection("setup", { loadInStart: event.target.value })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="8:00 AM" />
                   </FieldLabel>
                   <FieldLabel label="Room flip time">
-                    <Input value={runbookPlan.setup.roomFlipTime} onChange={(event) => updateRunbookSection("setup", { roomFlipTime: event.target.value })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="After ceremony" />
+                    <Input value={setupPlan.roomFlipTime} onChange={(event) => updateRunbookSection("setup", { roomFlipTime: event.target.value })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="After ceremony" />
                   </FieldLabel>
                   <FieldLabel label="Venue contact">
-                    <Input value={runbookPlan.setup.venueContact} onChange={(event) => updateRunbookSection("setup", { venueContact: event.target.value })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Venue manager" />
+                    <Input value={setupPlan.venueContact} onChange={(event) => updateRunbookSection("setup", { venueContact: event.target.value })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Venue manager" />
                   </FieldLabel>
                   <FieldLabel label="Cleanup owner">
-                    <Input value={runbookPlan.setup.cleanupOwner} onChange={(event) => updateRunbookSection("setup", { cleanupOwner: event.target.value })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Who takes items home" />
+                    <Input value={setupPlan.cleanupOwner} onChange={(event) => updateRunbookSection("setup", { cleanupOwner: event.target.value })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Who takes items home" />
                   </FieldLabel>
                 </div>
                 <div className="mt-5 flex justify-end">
-                  <Button type="button" variant="outline" className="gap-2 rounded-full border-[#E8C9D4] text-[#8D294D]" onClick={() => updateRunbookSection("setup", { tasks: [...runbookPlan.setup.tasks, blankSetupTask()] })}>
+                  <Button type="button" variant="outline" className="gap-2 rounded-full border-[#E8C9D4] text-[#8D294D]" onClick={() => updateRunbookSection("setup", { tasks: [...setupPlan.tasks, blankSetupTask()] })}>
                     <Plus className="h-4 w-4" />
                     Add Setup Task
                   </Button>
                 </div>
                 <div className="mt-3 space-y-3">
-                  {runbookPlan.setup.tasks.map((task, index) => (
+                  {setupPlan.tasks.map((task, index) => (
                     <div key={task.id} className="rounded-2xl border border-[#E8C9D4] bg-[#FFFDFC] p-3">
                       <div className="grid gap-3 lg:grid-cols-[0.9fr_1.3fr_1fr_0.9fr_0.9fr_auto]">
                         <FieldLabel label="Area">
-                          <SelectInput value={task.area} options={SETUP_AREAS} onChange={(value) => updateRunbookSection("setup", { tasks: runbookPlan.setup.tasks.map((item, i) => (i === index ? { ...item, area: value } : item)) })} />
+                          <SelectInput value={task.area} options={SETUP_AREAS} onChange={(value) => updateRunbookSection("setup", { tasks: setupPlan.tasks.map((item, i) => (i === index ? { ...item, area: value } : item)) })} />
                         </FieldLabel>
                         <FieldLabel label="Task" hint="Example: place card box on welcome table.">
-                          <Input value={task.task} onChange={(event) => updateRunbookSection("setup", { tasks: runbookPlan.setup.tasks.map((item, i) => (i === index ? { ...item, task: event.target.value } : item)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Setup task" />
+                          <Input value={task.task} onChange={(event) => updateRunbookSection("setup", { tasks: setupPlan.tasks.map((item, i) => (i === index ? { ...item, task: event.target.value } : item)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Setup task" />
                         </FieldLabel>
                         <FieldLabel label="Owner">
-                          <Input value={task.owner} onChange={(event) => updateRunbookSection("setup", { tasks: runbookPlan.setup.tasks.map((item, i) => (i === index ? { ...item, owner: event.target.value } : item)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Person or vendor" />
+                          <Input value={task.owner} onChange={(event) => updateRunbookSection("setup", { tasks: setupPlan.tasks.map((item, i) => (i === index ? { ...item, owner: event.target.value } : item)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Person or vendor" />
                         </FieldLabel>
                         <FieldLabel label="Due by">
-                          <Input value={task.dueBy} onChange={(event) => updateRunbookSection("setup", { tasks: runbookPlan.setup.tasks.map((item, i) => (i === index ? { ...item, dueBy: event.target.value } : item)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Before guests arrive" />
+                          <Input value={task.dueBy} onChange={(event) => updateRunbookSection("setup", { tasks: setupPlan.tasks.map((item, i) => (i === index ? { ...item, dueBy: event.target.value } : item)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Before guests arrive" />
                         </FieldLabel>
                         <FieldLabel label="Status">
-                          <SelectInput value={task.status} options={SETUP_STATUS} onChange={(value) => updateRunbookSection("setup", { tasks: runbookPlan.setup.tasks.map((item, i) => (i === index ? { ...item, status: value } : item)) })} />
+                          <SelectInput value={task.status} options={SETUP_STATUS} onChange={(value) => updateRunbookSection("setup", { tasks: setupPlan.tasks.map((item, i) => (i === index ? { ...item, status: value } : item)) })} />
                         </FieldLabel>
-                        <Button type="button" variant="ghost" size="icon" className="mt-7 rounded-full text-[#A65A73] hover:bg-destructive/10 hover:text-destructive" onClick={() => updateRunbookSection("setup", { tasks: runbookPlan.setup.tasks.filter((item) => item.id !== task.id) })}>
+                        <Button type="button" variant="ghost" size="icon" className="mt-7 rounded-full text-[#A65A73] hover:bg-destructive/10 hover:text-destructive" onClick={() => updateRunbookSection("setup", { tasks: setupPlan.tasks.filter((item) => item.id !== task.id) })}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-                      <Textarea value={task.notes} onChange={(event) => updateRunbookSection("setup", { tasks: runbookPlan.setup.tasks.map((item, i) => (i === index ? { ...item, notes: event.target.value } : item)) })} className="mt-3 min-h-[72px] resize-none rounded-2xl border-[#E8C9D4]" placeholder="Optional details: loading dock, rental count, photo reference, or cleanup instruction." />
+                      <Textarea value={task.notes} onChange={(event) => updateRunbookSection("setup", { tasks: setupPlan.tasks.map((item, i) => (i === index ? { ...item, notes: event.target.value } : item)) })} className="mt-3 min-h-[72px] resize-none rounded-2xl border-[#E8C9D4]" placeholder="Optional details: loading dock, rental count, photo reference, or cleanup instruction." />
                     </div>
                   ))}
                 </div>
@@ -3390,13 +3396,13 @@ function DayOfInner() {
                 >
                   <div className="grid gap-4 md:grid-cols-3">
                     <FieldLabel label="Getting-ready location">
-                      <Input value={runbookPlan.attire.gettingReadyLocation} onChange={(event) => updateRunbookSection("attire", { gettingReadyLocation: event.target.value })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Hotel suite, venue suite..." />
+                      <Input value={attirePlan.gettingReadyLocation} onChange={(event) => updateRunbookSection("attire", { gettingReadyLocation: event.target.value })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Hotel suite, venue suite..." />
                     </FieldLabel>
                     <FieldLabel label="Attire lead">
-                      <GuestNameInput value={runbookPlan.attire.attireLead} onChange={(value) => updateRunbookSection("attire", { attireLead: value })} options={guestNameOptions} placeholder="Who owns attire prep" listId="attire-lead" />
+                      <GuestNameInput value={attirePlan.attireLead} onChange={(value) => updateRunbookSection("attire", { attireLead: value })} options={guestNameOptions} placeholder="Who owns attire prep" listId="attire-lead" />
                     </FieldLabel>
                     <FieldLabel label="Final steam time">
-                      <Input value={runbookPlan.attire.finalSteamTime} onChange={(event) => updateRunbookSection("attire", { finalSteamTime: event.target.value })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Before first look" />
+                      <Input value={attirePlan.finalSteamTime} onChange={(event) => updateRunbookSection("attire", { finalSteamTime: event.target.value })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Before first look" />
                     </FieldLabel>
                   </div>
                 </RunbookSectionCard>
@@ -3410,32 +3416,32 @@ function DayOfInner() {
                   onGenerate={generateRunbookSuggestion}
                 >
                   <div className="mb-4 flex justify-end">
-                    <Button type="button" variant="outline" className="gap-2 rounded-full border-[#E8C9D4] text-[#8D294D]" onClick={() => updateRunbookSection("attire", { items: [...runbookPlan.attire.items, blankAttireItem()] })}>
+                    <Button type="button" variant="outline" className="gap-2 rounded-full border-[#E8C9D4] text-[#8D294D]" onClick={() => updateRunbookSection("attire", { items: [...attirePlan.items, blankAttireItem()] })}>
                       <Plus className="h-4 w-4" />
                       Add Item
                     </Button>
                   </div>
                   <div className="space-y-3">
-                    {runbookPlan.attire.items.map((item, index) => (
+                    {attirePlan.items.map((item, index) => (
                       <div key={item.id} className="rounded-2xl border border-[#E8C9D4] bg-[#FFFDFC] p-3">
                         <div className="grid gap-3 lg:grid-cols-[auto_1fr_1fr_1fr_1fr_auto]">
                           <label className="mt-8 flex items-center gap-2 text-sm font-bold text-[#4C2730]">
-                            <input type="checkbox" checked={item.packed} onChange={(event) => updateRunbookSection("attire", { items: runbookPlan.attire.items.map((entry, i) => (i === index ? { ...entry, packed: event.target.checked } : entry)) })} className="h-4 w-4 accent-[#8D294D]" />
+                            <input type="checkbox" checked={item.packed} onChange={(event) => updateRunbookSection("attire", { items: attirePlan.items.map((entry, i) => (i === index ? { ...entry, packed: event.target.checked } : entry)) })} className="h-4 w-4 accent-[#8D294D]" />
                             Packed
                           </label>
                           <FieldLabel label="Person">
-                            <GuestNameInput value={item.personName} onChange={(value) => updateRunbookSection("attire", { items: runbookPlan.attire.items.map((entry, i) => (i === index ? { ...entry, personName: value } : entry)) })} options={guestNameOptions} placeholder="Name" listId={`attire-person-${item.id}`} />
+                            <GuestNameInput value={item.personName} onChange={(value) => updateRunbookSection("attire", { items: attirePlan.items.map((entry, i) => (i === index ? { ...entry, personName: value } : entry)) })} options={guestNameOptions} placeholder="Name" listId={`attire-person-${item.id}`} />
                           </FieldLabel>
                           <FieldLabel label="Item">
-                            <Input value={item.item} onChange={(event) => updateRunbookSection("attire", { items: runbookPlan.attire.items.map((entry, i) => (i === index ? { ...entry, item: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Dress, shoes, veil..." />
+                            <Input value={item.item} onChange={(event) => updateRunbookSection("attire", { items: attirePlan.items.map((entry, i) => (i === index ? { ...entry, item: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Dress, shoes, veil..." />
                           </FieldLabel>
                           <FieldLabel label="Location">
-                            <Input value={item.location} onChange={(event) => updateRunbookSection("attire", { items: runbookPlan.attire.items.map((entry, i) => (i === index ? { ...entry, location: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Suite, bag, car..." />
+                            <Input value={item.location} onChange={(event) => updateRunbookSection("attire", { items: attirePlan.items.map((entry, i) => (i === index ? { ...entry, location: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Suite, bag, car..." />
                           </FieldLabel>
                           <FieldLabel label="Owner">
-                            <Input value={item.owner} onChange={(event) => updateRunbookSection("attire", { items: runbookPlan.attire.items.map((entry, i) => (i === index ? { ...entry, owner: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Who carries it" />
+                            <Input value={item.owner} onChange={(event) => updateRunbookSection("attire", { items: attirePlan.items.map((entry, i) => (i === index ? { ...entry, owner: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Who carries it" />
                           </FieldLabel>
-                          <Button type="button" variant="ghost" size="icon" className="mt-7 rounded-full text-[#A65A73] hover:bg-destructive/10 hover:text-destructive" onClick={() => updateRunbookSection("attire", { items: runbookPlan.attire.items.filter((entry) => entry.id !== item.id) })}>
+                          <Button type="button" variant="ghost" size="icon" className="mt-7 rounded-full text-[#A65A73] hover:bg-destructive/10 hover:text-destructive" onClick={() => updateRunbookSection("attire", { items: attirePlan.items.filter((entry) => entry.id !== item.id) })}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -3453,9 +3459,9 @@ function DayOfInner() {
                   onGenerate={generateRunbookSuggestion}
                 >
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {runbookPlan.attire.emergencyKit.map((kitItem) => (
+                    {attirePlan.emergencyKit.map((kitItem) => (
                       <label key={kitItem.id} className="flex items-center gap-3 rounded-2xl border border-[#E8C9D4] bg-[#FFFDFC] px-3 py-2 text-sm font-semibold text-[#4C2730]">
-                        <input type="checkbox" checked={kitItem.checked} onChange={(event) => updateRunbookSection("attire", { emergencyKit: runbookPlan.attire.emergencyKit.map((entry) => (entry.id === kitItem.id ? { ...entry, checked: event.target.checked } : entry)) })} className="h-4 w-4 accent-[#8D294D]" />
+                        <input type="checkbox" checked={kitItem.checked} onChange={(event) => updateRunbookSection("attire", { emergencyKit: attirePlan.emergencyKit.map((entry) => (entry.id === kitItem.id ? { ...entry, checked: event.target.checked } : entry)) })} className="h-4 w-4 accent-[#8D294D]" />
                         {kitItem.label}
                       </label>
                     ))}
@@ -3479,41 +3485,41 @@ function DayOfInner() {
                       <Sparkles className="h-4 w-4" />
                       Use Saved Vendors
                     </Button>
-                    <Button type="button" className="gap-2 rounded-full bg-[#8D294D] hover:bg-[#7a2140]" onClick={() => updateVendorParty({ vendors: [...runbookPlan.vendorsParty.vendors, blankVendorContact()] })}>
+                    <Button type="button" className="gap-2 rounded-full bg-[#8D294D] hover:bg-[#7a2140]" onClick={() => updateVendorParty({ vendors: [...vendorsPartyPlan.vendors, blankVendorContact()] })}>
                       <Plus className="h-4 w-4" />
                       Add Vendor Contact
                     </Button>
                   </div>
                   <div className="space-y-3">
-                    {runbookPlan.vendorsParty.vendors.map((vendor, index) => (
+                    {vendorsPartyPlan.vendors.map((vendor, index) => (
                       <div key={vendor.id} className="rounded-2xl border border-[#E8C9D4] bg-[#FFFDFC] p-3">
                         <div className="grid gap-3 lg:grid-cols-[1.1fr_0.9fr_1fr_0.9fr_0.9fr_1fr_auto]">
                           <FieldLabel label="Vendor">
-                            <Input value={vendor.vendorName} onChange={(event) => updateVendorParty({ vendors: runbookPlan.vendorsParty.vendors.map((entry, i) => (i === index ? { ...entry, vendorName: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Vendor name" />
+                            <Input value={vendor.vendorName} onChange={(event) => updateVendorParty({ vendors: vendorsPartyPlan.vendors.map((entry, i) => (i === index ? { ...entry, vendorName: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Vendor name" />
                           </FieldLabel>
                           <FieldLabel label="Category">
-                            <Input value={vendor.category} onChange={(event) => updateVendorParty({ vendors: runbookPlan.vendorsParty.vendors.map((entry, i) => (i === index ? { ...entry, category: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Florist, DJ..." />
+                            <Input value={vendor.category} onChange={(event) => updateVendorParty({ vendors: vendorsPartyPlan.vendors.map((entry, i) => (i === index ? { ...entry, category: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Florist, DJ..." />
                           </FieldLabel>
                           <FieldLabel label="Lead">
-                            <Input value={vendor.leadName} onChange={(event) => updateVendorParty({ vendors: runbookPlan.vendorsParty.vendors.map((entry, i) => (i === index ? { ...entry, leadName: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Contact name" />
+                            <Input value={vendor.leadName} onChange={(event) => updateVendorParty({ vendors: vendorsPartyPlan.vendors.map((entry, i) => (i === index ? { ...entry, leadName: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Contact name" />
                           </FieldLabel>
                           <FieldLabel label="Phone">
-                            <Input value={vendor.phone} onChange={(event) => updateVendorParty({ vendors: runbookPlan.vendorsParty.vendors.map((entry, i) => (i === index ? { ...entry, phone: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Phone" />
+                            <Input value={vendor.phone} onChange={(event) => updateVendorParty({ vendors: vendorsPartyPlan.vendors.map((entry, i) => (i === index ? { ...entry, phone: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Phone" />
                           </FieldLabel>
                           <FieldLabel label="Arrival">
-                            <Input value={vendor.arrivalTime} onChange={(event) => updateVendorParty({ vendors: runbookPlan.vendorsParty.vendors.map((entry, i) => (i === index ? { ...entry, arrivalTime: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="10:00 AM" />
+                            <Input value={vendor.arrivalTime} onChange={(event) => updateVendorParty({ vendors: vendorsPartyPlan.vendors.map((entry, i) => (i === index ? { ...entry, arrivalTime: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="10:00 AM" />
                           </FieldLabel>
                           <FieldLabel label="Payment">
-                            <SelectInput value={vendor.paymentStatus} options={VENDOR_PAYMENT_STATUSES} onChange={(value) => updateVendorParty({ vendors: runbookPlan.vendorsParty.vendors.map((entry, i) => (i === index ? { ...entry, paymentStatus: value } : entry)) })} />
+                            <SelectInput value={vendor.paymentStatus} options={VENDOR_PAYMENT_STATUSES} onChange={(value) => updateVendorParty({ vendors: vendorsPartyPlan.vendors.map((entry, i) => (i === index ? { ...entry, paymentStatus: value } : entry)) })} />
                           </FieldLabel>
-                          <Button type="button" variant="ghost" size="icon" className="mt-7 rounded-full text-[#A65A73] hover:bg-destructive/10 hover:text-destructive" onClick={() => updateVendorParty({ vendors: runbookPlan.vendorsParty.vendors.filter((entry) => entry.id !== vendor.id) })}>
+                          <Button type="button" variant="ghost" size="icon" className="mt-7 rounded-full text-[#A65A73] hover:bg-destructive/10 hover:text-destructive" onClick={() => updateVendorParty({ vendors: vendorsPartyPlan.vendors.filter((entry) => entry.id !== vendor.id) })}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
-                        <Textarea value={vendor.notes} onChange={(event) => updateVendorParty({ vendors: runbookPlan.vendorsParty.vendors.map((entry, i) => (i === index ? { ...entry, notes: event.target.value } : entry)) })} className="mt-3 min-h-[72px] resize-none rounded-2xl border-[#E8C9D4]" placeholder="Access notes, final count, setup instruction, tip envelope, or emergency backup." />
+                        <Textarea value={vendor.notes} onChange={(event) => updateVendorParty({ vendors: vendorsPartyPlan.vendors.map((entry, i) => (i === index ? { ...entry, notes: event.target.value } : entry)) })} className="mt-3 min-h-[72px] resize-none rounded-2xl border-[#E8C9D4]" placeholder="Access notes, final count, setup instruction, tip envelope, or emergency backup." />
                       </div>
                     ))}
-                    {runbookPlan.vendorsParty.vendors.length === 0 && (
+                    {vendorsPartyPlan.vendors.length === 0 && (
                       <p className="rounded-2xl border border-dashed border-[#E8C9D4] bg-[#FFF7F2] px-4 py-5 text-center text-sm text-[#7B5364]">
                         Add day-of contacts manually or pull from your saved Vendor List.
                       </p>
@@ -3530,37 +3536,37 @@ function DayOfInner() {
                   onGenerate={generateRunbookSuggestion}
                 >
                   <div className="mb-4 flex justify-end">
-                    <Button type="button" variant="outline" className="gap-2 rounded-full border-[#E8C9D4] text-[#8D294D]" onClick={() => updateVendorParty({ party: [...runbookPlan.vendorsParty.party, blankPartyContact()] })}>
+                    <Button type="button" variant="outline" className="gap-2 rounded-full border-[#E8C9D4] text-[#8D294D]" onClick={() => updateVendorParty({ party: [...vendorsPartyPlan.party, blankPartyContact()] })}>
                       <Plus className="h-4 w-4" />
                       Add Person
                     </Button>
                   </div>
                   <div className="space-y-3">
-                    {runbookPlan.vendorsParty.party.map((person, index) => (
+                    {vendorsPartyPlan.party.map((person, index) => (
                       <div key={person.id} className="grid gap-3 rounded-2xl border border-[#E8C9D4] bg-[#FFFDFC] p-3 lg:grid-cols-[1fr_0.9fr_0.9fr_0.9fr_1.4fr_auto]">
                         <FieldLabel label="Person">
-                          <GuestNameInput value={person.personName} onChange={(value) => updateVendorParty({ party: runbookPlan.vendorsParty.party.map((entry, i) => (i === index ? { ...entry, personName: value } : entry)) })} options={guestNameOptions} placeholder="Name" listId={`party-person-${person.id}`} />
+                          <GuestNameInput value={person.personName} onChange={(value) => updateVendorParty({ party: vendorsPartyPlan.party.map((entry, i) => (i === index ? { ...entry, personName: value } : entry)) })} options={guestNameOptions} placeholder="Name" listId={`party-person-${person.id}`} />
                         </FieldLabel>
                         <FieldLabel label="Role">
-                          <Input value={person.role} onChange={(event) => updateVendorParty({ party: runbookPlan.vendorsParty.party.map((entry, i) => (i === index ? { ...entry, role: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Maid of Honor" />
+                          <Input value={person.role} onChange={(event) => updateVendorParty({ party: vendorsPartyPlan.party.map((entry, i) => (i === index ? { ...entry, role: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Maid of Honor" />
                         </FieldLabel>
                         <FieldLabel label="Phone">
-                          <Input value={person.phone} onChange={(event) => updateVendorParty({ party: runbookPlan.vendorsParty.party.map((entry, i) => (i === index ? { ...entry, phone: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Phone" />
+                          <Input value={person.phone} onChange={(event) => updateVendorParty({ party: vendorsPartyPlan.party.map((entry, i) => (i === index ? { ...entry, phone: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Phone" />
                         </FieldLabel>
                         <FieldLabel label="Arrival">
-                          <Input value={person.arrivalTime} onChange={(event) => updateVendorParty({ party: runbookPlan.vendorsParty.party.map((entry, i) => (i === index ? { ...entry, arrivalTime: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="9:00 AM" />
+                          <Input value={person.arrivalTime} onChange={(event) => updateVendorParty({ party: vendorsPartyPlan.party.map((entry, i) => (i === index ? { ...entry, arrivalTime: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="9:00 AM" />
                         </FieldLabel>
                         <FieldLabel label="Duty">
-                          <Input value={person.duty} onChange={(event) => updateVendorParty({ party: runbookPlan.vendorsParty.party.map((entry, i) => (i === index ? { ...entry, duty: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Family photos, rings, gifts..." />
+                          <Input value={person.duty} onChange={(event) => updateVendorParty({ party: vendorsPartyPlan.party.map((entry, i) => (i === index ? { ...entry, duty: event.target.value } : entry)) })} className="h-11 rounded-2xl border-[#E8C9D4]" placeholder="Family photos, rings, gifts..." />
                         </FieldLabel>
-                        <Button type="button" variant="ghost" size="icon" className="mt-7 rounded-full text-[#A65A73] hover:bg-destructive/10 hover:text-destructive" onClick={() => updateVendorParty({ party: runbookPlan.vendorsParty.party.filter((entry) => entry.id !== person.id) })}>
+                        <Button type="button" variant="ghost" size="icon" className="mt-7 rounded-full text-[#A65A73] hover:bg-destructive/10 hover:text-destructive" onClick={() => updateVendorParty({ party: vendorsPartyPlan.party.filter((entry) => entry.id !== person.id) })}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     ))}
                   </div>
                   <FieldLabel label="Handoff notes" hint="Tell helpers who to call before interrupting the couple.">
-                    <Textarea value={runbookPlan.vendorsParty.handoffNotes} onChange={(event) => updateVendorParty({ handoffNotes: event.target.value })} className="mt-4 min-h-[92px] resize-none rounded-2xl border-[#E8C9D4]" placeholder="Example: Venue issues go to coordinator first. Family photo questions go to maid of honor." />
+                    <Textarea value={vendorsPartyPlan.handoffNotes} onChange={(event) => updateVendorParty({ handoffNotes: event.target.value })} className="mt-4 min-h-[92px] resize-none rounded-2xl border-[#E8C9D4]" placeholder="Example: Venue issues go to coordinator first. Family photo questions go to maid of honor." />
                   </FieldLabel>
                 </RunbookSectionCard>
               </>
