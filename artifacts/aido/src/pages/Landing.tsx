@@ -35,6 +35,20 @@ const HERO_FEATURES = [
     fallbackDesc: "Publish a personalized wedding website guests can view anywhere.",
   },
   {
+    icon: Clock3,
+    titleKey: "landing.feature_day_timeline_title",
+    descKey: "landing.feature_day_timeline_desc",
+    fallbackTitle: "Day-of Timeline",
+    fallbackDesc: "Build a minute-by-minute wedding day plan for your ceremony, reception, and vendor arrivals.",
+  },
+  {
+    icon: CheckSquare,
+    titleKey: "landing.feature_checklist_title",
+    descKey: "landing.feature_checklist_desc",
+    fallbackTitle: "Smart Checklist",
+    fallbackDesc: "Stay ahead with organized tasks, due dates, and planning progress in one place.",
+  },
+  {
     icon: FileSearch,
     titleKey: "landing.feature_contracts_title",
     descKey: "landing.feature_contracts_desc",
@@ -213,23 +227,35 @@ export default function Landing() {
                   {t("landing.top_features_subtitle", { defaultValue: "Simple to use. Powerful where it matters." })}
                 </p>
               </div>
-              <div className="grid grid-cols-1 overflow-hidden rounded-[28px] border border-[#E6A6B7]/35 bg-[#FFFDFB]/80 shadow-[0_18px_46px_rgba(141,41,77,0.1)] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {HERO_FEATURES.map(({ icon: Icon, titleKey, descKey, fallbackTitle, fallbackDesc }) => (
                   <div
                     key={titleKey}
-                    className="flex min-h-56 flex-col items-center justify-start gap-3 border-b border-[#E6A6B7]/25 px-5 py-7 text-center text-[#8D294D] sm:border-l sm:[&:nth-child(2n+1)]:border-l-0 lg:[&:nth-child(2n+1)]:border-l lg:[&:nth-child(3n+1)]:border-l-0 xl:border-b-0 xl:[&:nth-child(n)]:border-l xl:first:border-l-0"
+                    className="group flex min-h-64 flex-col rounded-[28px] border border-[#E6A6B7]/35 bg-[#FFFDFB]/88 p-6 text-left text-[#8D294D] shadow-[0_16px_38px_rgba(141,41,77,0.08)] transition duration-300 hover:-translate-y-1 hover:border-[#D4A373]/55 hover:shadow-[0_24px_54px_rgba(141,41,77,0.13)]"
                   >
-                    <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F7DDE2] text-[#C39B70] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_22px_rgba(141,41,77,0.1)]">
+                    <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F7DDE2] text-[#C39B70] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_22px_rgba(141,41,77,0.1)] transition duration-300 group-hover:bg-[#F2E2C6] group-hover:text-[#8D294D]">
                       <Icon className="h-8 w-8 stroke-[1.6]" />
                     </span>
-                    <h3 className="text-balance text-base font-semibold leading-snug text-[#8D294D]">
+                    <h3 className="mt-5 text-balance font-serif text-2xl font-bold leading-tight text-[#6F1D3D]">
                       {t(titleKey, { defaultValue: fallbackTitle })}
                     </h3>
-                    <p className="text-pretty text-sm leading-6 text-[#6F3E54]">
+                    <div className="my-4 h-px w-full bg-[#E6A6B7]/35" />
+                    <p className="text-pretty text-base leading-7 text-[#6F3E54]">
                       {t(descKey, { defaultValue: fallbackDesc })}
                     </p>
                   </div>
                 ))}
+              </div>
+              <div className="mt-5 rounded-[28px] border border-[#E6A6B7]/35 bg-[linear-gradient(110deg,rgba(247,221,226,0.62),rgba(255,253,251,0.92),rgba(242,226,198,0.58))] px-5 py-5 text-center shadow-[0_14px_34px_rgba(141,41,77,0.08)]">
+                <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#B16C8E]">
+                  {t("landing.features_more_label", { defaultValue: "& so much more" })}
+                </p>
+                <p className="mx-auto mt-2 max-w-3xl text-pretty text-base leading-7 text-[#6F3E54]">
+                  {t("landing.features_more_desc", {
+                    defaultValue:
+                      "Aria planning support, wedding profile, RSVPs, document storage, reminders, exports, and polished tools that keep the whole plan easy to manage.",
+                  })}
+                </p>
               </div>
             </div>
           </div>

@@ -7,9 +7,10 @@ import { Scene4 } from "./video_scenes/Scene4";
 import { Scene5 } from "./video_scenes/Scene5";
 import { Scene6 } from "./video_scenes/Scene6";
 import { Scene7 } from "./video_scenes/Scene7";
+import { Scene8 } from "./video_scenes/Scene8";
 
-const SCENE_COUNT = 7;
-const SCENE_DURATIONS = [5500, 9000, 9500, 9300, 9300, 9200, 11000];
+const SCENE_COUNT = 8;
+const SCENE_DURATIONS = [5500, 9000, 9500, 9300, 9300, 9200, 9600, 11000];
 
 const PARTICLES = Array.from({ length: 30 }, (_, i) => ({
   id: i,
@@ -77,7 +78,8 @@ export default function VideoTemplate({ embedded = false }: { embedded?: boolean
             {currentScene === 3 && <Scene4 />}
             {currentScene === 4 && <Scene6 />}
             {currentScene === 5 && <Scene7 />}
-            {currentScene === 6 && <Scene5 />}
+            {currentScene === 6 && <Scene8 />}
+            {currentScene === 7 && <Scene5 />}
           </motion.div>
         </AnimatePresence>
       </div>

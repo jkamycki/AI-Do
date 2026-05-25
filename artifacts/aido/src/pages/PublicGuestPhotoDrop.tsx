@@ -41,7 +41,7 @@ type PhotoDropUsage = {
 };
 
 const PHOTO_DROP_HERO_IMAGE =
-  "/photo-drop-polaroid-camera.svg";
+  "/images/bokeh-bg.png";
 
 function coupleName(data: PublicPhotoDropPayload | null) {
   if (!data) return "A.I Do";
@@ -356,10 +356,11 @@ export default function PublicGuestPhotoDrop() {
               src={PHOTO_DROP_HERO_IMAGE}
               alt=""
               aria-hidden="true"
-              className="absolute inset-0 -z-30 h-full w-full object-cover opacity-80 contrast-125 saturate-150"
+              className="absolute inset-0 -z-30 h-full w-full scale-105 object-cover opacity-70 saturate-110"
+              style={{ objectPosition: "58% 42%" }}
             />
-            <div className="absolute inset-0 -z-20 bg-gradient-to-br from-white/72 via-[#F7DDE2]/48 to-[#F2E2C6]/38" />
-            <div className="absolute inset-x-0 bottom-0 -z-10 h-24 bg-gradient-to-t from-white via-white/70 to-transparent" />
+            <div className="absolute inset-0 -z-20 bg-[linear-gradient(135deg,rgba(255,248,244,0.94)_0%,rgba(255,247,242,0.82)_44%,rgba(247,221,226,0.6)_100%)]" />
+            <div className="absolute inset-x-0 bottom-0 -z-10 h-28 bg-gradient-to-t from-white via-white/80 to-transparent" />
             <div
               className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-[1.35rem] border bg-white/90 p-2 shadow-[0_18px_42px_rgba(91,15,42,0.16)] backdrop-blur"
               style={{ borderColor: `${accent}55`, boxShadow: `0 18px 42px ${primary}24` }}
