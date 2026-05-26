@@ -168,6 +168,20 @@ const emptyPaymentScheduleForm = (): PaymentScheduleFormState => ({
   notes: "",
 });
 
+function newPaymentScheduleForm(target: PaymentScheduleTarget, payments: PaymentScheduleItem[]): PaymentScheduleFormState {
+  const openTotal = payments
+    .filter((payment) => !payment.isPaid)
+    .reduce((sum, payment) => sum + payment.amount, 0);
+  const unscheduledBalance = Math.max(0, target.remaining - openTotal);
+  return {
+    description: payments.length > 0 ? "Next installment" : "Next payment",
+    amount: unscheduledBalance > 0 ? String(Math.round(unscheduledBalance * 100) / 100) : "",
+    dueDate: "",
+    isPaid: false,
+    notes: "",
+  };
+}
+
 function formatMoney(n: number) {
   return `$${Math.round(n).toLocaleString()}`;
 }
@@ -642,7 +656,9 @@ export default function Budget() {
   const [editingSchedulePayment, setEditingSchedulePayment] = useState<PaymentScheduleItem | null>(null);
   const [paymentScheduleForm, setPaymentScheduleForm] = useState<PaymentScheduleFormState>(emptyPaymentScheduleForm());
   const [isSavingSchedulePayment, setIsSavingSchedulePayment] = useState(false);
+  const [shouldSeedSchedulePayment, setShouldSeedSchedulePayment] = useState(false);
   const summaryRef = useRef<HTMLDivElement | null>(null);
+  const paymentScheduleFormRef = useRef<HTMLDivElement | null>(null);
   const undoTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const manualFormCost = Math.max(0, Number(form.cost || 0));
   const manualFormPaid = form.paidInFull ? manualFormCost : Math.max(0, Number(form.amountPaid || 0));
@@ -687,6 +703,16 @@ export default function Budget() {
     () => paymentSchedule.filter((payment) => !payment.isPaid).reduce((sum, payment) => sum + payment.amount, 0),
     [paymentSchedule],
   );
+
+  useEffect(() => {
+    if (!paymentScheduleTarget || !shouldSeedSchedulePayment || isLoadingPaymentSchedule) return;
+    setEditingSchedulePayment(null);
+    setPaymentScheduleForm(newPaymentScheduleForm(paymentScheduleTarget, paymentSchedule));
+    setShouldSeedSchedulePayment(false);
+    window.requestAnimationFrame(() => {
+      paymentScheduleFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, [isLoadingPaymentSchedule, paymentSchedule, paymentScheduleTarget, shouldSeedSchedulePayment]);
 
   const upload = useUpload({
     getToken,
@@ -850,23 +876,18 @@ export default function Budget() {
   const openPaymentSchedule = (target: PaymentScheduleTarget, seedPayment = false) => {
     setPaymentScheduleTarget(target);
     setEditingSchedulePayment(null);
-    setPaymentScheduleForm(seedPayment
-      ? {
-        description: "Next payment",
-        amount: target.remaining > 0 ? String(target.remaining) : "",
-        dueDate: "",
-        isPaid: false,
-        notes: "",
-      }
-      : emptyPaymentScheduleForm());
+    setPaymentScheduleForm(emptyPaymentScheduleForm());
+    setShouldSeedSchedulePayment(seedPayment);
   };
   const closePaymentSchedule = () => {
     setPaymentScheduleTarget(null);
     setEditingSchedulePayment(null);
     setPaymentScheduleForm(emptyPaymentScheduleForm());
+    setShouldSeedSchedulePayment(false);
   };
   const editSchedulePayment = (payment: PaymentScheduleItem) => {
     setEditingSchedulePayment(payment);
+    setShouldSeedSchedulePayment(false);
     setPaymentScheduleForm({
       description: payment.description,
       amount: String(payment.amount || ""),
@@ -878,6 +899,15 @@ export default function Budget() {
   const resetSchedulePaymentForm = () => {
     setEditingSchedulePayment(null);
     setPaymentScheduleForm(emptyPaymentScheduleForm());
+  };
+  const startNewSchedulePayment = () => {
+    if (!paymentScheduleTarget) return;
+    setEditingSchedulePayment(null);
+    setShouldSeedSchedulePayment(false);
+    setPaymentScheduleForm(newPaymentScheduleForm(paymentScheduleTarget, paymentSchedule));
+    window.requestAnimationFrame(() => {
+      paymentScheduleFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
   };
   const openAddSyncedVendor = () => {
     setEditingVendor(null);
@@ -2615,9 +2645,11 @@ export default function Budget() {
                     {t("budget.scheduled_payments_hint", { defaultValue: "Add every installment with its own description, amount, and due date." })}
                   </p>
                 </div>
-                <Button type="button" variant="outline" size="sm" onClick={resetSchedulePaymentForm}>
+                <Button type="button" variant="outline" size="sm" onClick={startNewSchedulePayment}>
                   <Plus className="mr-1 h-3.5 w-3.5" />
-                  {t("budget.add_payment", { defaultValue: "Add payment" })}
+                  {sortedPaymentSchedule.length > 0
+                    ? t("budget.add_another_payment", { defaultValue: "Add another payment" })
+                    : t("budget.add_payment", { defaultValue: "Add payment" })}
                 </Button>
               </div>
               {isLoadingPaymentSchedule ? (
@@ -2658,12 +2690,19 @@ export default function Budget() {
               )}
             </div>
 
-            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+            <div ref={paymentScheduleFormRef} className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
               <h3 className="mb-3 font-semibold text-foreground">
                 {editingSchedulePayment
                   ? t("budget.edit_scheduled_payment", { defaultValue: "Edit scheduled payment" })
                   : t("budget.add_scheduled_payment", { defaultValue: "Add scheduled payment" })}
               </h3>
+              {!editingSchedulePayment && (
+                <p className="mb-3 text-xs text-muted-foreground">
+                  {t("budget.add_scheduled_payment_hint", {
+                    defaultValue: "Add as many installments as you need. Each one gets its own amount, due date, description, and reminder.",
+                  })}
+                </p>
+              )}
               <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_150px_150px]">
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">{t("budget.payment_description", { defaultValue: "Payment description" })}</label>
