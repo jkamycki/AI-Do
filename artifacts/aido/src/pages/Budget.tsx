@@ -909,6 +909,21 @@ export default function Budget() {
       paymentScheduleFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
   };
+  const openVendorPaymentScheduleFromDialog = () => {
+    if (!activeVendorBudgetRow) return;
+    const paid = cappedPaid(activeVendorBudgetRow.totalCost, activeVendorBudgetRow.totalPaid);
+    const remaining = Math.max(0, activeVendorBudgetRow.totalCost - paid);
+    setEditingVendor(null);
+    setIsAddingSyncedVendor(false);
+    setSelectedBudgetVendorId("new");
+    setVendorForm(emptyVendorBudgetForm());
+    openPaymentSchedule({
+      type: "vendor",
+      id: activeVendorBudgetRow.id,
+      name: activeVendorBudgetRow.name,
+      remaining,
+    }, true);
+  };
   const openAddSyncedVendor = () => {
     setEditingVendor(null);
     setSelectedBudgetVendorId("new");
@@ -2344,6 +2359,26 @@ export default function Budget() {
                       placeholder="0"
                     />
                   </div>
+                </div>
+              </div>
+            )}
+            {activeVendorBudgetRow && !isAddingSyncedVendor && (
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      {t("budget.multiple_payment_schedule_heading", { defaultValue: "Need more than one payment?" })}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {t("budget.multiple_payment_schedule_hint", {
+                        defaultValue: "Open the full payment schedule to add multiple installments with separate descriptions, due dates, and reminders.",
+                      })}
+                    </p>
+                  </div>
+                  <Button type="button" variant="outline" className="shrink-0 gap-2" onClick={openVendorPaymentScheduleFromDialog}>
+                    <Plus className="h-4 w-4" />
+                    {t("budget.manage_payment_schedule", { defaultValue: "Manage payment schedule" })}
+                  </Button>
                 </div>
               </div>
             )}
