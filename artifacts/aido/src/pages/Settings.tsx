@@ -942,6 +942,248 @@ type ActivityLogEntry = {
   createdAt: string;
 };
 
+type RecoveryPoint = {
+  id: number;
+  reason: string;
+  resourceType?: string | null;
+  summary?: Record<string, unknown>;
+  createdAt: string;
+  restoredAt?: string | null;
+  restoredBy?: string | null;
+};
+
+function formatRecoveryCount(value: unknown) {
+  const count = Number(value ?? 0);
+  return Number.isFinite(count) ? count : 0;
+}
+
+function recoverySummaryLabel(summary?: Record<string, unknown>) {
+  if (!summary) return "Workspace snapshot";
+  const parts = [
+    `${formatRecoveryCount(summary.guests)} guests`,
+    `${formatRecoveryCount(summary.vendors)} vendors`,
+    `${formatRecoveryCount(summary.checklistItems)} tasks`,
+    `${formatRecoveryCount(summary.budgetItems)} budget items`,
+  ];
+  return parts.join(" • ");
+}
+
+function AccountRecoveryCard() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["account-recovery"],
+    queryFn: async () => {
+      const res = await authFetch("/api/account/recovery");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error ?? "Could not load recovery points.");
+      }
+      return res.json() as Promise<{ recoveryPoints: RecoveryPoint[]; canRestore: boolean }>;
+    },
+    staleTime: 30000,
+  });
+
+  const createSnapshot = useMutation({
+    mutationFn: async () => {
+      const res = await authFetch("/api/account/recovery/snapshot", { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error ?? "Could not save recovery point.");
+      }
+      return res.json();
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["account-recovery"] });
+      toast({
+        title: "Recovery point saved",
+        description: "A.I Do saved the current state of your wedding workspace.",
+      });
+    },
+    onError: (err) => {
+      toast({
+        variant: "destructive",
+        title: "Could not save recovery point",
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    },
+  });
+
+  const restoreSnapshot = useMutation({
+    mutationFn: async (snapshotId: number) => {
+      const res = await authFetch("/api/account/recovery/restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ snapshotId, confirm: "RESTORE" }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error ?? "Could not restore recovery point.");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Workspace restored",
+        description: "Your last saved planning data has been restored. Reloading now.",
+      });
+      window.setTimeout(() => window.location.reload(), 900);
+    },
+    onError: (err) => {
+      toast({
+        variant: "destructive",
+        title: "Could not restore backup",
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    },
+  });
+
+  const recoveryPoints = data?.recoveryPoints ?? [];
+  const latest = recoveryPoints[0];
+
+  return (
+    <Card className="border border-primary/10 bg-gradient-to-br from-white via-[#FFF7F2] to-[#F7DDE2]/25 shadow-[0_14px_36px_rgba(141,41,77,0.08)]">
+      <CardContent className="space-y-5 p-6">
+        <div>
+          <h3 className="flex items-center gap-2 text-2xl font-semibold text-foreground">
+            Account Recovery
+            <span
+              className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-primary/20 bg-[#F7DDE2] text-primary"
+              title="A.I Do saves recovery points after important planning actions so accidental deletes can be restored."
+            >
+              <Shield className="h-4 w-4" />
+            </span>
+          </h3>
+          <p className="mt-3 text-base text-muted-foreground">
+            Recovery points are saved after important actions. If guests, vendors, budgets, or tasks get deleted by mistake, restore a recent saved version here.
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-primary/10 bg-white/80 p-4">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary/80">Latest backup</p>
+          {isLoading ? (
+            <div className="mt-3 space-y-2">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-4 w-64" />
+            </div>
+          ) : isError ? (
+            <p className="mt-3 text-sm text-muted-foreground">Recovery points could not load right now.</p>
+          ) : latest ? (
+            <div className="mt-3 space-y-1">
+              <p className="text-base font-semibold text-foreground">{formatActivityDate(latest.createdAt)}</p>
+              <p className="text-sm text-muted-foreground">{recoverySummaryLabel(latest.summary)}</p>
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-muted-foreground">
+              No recovery points yet. Save one now, and future logged planning actions will create more automatically.
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => createSnapshot.mutate()}
+            disabled={createSnapshot.isPending}
+            className="rounded-full border-primary/20 bg-white/80 text-primary hover:bg-[#F7DDE2]/50"
+          >
+            {createSnapshot.isPending ? (
+              <div className="mr-2 h-4 w-4 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+            ) : (
+              <RefreshCw className="mr-2 h-4 w-4" />
+            )}
+            Save Recovery Point
+          </Button>
+          {latest && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  type="button"
+                  disabled={!data?.canRestore || restoreSnapshot.isPending}
+                  className="rounded-full border border-primary/20 bg-gradient-to-r from-primary via-[#B16C8E] to-[#D4A373] px-6 text-white shadow-[0_12px_24px_rgba(141,41,77,0.18)] hover:from-[#7A2142] hover:via-primary hover:to-[#C49462]"
+                >
+                  Restore Latest Backup
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Restore this recovery point?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will replace the current planning workspace with the backup from {formatActivityDate(latest.createdAt)}.
+                    A safety copy of the current workspace will be saved first.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => restoreSnapshot.mutate(latest.id)}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    Restore Backup
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
+
+        {recoveryPoints.length > 1 && (
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-foreground">Recent recovery points</p>
+            {recoveryPoints.slice(1, 4).map((point) => (
+              <div key={point.id} className="flex items-center justify-between gap-3 rounded-xl border border-[#E7CDAF]/70 bg-white/70 px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{formatActivityDate(point.createdAt)}</p>
+                  <p className="text-xs text-muted-foreground">{recoverySummaryLabel(point.summary)}</p>
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={!data?.canRestore || restoreSnapshot.isPending}
+                      className="text-primary hover:bg-[#F7DDE2]/50"
+                    >
+                      Restore
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Restore this older recovery point?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will replace the current planning workspace with the backup from {formatActivityDate(point.createdAt)}.
+                        A safety copy of the current workspace will be saved first.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => restoreSnapshot.mutate(point.id)}
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                      >
+                        Restore Backup
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!data?.canRestore && !isLoading && (
+          <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Only workspace owners and partners can restore account data.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function activityTone(action: string) {
   const normalized = action.toLowerCase();
   if (normalized.includes("created") || normalized.includes("added")) {
@@ -1546,7 +1788,10 @@ export default function SettingsPage() {
           <TaskReminderSettingsCard />
           <RsvpNotificationSettingsCard />
           <VendorBccEmailCard />
-          <DataExportCard />
+          <div className="grid gap-4 xl:grid-cols-2">
+            <DataExportCard />
+            <AccountRecoveryCard />
+          </div>
           <ActivityLogCard />
           <DeleteAccountCard />
           <Card className="border-none shadow-sm">

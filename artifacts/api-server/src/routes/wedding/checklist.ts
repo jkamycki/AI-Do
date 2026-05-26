@@ -7,20 +7,12 @@ import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
 import { logActivity, resolveProfile, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
 import { getRequestLanguage } from "../../lib/language";
+import { applyChecklistDeadlines, normalizeChecklistDueDate } from "../../lib/checklistDeadlines";
 
 const router = Router();
 
 type ChecklistTask = { month: string; task: string; description: string; dueDate?: string | null };
 type ChecklistTranslationItem = ChecklistTask & { id?: number };
-
-function normalizeChecklistDueDate(value: unknown): string | null {
-  if (value === undefined || value === null || value === "") return null;
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return null;
-  const parsed = new Date(`${trimmed}T00:00:00.000Z`);
-  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === trimmed ? trimmed : null;
-}
 
 function serializeChecklistItem(item: typeof checklistItems.$inferSelect) {
   return {
@@ -195,9 +187,10 @@ router.post("/checklist", requireAuth, async (req, res) => {
 Group tasks by time period: "12+ Months Before", "9-12 Months Before", "6-9 Months Before", "3-6 Months Before", "1-3 Months Before", "1 Month Before", "1 Week Before", "Day Before", "Wedding Day". Skip periods that don't apply given the ${monthsUntil}-month timeline.
 
 Return ONLY a JSON array (no markdown):
-[{"month":"12+ Months Before","task":"Book the venue","description":"Short reason why this matters"}]
+[{"month":"12+ Months Before","task":"Book the venue","description":"Short reason why this matters","dueDate":"YYYY-MM-DD"}]
 
 3-5 tasks per relevant period. Be specific and actionable. Match the ${effectiveWeddingVibe} style. Keep each description <=12 words.
+Every task must include a dueDate in YYYY-MM-DD format. Every dueDate must be before the wedding date (${effectiveWeddingDate}), never on or after it.
 If a checklist focus / prompt is provided, make the generated tasks visibly reflect it with concrete tasks instead of a generic checklist.${langInstruction}`;
 
     const completion = await openai.chat.completions.create({
@@ -225,7 +218,7 @@ If a checklist focus / prompt is provided, make the generated tasks visibly refl
         planningFocus,
       });
     }
-    tasks = refineChecklistTasks(tasks, planningFocus);
+    tasks = applyChecklistDeadlines(refineChecklistTasks(tasks, planningFocus), effectiveWeddingDate);
 
     const existingItems = await db
       .select()
@@ -302,7 +295,7 @@ If a checklist focus / prompt is provided, make the generated tasks visibly refl
 
         const existingItems = await db.select().from(checklistItems).where(eq(checklistItems.profileId, profile.id));
         const existingTaskKeys = new Set(existingItems.map(item => normalizeTaskText(item.task)));
-        const insertData = refineChecklistTasks(tasks, planningFocus)
+        const insertData = applyChecklistDeadlines(refineChecklistTasks(tasks, planningFocus), effectiveWeddingDate)
           .map(t => ({ profileId: profile.id, ...t }))
           .filter(item => !existingTaskKeys.has(normalizeTaskText(item.task)));
         if (insertData.length > 0) await db.insert(checklistItems).values(insertData);

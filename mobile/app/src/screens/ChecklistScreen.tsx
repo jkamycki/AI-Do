@@ -234,6 +234,16 @@ export function ChecklistScreen() {
                     >
                       {formatDeadlineLabel(task.dueDate)}
                     </Text>
+                    {task.completed ? (
+                      <Pressable
+                        accessibilityLabel={`Undo ${task.title}`}
+                        onPress={() => toggleTask(task.id)}
+                        style={[styles.undoButton, { backgroundColor: colors.primarySoft, borderColor: colors.border }]}
+                      >
+                        <Ionicons color={colors.primary} name="arrow-undo-outline" size={15} />
+                        <Text style={[styles.undoText, { color: colors.primary }]}>Undo</Text>
+                      </Pressable>
+                    ) : null}
                   </View>
                   <Pressable accessibilityLabel={`Edit ${task.title}`} onPress={() => openTaskForm(task.id)}>
                     <MaterialCommunityIcons color={colors.accent} name="pencil-circle-outline" size={28} />
@@ -308,6 +318,21 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
+  },
+  undoButton: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderRadius: radii.xl,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  undoText: {
+    fontFamily: fonts.semibold,
+    fontSize: 12,
   },
   deadlineSection: {
     borderRadius: radii.lg,

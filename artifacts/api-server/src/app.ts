@@ -419,6 +419,7 @@ app.use((err: unknown, _req: express.Request, res: express.Response, next: expre
 });
 
 import { db, analyticsEvents } from "@workspace/db";
+import { preDeleteRecoverySnapshot } from "./middlewares/recoverySnapshot";
 app.post("/api/analytics/pageview", analyticsLimiter, async (req, res) => {
   try {
     const { visitorId, path: pagePath } = req.body ?? {};
@@ -440,6 +441,8 @@ app.post("/api/analytics/pageview", analyticsLimiter, async (req, res) => {
 });
 
 app.use(clerkMiddleware());
+
+app.use("/api", preDeleteRecoverySnapshot);
 
 app.use("/api", router);
 

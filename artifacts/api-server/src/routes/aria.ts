@@ -12,6 +12,7 @@ import { aiLimiter, incrementDailyAria } from "../middlewares/rateLimiter";
 import { resolveProfile, resolveScopeUserId, resolveWorkspaceRole, resolveCallerRole, hasMinRole, logActivity } from "../lib/workspaceAccess";
 import { getRequestLanguage } from "../lib/language";
 import { sendGuestRsvpBackupEmail, shouldSendManualRsvpBackupEmail } from "../lib/rsvpBackupEmail";
+import { applyChecklistDeadlines, normalizeChecklistDueDate } from "../lib/checklistDeadlines";
 import { getAuth } from "@clerk/express";
 import type { Request } from "express";
 
@@ -1359,15 +1360,6 @@ function formatAriaDate(value: string | null | undefined): string {
   const date = new Date(`${value}T12:00:00`);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-}
-
-function normalizeChecklistDueDate(value: unknown): string | null {
-  if (value === undefined || value === null || value === "") return null;
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return null;
-  const parsed = new Date(`${trimmed}T00:00:00.000Z`);
-  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === trimmed ? trimmed : null;
 }
 
 async function buildCurrentWeddingWorkReply(req: Request): Promise<string> {
@@ -3334,7 +3326,7 @@ function monthsUntilWedding(weddingDate: string | null | undefined): number {
   return Math.max(0, Math.ceil((wedding.getTime() - Date.now()) / monthMs));
 }
 
-function buildAriaChecklist(profile: typeof weddingProfiles.$inferSelect): Array<{ month: string; task: string; description: string }> {
+function buildAriaChecklist(profile: typeof weddingProfiles.$inferSelect): Array<{ month: string; task: string; description: string; dueDate: string | null }> {
   const months = monthsUntilWedding(profile.weddingDate);
   const vibe = profile.weddingVibe || "wedding";
   const guestCount = Number(profile.guestCount ?? 0);
@@ -3363,9 +3355,11 @@ function buildAriaChecklist(profile: typeof weddingProfiles.$inferSelect): Array
     { minMonth: 0, month: "Wedding Day", task: "Enjoy the celebration", description: "Let the timeline guide the day and be present." },
   ];
 
-  return items
+  const tasks = items
     .filter((item) => item.minMonth === 0 || months >= item.minMonth)
     .map(({ minMonth: _minMonth, ...item }) => item);
+
+  return applyChecklistDeadlines(tasks, profile.weddingDate);
 }
 
 function buildAriaBudgetBreakdown(totalBudget: number): Array<{ category: string; vendor: string; estimatedCost: number; notes: string }> {
@@ -3705,6 +3699,7 @@ async function executeTool(name: string, args: Record<string, unknown>, req: Req
         month: task.month,
         task: task.task,
         description: task.description,
+        dueDate: task.dueDate,
       }));
       await db.transaction(async (tx) => {
         await tx.delete(checklistItems).where(eq(checklistItems.profileId, profile.id));

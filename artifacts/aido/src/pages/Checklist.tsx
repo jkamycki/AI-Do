@@ -868,6 +868,18 @@ export default function Checklist() {
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </button>
+                                {item.isCompleted && (
+                                  <button
+                                    onClick={() => handleToggle(item.id, item.isCompleted)}
+                                    className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
+                                    title={t("checklist.undo_complete", { defaultValue: "Undo completion" })}
+                                    aria-label={t("checklist.undo_complete", { defaultValue: "Undo completion" })}
+                                    data-testid={`btn-checklist-undo-${item.id}`}
+                                  >
+                                    <RotateCcw className="h-3.5 w-3.5" />
+                                    {t("common.undo", { defaultValue: "Undo" })}
+                                  </button>
+                                )}
                                 <Checkbox
                                   checked={item.isCompleted}
                                   onCheckedChange={() => handleToggle(item.id, item.isCompleted)}

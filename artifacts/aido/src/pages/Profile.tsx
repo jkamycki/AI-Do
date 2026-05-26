@@ -129,8 +129,8 @@ const profileSchema = z.object({
   ceremonyCity: z.string().optional().default(""),
   ceremonyState: z.string().optional().default(""),
   ceremonyZip: z.string().optional().default(""),
-  guestCount: z.coerce.number().min(1, "Must be at least 1"),
-  totalBudget: z.coerce.number().min(1, "Must be at least 1"),
+  guestCount: z.coerce.number().min(0, "Must be at least 0").default(0),
+  totalBudget: z.coerce.number().min(0, "Must be at least 0").default(0),
   weddingVibe: z.string().optional().default(""),
   planningPriorities: planningPrioritiesSchema,
   preferredLanguage: z.string().default("English"),
@@ -140,6 +140,20 @@ const profileSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ["venue"],
       message: "Venue is required when your venue is booked",
+    });
+  }
+  if (data.venueStatus === "booked" && data.guestCount < 1) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["guestCount"],
+      message: "Must be at least 1",
+    });
+  }
+  if (data.venueStatus === "booked" && data.totalBudget < 1) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["totalBudget"],
+      message: "Must be at least 1",
     });
   }
 });
@@ -195,6 +209,25 @@ function normalizeVenueDiscovery(value?: VenueDiscoveryData | null): VenueDiscov
     shortlist: Array.isArray(source.shortlist) ? source.shortlist : [],
     screenshots: Array.isArray(source.screenshots) ? source.screenshots : [],
   };
+}
+
+function parsePositiveNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return value;
+  }
+  if (typeof value !== "string") return null;
+
+  const normalized = value.replace(/,/g, "").trim().toLowerCase();
+  const match = normalized.match(/(\d+(?:\.\d+)?)\s*(k)?/);
+  if (!match) return null;
+
+  const parsed = Number(match[1]);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return match[2] ? parsed * 1000 : parsed;
+}
+
+function resolveHiddenProfileNumber(value: unknown, fallbackValue: unknown, minimum = 1) {
+  return Math.max(minimum, parsePositiveNumber(value) ?? parsePositiveNumber(fallbackValue) ?? minimum);
 }
 
 function venueDiscoveryDraftForStorage(value?: VenueDiscoveryData | null): VenueDiscoveryData {
@@ -504,7 +537,14 @@ export default function Profile() {
   const onSubmit = (data: ProfileFormValues) => {
     const { sharedLastName, ...profileData } = data;
     const coupleNamesForSave = prepareCoupleNames({ ...data, sharedLastName });
-    saveProfile.mutate({ data: { ...profileData, ...coupleNamesForSave, accountType: "couple_individual" } }, {
+    const profileDataForSave = data.venueStatus === "not_yet"
+      ? {
+        ...profileData,
+        guestCount: Math.round(resolveHiddenProfileNumber(data.guestCount, data.venueDiscovery?.guestCount)),
+        totalBudget: resolveHiddenProfileNumber(data.totalBudget, data.venueDiscovery?.budgetRange),
+      }
+      : profileData;
+    saveProfile.mutate({ data: { ...profileDataForSave, ...coupleNamesForSave, accountType: "couple_individual" } }, {
       onSuccess: () => {
         clearVenueFlowDraft(venueDraftKey);
         toast({
@@ -1022,42 +1062,42 @@ export default function Profile() {
                 </>
               )}
 
-              <div className="grid md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="guestCount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t("profile.guest_count")}</FormLabel>
-                      <FormControl>
-                        <Input type="number" {...field} data-testid="input-guests" className="bg-background" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="totalBudget"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t("profile.total_budget")}</FormLabel>
-                      <FormControl>
-                        <MoneyInput
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          onBlur={field.onBlur}
-                          data-testid="input-budget"
-                          className="bg-background"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {venueStatus !== "not_yet" && renderPlanningPrioritiesField()}
+              {venueStatus === "booked" && (
+                <div className="grid md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="guestCount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("profile.guest_count")}</FormLabel>
+                        <FormControl>
+                          <Input type="number" {...field} data-testid="input-guests" className="bg-background" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="totalBudget"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("profile.total_budget")}</FormLabel>
+                        <FormControl>
+                          <MoneyInput
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            onBlur={field.onBlur}
+                            data-testid="input-budget"
+                            className="bg-background"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
 
               <div className="flex justify-end gap-3 pt-4">
                 <Button

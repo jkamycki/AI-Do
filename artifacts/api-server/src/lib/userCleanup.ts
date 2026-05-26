@@ -4,7 +4,7 @@ import {
   checklistItems, vendors, vendorPayments, analyticsEvents,
   workspaceCollaborators, workspaceActivity, vendorContracts, documents,
   seatingCharts, guests, hotelBlocks, weddingParty,
-  manualExpenses, vendorConversations, vendorMessages, vendorContacts,
+  manualExpensePayments, manualExpenses, vendorConversations, vendorMessages, vendorContacts,
   contactMessages, feedbackSubmissions, adminUsers,
   deletedAccountEmails, deletedUserArchive,
   weddingWebsites, websiteRsvps,
@@ -118,8 +118,12 @@ export async function snapshotUserData(
     snapshot.seatingCharts = await db.select().from(seatingCharts).where(eq(seatingCharts.userId, userId));
     snapshot.hotelBlocks = await db.select().from(hotelBlocks).where(eq(hotelBlocks.userId, userId));
     snapshot.weddingParty = await db.select().from(weddingParty).where(eq(weddingParty.userId, userId));
-    snapshot.manualExpenses = profile
+    const userManualExpenses = profile
       ? await db.select().from(manualExpenses).where(eq(manualExpenses.profileId, profile.id))
+      : [];
+    snapshot.manualExpenses = userManualExpenses;
+    snapshot.manualExpensePayments = userManualExpenses.length > 0
+      ? await db.select().from(manualExpensePayments).where(inArray(manualExpensePayments.manualExpenseId, userManualExpenses.map((expense) => expense.id)))
       : [];
     snapshot.analyticsEvents = await db.select().from(analyticsEvents).where(eq(analyticsEvents.userId, userId));
 
@@ -161,6 +165,10 @@ export async function purgeUserData(
     }
     await db.delete(vendors).where(eq(vendors.profileId, profileId));
     await db.delete(vendorContacts).where(eq(vendorContacts.profileId, profileId));
+    const manualExpenseRows = await db.select({ id: manualExpenses.id }).from(manualExpenses).where(eq(manualExpenses.profileId, profileId));
+    if (manualExpenseRows.length > 0) {
+      await db.delete(manualExpensePayments).where(inArray(manualExpensePayments.manualExpenseId, manualExpenseRows.map((expense) => expense.id)));
+    }
     await db.delete(manualExpenses).where(eq(manualExpenses.profileId, profileId));
 
     const userBudgetRows = await db

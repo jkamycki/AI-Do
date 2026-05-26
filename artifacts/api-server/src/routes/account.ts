@@ -16,6 +16,7 @@ import {
   guests,
   hotelBlocks,
   invitationCustomizations,
+  manualExpensePayments,
   manualExpenses,
   moodBoards,
   seatingCharts,
@@ -32,9 +33,11 @@ import {
   websiteRsvps,
   workspaceActivity,
   workspaceCollaborators,
+  workspaceRecoverySnapshots,
 } from "@workspace/db";
 import { desc, eq, inArray, or } from "drizzle-orm";
-import { hasMinRole, resolveCallerRole, resolveProfile } from "../lib/workspaceAccess";
+import { createWorkspaceRecoverySnapshot, restoreWorkspaceRecoverySnapshot } from "../lib/accountRecovery";
+import { hasMinRole, logActivity, resolveCallerRole, resolveProfile } from "../lib/workspaceAccess";
 
 const router = Router();
 
@@ -67,6 +70,18 @@ function safeFilenamePart(value: string | null | undefined): string {
 
 function uniqueById<T extends { id: number }>(rows: T[]): T[] {
   return Array.from(new Map(rows.map((row) => [row.id, row])).values());
+}
+
+function serializeRecoveryPoint(row: typeof workspaceRecoverySnapshots.$inferSelect) {
+  return {
+    id: row.id,
+    reason: row.reason,
+    resourceType: row.resourceType,
+    summary: row.summary ?? {},
+    createdAt: row.createdAt.toISOString(),
+    restoredAt: row.restoredAt ? row.restoredAt.toISOString() : null,
+    restoredBy: row.restoredBy ?? null,
+  };
 }
 
 async function rowsByUserOrProfile<T>(
@@ -166,6 +181,10 @@ router.get("/account/export", requireAuth, async (req, res) => {
     const vendorPaymentRows = vendorIds.length
       ? await db.select().from(vendorPayments).where(inArray(vendorPayments.vendorId, vendorIds))
       : [];
+    const manualExpenseIds = manualExpenseRows.map((expense) => expense.id);
+    const manualExpensePaymentRows = manualExpenseIds.length
+      ? await db.select().from(manualExpensePayments).where(inArray(manualExpensePayments.manualExpenseId, manualExpenseIds))
+      : [];
 
     const conversationRows = uniqueById([
       ...(vendorIds.length ? await db.select().from(vendorConversations).where(inArray(vendorConversations.vendorId, vendorIds)) : []),
@@ -221,6 +240,7 @@ router.get("/account/export", requireAuth, async (req, res) => {
         vendorConversations: conversationRows,
         vendorMessages: vendorMessageRows,
         manualExpenses: manualExpenseRows,
+        manualExpensePayments: manualExpensePaymentRows,
         guests: guestRows,
         hotelBlocks: hotelRows,
         weddingParty: weddingPartyRows,
@@ -287,6 +307,127 @@ router.get("/account/activity", requireAuth, async (req, res) => {
   } catch (err) {
     req.log.error(err, "Failed to load account activity");
     res.status(500).json({ error: "Could not load activity. Please try again." });
+  }
+});
+
+router.get("/account/recovery", requireAuth, async (req, res) => {
+  try {
+    const [profile, callerRole] = await Promise.all([
+      resolveProfile(req),
+      resolveCallerRole(req),
+    ]);
+
+    if (profile && !hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Only workspace owners, partners, and planners can view recovery points." });
+      return;
+    }
+
+    if (!profile) {
+      res.json({ recoveryPoints: [], canRestore: false });
+      return;
+    }
+
+    const rows = await db
+      .select()
+      .from(workspaceRecoverySnapshots)
+      .where(eq(workspaceRecoverySnapshots.profileId, profile.id))
+      .orderBy(desc(workspaceRecoverySnapshots.createdAt))
+      .limit(10);
+
+    res.json({
+      canRestore: hasMinRole(callerRole, "partner"),
+      recoveryPoints: rows.map(serializeRecoveryPoint),
+    });
+  } catch (err) {
+    req.log.error(err, "Failed to load account recovery points");
+    res.status(500).json({ error: "Could not load recovery points. Please try again." });
+  }
+});
+
+router.post("/account/recovery/snapshot", requireAuth, async (req, res) => {
+  try {
+    const [profile, callerRole] = await Promise.all([
+      resolveProfile(req),
+      resolveCallerRole(req),
+    ]);
+
+    if (!profile) {
+      res.status(404).json({ error: "Create a wedding profile before saving a recovery point." });
+      return;
+    }
+
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Only workspace owners, partners, and planners can save recovery points." });
+      return;
+    }
+
+    const point = await createWorkspaceRecoverySnapshot(
+      profile.id,
+      req.userId!,
+      "Manual recovery point from Settings",
+      "account_recovery",
+    );
+
+    res.json({
+      recoveryPoint: {
+        id: point.id,
+        reason: "Manual recovery point from Settings",
+        resourceType: "account_recovery",
+        summary: point.summary ?? {},
+        createdAt: point.createdAt.toISOString(),
+        restoredAt: null,
+        restoredBy: null,
+      },
+    });
+  } catch (err) {
+    req.log.error(err, "Failed to create account recovery point");
+    res.status(500).json({ error: "Could not save a recovery point. Please try again." });
+  }
+});
+
+router.post("/account/recovery/restore", requireAuth, async (req, res) => {
+  try {
+    const [profile, callerRole] = await Promise.all([
+      resolveProfile(req),
+      resolveCallerRole(req),
+    ]);
+
+    if (!profile) {
+      res.status(404).json({ error: "No wedding profile found to restore." });
+      return;
+    }
+
+    if (!hasMinRole(callerRole, "partner")) {
+      res.status(403).json({ error: "Only workspace owners and partners can restore account data." });
+      return;
+    }
+
+    const snapshotId = Number((req.body ?? {}).snapshotId);
+    if (!Number.isInteger(snapshotId) || snapshotId <= 0) {
+      res.status(400).json({ error: "Choose a valid recovery point." });
+      return;
+    }
+
+    if ((req.body ?? {}).confirm !== "RESTORE") {
+      res.status(400).json({ error: "Type RESTORE to confirm account recovery." });
+      return;
+    }
+
+    const summary = await restoreWorkspaceRecoverySnapshot({
+      profileId: profile.id,
+      snapshotId,
+      restoredBy: req.userId!,
+    });
+
+    await logActivity(profile.id, req.userId!, "Restored workspace from recovery point", "account_recovery", {
+      snapshotId,
+      summary,
+    });
+
+    res.json({ ok: true, restored: summary });
+  } catch (err) {
+    req.log.error(err, "Failed to restore account recovery point");
+    res.status(500).json({ error: err instanceof Error ? err.message : "Could not restore this recovery point. Please try again." });
   }
 });
 

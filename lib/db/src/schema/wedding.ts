@@ -168,6 +168,7 @@ export const vendorPayments = pgTable("vendor_payments", {
   id: serial("id").primaryKey(),
   vendorId: integer("vendor_id").notNull(),
   label: text("label").notNull(),
+  description: text("description").notNull().default(""),
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
   dueDate: text("due_date").notNull(),
   isPaid: boolean("is_paid").default(false).notNull(),
@@ -202,6 +203,23 @@ export const manualExpenses = pgTable("manual_expenses", {
 });
 
 export type ManualExpense = typeof manualExpenses.$inferSelect;
+
+export const manualExpensePayments = pgTable("manual_expense_payments", {
+  id: serial("id").primaryKey(),
+  manualExpenseId: integer("manual_expense_id").notNull(),
+  description: text("description").notNull().default(""),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  dueDate: text("due_date").notNull(),
+  isPaid: boolean("is_paid").notNull().default(false),
+  paidAt: timestamp("paid_at"),
+  notes: text("notes"),
+  receiptUrl: text("receipt_url"),
+  receiptName: text("receipt_name"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type ManualExpensePayment = typeof manualExpensePayments.$inferSelect;
 
 export const vendorConversations = pgTable("vendor_conversations", {
   id: serial("id").primaryKey(),
@@ -322,6 +340,21 @@ export const workspaceActivity = pgTable("workspace_activity", {
 });
 
 export type WorkspaceActivity = typeof workspaceActivity.$inferSelect;
+
+export const workspaceRecoverySnapshots = pgTable("workspace_recovery_snapshots", {
+  id: serial("id").primaryKey(),
+  profileId: integer("profile_id").notNull(),
+  userId: text("user_id").notNull(),
+  reason: text("reason").notNull(),
+  resourceType: text("resource_type"),
+  summary: jsonb("summary").$type<Record<string, unknown>>().notNull().default({}),
+  snapshot: jsonb("snapshot").$type<Record<string, unknown>>().notNull(),
+  restoredAt: timestamp("restored_at"),
+  restoredBy: text("restored_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type WorkspaceRecoverySnapshot = typeof workspaceRecoverySnapshots.$inferSelect;
 
 export const contactMessages = pgTable("contact_messages", {
   id: serial("id").primaryKey(),

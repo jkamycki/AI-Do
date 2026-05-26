@@ -62,6 +62,7 @@ interface VendorRow {
   nextPaymentId: number | null;
   nextPaymentAmount: number | null;
   nextPaymentLabel: string | null;
+  nextPaymentDescription: string | null;
 }
 interface VendorFinancials {
   vendorCount: number;
@@ -71,6 +72,37 @@ interface VendorFinancials {
 }
 
 type RecentPaymentUndoMap = Record<string, { run: () => void }>;
+type PaymentScheduleTarget = {
+  type: "vendor" | "manual";
+  id: number;
+  name: string;
+  remaining: number;
+};
+type PaymentScheduleItem = {
+  id: number;
+  description: string;
+  label?: string | null;
+  amount: number;
+  dueDate: string;
+  isPaid: boolean;
+  paidAt?: string | null;
+  notes?: string | null;
+};
+type ManualExpenseWithSchedule = {
+  id: number;
+  name: string;
+  category: string;
+  cost: number;
+  amountPaid: number;
+  nextPaymentDue?: string | null;
+  nextPaymentId?: number | null;
+  nextPaymentAmount?: number | null;
+  nextPaymentDescription?: string | null;
+  payments?: PaymentScheduleItem[];
+  notes?: string | null;
+  receiptUrl?: string | null;
+  receiptName?: string | null;
+};
 const PAYMENT_UNDO_MS = 8000;
 const HIDDEN_TABLE_SCROLLBAR_CLASS = "[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
@@ -97,6 +129,14 @@ interface VendorBudgetFormState {
   paidInFull: boolean;
 }
 
+interface PaymentScheduleFormState {
+  description: string;
+  amount: string;
+  dueDate: string;
+  isPaid: boolean;
+  notes: string;
+}
+
 const emptyManualForm = (): ManualExpenseFormState => ({
   name: "",
   category: "Other",
@@ -118,6 +158,14 @@ const emptyVendorBudgetForm = (): VendorBudgetFormState => ({
   nextPaymentDue: "",
   nextPaymentAmount: "",
   paidInFull: false,
+});
+
+const emptyPaymentScheduleForm = (): PaymentScheduleFormState => ({
+  description: "",
+  amount: "",
+  dueDate: "",
+  isPaid: false,
+  notes: "",
 });
 
 function formatMoney(n: number) {
@@ -159,6 +207,25 @@ function formatDate(d: string | null) {
 
 function formatReportDate(d: string | null | undefined) {
   return d ? formatDate(d) : "-";
+}
+
+function normalizeSchedulePayment(raw: unknown): PaymentScheduleItem {
+  const row = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+  const description = typeof row.description === "string" && row.description.trim()
+    ? row.description.trim()
+    : typeof row.label === "string" && row.label.trim()
+      ? row.label.trim()
+      : "Payment";
+  return {
+    id: Number(row.id ?? 0),
+    description,
+    label: typeof row.label === "string" ? row.label : null,
+    amount: Number(row.amount ?? 0),
+    dueDate: typeof row.dueDate === "string" ? row.dueDate : "",
+    isPaid: Boolean(row.isPaid),
+    paidAt: typeof row.paidAt === "string" ? row.paidAt : null,
+    notes: typeof row.notes === "string" ? row.notes : null,
+  };
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -253,12 +320,16 @@ function PaidInFullMergedCell({
 }
 
 function PaymentActionsDropdown({
+  onManageSchedule,
+  onAddPayment,
   onUndo,
   onMarkScheduledPaid,
   onMarkFullBalancePaid,
   paysRemaining = false,
   t,
 }: {
+  onManageSchedule?: () => void;
+  onAddPayment?: () => void;
   onUndo?: () => void;
   onMarkScheduledPaid?: () => void;
   onMarkFullBalancePaid?: () => void;
@@ -280,6 +351,19 @@ function PaymentActionsDropdown({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
+        {onManageSchedule && (
+          <DropdownMenuItem onSelect={onManageSchedule} className="gap-2">
+            <Bell className="h-4 w-4" />
+            {t("budget.manage_payment_schedule", { defaultValue: "Manage payment schedule" })}
+          </DropdownMenuItem>
+        )}
+        {onAddPayment && (
+          <DropdownMenuItem onSelect={onAddPayment} className="gap-2">
+            <Plus className="h-4 w-4" />
+            {t("budget.add_payment", { defaultValue: "Add payment" })}
+          </DropdownMenuItem>
+        )}
+        {(onManageSchedule || onAddPayment) && (onUndo || onMarkScheduledPaid || onMarkFullBalancePaid) && <DropdownMenuSeparator />}
         {onUndo && (
           <>
             <DropdownMenuItem onSelect={onUndo} className="gap-2">
@@ -457,11 +541,13 @@ function dateTimeValue(d: string | null | undefined): number {
 function NextPaymentDisplay({
   date,
   amount = 0,
+  description,
   toneClass,
   t,
 }: {
   date: string | null | undefined;
   amount?: number;
+  description?: string | null;
   toneClass?: string;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
@@ -490,6 +576,7 @@ function NextPaymentDisplay({
         <span className="min-w-0 leading-tight">
           <span className="block font-semibold">{dueStatus}</span>
           <span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">{formatDate(date)}</span>
+          {description && <span className="mt-0.5 block max-w-[140px] truncate text-[11px] font-medium text-muted-foreground">{description}</span>}
         </span>
       </div>
       {amount > 0 && (
@@ -551,6 +638,10 @@ export default function Budget() {
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [recentPaymentUndo, setRecentPaymentUndo] = useState<RecentPaymentUndoMap>({});
+  const [paymentScheduleTarget, setPaymentScheduleTarget] = useState<PaymentScheduleTarget | null>(null);
+  const [editingSchedulePayment, setEditingSchedulePayment] = useState<PaymentScheduleItem | null>(null);
+  const [paymentScheduleForm, setPaymentScheduleForm] = useState<PaymentScheduleFormState>(emptyPaymentScheduleForm());
+  const [isSavingSchedulePayment, setIsSavingSchedulePayment] = useState(false);
   const summaryRef = useRef<HTMLDivElement | null>(null);
   const undoTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const manualFormCost = Math.max(0, Number(form.cost || 0));
@@ -563,6 +654,39 @@ export default function Budget() {
   const vendorFormRemaining = Math.max(0, vendorFormCost - vendorFormPaid);
   const manualNextPaymentNeedsDate = !form.paidInFull && moneyValue(form.nextPaymentAmount) > 0 && !form.nextPaymentDue.trim();
   const vendorNextPaymentNeedsDate = !vendorForm.paidInFull && moneyValue(vendorForm.nextPaymentAmount) > 0 && !vendorForm.nextPaymentDue.trim();
+
+  const { data: paymentSchedule = [], isLoading: isLoadingPaymentSchedule } = useQuery({
+    queryKey: ["budget-payment-schedule", paymentScheduleTarget?.type, paymentScheduleTarget?.id],
+    enabled: !!paymentScheduleTarget,
+    queryFn: async () => {
+      if (!paymentScheduleTarget) return [];
+      if (paymentScheduleTarget.type === "vendor") {
+        const response = await authFetch(`/api/vendors/${paymentScheduleTarget.id}`);
+        if (!response.ok) throw new Error("Could not load vendor payment schedule");
+        const vendor = await response.json() as { payments?: unknown[] };
+        return (vendor.payments ?? []).map(normalizeSchedulePayment);
+      }
+      const response = await authFetch(`/api/manual-expenses/${paymentScheduleTarget.id}/payments`);
+      if (!response.ok) throw new Error("Could not load expense payment schedule");
+      const payments = await response.json() as unknown[];
+      return payments.map(normalizeSchedulePayment);
+    },
+  });
+  const sortedPaymentSchedule = useMemo(
+    () => [...paymentSchedule].sort((a, b) => {
+      if (a.isPaid !== b.isPaid) return a.isPaid ? 1 : -1;
+      return (a.dueDate || "9999-12-31").localeCompare(b.dueDate || "9999-12-31");
+    }),
+    [paymentSchedule],
+  );
+  const schedulePaidTotal = useMemo(
+    () => paymentSchedule.filter((payment) => payment.isPaid).reduce((sum, payment) => sum + payment.amount, 0),
+    [paymentSchedule],
+  );
+  const scheduleOpenTotal = useMemo(
+    () => paymentSchedule.filter((payment) => !payment.isPaid).reduce((sum, payment) => sum + payment.amount, 0),
+    [paymentSchedule],
+  );
 
   const upload = useUpload({
     getToken,
@@ -722,6 +846,38 @@ export default function Budget() {
   };
   const openVendorDetailFromBudget = (vendorId: number) => {
     setLocation(`/vendors?vendorId=${vendorId}`);
+  };
+  const openPaymentSchedule = (target: PaymentScheduleTarget, seedPayment = false) => {
+    setPaymentScheduleTarget(target);
+    setEditingSchedulePayment(null);
+    setPaymentScheduleForm(seedPayment
+      ? {
+        description: "Next payment",
+        amount: target.remaining > 0 ? String(target.remaining) : "",
+        dueDate: "",
+        isPaid: false,
+        notes: "",
+      }
+      : emptyPaymentScheduleForm());
+  };
+  const closePaymentSchedule = () => {
+    setPaymentScheduleTarget(null);
+    setEditingSchedulePayment(null);
+    setPaymentScheduleForm(emptyPaymentScheduleForm());
+  };
+  const editSchedulePayment = (payment: PaymentScheduleItem) => {
+    setEditingSchedulePayment(payment);
+    setPaymentScheduleForm({
+      description: payment.description,
+      amount: String(payment.amount || ""),
+      dueDate: payment.dueDate,
+      isPaid: payment.isPaid,
+      notes: payment.notes ?? "",
+    });
+  };
+  const resetSchedulePaymentForm = () => {
+    setEditingSchedulePayment(null);
+    setPaymentScheduleForm(emptyPaymentScheduleForm());
   };
   const openAddSyncedVendor = () => {
     setEditingVendor(null);
@@ -899,6 +1055,7 @@ export default function Budget() {
       queryClient.invalidateQueries({ queryKey: ["vendor-financials"] }),
       queryClient.invalidateQueries({ queryKey: getListVendorsQueryKey() }),
       vendorId ? queryClient.invalidateQueries({ queryKey: getGetVendorQueryKey(vendorId) }) : Promise.resolve(),
+      queryClient.invalidateQueries({ queryKey: ["budget-payment-schedule"] }),
       queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }),
     ]);
   };
@@ -975,6 +1132,76 @@ export default function Budget() {
         </ToastAction>
       ),
     });
+  };
+
+  const saveSchedulePayment = async () => {
+    if (!paymentScheduleTarget) return;
+    const description = paymentScheduleForm.description.trim();
+    const amount = moneyValue(paymentScheduleForm.amount);
+    const dueDate = paymentScheduleForm.dueDate.trim();
+    if (!description) {
+      toast({ variant: "destructive", title: t("budget.payment_description_required", { defaultValue: "Add a payment description." }) });
+      return;
+    }
+    if (amount <= 0 || !Number.isFinite(amount)) {
+      toast({ variant: "destructive", title: t("budget.payment_amount_required", { defaultValue: "Add a valid payment amount." }) });
+      return;
+    }
+    if (!dueDate) {
+      toast({
+        variant: "destructive",
+        title: t("budget.next_payment_date_required", { defaultValue: "Add a payment date" }),
+        description: t("budget.next_payment_date_required_desc", {
+          defaultValue: "A scheduled payment needs both an amount and a date.",
+        }),
+      });
+      return;
+    }
+
+    setIsSavingSchedulePayment(true);
+    try {
+      const basePath = paymentScheduleTarget.type === "vendor"
+        ? `/api/vendors/${paymentScheduleTarget.id}/payments`
+        : `/api/manual-expenses/${paymentScheduleTarget.id}/payments`;
+      const response = await authFetch(editingSchedulePayment ? `${basePath}/${editingSchedulePayment.id}` : basePath, {
+        method: editingSchedulePayment ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          label: description,
+          description,
+          amount,
+          dueDate,
+          isPaid: paymentScheduleForm.isPaid,
+          notes: paymentScheduleForm.notes.trim() || null,
+          reopenBalance: true,
+        }),
+      });
+      if (!response.ok) throw new Error("Payment schedule save failed");
+      toast({ title: t("budget.payment_schedule_saved", { defaultValue: "Payment schedule saved" }) });
+      resetSchedulePaymentForm();
+      await refreshBudgetPaymentViews(paymentScheduleTarget.type === "vendor" ? paymentScheduleTarget.id : undefined);
+    } catch {
+      toast({ variant: "destructive", title: t("budget.payment_schedule_save_failed", { defaultValue: "Couldn't save that scheduled payment." }) });
+    } finally {
+      setIsSavingSchedulePayment(false);
+    }
+  };
+
+  const deleteSchedulePayment = async (payment: PaymentScheduleItem) => {
+    if (!paymentScheduleTarget) return;
+    if (!confirm(t("budget.confirm_delete_payment", { defaultValue: "Delete this scheduled payment?" }))) return;
+    try {
+      const basePath = paymentScheduleTarget.type === "vendor"
+        ? `/api/vendors/${paymentScheduleTarget.id}/payments`
+        : `/api/manual-expenses/${paymentScheduleTarget.id}/payments`;
+      const response = await authFetch(`${basePath}/${payment.id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Payment schedule delete failed");
+      toast({ title: t("budget.payment_deleted", { defaultValue: "Scheduled payment deleted" }) });
+      if (editingSchedulePayment?.id === payment.id) resetSchedulePaymentForm();
+      await refreshBudgetPaymentViews(paymentScheduleTarget.type === "vendor" ? paymentScheduleTarget.id : undefined);
+    } catch {
+      toast({ variant: "destructive", title: t("budget.payment_delete_failed", { defaultValue: "Couldn't delete that scheduled payment." }) });
+    }
   };
 
   // One-click "Mark Paid" — hits the /mark-paid endpoint which atomically
@@ -1857,12 +2084,13 @@ export default function Budget() {
                                     <NextPaymentDisplay
                                       date={v.nextPaymentDue}
                                       amount={v.nextPaymentAmount ?? remaining}
+                                      description={v.nextPaymentDescription ?? v.nextPaymentLabel}
                                       t={t}
                                     />
                                   </>
                                 ) : (
                                   <BalanceRemainingActions
-                                    onSchedule={() => openVendorBudgetEdit(v, { scheduleNextPayment: true })}
+                                    onSchedule={() => openPaymentSchedule({ type: "vendor", id: v.id, name: v.name, remaining }, true)}
                                     t={t}
                                   />
                                 )}
@@ -1871,6 +2099,8 @@ export default function Budget() {
                             <TableCell onClick={(e) => e.stopPropagation()}>
                               <div className="flex min-w-[180px] justify-center">
                                 <PaymentActionsDropdown
+                                  onManageSchedule={() => openPaymentSchedule({ type: "vendor", id: v.id, name: v.name, remaining })}
+                                  onAddPayment={() => openPaymentSchedule({ type: "vendor", id: v.id, name: v.name, remaining }, true)}
                                   onUndo={recentPaymentUndo[`vendor-${v.id}`] ? () => runRememberedUndo(`vendor-${v.id}`) : undefined}
                                   onMarkScheduledPaid={v.nextPaymentDue ? () => handleVendorPaymentPaid(v.id, {
                                     id: v.nextPaymentId,
@@ -2176,10 +2406,11 @@ export default function Budget() {
                 </TableHeader>
                 <TableBody>
                   {manualExpenses.map((m) => {
+                    const expense = m as ManualExpenseWithSchedule;
                     const paid = cappedPaid(m.cost, m.amountPaid);
                     const remaining = Math.max(0, m.cost - paid);
                     const pct = m.cost > 0 ? Math.min((paid / m.cost) * 100, 100) : 0;
-                    const nextPaymentPaysRemaining = !!m.nextPaymentDue && moneyMatches(m.nextPaymentAmount ?? 0, remaining);
+                    const nextPaymentPaysRemaining = !!expense.nextPaymentDue && moneyMatches(expense.nextPaymentAmount ?? 0, remaining);
                     return (
                       <TableRow
                         key={m.id}
@@ -2216,15 +2447,16 @@ export default function Budget() {
                           <>
                             <TableCell className="text-sm" onClick={(e) => e.stopPropagation()}>
                               <div className="flex min-w-[180px] flex-col items-center gap-2">
-                                {m.nextPaymentDue ? (
+                                {expense.nextPaymentDue ? (
                                   <NextPaymentDisplay
-                                    date={m.nextPaymentDue}
-                                    amount={m.nextPaymentAmount ?? 0}
+                                    date={expense.nextPaymentDue}
+                                    amount={expense.nextPaymentAmount ?? 0}
+                                    description={expense.nextPaymentDescription}
                                     t={t}
                                   />
                                 ) : (
                                   <BalanceRemainingActions
-                                    onSchedule={() => openEdit(m, { scheduleNextPayment: true })}
+                                    onSchedule={() => openPaymentSchedule({ type: "manual", id: m.id, name: m.name, remaining }, true)}
                                     t={t}
                                   />
                                 )}
@@ -2233,8 +2465,10 @@ export default function Budget() {
                             <TableCell onClick={(e) => e.stopPropagation()}>
                               <div className="flex min-w-[180px] justify-center">
                                 <PaymentActionsDropdown
+                                  onManageSchedule={() => openPaymentSchedule({ type: "manual", id: m.id, name: m.name, remaining })}
+                                  onAddPayment={() => openPaymentSchedule({ type: "manual", id: m.id, name: m.name, remaining }, true)}
                                   onUndo={recentPaymentUndo[`manual-${m.id}`] ? () => runRememberedUndo(`manual-${m.id}`) : undefined}
-                                  onMarkScheduledPaid={m.nextPaymentDue ? () => handleMarkPaid(m.id) : undefined}
+                                  onMarkScheduledPaid={expense.nextPaymentDue ? () => handleMarkPaid(m.id) : undefined}
                                   paysRemaining={nextPaymentPaysRemaining}
                                   onMarkFullBalancePaid={!nextPaymentPaysRemaining ? () => handleManualPaidInFull(m) : undefined}
                                   t={t}
@@ -2338,6 +2572,164 @@ export default function Budget() {
       </Card>
 
       {/* ── Add/Edit Manual Expense Dialog ──────────────────────── */}
+      <Dialog open={!!paymentScheduleTarget} onOpenChange={(open) => { if (!open) closePaymentSchedule(); }}>
+        <DialogContent
+          className="max-h-[calc(100dvh-2rem)] overflow-y-auto"
+          style={{ width: "min(calc(100vw - 2rem), 760px)", maxWidth: "calc(100vw - 2rem)" }}
+        >
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl text-primary">
+              {t("budget.payment_schedule_title", { defaultValue: "Payment Schedule" })}
+            </DialogTitle>
+            <DialogDescription>
+              {paymentScheduleTarget
+                ? t("budget.payment_schedule_desc", {
+                  name: paymentScheduleTarget.name,
+                  defaultValue: `Schedule multiple payments for ${paymentScheduleTarget.name}. The earliest unpaid payment appears in the Budget table and can trigger reminders.`,
+                })
+                : null}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5 py-2">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl border border-primary/15 bg-primary/5 p-3">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">{t("budget.scheduled_open", { defaultValue: "Open scheduled" })}</p>
+                <p className="font-serif text-2xl text-primary">{formatMoney(scheduleOpenTotal)}</p>
+              </div>
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                <p className="text-xs uppercase tracking-wide text-emerald-700">{t("budget.scheduled_paid", { defaultValue: "Paid from schedule" })}</p>
+                <p className="font-serif text-2xl text-emerald-700">{formatMoney(schedulePaidTotal)}</p>
+              </div>
+              <div className="rounded-xl border border-border bg-muted/20 p-3">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">{t("budget.table_remaining", { defaultValue: "Remaining" })}</p>
+                <p className="font-serif text-2xl text-foreground">{formatMoney(paymentScheduleTarget?.remaining ?? 0)}</p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-primary/15 bg-white/80 p-4 shadow-sm">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold text-foreground">{t("budget.scheduled_payments", { defaultValue: "Scheduled payments" })}</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {t("budget.scheduled_payments_hint", { defaultValue: "Add every installment with its own description, amount, and due date." })}
+                  </p>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={resetSchedulePaymentForm}>
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  {t("budget.add_payment", { defaultValue: "Add payment" })}
+                </Button>
+              </div>
+              {isLoadingPaymentSchedule ? (
+                <Skeleton className="h-24" />
+              ) : sortedPaymentSchedule.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-primary/25 bg-primary/5 p-5 text-center text-sm text-muted-foreground">
+                  {t("budget.no_scheduled_payments", { defaultValue: "No scheduled payments yet." })}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {sortedPaymentSchedule.map((payment) => (
+                    <div key={payment.id} className="flex flex-col gap-3 rounded-xl border border-border bg-background p-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-semibold text-foreground">{payment.description}</p>
+                          <Badge variant="outline" className={payment.isPaid ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-primary/25 bg-primary/5 text-primary"}>
+                            {payment.isPaid ? t("budget.paid", { defaultValue: "Paid" }) : t("budget.scheduled", { defaultValue: "Scheduled" })}
+                          </Badge>
+                        </div>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {formatDate(payment.dueDate)} · {formatMoney(payment.amount)}
+                          {payment.paidAt ? ` · ${t("budget.paid_on", { date: formatDate(payment.paidAt), defaultValue: `Paid ${formatDate(payment.paidAt)}` })}` : ""}
+                        </p>
+                        {payment.notes && <p className="mt-1 text-xs text-muted-foreground">{payment.notes}</p>}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Button type="button" variant="outline" size="sm" onClick={() => editSchedulePayment(payment)}>
+                          <Pencil className="mr-1 h-3.5 w-3.5" />
+                          {t("common.edit", { defaultValue: "Edit" })}
+                        </Button>
+                        <Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => deleteSchedulePayment(payment)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+              <h3 className="mb-3 font-semibold text-foreground">
+                {editingSchedulePayment
+                  ? t("budget.edit_scheduled_payment", { defaultValue: "Edit scheduled payment" })
+                  : t("budget.add_scheduled_payment", { defaultValue: "Add scheduled payment" })}
+              </h3>
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_150px_150px]">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">{t("budget.payment_description", { defaultValue: "Payment description" })}</label>
+                  <Input
+                    value={paymentScheduleForm.description}
+                    onChange={(e) => setPaymentScheduleForm((current) => ({ ...current, description: e.target.value }))}
+                    placeholder={t("budget.payment_description_placeholder", { defaultValue: "Deposit, second installment, final balance..." })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">{t("budget.payment_amount", { defaultValue: "Amount" })}</label>
+                  <MoneyInput
+                    value={paymentScheduleForm.amount}
+                    onChange={(value) => setPaymentScheduleForm((current) => ({ ...current, amount: value }))}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">{t("budget.payment_due_date", { defaultValue: "Due date" })}</label>
+                  <Input
+                    type="date"
+                    value={paymentScheduleForm.dueDate}
+                    onChange={(e) => setPaymentScheduleForm((current) => ({ ...current, dueDate: e.target.value }))}
+                    className="[color-scheme:light]"
+                  />
+                </div>
+              </div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">{t("budget.notes_label")}</label>
+                  <Textarea
+                    value={paymentScheduleForm.notes}
+                    onChange={(e) => setPaymentScheduleForm((current) => ({ ...current, notes: e.target.value }))}
+                    placeholder={t("budget.payment_notes_placeholder", { defaultValue: "Optional details, invoice number, or reminder context" })}
+                    rows={2}
+                  />
+                </div>
+                <label className="flex items-center gap-2 self-end rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium">
+                  <input
+                    type="checkbox"
+                    checked={paymentScheduleForm.isPaid}
+                    onChange={(e) => setPaymentScheduleForm((current) => ({ ...current, isPaid: e.target.checked }))}
+                    className="h-4 w-4 accent-primary"
+                  />
+                  {t("budget.mark_as_paid_now", { defaultValue: "Already paid" })}
+                </label>
+              </div>
+              <div className="mt-4 flex flex-wrap justify-end gap-2">
+                {editingSchedulePayment && (
+                  <Button type="button" variant="ghost" onClick={resetSchedulePaymentForm}>
+                    {t("common.cancel", { defaultValue: "Cancel" })}
+                  </Button>
+                )}
+                <Button type="button" onClick={saveSchedulePayment} disabled={isSavingSchedulePayment}>
+                  {isSavingSchedulePayment
+                    ? t("common.saving", { defaultValue: "Saving..." })
+                    : editingSchedulePayment
+                      ? t("budget.save_payment", { defaultValue: "Save payment" })
+                      : t("budget.add_payment", { defaultValue: "Add payment" })}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={isAdding} onOpenChange={(open) => { if (!open) { setIsAdding(false); setEditingId(null); } }}>
         <DialogContent className="top-4 bottom-4 flex max-h-none translate-y-0 flex-col gap-0 overflow-hidden p-0 sm:max-w-[500px]">
           <DialogHeader className="shrink-0 px-6 pb-3 pt-6">

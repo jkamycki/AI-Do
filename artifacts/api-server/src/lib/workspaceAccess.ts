@@ -1,6 +1,7 @@
 import { db, weddingProfiles, workspaceCollaborators, workspaceActivity } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
 import type { Request } from "express";
+import { createWorkspaceRecoverySnapshot } from "./accountRecovery";
 
 export type CollaboratorRole = "owner" | "partner" | "planner" | "vendor";
 
@@ -194,6 +195,7 @@ export async function logActivity(
       resourceType: resourceType ?? null,
       details: details ?? null,
     });
+    void createWorkspaceRecoverySnapshot(profileId, userId, action, resourceType).catch(() => {});
   } catch {
   }
 }

@@ -2,7 +2,7 @@ import { Router } from "express";
 import {
   db, weddingProfiles, timelines, budgets, budgetItems, budgetPaymentLogs,
   checklistItems, guests, vendors, vendorPayments, hotelBlocks, weddingParty,
-  seatingCharts, manualExpenses, vendorContracts, vendorConversations,
+  seatingCharts, manualExpensePayments, manualExpenses, vendorContracts, vendorConversations,
   vendorMessages, workspaceCollaborators, workspaceActivity, invitationCustomizations,
   weddingWebsites, websiteRsvps, moodBoards, deletedUserArchive,
 } from "@workspace/db";
@@ -90,6 +90,7 @@ router.delete("/workspaces/:profileId", requireAuth, async (req, res) => {
     const budgetRows = await db.select({ id: budgets.id }).from(budgets).where(eq(budgets.profileId, profileId));
     const websiteRows = await db.select({ id: weddingWebsites.id }).from(weddingWebsites).where(eq(weddingWebsites.profileId, profileId));
     const vendorIds = vendorRows.map(v => v.id);
+    const manualExpenseRows = await db.select({ id: manualExpenses.id }).from(manualExpenses).where(eq(manualExpenses.profileId, profileId));
     const budgetIds = budgetRows.map(b => b.id);
     const websiteIds = websiteRows.map(w => w.id);
     const budgetItemRows = budgetIds.length > 0
@@ -117,6 +118,7 @@ router.delete("/workspaces/:profileId", requireAuth, async (req, res) => {
       vendorConversations: vendorIds.length > 0 ? await db.select().from(vendorConversations).where(inArray(vendorConversations.vendorId, vendorIds)) : [],
       vendorMessages: conversationIds.length > 0 ? await db.select().from(vendorMessages).where(inArray(vendorMessages.conversationId, conversationIds)) : [],
       manualExpenses: await db.select().from(manualExpenses).where(eq(manualExpenses.profileId, profileId)),
+      manualExpensePayments: manualExpenseRows.length > 0 ? await db.select().from(manualExpensePayments).where(inArray(manualExpensePayments.manualExpenseId, manualExpenseRows.map(e => e.id))) : [],
       vendorContracts: await db.select().from(vendorContracts).where(eq(vendorContracts.profileId, profileId)),
       seatingCharts: await db.select().from(seatingCharts).where(eq(seatingCharts.profileId, profileId)),
       hotelBlocks: await db.select().from(hotelBlocks).where(eq(hotelBlocks.profileId, profileId)),
@@ -168,6 +170,9 @@ router.delete("/workspaces/:profileId", requireAuth, async (req, res) => {
     await db.delete(hotelBlocks).where(eq(hotelBlocks.profileId, profileId));
     await db.delete(weddingParty).where(eq(weddingParty.profileId, profileId));
     await db.delete(seatingCharts).where(eq(seatingCharts.profileId, profileId));
+    if (manualExpenseRows.length > 0) {
+      await db.delete(manualExpensePayments).where(inArray(manualExpensePayments.manualExpenseId, manualExpenseRows.map(e => e.id)));
+    }
     await db.delete(manualExpenses).where(eq(manualExpenses.profileId, profileId));
     await db.delete(vendorContracts).where(eq(vendorContracts.profileId, profileId));
     await db.delete(invitationCustomizations).where(eq(invitationCustomizations.profileId, profileId));

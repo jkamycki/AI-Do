@@ -48,6 +48,7 @@ function formatPayment(p: typeof vendorPayments.$inferSelect) {
   return {
     ...p,
     amount: Number(p.amount),
+    description: p.description ?? "",
     paidAt: p.paidAt ? p.paidAt.toISOString() : null,
     createdAt: p.createdAt.toISOString(),
   };
@@ -511,6 +512,7 @@ router.get("/vendors/financials", requireAuth, async (req, res) => {
         isPaidOff: totalCost > 0 && totalPaid >= totalCost,
         nextPaymentId: nextPayment?.id ?? null,
         nextPaymentLabel: nextPayment?.label ?? null,
+        nextPaymentDescription: nextPayment?.description ?? null,
         nextPaymentAmount: nextPayment ? Number(nextPayment.amount) : null,
         nextPaymentDue: nextPayment?.dueDate
           ? String(nextPayment.dueDate).slice(0, 10)
@@ -724,7 +726,7 @@ router.post("/vendors/:id/payments", requireAuth, async (req, res) => {
     if (!vendor) {
       return res.status(404).json({ error: "Vendor not found" });
     }
-    const { label, amount, dueDate, isPaid, reopenBalance } = req.body;
+    const { label, description, amount, dueDate, isPaid, reopenBalance } = req.body;
     const amountNum = Number(amount);
     const sanitizedDueDate = sanitizePaymentDueDate(dueDate);
     if (!Number.isFinite(amountNum) || amountNum <= 0) {
@@ -735,7 +737,8 @@ router.post("/vendors/:id/payments", requireAuth, async (req, res) => {
     }
     const [payment] = await db.insert(vendorPayments).values({
       vendorId,
-      label,
+      label: typeof label === "string" && label.trim() ? label.trim().slice(0, 120) : "Payment",
+      description: typeof description === "string" ? description.trim().slice(0, 500) : "",
       amount: String(amountNum),
       dueDate: sanitizedDueDate,
       isPaid: isPaid ?? false,
@@ -919,7 +922,7 @@ router.put("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) => 
     if (!vendor) {
       return res.status(404).json({ error: "Payment not found" });
     }
-    const { label, amount, dueDate, isPaid, reopenBalance } = req.body;
+    const { label, description, amount, dueDate, isPaid, reopenBalance } = req.body;
     const [existingPayment] = await db
       .select()
       .from(vendorPayments)
@@ -938,7 +941,8 @@ router.put("/vendors/:id/payments/:paymentId", requireAuth, async (req, res) => 
       return res.status(400).json({ error: "dueDate is required when amount is provided" });
     }
     const updates: Partial<typeof vendorPayments.$inferInsert> = {};
-    if (label !== undefined) updates.label = label;
+    if (label !== undefined) updates.label = typeof label === "string" && label.trim() ? label.trim().slice(0, 120) : "Payment";
+    if (description !== undefined) updates.description = typeof description === "string" ? description.trim().slice(0, 500) : "";
     if (amount !== undefined) updates.amount = String(nextAmount);
     if (dueDate !== undefined) updates.dueDate = nextDueDate;
     if (isPaid !== undefined) {
