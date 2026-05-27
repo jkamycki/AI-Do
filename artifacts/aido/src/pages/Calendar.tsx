@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   useGetBudget,
@@ -315,18 +315,14 @@ export default function Calendar() {
   const [customEvents, setCustomEvents] = useState<CustomCalendarEvent[]>(() =>
     typeof localStorage === "undefined" ? [] : loadCustomEvents(),
   );
-  const [month, setMonth] = useState(() => parseDateOnly(profile?.weddingDate) ?? new Date());
+  const [month, setMonth] = useState(() => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
   const [selectedDate, setSelectedDate] = useState(() => dateKey(new Date()));
   const [activeType, setActiveType] = useState<CalendarEventType | "all">("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ title: "", type: "custom", date: dateKey(new Date()), time: "", notes: "" });
-
-  useEffect(() => {
-    const wedding = parseDateOnly(profile?.weddingDate);
-    if (wedding) {
-      setMonth(new Date(wedding.getFullYear(), wedding.getMonth(), 1));
-    }
-  }, [profile?.weddingDate]);
 
   const events = useMemo(() => buildEvents({
     budgetItems: budget?.items ?? [],
@@ -449,7 +445,17 @@ export default function Calendar() {
             <CardTitle className="font-serif text-2xl">{formatMonthTitle(month)}</CardTitle>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>Previous</Button>
-              <Button variant="outline" size="sm" onClick={() => setMonth(new Date())}>Today</Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const today = new Date();
+                  setMonth(new Date(today.getFullYear(), today.getMonth(), 1));
+                  setSelectedDate(dateKey(today));
+                }}
+              >
+                Today
+              </Button>
               <Button variant="outline" size="sm" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>Next</Button>
             </div>
           </CardHeader>
