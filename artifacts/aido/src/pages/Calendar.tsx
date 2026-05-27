@@ -25,7 +25,6 @@ import {
   Hotel,
   Link as LinkIcon,
   Plus,
-  Sparkles,
   Store,
   Trash2,
   Users,
@@ -410,8 +409,8 @@ export default function Calendar() {
       <Card className="border-primary/15 bg-gradient-to-r from-primary/5 via-card to-[#F4DEBE]/35">
         <CardContent className="flex flex-col gap-3 p-5 md:flex-row md:items-center md:justify-between">
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
-              <Sparkles className="h-5 w-5" />
+            <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border border-primary/20 bg-primary/10 shadow-sm">
+              <img src="/aria-avatar.png" alt="Aria" className="h-full w-full object-cover" />
             </div>
             <div>
               <p className="font-semibold text-foreground">Aria weekly brief</p>
