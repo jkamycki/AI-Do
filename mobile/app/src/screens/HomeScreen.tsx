@@ -3,7 +3,6 @@ import { useNavigation } from '@react-navigation/native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '../components/Card';
-import { FeatureTile } from '../components/FeatureTile';
 import { ProgressBar } from '../components/ProgressBar';
 import { Screen } from '../components/Screen';
 import { StatusPill } from '../components/StatusPill';
@@ -20,12 +19,18 @@ type RouteName =
   | 'Files'
   | 'GuestPhotoDrop'
   | 'Guests'
+  | 'Hotels'
   | 'Invitations'
   | 'MoodBoard'
+  | 'More'
   | 'ProfileSettings'
+  | 'SeatingChart'
+  | 'Settings'
   | 'Timeline'
   | 'Vendors'
-  | 'WebsiteEditor';
+  | 'WebsiteEditor'
+  | 'WeddingParty'
+  | 'Workspace';
 
 export function HomeScreen() {
   const navigation = useNavigation<any>();
@@ -37,11 +42,12 @@ export function HomeScreen() {
   const taskProgress = data.tasks.length ? Math.round((data.tasks.filter((task) => task.completed).length / data.tasks.length) * 100) : 0;
   const confirmedGuests = data.guests.filter((guest) => guest.rsvp === 'Confirmed').length;
   const pendingGuests = data.guests.filter((guest) => guest.rsvp === 'Pending').length;
-  const unsignedContracts = data.contracts.filter((contract) => contract.status !== 'Signed').length;
+  const reviewContracts = data.contracts.filter((contract) => contract.status !== 'Signed').length;
   const dueTasks = data.tasks
     .filter((task) => !task.completed)
     .sort((a, b) => (daysFromToday(a.dueDate) ?? 9999) - (daysFromToday(b.dueDate) ?? 9999))
     .slice(0, 3);
+  const websiteDrafts = data.websiteSections.filter((section) => section.status !== 'Published').length;
   const nextPayment = data.budget
     .filter((item) => item.nextPayment)
     .sort((a, b) => String(a.nextPayment?.date).localeCompare(String(b.nextPayment?.date)))[0];
@@ -50,139 +56,137 @@ export function HomeScreen() {
 
   return (
     <Screen contentStyle={styles.homeContent} onRefresh={refresh} refreshing={loading}>
-      <Card padding={spacing.lg} style={styles.heroCard}>
+      <View style={styles.hero}>
         <View style={styles.heroTop}>
-          <View style={[styles.avatar, { backgroundColor: colors.primarySoft, borderColor: colors.cardStrong }]}>
-            <Text style={[styles.avatarText, { color: colors.primary }]}>{profile.photoInitials}</Text>
-          </View>
           <View style={styles.heroCopy}>
-            <Text style={[styles.greeting, { color: colors.muted }]}>A.I Do Command Center</Text>
+            <Text style={[styles.eyebrow, { color: colors.primary }]}>A.I Do Planner</Text>
             <Text style={[styles.couple, { color: colors.text }]}>{profile.coupleName}</Text>
-            <Text style={[styles.date, { color: colors.muted }]}>{formatShortDate(profile.weddingDate)} at {profile.venue}</Text>
+            <Text style={[styles.date, { color: colors.muted }]}>
+              {formatShortDate(profile.weddingDate)} at {profile.venue}
+            </Text>
           </View>
           <Pressable
-            accessibilityLabel="Ask Aria"
-            onPress={() => go('Aria')}
+            accessibilityLabel="Open profile"
+            onPress={() => go('ProfileSettings')}
             style={({ pressed }) => [
-              styles.ariaButton,
-              { backgroundColor: colors.primary, opacity: pressed ? 0.78 : 1, shadowColor: colors.shadow },
+              styles.avatar,
+              { backgroundColor: colors.primarySoft, borderColor: colors.cardStrong, opacity: pressed ? 0.78 : 1 },
             ]}
           >
-            <MaterialCommunityIcons color={colors.cardStrong} name="star-four-points" size={22} />
+            <Text style={[styles.avatarText, { color: colors.primary }]}>{profile.photoInitials}</Text>
           </Pressable>
         </View>
 
-        <View style={styles.heroStats}>
-          <HeroStat label="Days" value={String(daysUntil(profile.weddingDate))} />
-          <HeroStat label="Planned" value={`${taskProgress}%`} />
-          <HeroStat label="Guests" value={`${confirmedGuests}/${profile.guestTarget}`} />
+        <View style={styles.heroMetrics}>
+          <Metric label="Days" value={String(daysUntil(profile.weddingDate))} />
+          <Metric label="Planned" value={`${taskProgress}%`} />
+          <Metric label="Guests" value={`${confirmedGuests}/${profile.guestTarget}`} />
         </View>
-      </Card>
+      </View>
 
-      <Pressable onPress={() => go('Aria')} style={({ pressed }) => [{ opacity: pressed ? 0.78 : 1 }]}>
-        <Card padding={spacing.md} style={styles.nextBestCard}>
-          <View style={[styles.nextIcon, { backgroundColor: colors.primarySoft }]}>
-            <Ionicons color={colors.primary} name="sparkles-outline" size={23} />
+      <Pressable onPress={() => go('Aria')} style={({ pressed }) => ({ opacity: pressed ? 0.78 : 1 })}>
+        <Card padding={spacing.md} style={styles.ariaCard}>
+          <View style={[styles.ariaIcon, { backgroundColor: colors.primary }]}>
+            <MaterialCommunityIcons color={colors.cardStrong} name="star-four-points" size={22} />
           </View>
-          <View style={styles.nextCopy}>
-            <Text style={[styles.nextEyebrow, { color: colors.primary }]}>Next Best Move</Text>
-            <Text style={[styles.nextText, { color: colors.text }]}>
-              Review {unsignedContracts} contracts, remind {pendingGuests} RSVP guests, and prep {nextPayment?.title ?? 'the next payment'}.
+          <View style={styles.ariaCopy}>
+            <Text style={[styles.cardEyebrow, { color: colors.primary }]}>Next best move</Text>
+            <Text style={[styles.ariaText, { color: colors.text }]}>
+              Review {reviewContracts} contracts, nudge {pendingGuests} guests, and finish {websiteDrafts} website sections.
             </Text>
           </View>
-          <Ionicons color={colors.accent} name="chevron-forward" size={22} />
+          <Ionicons color={colors.muted} name="chevron-forward" size={20} />
         </Card>
       </Pressable>
 
-      <View style={styles.sectionRow}>
+      <View style={styles.sectionHeader}>
         <View>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Planner Tools</Text>
-          <Text style={[styles.sectionSub, { color: colors.muted }]}>Fast paths for the work couples do most.</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Today</Text>
+          <Text style={[styles.sectionMeta, { color: colors.muted }]}>Clear, short, and actionable.</Text>
         </View>
-      </View>
-      <View style={styles.tileGrid}>
-        <FeatureTile icon="heart" label="Profile" onPress={() => go('ProfileSettings')} />
-        <FeatureTile icon="image-multiple" label="Mood Board" onPress={() => go('MoodBoard')} />
-        <FeatureTile icon="calendar-clock" label="Timeline" onPress={() => go('Timeline')} />
-        <FeatureTile icon="checkbox-marked-outline" label="Checklist" onPress={() => go('Checklist')} />
-        <FeatureTile icon="account-group" label="Guest List" onPress={() => go('Guests')} />
-        <FeatureTile icon="cash-multiple" label="Budget" onPress={() => go('Budget')} />
+        <Pressable onPress={() => go('Checklist')}>
+          <Text style={[styles.link, { color: colors.primary }]}>Checklist</Text>
+        </Pressable>
       </View>
 
-      <Card style={styles.progressCard}>
-        <View style={styles.sectionRowCompact}>
+      {dueTasks.map((task) => (
+        <Pressable key={task.id} onPress={() => go('Checklist')} style={({ pressed }) => ({ opacity: pressed ? 0.78 : 1 })}>
+          <Card padding={spacing.md} style={styles.taskCard}>
+            <View style={[styles.taskMark, { backgroundColor: colors.primarySoft }]}>
+              <Ionicons color={colors.primary} name="checkmark-circle-outline" size={20} />
+            </View>
+            <View style={styles.taskCopy}>
+              <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
+              <Text style={[styles.taskMeta, { color: colors.muted }]}>
+                {task.category} - {formatDeadlineLabel(task.dueDate)}
+              </Text>
+            </View>
+          </Card>
+        </Pressable>
+      ))}
+
+      <Card style={styles.pulseCard}>
+        <View style={styles.cardHeader}>
           <View>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Wedding Pulse</Text>
-            <Text style={[styles.sectionSub, { color: colors.muted }]}>Everything important, one glance.</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Planner Pulse</Text>
+            <Text style={[styles.sectionMeta, { color: colors.muted }]}>Health of the major website workflows.</Text>
           </View>
           <StatusPill status={taskProgress >= 60 ? 'On Track' : 'Pending'} />
         </View>
         <ProgressBar value={taskProgress} />
         <View style={styles.pulseGrid}>
-          <PulseItem icon="people-outline" label="Confirmed" value={String(confirmedGuests)} />
           <PulseItem icon="wallet-outline" label="Paid" value={formatCurrency(totalPaid)} />
+          <PulseItem icon="cash-outline" label="Budget" value={formatCurrency(totalBudget)} />
           <PulseItem icon="document-text-outline" label="Files" value={String(data.documents.length)} />
         </View>
       </Card>
 
-      <View style={styles.sectionRow}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Today</Text>
-        <Pressable onPress={() => go('Checklist')}>
-          <Text style={[styles.viewAll, { color: colors.primary }]}>View checklist</Text>
+      <View style={styles.sectionHeader}>
+        <View>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Feature Shortcuts</Text>
+          <Text style={[styles.sectionMeta, { color: colors.muted }]}>The full website, simplified for phone use.</Text>
+        </View>
+        <Pressable onPress={() => go('More')}>
+          <Text style={[styles.link, { color: colors.primary }]}>All</Text>
         </Pressable>
       </View>
-      {dueTasks.map((task) => (
-        <Pressable key={task.id} onPress={() => go('Checklist')} style={({ pressed }) => ({ opacity: pressed ? 0.78 : 1 })}>
-          <Card padding={spacing.md} style={styles.taskCard}>
-            <View style={[styles.taskIcon, { backgroundColor: colors.primarySoft }]}>
-              <Ionicons color={colors.primary} name="checkmark-done-outline" size={20} />
-            </View>
-            <View style={styles.taskCopy}>
-              <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
-              <Text style={[styles.taskMeta, { color: colors.muted }]}>
-                {task.category} - {task.dueDate ? `${formatShortDate(task.dueDate)} (${formatDeadlineLabel(task.dueDate)})` : 'No deadline'}
-              </Text>
-            </View>
-            <Ionicons color={colors.accent} name="chevron-forward" size={20} />
-          </Card>
-        </Pressable>
-      ))}
 
-      <View style={styles.sectionRow}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Money & Vendors</Text>
-        <Pressable onPress={() => go('Vendors')}>
-          <Text style={[styles.viewAll, { color: colors.primary }]}>Open vendors</Text>
-        </Pressable>
+      <View style={styles.shortcutGrid}>
+        <Shortcut icon="globe-outline" label="Website" meta={`${websiteDrafts} drafts`} onPress={() => go('WebsiteEditor')} />
+        <Shortcut icon="mail-open-outline" label="Invites" meta={`${data.invitations.length} suites`} onPress={() => go('Invitations')} />
+        <Shortcut icon="storefront-outline" label="Vendors" meta={`${data.vendors.length} booked`} onPress={() => go('Vendors')} />
+        <Shortcut icon="grid-outline" label="Seating" meta={`${data.seating.length} tables`} onPress={() => go('SeatingChart')} />
+        <Shortcut icon="camera-outline" label="Photo Drop" meta={data.guestPhotoDrop.enabled ? 'Live' : 'Off'} onPress={() => go('GuestPhotoDrop')} />
+        <Shortcut icon="people-outline" label="Workspace" meta={`${data.workspaceInvites.length} invites`} onPress={() => go('Workspace')} />
       </View>
-      <Card style={styles.vendorCard}>
-        <View style={styles.vendorHeader}>
-          <View>
-            <Text style={[styles.vendorName, { color: colors.text }]}>{data.vendors[0]?.name}</Text>
-            <Text style={[styles.vendorMeta, { color: colors.muted }]}>
-              {data.vendors[0]?.category} - {formatCurrency(data.vendors[0]?.remaining ?? 0)} remaining
+
+      <Card style={styles.paymentCard}>
+        <View style={styles.cardHeader}>
+          <View style={styles.paymentCopy}>
+            <Text style={[styles.cardEyebrow, { color: colors.primary }]}>Next payment</Text>
+            <Text style={[styles.paymentTitle, { color: colors.text }]}>{nextPayment?.title ?? 'No payment due'}</Text>
+            <Text style={[styles.paymentMeta, { color: colors.muted }]}>
+              {nextPayment?.nextPayment
+                ? `${formatCurrency(nextPayment.nextPayment.amount)} due ${formatShortDate(nextPayment.nextPayment.date)}`
+                : 'Everything looks current.'}
             </Text>
           </View>
-          <StatusPill status={data.vendors[0]?.status ?? 'Pending'} />
-        </View>
-        <ProgressBar value={totalBudget ? (totalPaid / totalBudget) * 100 : 0} />
-        <View style={styles.vendorActions}>
-          <MiniAction icon="receipt-outline" label="Contracts" onPress={() => go('Contracts')} />
-          <MiniAction icon="mail-open-outline" label="Invites" onPress={() => go('Invitations')} />
-          <MiniAction icon="camera-outline" label="Photo QR" onPress={() => go('GuestPhotoDrop')} />
-          <MiniAction icon="globe-outline" label="Website" onPress={() => go('WebsiteEditor')} />
+          <Pressable onPress={() => go('Budget')} style={[styles.smallButton, { backgroundColor: colors.primary }]}>
+            <Ionicons color={colors.cardStrong} name="arrow-forward" size={18} />
+          </Pressable>
         </View>
       </Card>
     </Screen>
   );
 }
 
-function HeroStat({ label, value }: { label: string; value: string }) {
+function Metric({ label, value }: { label: string; value: string }) {
   const { colors } = useAppTheme();
 
   return (
-    <View style={[styles.heroStat, { backgroundColor: colors.cardStrong, borderColor: colors.border }]}>
-      <Text style={[styles.heroStatValue, { color: colors.primary }]}>{value}</Text>
-      <Text style={[styles.heroStatLabel, { color: colors.muted }]}>{label}</Text>
+    <View style={[styles.metric, { backgroundColor: colors.cardStrong, borderColor: colors.border }]}>
+      <Text style={[styles.metricValue, { color: colors.text }]}>{value}</Text>
+      <Text style={[styles.metricLabel, { color: colors.muted }]}>{label}</Text>
     </View>
   );
 }
@@ -192,151 +196,160 @@ function PulseItem({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMa
 
   return (
     <View style={styles.pulseItem}>
-      <Ionicons color={colors.accent} name={icon} size={18} />
+      <Ionicons color={colors.primary} name={icon} size={18} />
       <Text style={[styles.pulseValue, { color: colors.text }]}>{value}</Text>
       <Text style={[styles.pulseLabel, { color: colors.muted }]}>{label}</Text>
     </View>
   );
 }
 
-function MiniAction({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }) {
+function Shortcut({ icon, label, meta, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; meta: string; onPress: () => void }) {
   const { colors } = useAppTheme();
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
-        styles.miniAction,
-        { backgroundColor: colors.cardStrong, borderColor: colors.border, opacity: pressed ? 0.76 : 1 },
+        styles.shortcut,
+        { backgroundColor: colors.cardStrong, borderColor: colors.border, opacity: pressed ? 0.76 : 1, shadowColor: colors.shadow },
       ]}
     >
-      <Ionicons color={colors.primary} name={icon} size={17} />
-      <Text style={[styles.miniActionText, { color: colors.text }]}>{label}</Text>
+      <View style={[styles.shortcutIcon, { backgroundColor: colors.primarySoft }]}>
+        <Ionicons color={colors.primary} name={icon} size={20} />
+      </View>
+      <Text numberOfLines={1} style={[styles.shortcutLabel, { color: colors.text }]}>{label}</Text>
+      <Text numberOfLines={1} style={[styles.shortcutMeta, { color: colors.muted }]}>{meta}</Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   homeContent: {
-    paddingBottom: 224,
+    paddingBottom: 188,
   },
-  ariaButton: {
+  ariaCard: {
     alignItems: 'center',
-    borderRadius: 24,
-    elevation: 6,
-    height: 48,
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  ariaCopy: {
+    flex: 1,
+  },
+  ariaIcon: {
+    alignItems: 'center',
+    borderRadius: radii.md,
+    height: 44,
     justifyContent: 'center',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.16,
-    shadowRadius: 12,
-    width: 48,
+    width: 44,
+  },
+  ariaText: {
+    fontFamily: fonts.semibold,
+    fontSize: 15,
+    lineHeight: 21,
+    marginTop: 2,
   },
   avatar: {
     alignItems: 'center',
-    borderRadius: 32,
+    borderRadius: 26,
     borderWidth: 3,
-    height: 64,
+    height: 52,
     justifyContent: 'center',
-    width: 64,
+    width: 52,
   },
   avatarText: {
     fontFamily: fonts.bold,
-    fontSize: 16,
+    fontSize: 14,
+  },
+  cardEyebrow: {
+    fontFamily: fonts.bold,
+    fontSize: 11,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  cardHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.md,
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
   },
   couple: {
     fontFamily: fonts.heading,
-    fontSize: 32,
+    fontSize: 34,
     lineHeight: 38,
   },
   date: {
     fontFamily: fonts.medium,
     fontSize: 13,
+    lineHeight: 19,
+    marginTop: spacing.xs,
   },
-  greeting: {
-    fontFamily: fonts.semibold,
+  eyebrow: {
+    fontFamily: fonts.bold,
     fontSize: 12,
-    letterSpacing: 0.8,
+    letterSpacing: 1,
     textTransform: 'uppercase',
   },
-  heroCard: {
-    marginBottom: spacing.md,
+  hero: {
+    marginBottom: spacing.lg,
   },
   heroCopy: {
     flex: 1,
+    minWidth: 0,
   },
-  heroStat: {
-    alignItems: 'center',
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    flex: 1,
-    paddingVertical: spacing.sm,
-  },
-  heroStatLabel: {
-    fontFamily: fonts.semibold,
-    fontSize: 10,
-    letterSpacing: 0.8,
-    marginTop: 2,
-    textTransform: 'uppercase',
-  },
-  heroStats: {
+  heroMetrics: {
     flexDirection: 'row',
     gap: spacing.sm,
     marginTop: spacing.lg,
-  },
-  heroStatValue: {
-    fontFamily: fonts.headingSemi,
-    fontSize: 23,
-    lineHeight: 28,
   },
   heroTop: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: spacing.md,
   },
-  miniAction: {
-    alignItems: 'center',
-    borderRadius: radii.md,
+  link: {
+    fontFamily: fonts.bold,
+    fontSize: 13,
+  },
+  metric: {
+    borderRadius: radii.lg,
     borderWidth: 1,
     flex: 1,
-    flexDirection: 'row',
-    gap: spacing.xs,
-    justifyContent: 'center',
-    minHeight: 42,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.md,
   },
-  miniActionText: {
+  metricLabel: {
     fontFamily: fonts.semibold,
-    fontSize: 12,
-  },
-  nextBestCard: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  nextCopy: {
-    flex: 1,
-  },
-  nextEyebrow: {
-    fontFamily: fonts.bold,
-    fontSize: 11,
+    fontSize: 10,
     letterSpacing: 0.8,
+    marginTop: 2,
     textTransform: 'uppercase',
   },
-  nextIcon: {
-    alignItems: 'center',
-    borderRadius: radii.md,
-    height: 46,
-    justifyContent: 'center',
-    width: 46,
+  metricValue: {
+    fontFamily: fonts.headingSemi,
+    fontSize: 24,
+    lineHeight: 28,
   },
-  nextText: {
-    fontFamily: fonts.medium,
-    fontSize: 14,
-    lineHeight: 20,
+  paymentCard: {
+    marginTop: spacing.lg,
+  },
+  paymentCopy: {
+    flex: 1,
+  },
+  paymentMeta: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 19,
     marginTop: 2,
   },
-  progressCard: {
-    marginBottom: spacing.lg,
+  paymentTitle: {
+    fontFamily: fonts.headingSemi,
+    fontSize: 22,
+    marginTop: 2,
+  },
+  pulseCard: {
+    marginBottom: spacing.xl,
   },
   pulseGrid: {
     flexDirection: 'row',
@@ -354,28 +367,63 @@ const styles = StyleSheet.create({
   },
   pulseValue: {
     fontFamily: fonts.headingSemi,
-    fontSize: 18,
+    fontSize: 17,
   },
-  sectionRow: {
-    alignItems: 'center',
+  sectionHeader: {
+    alignItems: 'flex-end',
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: spacing.md,
   },
-  sectionRowCompact: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-  },
-  sectionSub: {
+  sectionMeta: {
     fontFamily: fonts.body,
     fontSize: 13,
+    lineHeight: 19,
     marginTop: 2,
   },
   sectionTitle: {
     fontFamily: fonts.headingSemi,
     fontSize: 24,
+  },
+  shortcut: {
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    elevation: 2,
+    flexBasis: '47.8%',
+    minHeight: 112,
+    padding: spacing.md,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+  },
+  shortcutGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  shortcutIcon: {
+    alignItems: 'center',
+    borderRadius: radii.md,
+    height: 38,
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+    width: 38,
+  },
+  shortcutLabel: {
+    fontFamily: fonts.semibold,
+    fontSize: 15,
+  },
+  shortcutMeta: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  smallButton: {
+    alignItems: 'center',
+    borderRadius: radii.xl,
+    height: 42,
+    justifyContent: 'center',
+    width: 42,
   },
   taskCard: {
     alignItems: 'center',
@@ -386,7 +434,7 @@ const styles = StyleSheet.create({
   taskCopy: {
     flex: 1,
   },
-  taskIcon: {
+  taskMark: {
     alignItems: 'center',
     borderRadius: radii.md,
     height: 42,
@@ -401,39 +449,5 @@ const styles = StyleSheet.create({
   taskTitle: {
     fontFamily: fonts.semibold,
     fontSize: 15,
-  },
-  tileGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  vendorActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  vendorCard: {
-    marginBottom: spacing.lg,
-  },
-  vendorHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.sm,
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-  },
-  vendorMeta: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    marginTop: 2,
-  },
-  vendorName: {
-    fontFamily: fonts.headingSemi,
-    fontSize: 24,
-  },
-  viewAll: {
-    fontFamily: fonts.semibold,
-    fontSize: 13,
   },
 });

@@ -29,7 +29,7 @@ const priorityOptions = [
 ];
 
 export function ProfileSettingsScreen() {
-  const { colors, mode, setMode } = useAppTheme();
+  const { colors } = useAppTheme();
   const { data, updateProfile } = usePlanningData();
   const profile = data.profile;
   const [notifications, setNotifications] = useState(data.profile.notificationsEnabled);
@@ -206,18 +206,6 @@ export function ProfileSettingsScreen() {
               trackColor={{ false: colors.primarySoft, true: colors.primary }}
               value={notifications}
             />
-          }
-        />
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
-        <SettingRow
-          icon="color-palette-outline"
-          label="Theme"
-          meta={mode === 'light' ? 'Cream, blush, and gold' : 'Evening blush and gold'}
-          right={
-            <View style={styles.themeButtons}>
-              <PrimaryButton label="Light" onPress={() => setMode('light')} variant={mode === 'light' ? 'primary' : 'ghost'} />
-              <PrimaryButton label="Dark" onPress={() => setMode('dark')} variant={mode === 'dark' ? 'primary' : 'ghost'} />
-            </View>
           }
         />
       </Card>

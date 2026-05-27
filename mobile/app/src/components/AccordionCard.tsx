@@ -1,13 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ReactNode, useState } from 'react';
-import { LayoutAnimation, Platform, Pressable, StyleSheet, Text, UIManager, View } from 'react-native';
+import { LayoutAnimation, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { fonts, spacing, useAppTheme } from '../theme';
 import { Card } from './Card';
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 type AccordionCardProps = {
   children: ReactNode;
@@ -21,7 +17,9 @@ export function AccordionCard({ children, headerRight, subtitle, title }: Accord
   const [open, setOpen] = useState(false);
 
   function toggle() {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    if (Platform.OS !== 'android') {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    }
     setOpen((current) => !current);
   }
 

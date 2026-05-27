@@ -18,6 +18,7 @@ import { MaintenanceNotice } from "@/components/MaintenanceNotice";
 const Landing = lazy(() => import("@/pages/Landing"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Profile = lazy(() => import("@/pages/Profile"));
+const Calendar = lazy(() => import("@/pages/Calendar"));
 const Timeline = lazy(() => import("@/pages/Timeline"));
 const Budget = lazy(() => import("@/pages/Budget"));
 const Checklist = lazy(() => import("@/pages/Checklist"));
@@ -1503,6 +1504,7 @@ type PortalTrackingContext = {
 const PORTAL_TRACKING_ROUTES: Array<{ pattern: RegExp } & PortalTrackingContext> = [
   { pattern: /^\/dashboard\/?$/, feature: "Dashboard", section: "Planning", tool: "Dashboard", step: "Viewed dashboard" },
   { pattern: /^\/profile\/?$/, feature: "Wedding Profile", section: "Planning", tool: "Profile Builder", step: "Viewed wedding profile" },
+  { pattern: /^\/calendar\/?$/, feature: "Calendar", section: "Planning", tool: "Wedding Calendar", step: "Viewed wedding calendar" },
   { pattern: /^\/timeline\/?$/, feature: "Timeline", section: "Planning", tool: "Timeline", step: "Viewed timeline" },
   { pattern: /^\/budget(?:\/summary)?\/?$/, feature: "Budget & Payments", section: "Budget & Vendors", tool: "Budget & Payments", step: "Viewed budget and payments" },
   { pattern: /^\/checklist\/?$/, feature: "Checklist", section: "Planning", tool: "Checklist Manager", step: "Viewed checklist" },
@@ -1855,6 +1857,7 @@ function Router() {
         <Route path="/w/:slug/:section" component={PublicWebsite} />
         <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} maintenanceSection="portal-dashboard" />} />
         <Route path="/profile" component={() => <ProtectedRoute component={Profile} maintenanceSection="portal-profile" />} />
+        <Route path="/calendar" component={() => <ProtectedRoute component={Calendar} />} />
         <Route path="/timeline" component={() => <ProtectedRoute component={Timeline} maintenanceSection="portal-timeline" />} />
         <Route path="/budget/summary" component={() => <ProtectedRoute component={Budget} maintenanceSection="portal-budget" />} />
         <Route path="/budget" component={() => <ProtectedRoute component={Budget} maintenanceSection="portal-budget" />} />

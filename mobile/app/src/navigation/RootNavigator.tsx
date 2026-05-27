@@ -49,6 +49,7 @@ export type RootStackParamList = {
   Settings: undefined;
   Timeline: undefined;
   Updates: undefined;
+  Vendors: undefined;
   WebPortal: undefined;
   WebsiteEditor: undefined;
   WeddingParty: undefined;
@@ -70,7 +71,7 @@ const Tab = createBottomTabNavigator<TabParamList>();
 function HeaderBridge() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
-  return <AppHeader onProfilePress={() => navigation.navigate('ProfileSettings')} />;
+  return <AppHeader onProfilePress={() => navigation.navigate('ProfileSettings')} onSearchPress={() => navigation.navigate('Aria')} />;
 }
 
 function TabIcon({ color, focused, routeName }: { color: string; focused: boolean; routeName: keyof TabParamList }) {
@@ -82,14 +83,6 @@ function TabIcon({ color, focused, routeName }: { color: string; focused: boolea
     return (
       <View style={wrapStyle}>
         <Ionicons color={iconColor} name={focused ? 'home' : 'home-outline'} size={22} />
-      </View>
-    );
-  }
-
-  if (routeName === 'Vendors') {
-    return (
-      <View style={wrapStyle}>
-        <MaterialCommunityIcons color={iconColor} name={focused ? 'storefront' : 'storefront-outline'} size={22} />
       </View>
     );
   }
@@ -158,10 +151,9 @@ function MainTabs() {
       })}
     >
       <Tab.Screen component={HomeScreen} name="Home" />
-      <Tab.Screen component={VendorsScreen} name="Vendors" />
-      <Tab.Screen component={BudgetScreen} name="Budget" />
       <Tab.Screen component={ChecklistScreen} name="Checklist" />
       <Tab.Screen component={GuestsScreen} name="Guests" />
+      <Tab.Screen component={BudgetScreen} name="Budget" />
       <Tab.Screen component={MoreScreen} name="More" />
     </Tab.Navigator>
   );
@@ -179,6 +171,7 @@ export function RootNavigator() {
     >
       <Stack.Screen component={MainTabs} name="MainTabs" options={{ headerShown: false }} />
       <Stack.Screen component={ProfileSettingsScreen} name="ProfileSettings" options={{ title: 'Profile' }} />
+      <Stack.Screen component={VendorsScreen} name="Vendors" options={{ title: 'Vendors' }} />
       <Stack.Screen component={SettingsScreen} name="Settings" options={{ title: 'Settings' }} />
       <Stack.Screen component={OnboardingScreen} name="Onboarding" options={{ title: 'Setup' }} />
       <Stack.Screen component={MoodBoardScreen} name="MoodBoard" options={{ title: 'Mood Board' }} />

@@ -1,6 +1,5 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { ReactNode } from 'react';
-import { StyleProp, StyleSheet, ViewStyle } from 'react-native';
+import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 
 import { radii, shadow, spacing, useAppTheme } from '../theme';
 
@@ -14,11 +13,11 @@ export function Card({ children, padding = spacing.lg, style }: CardProps) {
   const { colors } = useAppTheme();
 
   return (
-    <LinearGradient
-      colors={[colors.cardStrong, colors.card]}
+    <View
       style={[
         styles.card,
         {
+          backgroundColor: colors.cardStrong,
           borderColor: colors.border,
           padding,
           shadowColor: colors.shadow,
@@ -27,7 +26,7 @@ export function Card({ children, padding = spacing.lg, style }: CardProps) {
       ]}
     >
       {children}
-    </LinearGradient>
+    </View>
   );
 }
 

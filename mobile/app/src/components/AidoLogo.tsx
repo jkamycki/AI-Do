@@ -68,8 +68,8 @@ const styles = StyleSheet.create({
     width: 42,
   },
   brandCompact: {
-    height: 58,
-    width: 94,
+    height: 48,
+    width: 78,
   },
   name: {
     color: palette.wine,

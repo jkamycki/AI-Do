@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { ReactNode } from 'react';
 import { RefreshControl, ScrollView, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { spacing, useAppTheme } from '../theme';
 
@@ -14,28 +14,23 @@ type ScreenProps = {
 
 export function Screen({ children, contentStyle, onRefresh, refreshing = false }: ScreenProps) {
   const { colors } = useAppTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <LinearGradient colors={[colors.background, colors.backgroundAlt, colors.background]} style={styles.root}>
-      <View pointerEvents="none" style={styles.patternTop}>
-        <View style={[styles.petal, styles.petalOne, { backgroundColor: colors.primarySoft }]} />
-        <View style={[styles.petal, styles.petalTwo, { backgroundColor: colors.accentSoft }]} />
-        <View style={[styles.petal, styles.petalThree, { backgroundColor: colors.primarySoft }]} />
-      </View>
-      <View pointerEvents="none" style={styles.patternBottom}>
-        <View style={[styles.stem, { backgroundColor: colors.accent }]} />
-        <View style={[styles.smallPetal, styles.smallPetalOne, { backgroundColor: colors.primarySoft }]} />
-        <View style={[styles.smallPetal, styles.smallPetalTwo, { backgroundColor: colors.primarySoft }]} />
-      </View>
       <SafeAreaView edges={['left', 'right']} style={styles.safe}>
         <ScrollView
-          contentContainerStyle={[styles.content, contentStyle]}
+          alwaysBounceVertical
+          contentContainerStyle={[styles.content, contentStyle, { paddingBottom: 168 + insets.bottom }]}
           contentInsetAdjustmentBehavior="never"
+          fadingEdgeLength={24}
           keyboardShouldPersistTaps="handled"
           nestedScrollEnabled
           overScrollMode="always"
+          persistentScrollbar
           refreshControl={onRefresh ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
-          showsVerticalScrollIndicator={false}
+          scrollEventThrottle={16}
+          showsVerticalScrollIndicator
           style={styles.scroll}
         >
           {children}
@@ -57,67 +52,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flexGrow: 1,
-    paddingBottom: 176,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
-  },
-  patternTop: {
-    height: 150,
-    opacity: 0.28,
-    position: 'absolute',
-    right: -44,
-    top: 58,
-    width: 150,
-  },
-  petal: {
-    borderRadius: 999,
-    height: 66,
-    position: 'absolute',
-    width: 34,
-  },
-  petalOne: {
-    right: 56,
-    top: 8,
-    transform: [{ rotate: '-34deg' }],
-  },
-  petalTwo: {
-    right: 82,
-    top: 38,
-    transform: [{ rotate: '22deg' }],
-  },
-  petalThree: {
-    right: 30,
-    top: 46,
-    transform: [{ rotate: '-58deg' }],
-  },
-  patternBottom: {
-    bottom: 160,
-    height: 82,
-    left: -28,
-    opacity: 0.22,
-    position: 'absolute',
-    width: 150,
-  },
-  stem: {
-    height: 2,
-    left: 26,
-    position: 'absolute',
-    top: 44,
-    width: 102,
-  },
-  smallPetal: {
-    borderRadius: 999,
-    height: 48,
-    position: 'absolute',
-    top: 22,
-    width: 25,
-  },
-  smallPetalOne: {
-    left: 34,
-    transform: [{ rotate: '38deg' }],
-  },
-  smallPetalTwo: {
-    left: 62,
-    transform: [{ rotate: '-34deg' }],
   },
 });

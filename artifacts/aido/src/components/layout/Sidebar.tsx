@@ -30,6 +30,7 @@ const AvatarCropDialog = lazy(() =>
 const routePrefetchers: Record<string, () => Promise<unknown>> = {
   "/dashboard": () => import("@/pages/Dashboard"),
   "/profile": () => import("@/pages/Profile"),
+  "/calendar": () => import("@/pages/Calendar"),
   "/mood-board": () => import("@/pages/MoodBoard"),
   "/timeline": () => import("@/pages/Timeline"),
   "/checklist": () => import("@/pages/Checklist"),
@@ -316,7 +317,7 @@ export function Sidebar() {
 
   useEffect(() => {
     if (!isSignedIn) return;
-    const warmRoutes = ["/dashboard", "/profile", "/budget", "/vendors", "/guests", "/guest-photo-drop", "/timeline", "/checklist", "/wedding-party", "/day-of"];
+    const warmRoutes = ["/dashboard", "/profile", "/calendar", "/budget", "/vendors", "/guests", "/guest-photo-drop", "/timeline", "/checklist", "/wedding-party", "/day-of"];
     const warm = () => warmRoutes.forEach(prefetchSidebarRoute);
     const idleId =
       "requestIdleCallback" in window
@@ -360,6 +361,7 @@ export function Sidebar() {
       items: [
         { href: "/dashboard", label: t("sidebar.overview", { defaultValue: "Overview" }) },
         { href: "/profile", label: t("nav.profile", { defaultValue: "Wedding Profile" }) },
+        { href: "/calendar", label: t("nav.calendar", { defaultValue: "Calendar" }) },
         { href: "/mood-board", label: t("sidebar.vision_board", { defaultValue: "Vision Board" }) },
         { href: "/checklist", label: t("nav.checklist", { defaultValue: "Checklist" }) },
       ],

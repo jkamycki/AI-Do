@@ -16,7 +16,7 @@ import { fonts, radii, spacing, useAppTheme } from '../theme';
 const reminderChoices = [1, 3, 7, 14];
 
 export function SettingsScreen() {
-  const { colors, mode, setMode } = useAppTheme();
+  const { colors } = useAppTheme();
   const {
     addRsvpResponseEmail,
     data,
@@ -159,20 +159,6 @@ export function SettingsScreen() {
           value={ariaMemory}
         />
         <PrimaryButton icon="save-outline" label={savedMemory ? 'Saved' : 'Save Aria Notes'} onPress={saveAriaMemory} variant="gold" />
-      </Card>
-
-      <Card style={styles.cardGap}>
-        <SettingsRow
-          icon="color-palette-outline"
-          label="Theme"
-          meta={mode === 'light' ? 'Cream, blush, and gold' : 'Evening blush and gold'}
-          right={
-            <View style={styles.themeButtons}>
-              <PrimaryButton label="Light" onPress={() => setMode('light')} variant={mode === 'light' ? 'primary' : 'ghost'} />
-              <PrimaryButton label="Dark" onPress={() => setMode('dark')} variant={mode === 'dark' ? 'primary' : 'ghost'} />
-            </View>
-          }
-        />
       </Card>
 
       <Card style={styles.cardGap}>

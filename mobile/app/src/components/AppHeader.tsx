@@ -19,14 +19,14 @@ export function AppHeader({ onProfilePress, onSearchPress }: AppHeaderProps) {
         <AidoLogo compact />
         <View style={styles.actions}>
           <Pressable
-            accessibilityLabel="Search"
+            accessibilityLabel="Open Aria"
             onPress={onSearchPress}
             style={({ pressed }) => [
-              styles.iconButton,
-              { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+              styles.ariaButton,
+              { backgroundColor: colors.primarySoft, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
             ]}
           >
-            <Ionicons color={colors.primary} name="search" size={20} />
+            <Ionicons color={colors.primary} name="sparkles-outline" size={18} />
           </Pressable>
           <Pressable
             accessibilityLabel="Profile"
@@ -55,10 +55,10 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    borderBottomWidth: 2,
+    borderBottomWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingBottom: spacing.xs,
+    paddingBottom: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingTop: 2,
   },
@@ -67,13 +67,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
   },
-  iconButton: {
+  ariaButton: {
     alignItems: 'center',
-    borderRadius: radii.lg,
+    borderRadius: radii.xl,
     borderWidth: 1,
-    height: 42,
+    flexDirection: 'row',
+    gap: spacing.xs,
+    height: 40,
     justifyContent: 'center',
-    width: 42,
+    paddingHorizontal: spacing.md,
   },
   profileButton: {
     ...shadow,

@@ -1,56 +1,39 @@
-import { createContext, ReactNode, useContext, useMemo, useState } from 'react';
+import { createContext, ReactNode, useContext, useMemo } from 'react';
 
-export type ThemeMode = 'light' | 'dark';
+export type ThemeMode = 'light';
 
 export const palette = {
-  cream: '#FFF8F5',
-  ivory: '#FFFCF9',
-  blush: '#F7DDE2',
-  blushDeep: '#D2778A',
-  rose: '#B76C78',
-  wine: '#74434A',
-  ink: '#4D3034',
-  muted: '#8D6E73',
-  gold: '#D4A373',
-  goldSoft: '#F0D1A3',
-  sage: '#8D946A',
-  gray: '#B5A9A8',
+  cream: '#FFF8F4',
+  ivory: '#FFFFFF',
+  blush: '#F8DDE5',
+  blushDeep: '#C85D79',
+  rose: '#A93D5B',
+  wine: '#552636',
+  ink: '#2C2026',
+  muted: '#735B64',
+  gold: '#BD8A4C',
+  goldSoft: '#F4DEBE',
+  sage: '#667B5A',
+  gray: '#D8CED1',
   white: '#FFFFFF',
-  black: '#1F1719',
+  black: '#191215',
 };
 
 const lightColors = {
   background: palette.cream,
-  backgroundAlt: '#FDECEF',
-  card: 'rgba(255, 255, 255, 0.92)',
+  backgroundAlt: '#FFFDFB',
+  card: 'rgba(255, 255, 255, 0.88)',
   cardStrong: palette.white,
   text: palette.ink,
   muted: palette.muted,
   primary: palette.rose,
-  primarySoft: palette.blush,
+  primarySoft: '#F9E7EC',
   accent: palette.gold,
   accentSoft: palette.goldSoft,
   success: palette.sage,
-  danger: '#D78184',
-  border: 'rgba(183, 108, 120, 0.2)',
-  shadow: '#8D3D58',
-};
-
-const darkColors = {
-  background: '#22171A',
-  backgroundAlt: '#322126',
-  card: 'rgba(54, 35, 40, 0.94)',
-  cardStrong: '#3C272D',
-  text: '#FFF4F0',
-  muted: '#E6C7CB',
-  primary: '#E49AAA',
-  primarySoft: '#57313A',
-  accent: '#E2B67E',
-  accentSoft: '#5C442A',
-  success: '#B6BE82',
-  danger: '#F19999',
-  border: 'rgba(247, 221, 226, 0.14)',
-  shadow: '#000000',
+  danger: '#B94848',
+  border: 'rgba(85, 38, 54, 0.12)',
+  shadow: '#552636',
 };
 
 export const fonts = {
@@ -72,17 +55,17 @@ export const spacing = {
 };
 
 export const radii = {
-  sm: 12,
-  md: 18,
-  lg: 24,
-  xl: 34,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 22,
 };
 
 export const shadow = {
   shadowOffset: { width: 0, height: 8 },
-  shadowOpacity: 0.12,
+  shadowOpacity: 0.08,
   shadowRadius: 18,
-  elevation: 6,
+  elevation: 4,
 };
 
 type AppThemeContextValue = {
@@ -95,16 +78,14 @@ type AppThemeContextValue = {
 const AppThemeContext = createContext<AppThemeContextValue | null>(null);
 
 export function AppThemeProvider({ children }: { children: ReactNode }) {
-  const [mode, setMode] = useState<ThemeMode>('light');
-
   const value = useMemo<AppThemeContextValue>(
     () => ({
-      mode,
-      colors: mode === 'light' ? lightColors : darkColors,
-      setMode,
-      toggleMode: () => setMode((current) => (current === 'light' ? 'dark' : 'light')),
+      mode: 'light',
+      colors: lightColors,
+      setMode: () => {},
+      toggleMode: () => {},
     }),
-    [mode],
+    [],
   );
 
   return <AppThemeContext.Provider value={value}>{children}</AppThemeContext.Provider>;
