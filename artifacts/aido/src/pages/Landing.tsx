@@ -143,7 +143,7 @@ export default function Landing() {
         <nav className="flex min-w-0 items-center gap-2 sm:gap-10">
           <Link href="/for-vendors">
             <Button variant="ghost" className="hidden h-10 px-1 text-sm font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E] sm:inline-flex sm:px-2 sm:text-base">
-              For Vendors
+              Partner With Us
             </Button>
           </Link>
           <Link href="/sign-in">

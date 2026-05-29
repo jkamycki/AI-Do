@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect } from "react";
+import { Component, type ReactNode, useState, useRef, useMemo, useEffect } from "react";
 import { useAuth, useUser } from "@clerk/react";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { authFetch } from "@/lib/authFetch";
@@ -166,6 +166,42 @@ type VendorDirectoryListing = {
   tags: string[];
   website: string;
 };
+
+class VendorMessagesErrorBoundary extends Component<
+  { children: ReactNode; resetKey?: string | number | null },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidUpdate(prevProps: { resetKey?: string | number | null }) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.setState({ hasError: false });
+    }
+  }
+
+  componentDidCatch(error: Error) {
+    console.error("[VendorMessagesErrorBoundary]", error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-6 text-sm text-amber-900">
+          <p className="font-semibold">Messages could not load for this vendor.</p>
+          <p className="mt-1 leading-6">
+            Select another vendor from the dropdown, or refresh and try this conversation again.
+          </p>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 const SAMPLE_VENDOR_DIRECTORY: VendorDirectoryListing[] = [
   {
@@ -2416,7 +2452,9 @@ function VendorHubMessagesTab({
                 <p className="text-sm text-muted-foreground">{selectedVendorEmail}</p>
               )}
             </div>
-            <VendorMessagesTab vendorId={selectedVendorId} />
+            <VendorMessagesErrorBoundary resetKey={selectedVendorId}>
+              <VendorMessagesTab vendorId={selectedVendorId} />
+            </VendorMessagesErrorBoundary>
           </div>
         ) : (
           <div className="flex min-h-[360px] items-center justify-center text-center text-sm text-muted-foreground">
@@ -3049,13 +3087,15 @@ export default function Vendors() {
         </TabsContent>
 
         <TabsContent value="messages" className="mt-4">
-          <VendorHubMessagesTab
-            initialVendorId={selectedMessageVendorId}
-            onSelectVendor={(vendorId) => {
-              setSelectedMessageVendorId(vendorId);
-              setLocation(`/vendors?management=messages&vendorId=${vendorId}`, { replace: true });
-            }}
-          />
+          <VendorMessagesErrorBoundary resetKey={`hub-${selectedMessageVendorId ?? "none"}`}>
+            <VendorHubMessagesTab
+              initialVendorId={selectedMessageVendorId}
+              onSelectVendor={(vendorId) => {
+                setSelectedMessageVendorId(vendorId);
+                setLocation(`/vendors?management=messages&vendorId=${vendorId}`, { replace: true });
+              }}
+            />
+          </VendorMessagesErrorBoundary>
         </TabsContent>
 
         <TabsContent value="contacts" className="mt-4">

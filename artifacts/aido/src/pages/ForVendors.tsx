@@ -212,13 +212,13 @@ export default function ForVendors() {
           </Link>
           <nav className="hidden items-center gap-2 text-sm font-bold md:flex">
             <Link href="/for-vendors" className={vendorPartnerNavClass(page === "home")}>Home</Link>
-            <Link href="/for-vendors/vendors" className={vendorPartnerNavClass(page === "vendors")}>Vendors</Link>
+            <Link href="/for-vendors/vendors" className={vendorPartnerNavClass(page === "vendors")}>Benefits</Link>
             <Link href="/for-vendors/how-it-works" className={vendorPartnerNavClass(page === "how-it-works")}>How It Works</Link>
             <Link href="/for-vendors/apply" className={vendorPartnerNavClass(page === "apply")}>Apply</Link>
           </nav>
           <div className="flex items-center gap-2">
             <Button asChild className="rounded-lg bg-[#8D294D] px-5 text-white hover:bg-[#762140]">
-              <Link href="/for-vendors/apply">Get Started</Link>
+              <Link href="/for-vendors/apply">Partner With Us</Link>
             </Button>
             <Link href="/sign-in">
               <Button variant="ghost" size="icon" className="hidden text-[#6F3E54] hover:bg-[#FFF7F2] sm:inline-flex">
@@ -242,20 +242,20 @@ export default function ForVendors() {
             <div className="max-w-xl">
               <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#E6C7D0] bg-white/75 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-[#B16C8E]">
                 <Sparkles className="h-4 w-4" />
-                Vendor Partner Program
+                Partner With Us
               </p>
               <h1 className="font-serif text-5xl font-bold leading-tight text-[#8D294D] sm:text-6xl">
-                Join the A.I DO Vendor Partner Program
+                Partner with A.I DO
               </h1>
               <p className="mt-5 max-w-lg text-lg leading-8 text-[#3B1C2B]">
-                Reach more couples, gain more exposure, and partner with the future of wedding planning.
+                Get listed with A.I DO, reach couples as they plan, and share a trusted badge on your site or socials.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Button asChild className="h-12 rounded-lg bg-[#8D294D] px-8 text-base font-bold text-white shadow-lg shadow-[#8D294D]/25 hover:bg-[#762140]">
-                  <Link href="/for-vendors/apply">Become a Partner</Link>
+                  <Link href="/for-vendors/apply">Partner With Us</Link>
                 </Button>
                 <Button asChild variant="outline" className="h-12 rounded-lg border-[#E6A6B7] bg-white/80 px-8 text-base font-bold text-[#6F3E54] hover:bg-white">
-                  <Link href="/for-vendors/vendors">Learn More</Link>
+                  <Link href="/for-vendors/vendors">See Benefits</Link>
                 </Button>
               </div>
             </div>
@@ -270,7 +270,7 @@ export default function ForVendors() {
         <section id="benefits" className="bg-white px-4 py-14 sm:px-8">
           <div className="mx-auto max-w-6xl">
             <h2 className="text-center font-serif text-4xl font-bold text-[#8D294D]">
-              Why Partner with A.I DO?
+              Why Partner With Us?
             </h2>
             <div className="mt-9 grid gap-5 md:grid-cols-4">
               {BENEFITS.map((benefit) => {
@@ -319,9 +319,9 @@ export default function ForVendors() {
           <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
             <div className="space-y-6">
               <div>
-                <h2 className="font-serif text-4xl font-bold text-[#8D294D]">Ready to Get Started?</h2>
+                <h2 className="font-serif text-4xl font-bold text-[#8D294D]">Ready to Partner?</h2>
                 <p className="mt-3 text-lg text-[#3B1C2B]">
-                  Join the A.I DO Vendor Partner Program today.
+                  Tell us about your business and we will review your fit for the A.I DO partner network.
                 </p>
               </div>
               <VendorBadge />
