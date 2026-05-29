@@ -1945,6 +1945,7 @@ function VendorDirectoryTab({
   const { user } = useUser();
   const { data: vendors = [] } = useListVendors();
   const [selectedListing, setSelectedListing] = useState<VendorDirectoryListing | null>(null);
+  const [pendingMessageListing, setPendingMessageListing] = useState<VendorDirectoryListing | null>(null);
   const accountEmail = user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses?.[0]?.emailAddress ?? "";
   const createPartnerVendorMutation = useCreateVendor({
     mutation: {
@@ -1969,19 +1970,12 @@ function VendorDirectoryTab({
     },
   });
 
-  const openPartnerMessages = (listing: VendorDirectoryListing) => {
-    const existingVendor = vendors.find((vendor) => (
-      vendor.email?.toLowerCase() === listing.email.toLowerCase() ||
-      vendor.name.toLowerCase() === listing.name.toLowerCase()
-    ));
-    if (existingVendor) {
-      if (accountEmail) {
-        sessionStorage.setItem(`aido_vendor_message_default_cc_${existingVendor.id}`, accountEmail);
-      }
-      onOpenVendorMessages(existingVendor.id);
-      return;
-    }
+  const existingVendorForListing = (listing: VendorDirectoryListing) => vendors.find((vendor) => (
+    vendor.email?.toLowerCase() === listing.email.toLowerCase() ||
+    vendor.name.toLowerCase() === listing.name.toLowerCase()
+  ));
 
+  const createPartnerVendorAndOpenMessages = (listing: VendorDirectoryListing) => {
     createPartnerVendorMutation.mutate({
       data: {
         name: listing.name,
@@ -1998,15 +1992,58 @@ function VendorDirectoryTab({
     });
   };
 
+  const requestPartnerMessages = (listing: VendorDirectoryListing) => {
+    const existingVendor = existingVendorForListing(listing);
+    if (existingVendor) {
+      if (accountEmail) {
+        sessionStorage.setItem(`aido_vendor_message_default_cc_${existingVendor.id}`, accountEmail);
+      }
+      onOpenVendorMessages(existingVendor.id);
+      return;
+    }
+    setPendingMessageListing(listing);
+  };
+
+  const confirmAddPartnerDialog = (
+    <AlertDialog open={!!pendingMessageListing} onOpenChange={(open) => !open && setPendingMessageListing(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Add partner to your Vendor List?</AlertDialogTitle>
+          <AlertDialogDescription>
+            To track replies as a conversation, A.I DO needs to add {pendingMessageListing?.name ?? "this partner"} to your Vendor List first.
+            You can edit or remove them later.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Not now</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={createPartnerVendorMutation.isPending}
+            onClick={() => {
+              if (pendingMessageListing) {
+                createPartnerVendorAndOpenMessages(pendingMessageListing);
+                setPendingMessageListing(null);
+              }
+            }}
+          >
+            Add and open Messages
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
   if (selectedListing) {
     return (
-      <VendorDirectoryProfile
-        listing={selectedListing}
-        accountEmail={accountEmail}
-        isOpeningMessages={createPartnerVendorMutation.isPending}
-        onBack={() => setSelectedListing(null)}
-        onOpenMessages={() => openPartnerMessages(selectedListing)}
-      />
+      <>
+        <VendorDirectoryProfile
+          listing={selectedListing}
+          accountEmail={accountEmail}
+          isOpeningMessages={createPartnerVendorMutation.isPending}
+          onBack={() => setSelectedListing(null)}
+          onOpenMessages={() => requestPartnerMessages(selectedListing)}
+        />
+        {confirmAddPartnerDialog}
+      </>
     );
   }
 
@@ -2090,7 +2127,7 @@ function VendorDirectoryTab({
                 disabled={createPartnerVendorMutation.isPending}
                 onClick={(event) => {
                   event.stopPropagation();
-                  openPartnerMessages(listing);
+                  requestPartnerMessages(listing);
                 }}
               >
                 <Mail className="mr-1.5 h-3.5 w-3.5" />
@@ -2106,6 +2143,7 @@ function VendorDirectoryTab({
           </div>
         ))}
       </div>
+      {confirmAddPartnerDialog}
     </div>
   );
 }
@@ -2377,7 +2415,7 @@ function VendorDirectoryProfile({
             </Button>
             {accountEmail && (
               <p className="mt-3 rounded-lg bg-[#FFF7F2] px-3 py-2 text-xs leading-5 text-[#6F3E54]">
-                This opens the regular Vendor List messaging thread. Add CC recipients inside that message composer when needed.
+                If this partner is not in your Vendor List yet, A.I DO will ask before adding them and opening Messages.
               </p>
             )}
             <div className="mt-5 space-y-4 text-sm">
