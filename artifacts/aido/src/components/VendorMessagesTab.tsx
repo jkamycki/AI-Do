@@ -352,6 +352,9 @@ export function VendorMessagesTab({ vendorId }: Props) {
   }
 
   const vendorEmail = (conv.vendorEmail || vendor?.email || "").trim();
+  const conversationVendorCategory = (conv as { vendorCategory?: string | null }).vendorCategory ?? "";
+  const displayVendorName = vendor?.name || conv.vendorName || "";
+  const displayVendorCategory = vendor?.category || conversationVendorCategory;
   const hasVendorEmail = vendorEmail.length > 0;
 
   return (
@@ -568,7 +571,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
               setDraftPurpose("");
               setDraftNotes("");
               const knownTypes = ["Venue","Hotel","Photographer","Videographer","Florist","Caterer","DJ/Band","Hair & Makeup","Planner/Coordinator"];
-              const cat = vendor?.category ?? "";
+              const cat = displayVendorCategory ?? "";
               if (knownTypes.includes(cat)) {
                 setDraftVendorType(cat);
                 setDraftOtherVendorType("");
@@ -601,7 +604,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
-              {vendor?.name ? t("vendors.draft_to_vendor", { name: vendor.name }) : t("vendors.draft_dialog_title")}
+              {displayVendorName ? t("vendors.draft_to_vendor", { name: displayVendorName }) : t("vendors.draft_dialog_title")}
             </DialogTitle>
             <DialogDescription>
               {t("vendors.draft_dialog_desc")}
