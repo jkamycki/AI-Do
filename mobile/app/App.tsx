@@ -16,12 +16,13 @@ import { sendPendingRsvpReminders, sendRsvpInvitations, sendSaveTheDates } from 
 import { createMobileHotel, deleteMobileHotel, updateMobileHotel } from './src/api/hotels';
 import { saveMobileInvitationStudio } from './src/api/invitationStudio';
 import { getMobileAuthToken, hasMobileApiBase, mobileAuthFetch, saveMobileAuthToken, setMobileAuthTokenGetter } from './src/api/mobileAuth';
+import { saveMobileGuestPhotoDropSettings } from './src/api/photoDrop';
 import { saveMobileProfile } from './src/api/profile';
 import { applySeatingChart, generateSeatingChart, saveSeatingChart, updateSeatingChart, type SeatingGuestPayload } from './src/api/seating';
 import { createMobileVendor, deleteMobileVendor, updateMobileVendor } from './src/api/vendors';
 import { createMobileWeddingPartyMember, deleteMobileWeddingPartyMember, updateMobileWeddingPartyMember } from './src/api/weddingParty';
 import { samplePlanningData } from './src/data/sampleData';
-import type { Guest } from './src/types';
+import type { Guest, GuestPhotoDropSettings } from './src/types';
 import { daysFromToday, formatCurrency, formatDeadlineLabel, formatShortDate, parseDate } from './src/utils/format';
 
 const logo = require('./assets/aido-logo.png');
@@ -471,6 +472,23 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
       });
     });
   };
+  const updateGuestPhotoDropSettings = (patch: Partial<GuestPhotoDropSettings>) => {
+    const previous = data.guestPhotoDrop;
+    const nextSettings = { ...previous, ...patch };
+    setData((current) => ({ ...current, guestPhotoDrop: nextSettings }));
+    void saveMobileGuestPhotoDropSettings(patch)
+      .then((settings) => {
+        setData((current) => ({ ...current, guestPhotoDrop: { ...current.guestPhotoDrop, ...settings } }));
+      })
+      .catch((error) => {
+        setData((current) => ({ ...current, guestPhotoDrop: previous }));
+        setMockAction({
+          title: 'Photo Drop settings not saved',
+          detail: error instanceof Error ? error.message : 'The Photo Drop settings could not be saved. Please try again.',
+          primaryLabel: 'Close',
+        });
+      });
+  };
   const addWeddingPartyMember = (member: (typeof samplePlanningData.weddingParty)[number]) => {
     const localMember = { ...member, id: `party-new-${Date.now()}` };
     setData((current) => ({ ...current, weddingParty: [localMember, ...current.weddingParty] }));
@@ -720,6 +738,7 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
               onDeleteHotel={removeHotel}
               onUpdateHotel={updateHotel}
               onUpdateGuest={updateGuest}
+              onUpdateGuestPhotoDropSettings={updateGuestPhotoDropSettings}
               openMockAction={setMockAction}
             />
           ) : null}
@@ -1751,6 +1770,7 @@ function WebsiteSection({
   onDeleteHotel,
   onUpdateHotel,
   onUpdateGuest,
+  onUpdateGuestPhotoDropSettings,
   openMockAction,
 }: {
   activeView: GuestHubView;
@@ -1762,12 +1782,15 @@ function WebsiteSection({
   onDeleteHotel: (hotelId: string) => void;
   onUpdateHotel: (hotel: (typeof samplePlanningData.hotels)[number]) => void;
   onUpdateGuest: (guest: Guest) => void;
+  onUpdateGuestPhotoDropSettings: (patch: Partial<GuestPhotoDropSettings>) => void;
   openMockAction: (action: MockAction) => void;
 }) {
   const [registryConnected, setRegistryConnected] = useState(false);
   const [registryUrl, setRegistryUrl] = useState('');
   const [registryLoaded, setRegistryLoaded] = useState(false);
   const [invitationStudioOpen, setInvitationStudioOpen] = useState(false);
+  const [guestCampaignMessage, setGuestCampaignMessage] = useState<string | null>(null);
+  const [guestCampaignSending, setGuestCampaignSending] = useState<'rsvp-reminders' | 'save-the-dates' | 'rsvp-invites' | null>(null);
   const [photoDropTab, setPhotoDropTab] = useState<'share' | 'queue' | 'settings'>('share');
   const [selectedGuest, setSelectedGuest] = useState<(typeof samplePlanningData.guests)[number] | null>(null);
   const [seatingTableCount, setSeatingTableCount] = useState(Math.max(1, data.seating.length || 3));
@@ -1830,6 +1853,35 @@ function WebsiteSection({
       rsvp: 'Pending',
       table: 'No table',
     });
+  };
+
+  const runGuestCampaign = async (
+    campaign: 'rsvp-reminders' | 'save-the-dates' | 'rsvp-invites',
+    action: () => Promise<{ attempted: number; delivered: number; markedSent: number }>,
+  ) => {
+    if (guestCampaignSending) return;
+    setGuestCampaignSending(campaign);
+    setGuestCampaignMessage(null);
+    try {
+      const result = await action();
+      const campaignLabel =
+        campaign === 'rsvp-reminders'
+          ? 'RSVP reminders'
+          : campaign === 'save-the-dates'
+            ? 'Save-the-Dates'
+            : 'RSVP invitations';
+      if (result.attempted === 0) {
+        setGuestCampaignMessage(`No eligible guests for ${campaignLabel.toLowerCase()} right now.`);
+        return;
+      }
+      setGuestCampaignMessage(
+        `${campaignLabel}: ${result.delivered} emailed, ${result.markedSent} marked sent, ${result.attempted} total processed.`,
+      );
+    } catch (error) {
+      setGuestCampaignMessage(error instanceof Error ? `${error.message} Nothing was sent from the app.` : 'Could not send from the app.');
+    } finally {
+      setGuestCampaignSending(null);
+    }
   };
 
   const generateMobileSeating = async () => {
@@ -2181,45 +2233,31 @@ function WebsiteSection({
             <Text style={styles.primaryActionText}>Add guest</Text>
           </Pressable>
           <Pressable
-            onPress={() =>
-              openMockAction({
-                title: 'RSVP reminders',
-                detail: 'Send RSVP reminders to pending guests using the same invitation-card email template and RSVP links as the website.',
-                primaryLabel: 'Send reminders',
-              })
-            }
-            style={styles.secondaryActionButton}
+            disabled={Boolean(guestCampaignSending)}
+            onPress={() => void runGuestCampaign('rsvp-reminders', sendPendingRsvpReminders)}
+            style={[styles.secondaryActionButton, guestCampaignSending && styles.disabledActionButton]}
           >
-            <Ionicons color={colors.rose} name="chatbubble-ellipses-outline" size={18} />
-            <Text style={styles.secondaryActionText}>Send RSVP reminders</Text>
+            <Ionicons color={colors.rose} name={guestCampaignSending === 'rsvp-reminders' ? 'sync-outline' : 'chatbubble-ellipses-outline'} size={18} />
+            <Text style={styles.secondaryActionText}>{guestCampaignSending === 'rsvp-reminders' ? 'Sending...' : 'Send RSVP reminders'}</Text>
           </Pressable>
           <Pressable
-            onPress={() =>
-              openMockAction({
-                title: 'Send Save the Date',
-                detail: 'Send Save-the-Dates to eligible guests using the same website email sender, current Save-the-Date design, and guest tracking.',
-                primaryLabel: 'Send Save the Date',
-              })
-            }
-            style={styles.secondaryActionButton}
+            disabled={Boolean(guestCampaignSending)}
+            onPress={() => void runGuestCampaign('save-the-dates', sendSaveTheDates)}
+            style={[styles.secondaryActionButton, guestCampaignSending && styles.disabledActionButton]}
           >
-            <Ionicons color={colors.rose} name="calendar-outline" size={18} />
-            <Text style={styles.secondaryActionText}>Send Save the Date</Text>
+            <Ionicons color={colors.rose} name={guestCampaignSending === 'save-the-dates' ? 'sync-outline' : 'calendar-outline'} size={18} />
+            <Text style={styles.secondaryActionText}>{guestCampaignSending === 'save-the-dates' ? 'Sending...' : 'Send Save the Date'}</Text>
           </Pressable>
           <Pressable
-            onPress={() =>
-              openMockAction({
-                title: 'Send RSVP invitation',
-                detail: 'Send RSVP invitations to eligible guests using the same website invitation-card email template, RSVP links, and response tracking.',
-                primaryLabel: 'Send RSVP invitation',
-              })
-            }
-            style={styles.secondaryActionButton}
+            disabled={Boolean(guestCampaignSending)}
+            onPress={() => void runGuestCampaign('rsvp-invites', sendRsvpInvitations)}
+            style={[styles.secondaryActionButton, guestCampaignSending && styles.disabledActionButton]}
           >
-            <Ionicons color={colors.rose} name="mail-open-outline" size={18} />
-            <Text style={styles.secondaryActionText}>Send RSVP invite</Text>
+            <Ionicons color={colors.rose} name={guestCampaignSending === 'rsvp-invites' ? 'sync-outline' : 'mail-open-outline'} size={18} />
+            <Text style={styles.secondaryActionText}>{guestCampaignSending === 'rsvp-invites' ? 'Sending...' : 'Send RSVP invite'}</Text>
           </Pressable>
         </View>
+        {guestCampaignMessage ? <SavedStrip label={guestCampaignMessage} /> : null}
       </Card> : null}
 
       <GuestDetailModal
@@ -2362,6 +2400,7 @@ function WebsiteSection({
           activeTab={photoDropTab}
           data={data}
           onChangeTab={setPhotoDropTab}
+          onUpdateSettings={onUpdateGuestPhotoDropSettings}
           openMockAction={openMockAction}
         />
       ) : null}
@@ -3522,11 +3561,13 @@ function PhotoDropMobilePanel({
   activeTab,
   data,
   onChangeTab,
+  onUpdateSettings,
   openMockAction,
 }: {
   activeTab: 'share' | 'queue' | 'settings';
   data: typeof samplePlanningData;
   onChangeTab: (tab: 'share' | 'queue' | 'settings') => void;
+  onUpdateSettings: (patch: Partial<GuestPhotoDropSettings>) => void;
   openMockAction: (action: MockAction) => void;
 }) {
   const pendingUploads = data.guestPhotoUploads.filter((upload) => upload.status === 'Pending').length;
@@ -3652,20 +3693,63 @@ function PhotoDropMobilePanel({
       {activeTab === 'settings' ? (
         <View style={styles.photoDropPanel}>
           <PhotoDropSettingRow icon="albums-outline" label="Display mode" value={photoDropModeLabel(data.guestPhotoDrop.displayMode)} />
-          <PhotoDropSettingRow icon="qr-code-outline" label="QR target" value={data.guestPhotoDrop.selectedQrTarget === 'website' ? 'Website' : 'Portal'} />
+          <View style={styles.eventTypeRow}>
+            {(['portal', 'website', 'both'] as const).map((mode) => {
+              const active = data.guestPhotoDrop.displayMode === mode;
+              return (
+                <Pressable
+                  key={mode}
+                  onPress={() => onUpdateSettings({ displayMode: mode })}
+                  style={[styles.eventTypePill, active && styles.eventTypePillActive]}
+                >
+                  <Text style={[styles.eventTypeText, active && styles.eventTypeTextActive]}>{photoDropModeLabel(mode)}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <PhotoDropSettingRow icon="qr-code-outline" label="QR target" value={data.guestPhotoDrop.selectedQrTarget === 'website' ? 'Website' : 'RSVP'} />
+          <View style={styles.eventTypeRow}>
+            {(['website', 'rsvp'] as const).map((target) => {
+              const active = data.guestPhotoDrop.selectedQrTarget === target;
+              return (
+                <Pressable
+                  key={target}
+                  onPress={() => onUpdateSettings({ selectedQrTarget: target })}
+                  style={[styles.eventTypePill, active && styles.eventTypePillActive]}
+                >
+                  <Text style={[styles.eventTypeText, active && styles.eventTypeTextActive]}>{target === 'website' ? 'Website QR' : 'RSVP QR'}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
           <PhotoDropSettingRow icon="cloud-upload-outline" label="Upload limit" value={`${data.guestPhotoDrop.maxUploads} photos per guest`} />
+          <View style={styles.fontStepperRow}>
+            <Pressable
+              accessibilityLabel="Decrease photo upload limit"
+              accessibilityRole="button"
+              onPress={() => onUpdateSettings({ maxUploads: Math.max(1, data.guestPhotoDrop.maxUploads - 1) })}
+              style={styles.iconMiniButton}
+            >
+              <Ionicons color={colors.rose} name="remove" size={15} />
+            </Pressable>
+            <View style={styles.fontSizeValueBox}>
+              <Text style={styles.fontSizeValue}>{data.guestPhotoDrop.maxUploads}</Text>
+            </View>
+            <Pressable
+              accessibilityLabel="Increase photo upload limit"
+              accessibilityRole="button"
+              onPress={() => onUpdateSettings({ maxUploads: Math.min(20, data.guestPhotoDrop.maxUploads + 1) })}
+              style={styles.iconMiniButton}
+            >
+              <Ionicons color={colors.rose} name="add" size={15} />
+            </Pressable>
+          </View>
           <Pressable
-            onPress={() =>
-              openMockAction({
-                title: 'Photo Drop settings',
-                detail: 'Choose portal, website, or both; set guest upload limits; pick QR target; and turn moderation on or off.',
-                primaryLabel: 'Save settings',
-              })
-            }
+            onPress={() => onUpdateSettings({ enabled: !data.guestPhotoDrop.enabled })}
             style={styles.primaryActionButton}
           >
-            <Ionicons color={colors.surface} name="save-outline" size={18} />
-            <Text style={styles.primaryActionText}>Edit settings</Text>
+            <Ionicons color={colors.surface} name={data.guestPhotoDrop.enabled ? 'pause-circle-outline' : 'play-circle-outline'} size={18} />
+            <Text style={styles.primaryActionText}>{data.guestPhotoDrop.enabled ? 'Turn Photo Drop off' : 'Turn Photo Drop on'}</Text>
           </Pressable>
         </View>
       ) : null}
