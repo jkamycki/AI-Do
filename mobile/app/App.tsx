@@ -2,6 +2,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { ClerkProvider, useAuth, useSSO, useSignIn, useSignUp, useUser } from '@clerk/clerk-expo';
 import { tokenCache } from '@clerk/clerk-expo/token-cache';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as DocumentPicker from 'expo-document-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
@@ -13,7 +14,7 @@ import { sendMobileAriaMessage } from './src/api/aria';
 import { syncDayOfChecklistCompletion, syncTaskCompletion } from './src/api/checklist';
 import { inviteMobileCollaborator, listMobileCollaborators } from './src/api/collaboration';
 import { listMobileContracts, type MobileContractRecord } from './src/api/contracts';
-import { listMobileDocuments, type MobileDocumentRecord } from './src/api/documents';
+import { listMobileDocuments, uploadMobileContract, uploadMobileDocument, type MobileDocumentRecord, type MobilePickedFile } from './src/api/documents';
 import { createMobileGuest, deleteMobileGuest, updateMobileGuest } from './src/api/guests';
 import { sendPendingRsvpReminders, sendRsvpInvitations, sendSaveTheDates } from './src/api/guestMessaging';
 import { createMobileHotel, deleteMobileHotel, updateMobileHotel } from './src/api/hotels';
@@ -3683,6 +3684,22 @@ function extractFirstRegistryUrl(raw: string | undefined) {
   }
 }
 
+async function pickMobileUploadFile(type: string[]): Promise<MobilePickedFile | null> {
+  const result = await DocumentPicker.getDocumentAsync({
+    copyToCacheDirectory: true,
+    multiple: false,
+    type,
+  });
+  if (result.canceled || !result.assets?.[0]) return null;
+  const asset = result.assets[0] as DocumentPicker.DocumentPickerAsset & { file?: Blob };
+  return {
+    file: asset.file,
+    mimeType: asset.mimeType,
+    name: asset.name || `upload-${Date.now()}`,
+    uri: asset.uri,
+  };
+}
+
 function PhotoDropMobilePanel({
   activeTab,
   data,
@@ -5712,9 +5729,16 @@ function FinanceContractsPanel({
   openMockAction: (action: MockAction) => void;
 }) {
   const [apiContracts, setApiContracts] = useState<MobileContractRecord[] | null>(null);
+  const [contractUploadStatus, setContractUploadStatus] = useState('');
+  const [contractUploading, setContractUploading] = useState(false);
+  const refreshContracts = async () => {
+    const contracts = await listMobileContracts();
+    setApiContracts(contracts);
+    return contracts;
+  };
   useEffect(() => {
     let alive = true;
-    listMobileContracts()
+    refreshContracts()
       .then((contracts) => {
         if (alive) setApiContracts(contracts);
       })
@@ -5725,6 +5749,27 @@ function FinanceContractsPanel({
       alive = false;
     };
   }, []);
+  const pickAndUploadContract = async () => {
+    if (contractUploading) return;
+    setContractUploadStatus('');
+    try {
+      const pickedFile = await pickMobileUploadFile([
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/*',
+      ]);
+      if (!pickedFile) return;
+      setContractUploading(true);
+      await uploadMobileContract(pickedFile, { displayName: pickedFile.name, syncToDocumentLibrary: true });
+      await refreshContracts();
+      setContractUploadStatus('Contract uploaded, analyzed, and copied to Documents.');
+    } catch (error) {
+      setContractUploadStatus(error instanceof Error ? error.message : 'Contract upload failed.');
+    } finally {
+      setContractUploading(false);
+    }
+  };
   const contracts = apiContracts?.length
     ? apiContracts.map((contract) => ({
         clauses: [...(contract.analysis?.clauses ?? []), ...(contract.analysis?.keyTerms ?? [])].map((_, index) => `Clause ${index + 1}`),
@@ -5753,7 +5798,7 @@ function FinanceContractsPanel({
             <Text style={styles.cardTitle}>Contracts</Text>
             <Text style={styles.hubDetail}>AI review status, key clauses, vendor link, value, and next action.</Text>
           </View>
-        <Text style={styles.smallStatus}>{apiContracts?.length ? 'Synced' : `${needsReview} need review`}</Text>
+          <Text style={styles.smallStatus}>{contractUploading ? 'Uploading' : apiContracts?.length ? 'Synced' : `${needsReview} need review`}</Text>
         </View>
         <View style={styles.calendarList}>
           {contracts.map((contract) => (
@@ -5787,19 +5832,15 @@ function FinanceContractsPanel({
         </View>
         <View style={styles.websiteActions}>
           <Pressable
-            onPress={() =>
-              openMockAction({
-                title: 'Upload contract',
-                detail: 'Upload a vendor or hotel contract, link it to the right record, and run AI review for clauses, payment terms, cancellation, liability, and missing details.',
-                primaryLabel: 'Upload contract',
-              })
-            }
-            style={styles.primaryActionButton}
+            disabled={contractUploading}
+            onPress={pickAndUploadContract}
+            style={[styles.primaryActionButton, contractUploading && styles.disabledActionButton]}
           >
-            <Ionicons color={colors.surface} name="cloud-upload-outline" size={18} />
-            <Text style={styles.primaryActionText}>Upload contract</Text>
+            <Ionicons color={colors.surface} name={contractUploading ? 'sync-outline' : 'cloud-upload-outline'} size={18} />
+            <Text style={styles.primaryActionText}>{contractUploading ? 'Uploading...' : 'Upload contract'}</Text>
           </Pressable>
         </View>
+        {contractUploadStatus ? <SavedStrip label={contractUploadStatus} /> : null}
       </Card>
     </>
   );
@@ -5813,9 +5854,16 @@ function FinanceDocumentsPanel({
   openMockAction: (action: MockAction) => void;
 }) {
   const [apiDocuments, setApiDocuments] = useState<MobileDocumentRecord[] | null>(null);
+  const [documentUploadStatus, setDocumentUploadStatus] = useState('');
+  const [documentUploading, setDocumentUploading] = useState(false);
+  const refreshDocuments = async () => {
+    const documents = await listMobileDocuments();
+    setApiDocuments(documents);
+    return documents;
+  };
   useEffect(() => {
     let alive = true;
-    listMobileDocuments()
+    refreshDocuments()
       .then((documents) => {
         if (alive) setApiDocuments(documents);
       })
@@ -5826,6 +5874,28 @@ function FinanceDocumentsPanel({
       alive = false;
     };
   }, []);
+  const pickAndUploadDocument = async () => {
+    if (documentUploading) return;
+    setDocumentUploadStatus('');
+    try {
+      const pickedFile = await pickMobileUploadFile([
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/*',
+        'text/plain',
+      ]);
+      if (!pickedFile) return;
+      setDocumentUploading(true);
+      await uploadMobileDocument(pickedFile);
+      await refreshDocuments();
+      setDocumentUploadStatus('Document uploaded and added to your library.');
+    } catch (error) {
+      setDocumentUploadStatus(error instanceof Error ? error.message : 'Document upload failed.');
+    } finally {
+      setDocumentUploading(false);
+    }
+  };
   const documents = apiDocuments?.length
     ? apiDocuments.map((document) => ({
         id: `api-document-${document.id}`,
@@ -5845,7 +5915,7 @@ function FinanceDocumentsPanel({
           <Text style={styles.cardTitle}>Documents</Text>
           <Text style={styles.hubDetail}>Contracts, receipts, timelines, exports, and shared planning files.</Text>
         </View>
-        <Text style={styles.smallStatus}>{apiDocuments?.length ? 'Synced' : `${data.documents.length} files`}</Text>
+        <Text style={styles.smallStatus}>{documentUploading ? 'Uploading' : apiDocuments?.length ? 'Synced' : `${data.documents.length} files`}</Text>
       </View>
       <View style={styles.calendarList}>
         {documents.map((document) => (
@@ -5878,19 +5948,15 @@ function FinanceDocumentsPanel({
       </View>
       <View style={styles.websiteActions}>
         <Pressable
-          onPress={() =>
-            openMockAction({
-              title: 'Upload document',
-              detail: 'Upload a receipt, contract, mood board, timeline, or planning file and link it to a vendor, budget line, or day-of item.',
-              primaryLabel: 'Upload file',
-            })
-          }
-          style={styles.primaryActionButton}
+          disabled={documentUploading}
+          onPress={pickAndUploadDocument}
+          style={[styles.primaryActionButton, documentUploading && styles.disabledActionButton]}
         >
-          <Ionicons color={colors.surface} name="cloud-upload-outline" size={18} />
-          <Text style={styles.primaryActionText}>Upload file</Text>
+          <Ionicons color={colors.surface} name={documentUploading ? 'sync-outline' : 'cloud-upload-outline'} size={18} />
+          <Text style={styles.primaryActionText}>{documentUploading ? 'Uploading...' : 'Upload file'}</Text>
         </Pressable>
       </View>
+      {documentUploadStatus ? <SavedStrip label={documentUploadStatus} /> : null}
     </Card>
   );
 }

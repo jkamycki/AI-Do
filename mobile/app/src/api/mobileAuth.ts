@@ -43,13 +43,14 @@ export async function mobileAuthFetch(path: string, init: RequestInit = {}) {
 
   const token = await getMobileAuthToken();
   if (!token) return null;
+  const isFormData = typeof FormData !== 'undefined' && init.body instanceof FormData;
 
   return fetch(`${API_BASE}${path}`, {
     ...init,
     credentials: 'include',
     headers: {
       Accept: 'application/json',
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...init.headers,
       Authorization: `Bearer ${token}`,
       ...(workspaceProfileId != null ? { 'x-workspace-profile-id': String(workspaceProfileId) } : {}),
