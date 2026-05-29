@@ -16,7 +16,7 @@ import { inviteMobileCollaborator, listMobileCollaborators } from './src/api/col
 import { listMobileContracts, type MobileContractRecord } from './src/api/contracts';
 import { listMobileDocuments, uploadMobileContract, uploadMobileDocument, type MobileDocumentRecord, type MobilePickedFile } from './src/api/documents';
 import { createMobileGuest, deleteMobileGuest, updateMobileGuest } from './src/api/guests';
-import { sendPendingRsvpReminders, sendRsvpInvitations, sendSaveTheDates } from './src/api/guestMessaging';
+import { getGuestCampaignPreview, sendPendingRsvpReminders, sendRsvpInvitations, sendSaveTheDates, type GuestCampaign, type GuestCampaignPreview } from './src/api/guestMessaging';
 import { createMobileHotel, deleteMobileHotel, updateMobileHotel } from './src/api/hotels';
 import { saveMobileInvitationStudio } from './src/api/invitationStudio';
 import { getMobileAuthToken, hasMobileApiBase, mobileAuthFetch, saveMobileAuthToken, setMobileAuthTokenGetter } from './src/api/mobileAuth';
@@ -29,7 +29,7 @@ import { createMobileWebsite, getMobileWebsite, publishMobileWebsite, saveMobile
 import { createMobileWeddingPartyMember, deleteMobileWeddingPartyMember, updateMobileWeddingPartyMember } from './src/api/weddingParty';
 import { samplePlanningData } from './src/data/sampleData';
 import type { Guest, GuestPhotoDropSettings } from './src/types';
-import { daysFromToday, formatCurrency, formatDeadlineLabel, formatShortDate, parseDate } from './src/utils/format';
+import { daysFromToday, formatCurrency, formatDeadlineLabel, formatLongDate, formatShortDate, parseDate } from './src/utils/format';
 
 const logo = require('./assets/aido-logo.png');
 const ariaAvatar = require('./assets/aria-avatar.png');
@@ -1289,7 +1289,7 @@ function Hero({
         />
         <View style={styles.homeHeroCopy}>
           <Text style={styles.homeHeroTitle}>{profile.partnerOne} + {profile.partnerTwo}</Text>
-          <Text style={styles.homeHeroMeta}>{formatShortDate(profile.weddingDate)}</Text>
+          <Text style={styles.homeHeroMeta}>{formatLongDate(profile.weddingDate)}</Text>
           <Text style={styles.homeHeroVenue}>Chateau Lumiere</Text>
           <Text style={styles.homeHeroLocation}>{profile.location}</Text>
         </View>
@@ -1805,7 +1805,10 @@ function WebsiteSection({
   const [registryLoaded, setRegistryLoaded] = useState(false);
   const [invitationStudioOpen, setInvitationStudioOpen] = useState(false);
   const [guestCampaignMessage, setGuestCampaignMessage] = useState<string | null>(null);
-  const [guestCampaignSending, setGuestCampaignSending] = useState<'rsvp-reminders' | 'save-the-dates' | 'rsvp-invites' | null>(null);
+  const [guestCampaignSending, setGuestCampaignSending] = useState<GuestCampaign | null>(null);
+  const [guestCampaignReview, setGuestCampaignReview] = useState<GuestCampaign | null>(null);
+  const [guestCampaignPreview, setGuestCampaignPreview] = useState<GuestCampaignPreview | null>(null);
+  const [guestCampaignPreviewLoading, setGuestCampaignPreviewLoading] = useState(false);
   const [photoDropTab, setPhotoDropTab] = useState<'share' | 'queue' | 'settings'>('share');
   const [selectedGuest, setSelectedGuest] = useState<(typeof samplePlanningData.guests)[number] | null>(null);
   const [seatingTableCount, setSeatingTableCount] = useState(Math.max(1, data.seating.length || 3));
@@ -1870,11 +1873,14 @@ function WebsiteSection({
     });
   };
 
-  const runGuestCampaign = async (
-    campaign: 'rsvp-reminders' | 'save-the-dates' | 'rsvp-invites',
-    action: () => Promise<{ attempted: number; delivered: number; markedSent: number }>,
-  ) => {
+  const runGuestCampaign = async (campaign: GuestCampaign) => {
     if (guestCampaignSending) return;
+    const action =
+      campaign === 'rsvp-reminders'
+        ? sendPendingRsvpReminders
+        : campaign === 'save-the-dates'
+          ? sendSaveTheDates
+          : sendRsvpInvitations;
     setGuestCampaignSending(campaign);
     setGuestCampaignMessage(null);
     try {
@@ -1892,12 +1898,51 @@ function WebsiteSection({
       setGuestCampaignMessage(
         `${campaignLabel}: ${result.delivered} emailed, ${result.markedSent} marked sent, ${result.attempted} total processed.`,
       );
+      setGuestCampaignReview(null);
     } catch (error) {
       setGuestCampaignMessage(error instanceof Error ? `${error.message} Nothing was sent from the app.` : 'Could not send from the app.');
     } finally {
       setGuestCampaignSending(null);
     }
   };
+
+  useEffect(() => {
+    if (!guestCampaignReview) {
+      setGuestCampaignPreview(null);
+      return;
+    }
+    let alive = true;
+    setGuestCampaignPreviewLoading(true);
+    setGuestCampaignPreview(null);
+    getGuestCampaignPreview(guestCampaignReview)
+      .then((preview) => {
+        if (alive) setGuestCampaignPreview(preview);
+      })
+      .catch(() => {
+        if (!alive) return;
+        const localGuests = data.guests;
+        const eligible =
+          guestCampaignReview === 'rsvp-reminders'
+            ? localGuests.filter((guest) => guest.rsvp === 'Pending')
+            : guestCampaignReview === 'save-the-dates'
+              ? localGuests
+              : localGuests.filter((guest) => guest.rsvp !== 'Declined');
+        setGuestCampaignPreview({
+          campaign: guestCampaignReview,
+          emailCount: 0,
+          eligibleCount: eligible.length,
+          markedOnlyCount: 0,
+          sampleNames: eligible.slice(0, 4).map((guest) => guest.name),
+          totalGuests: localGuests.length,
+        });
+      })
+      .finally(() => {
+        if (alive) setGuestCampaignPreviewLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [data.guests, guestCampaignReview]);
 
   const generateMobileSeating = async () => {
     setSeatingGenerating(true);
@@ -2249,7 +2294,7 @@ function WebsiteSection({
           </Pressable>
           <Pressable
             disabled={Boolean(guestCampaignSending)}
-            onPress={() => void runGuestCampaign('rsvp-reminders', sendPendingRsvpReminders)}
+            onPress={() => setGuestCampaignReview('rsvp-reminders')}
             style={[styles.secondaryActionButton, guestCampaignSending && styles.disabledActionButton]}
           >
             <Ionicons color={colors.rose} name={guestCampaignSending === 'rsvp-reminders' ? 'sync-outline' : 'chatbubble-ellipses-outline'} size={18} />
@@ -2257,7 +2302,7 @@ function WebsiteSection({
           </Pressable>
           <Pressable
             disabled={Boolean(guestCampaignSending)}
-            onPress={() => void runGuestCampaign('save-the-dates', sendSaveTheDates)}
+            onPress={() => setGuestCampaignReview('save-the-dates')}
             style={[styles.secondaryActionButton, guestCampaignSending && styles.disabledActionButton]}
           >
             <Ionicons color={colors.rose} name={guestCampaignSending === 'save-the-dates' ? 'sync-outline' : 'calendar-outline'} size={18} />
@@ -2265,7 +2310,7 @@ function WebsiteSection({
           </Pressable>
           <Pressable
             disabled={Boolean(guestCampaignSending)}
-            onPress={() => void runGuestCampaign('rsvp-invites', sendRsvpInvitations)}
+            onPress={() => setGuestCampaignReview('rsvp-invites')}
             style={[styles.secondaryActionButton, guestCampaignSending && styles.disabledActionButton]}
           >
             <Ionicons color={colors.rose} name={guestCampaignSending === 'rsvp-invites' ? 'sync-outline' : 'mail-open-outline'} size={18} />
@@ -2274,6 +2319,15 @@ function WebsiteSection({
         </View>
         {guestCampaignMessage ? <SavedStrip label={guestCampaignMessage} /> : null}
       </Card> : null}
+
+      <GuestCampaignReviewModal
+        campaign={guestCampaignReview}
+        loading={guestCampaignPreviewLoading}
+        onClose={() => setGuestCampaignReview(null)}
+        onSend={() => guestCampaignReview ? void runGuestCampaign(guestCampaignReview) : undefined}
+        preview={guestCampaignPreview}
+        sending={guestCampaignSending}
+      />
 
       <GuestDetailModal
         guest={selectedGuest}
@@ -3994,7 +4048,7 @@ function InvitationStudioPanel({ data, openMockAction }: { data: typeof samplePl
       primaryLabel: 'Use draft',
     });
   };
-  const saveStudioToWebsite = async (messageText = 'Invitation design saved to website sender') => {
+  const saveStudioToWebsite = async (messageText = 'Invitation design saved') => {
     setStudioSaving(true);
     try {
       await saveMobileInvitationStudio({
@@ -4243,7 +4297,7 @@ function InvitationStudioPanel({ data, openMockAction }: { data: typeof samplePl
             <Text style={[styles.eventTypeText, showPhoto && styles.eventTypeTextActive]}>{showPhoto ? 'Photo on' : 'Photo off'}</Text>
           </Pressable>
         </View>
-        <Pressable onPress={() => void saveStudioToWebsite('Photo settings saved to website sender')} style={styles.secondaryActionButton}>
+        <Pressable onPress={() => void saveStudioToWebsite('Photo settings saved')} style={styles.secondaryActionButton}>
           <Ionicons color={colors.rose} name="save-outline" size={18} />
           <Text style={styles.secondaryActionText}>Save Photo</Text>
         </Pressable>
@@ -4319,7 +4373,7 @@ function InvitationStudioPanel({ data, openMockAction }: { data: typeof samplePl
           <Text style={styles.hubDetail}>{message.length}/400</Text>
         </View>
         {isRsvp ? <FormInput label="RSVP by" onChangeText={setRsvpBy} placeholder="2026-08-01" value={rsvpBy} /> : null}
-        <Pressable onPress={() => void saveStudioToWebsite('Invitation message settings saved to website sender')} style={styles.secondaryActionButton}>
+        <Pressable onPress={() => void saveStudioToWebsite('Invitation message settings saved')} style={styles.secondaryActionButton}>
           <Ionicons color={colors.rose} name="save-outline" size={18} />
           <Text style={styles.secondaryActionText}>Save Message</Text>
         </Pressable>
@@ -6523,7 +6577,7 @@ function MockActionModal({ action, data, onClose }: { action: MockAction | null;
           setStatusMessage(`${result.delivered} of ${result.attempted} ${label} email${result.attempted === 1 ? '' : 's'} delivered${result.markedSent ? `; ${result.markedSent} marked sent without email` : ''}.`);
         }
       } catch (error) {
-        setStatusMessage(error instanceof Error ? error.message : 'Could not send from the website sender.');
+        setStatusMessage(error instanceof Error ? error.message : 'Could not send from A.I Do right now.');
       } finally {
         setSending(false);
       }
@@ -6647,14 +6701,14 @@ function ActionWorkspace({ action, data, saved }: { action: MockAction; data: ty
           placeholderTextColor={colors.muted}
           editable={false}
           style={[styles.formInput, styles.messageInput]}
-          value="The website sender writes and sends the final reminder email from your saved RSVP invitation design."
+          value="A.I Do writes and sends the final reminder email from your saved RSVP invitation design."
         />
         <View style={styles.eventTypeRow}>
           <ActionChip label="Email" active />
           <ActionChip label="Website template" active />
           <ActionChip label="RSVP link" active />
         </View>
-        {saved ? <SavedStrip label="RSVP reminders sent through website sender" /> : null}
+        {saved ? <SavedStrip label="RSVP reminders sent through A.I Do" /> : null}
       </View>
     );
   }
@@ -6672,13 +6726,13 @@ function ActionWorkspace({ action, data, saved }: { action: MockAction; data: ty
             <Text style={styles.hubDetail}>{eligible} guest{eligible === 1 ? '' : 's'} will be checked against the live website guest list before sending.</Text>
           </View>
         </View>
-        <SavedStrip label="Uses the website Save-the-Date sender and current invitation design." />
+        <SavedStrip label="Uses your saved Save-the-Date design and current guest list." />
         <View style={styles.eventTypeRow}>
           <ActionChip label="Email" active />
           <ActionChip label="Website design" active />
           <ActionChip label="Guest tracking" active />
         </View>
-        {saved ? <SavedStrip label="Save-the-Dates sent through website sender" /> : null}
+        {saved ? <SavedStrip label="Save-the-Dates sent through A.I Do" /> : null}
       </View>
     );
   }
@@ -6702,7 +6756,7 @@ function ActionWorkspace({ action, data, saved }: { action: MockAction; data: ty
           <ActionChip label="RSVP form" active />
           <ActionChip label="Response tracking" active />
         </View>
-        {saved ? <SavedStrip label="RSVP invitations sent through website sender" /> : null}
+        {saved ? <SavedStrip label="RSVP invitations sent through A.I Do" /> : null}
       </View>
     );
   }
@@ -6857,6 +6911,100 @@ function SavedStrip({ label }: { label: string }) {
       <Ionicons color={colors.green} name="checkmark-circle-outline" size={16} />
       <Text style={styles.savedStripText}>{label}</Text>
     </View>
+  );
+}
+
+function guestCampaignCopy(campaign: GuestCampaign | null) {
+  if (campaign === 'save-the-dates') {
+    return {
+      button: 'Send Save-the-Dates',
+      detail: 'Uses the saved Save-the-Date design from Invitation Studio, creates each guest link, and updates tracking just like the website.',
+      icon: 'calendar-outline' as keyof typeof Ionicons.glyphMap,
+      title: 'Send Save-the-Dates',
+    };
+  }
+  if (campaign === 'rsvp-invites') {
+    return {
+      button: 'Send RSVP invitations',
+      detail: 'Uses the saved RSVP invitation design from Invitation Studio, includes the RSVP form link, and updates invitation status.',
+      icon: 'mail-open-outline' as keyof typeof Ionicons.glyphMap,
+      title: 'Send RSVP Invitations',
+    };
+  }
+  return {
+    button: 'Send RSVP reminders',
+    detail: 'Uses the saved RSVP invitation design as the reminder email, includes each guest RSVP link, and only targets guests still pending.',
+    icon: 'chatbubble-ellipses-outline' as keyof typeof Ionicons.glyphMap,
+    title: 'Send RSVP Reminders',
+  };
+}
+
+function GuestCampaignReviewModal({
+  campaign,
+  loading,
+  onClose,
+  onSend,
+  preview,
+  sending,
+}: {
+  campaign: GuestCampaign | null;
+  loading: boolean;
+  onClose: () => void;
+  onSend: () => void;
+  preview: GuestCampaignPreview | null;
+  sending: GuestCampaign | null;
+}) {
+  const copy = guestCampaignCopy(campaign);
+  const isSending = Boolean(campaign && sending === campaign);
+  const canSend = Boolean(preview && preview.eligibleCount > 0 && !loading && !isSending);
+  const sampleNames = preview?.sampleNames.length ? preview.sampleNames.join(', ') : 'No eligible guests found yet.';
+
+  return (
+    <Modal animationType="fade" onRequestClose={onClose} transparent visible={Boolean(campaign)}>
+      <View style={styles.mockModalBackdrop}>
+        <Pressable style={styles.mockModalScrim} onPress={onClose} />
+        <View style={styles.mockModalCard}>
+          <View style={styles.mockModalIcon}>
+            <Ionicons color={colors.rose} name={copy.icon} size={24} />
+          </View>
+          <Text style={styles.cardTitle}>{copy.title}</Text>
+          <Text style={styles.mutedText}>{copy.detail}</Text>
+          <View style={styles.actionWorkspace}>
+            <View style={styles.guestCampaignMetricGrid}>
+              <SummaryCard label="Eligible" value={loading ? '...' : String(preview?.eligibleCount ?? 0)} />
+              <SummaryCard label="Email" value={loading ? '...' : String(preview?.emailCount ?? 0)} />
+              <SummaryCard label="No email" value={loading ? '...' : String(preview?.markedOnlyCount ?? 0)} />
+            </View>
+            <View style={styles.guestFlowStep}>
+              <View style={styles.guestFlowStepIcon}>
+                <Ionicons color={colors.rose} name="people-outline" size={18} />
+              </View>
+              <View style={styles.hubCopy}>
+                <Text style={styles.hubLabel}>Recipients</Text>
+                <Text style={styles.hubDetail}>{loading ? 'Checking live website guest list...' : sampleNames}</Text>
+              </View>
+            </View>
+            {preview && preview.markedOnlyCount > 0 ? (
+              <View style={styles.guestCampaignNotice}>
+                <Ionicons color={colors.gold} name="alert-circle-outline" size={16} />
+                <Text style={styles.guestCampaignNoticeText}>
+                  Guests without email will be marked sent and a share link will be available from their guest record.
+                </Text>
+              </View>
+            ) : null}
+          </View>
+          <View style={styles.websiteActions}>
+            <Pressable disabled={!canSend} onPress={onSend} style={[styles.primaryActionButton, !canSend && styles.disabledActionButton]}>
+              <Ionicons color={colors.surface} name={isSending ? 'sync-outline' : 'paper-plane-outline'} size={18} />
+              <Text style={styles.primaryActionText}>{isSending ? 'Sending...' : copy.button}</Text>
+            </Pressable>
+            <Pressable disabled={isSending} onPress={onClose} style={styles.secondaryActionButton}>
+              <Text style={styles.secondaryActionText}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -12571,6 +12719,27 @@ const styles = StyleSheet.create({
     height: 38,
     justifyContent: 'center',
     width: 38,
+  },
+  guestCampaignMetricGrid: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  guestCampaignNotice: {
+    alignItems: 'center',
+    backgroundColor: colors.goldSoft,
+    borderColor: '#F3C978',
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    padding: 11,
+  },
+  guestCampaignNoticeText: {
+    color: colors.gold,
+    flex: 1,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+    lineHeight: 16,
   },
   saveDateGuestPreview: {
     alignItems: 'center',

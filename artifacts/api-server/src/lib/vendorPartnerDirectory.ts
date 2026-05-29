@@ -31,6 +31,8 @@ export function ensureVendorPartnerDirectoryColumns() {
   directoryColumnsReady ??= db.execute(sql`
     ALTER TABLE "vendor_partner_applications"
       ADD COLUMN IF NOT EXISTS "business_logo" jsonb,
+      ADD COLUMN IF NOT EXISTS "about" text,
+      ADD COLUMN IF NOT EXISTS "services" jsonb NOT NULL DEFAULT '[]'::jsonb,
       ADD COLUMN IF NOT EXISTS "directory_listing" jsonb NOT NULL DEFAULT '{}'::jsonb,
       ADD COLUMN IF NOT EXISTS "directory_status" text NOT NULL DEFAULT 'not_created',
       ADD COLUMN IF NOT EXISTS "directory_published_at" timestamp
@@ -73,12 +75,16 @@ export function buildVendorDirectoryListing(application: VendorPartnerApplicatio
     .slice(0, 4);
   const category = application.category || "Wedding Vendor";
   const location = application.serviceArea || "Service area available on request";
+  const services = Array.isArray(application.services) && application.services.length
+    ? application.services.filter(Boolean).slice(0, 10)
+    : [`${category} services`, "Wedding consultation", "Custom quote"];
+  const about = application.about || application.description || `${application.businessName} is an A.I DO partner serving ${location}.`;
   return {
-    about: application.description || `${application.businessName} is an A.I DO partner serving ${location}.`,
+    about,
     category,
     contactName: application.contactName,
     email: application.email,
-    fit: application.description?.slice(0, 180) || `${category} partner serving ${location}.`,
+    fit: application.description?.slice(0, 180) || about.slice(0, 180) || `${category} partner serving ${location}.`,
     gallery: gallery.length ? gallery : ["/images/default-wedding-couple.jpg", "/images/floral-bg.png", "/opengraph.jpg"],
     id: makeListingId(application),
     instagram: application.instagram || "",
@@ -91,7 +97,7 @@ export function buildVendorDirectoryListing(application: VendorPartnerApplicatio
     reviews: 0,
     rating: "New",
     responseTime: "Replies after inquiry",
-    services: [`${category} services`, "Wedding consultation", "Custom quote"],
+    services,
     tags: [category, location, "A.I DO Partner"],
     website: application.website || "",
   };

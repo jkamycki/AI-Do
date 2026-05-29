@@ -34,6 +34,57 @@ type GuestCampaignResult = {
   links: Array<{ guestId: number; name: string; url: string }>;
 };
 
+export type GuestCampaign = 'rsvp-reminders' | 'save-the-dates' | 'rsvp-invites';
+
+export type GuestCampaignPreview = {
+  campaign: GuestCampaign;
+  emailCount: number;
+  eligibleCount: number;
+  markedOnlyCount: number;
+  sampleNames: string[];
+  totalGuests: number;
+};
+
+const campaignConfig: Record<
+  GuestCampaign,
+  {
+    endpoint: (guestId: number) => string;
+    isEligible: (guest: ApiGuest) => boolean;
+  }
+> = {
+  'rsvp-reminders': {
+    endpoint: (guestId) => `/api/guests/${guestId}/send-rsvp-reminder`,
+    isEligible: (guest) => {
+      const invitationSent = (guest.invitationStatus ?? 'pending') === 'sent';
+      const pending = (guest.rsvpStatus ?? 'pending') === 'pending';
+      const notAlreadySent = (guest.rsvpReminderStatus ?? 'not_sent') !== 'sent';
+      return invitationSent && pending && notAlreadySent;
+    },
+  },
+  'save-the-dates': {
+    endpoint: (guestId) => `/api/guests/${guestId}/send-save-the-date`,
+    isEligible: (guest) => (guest.saveTheDateStatus ?? 'not_sent') === 'not_sent',
+  },
+  'rsvp-invites': {
+    endpoint: (guestId) => `/api/guests/${guestId}/send-rsvp`,
+    isEligible: (guest) => (guest.invitationStatus ?? 'pending') === 'pending',
+  },
+};
+
+export async function getGuestCampaignPreview(campaign: GuestCampaign): Promise<GuestCampaignPreview> {
+  const { guests } = await mobileAuthJson<GuestsResponse>('/api/guests');
+  const targetGuests = guests.filter(campaignConfig[campaign].isEligible);
+
+  return {
+    campaign,
+    emailCount: targetGuests.filter((guest) => Boolean(guest.email)).length,
+    eligibleCount: targetGuests.length,
+    markedOnlyCount: targetGuests.filter((guest) => !guest.email).length,
+    sampleNames: targetGuests.slice(0, 4).map((guest) => guest.name),
+    totalGuests: guests.length,
+  };
+}
+
 async function sendGuestCampaign({
   endpoint,
   isEligible,
@@ -64,29 +115,15 @@ async function sendGuestCampaign({
 }
 
 export async function sendPendingRsvpReminders() {
-  return sendGuestCampaign({
-    endpoint: (guestId) => `/api/guests/${guestId}/send-rsvp-reminder`,
-    isEligible: (guest) => {
-      const invitationSent = (guest.invitationStatus ?? 'pending') === 'sent';
-      const pending = (guest.rsvpStatus ?? 'pending') === 'pending';
-      const notAlreadySent = (guest.rsvpReminderStatus ?? 'not_sent') !== 'sent';
-      return invitationSent && pending && notAlreadySent;
-    },
-  }) as Promise<GuestCampaignResult & { links: Array<{ guestId: number; name: string; url: string }> }>;
+  return sendGuestCampaign(campaignConfig['rsvp-reminders']) as Promise<GuestCampaignResult & { links: Array<{ guestId: number; name: string; url: string }> }>;
 }
 
 export async function sendSaveTheDates() {
-  return sendGuestCampaign({
-    endpoint: (guestId) => `/api/guests/${guestId}/send-save-the-date`,
-    isEligible: (guest) => (guest.saveTheDateStatus ?? 'not_sent') === 'not_sent',
-  });
+  return sendGuestCampaign(campaignConfig['save-the-dates']);
 }
 
 export async function sendRsvpInvitations() {
-  return sendGuestCampaign({
-    endpoint: (guestId) => `/api/guests/${guestId}/send-rsvp`,
-    isEligible: (guest) => (guest.invitationStatus ?? 'pending') === 'pending',
-  });
+  return sendGuestCampaign(campaignConfig['rsvp-invites']);
 }
 
 export async function sendSingleRsvpReminder(guestId: number) {

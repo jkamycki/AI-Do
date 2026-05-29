@@ -52,6 +52,8 @@ type VendorPartnerForm = {
   instagram: string;
   startingPrice: string;
   description: string;
+  about: string;
+  services: string;
   businessLogo: VendorServicePhoto | null;
   servicePhotos: VendorServicePhoto[];
 };
@@ -69,6 +71,8 @@ const EMPTY_FORM: VendorPartnerForm = {
   instagram: "",
   startingPrice: "",
   description: "",
+  about: "",
+  services: "",
   businessLogo: null,
   servicePhotos: [],
 };
@@ -379,6 +383,13 @@ export default function ForVendors() {
                     <p className="mt-1 text-sm text-[#6F3E54]">Quick and easy. No cost to join.</p>
                   </div>
 
+                  <div className="rounded-lg border border-[#E8DDE8] bg-[#FFF7F2] p-4">
+                    <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#B16C8E]">Business details</p>
+                    <p className="mt-1 text-xs leading-5 text-[#6F3E54]">
+                      These fields build the top card on your A.I DO partner profile.
+                    </p>
+                  </div>
+
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="Business Name" required value={form.businessName} onChange={value => updateField("businessName", value)} />
                     <Field label="Your Name" required value={form.contactName} onChange={value => updateField("contactName", value)} />
@@ -404,16 +415,46 @@ export default function ForVendors() {
                   </div>
 
                   <label className="block space-y-1.5 text-sm font-semibold text-[#8D294D]">
-                    Tell us about your services
+                    Short profile intro
                     <span className="block text-xs font-normal leading-5 text-[#6F3E54]">
-                      Write this as the public description couples will see on your A.I DO partner profile.
+                      This appears as the quick summary near your name, category, price, and service area.
                     </span>
                     <textarea
                       value={form.description}
                       onChange={event => updateField("description", event.target.value)}
+                      rows={3}
+                      className="w-full resize-none rounded-lg border border-[#E6A6B7] bg-white px-3 py-2 text-sm font-normal text-[#3B1C2B] outline-none focus:border-[#8D294D]"
+                      placeholder="Ex: Editorial wedding photography with soft film tones, calm direction, and full-day storytelling."
+                    />
+                  </label>
+
+                  <label className="block space-y-1.5 text-sm font-semibold text-[#8D294D]">
+                    About Us <span className="text-[#B16C8E]">*</span>
+                    <span className="block text-xs font-normal leading-5 text-[#6F3E54]">
+                      This is the public About Us section couples will see on your A.I DO partner profile.
+                    </span>
+                    <textarea
+                      required
+                      value={form.about}
+                      onChange={event => updateField("about", event.target.value)}
                       rows={5}
                       className="w-full resize-none rounded-lg border border-[#E6A6B7] bg-white px-3 py-2 text-sm font-normal text-[#3B1C2B] outline-none focus:border-[#8D294D]"
-                      placeholder="What do you offer, what couples are a great fit, and what makes your work stand out?"
+                      placeholder="Tell couples who you are, your style, what the experience feels like, and what makes your work a strong fit."
+                    />
+                  </label>
+
+                  <label className="block space-y-1.5 text-sm font-semibold text-[#8D294D]">
+                    Services <span className="text-[#B16C8E]">*</span>
+                    <span className="block text-xs font-normal leading-5 text-[#6F3E54]">
+                      Add one service per line. These publish as the checklist-style Services section.
+                    </span>
+                    <textarea
+                      required
+                      value={form.services}
+                      onChange={event => updateField("services", event.target.value)}
+                      rows={5}
+                      className="w-full resize-none rounded-lg border border-[#E6A6B7] bg-white px-3 py-2 text-sm font-normal text-[#3B1C2B] outline-none focus:border-[#8D294D]"
+                      placeholder={"Full wedding day coverage\nEngagement sessions\nSecond photographer\nOnline gallery delivery"}
                     />
                   </label>
 

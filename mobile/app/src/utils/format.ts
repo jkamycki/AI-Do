@@ -19,6 +19,19 @@ export function formatShortDate(value?: string) {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
 }
 
+export function formatLongDate(value?: string) {
+  if (!value) {
+    return 'Not scheduled';
+  }
+
+  const date = parseDate(value);
+  if (!date) {
+    return 'Not scheduled';
+  }
+
+  return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(date);
+}
+
 export function daysUntil(value: string) {
   const target = parseDate(value)?.getTime() ?? Date.now();
   const now = Date.now();

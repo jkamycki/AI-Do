@@ -185,6 +185,8 @@ type VendorPartnerApplication = {
   instagram: string | null;
   startingPrice: string | null;
   description: string | null;
+  about?: string | null;
+  services?: string[];
   businessLogo?: { name: string; type: string; dataUrl: string } | null;
   servicePhotos?: Array<{ name: string; type: string; dataUrl: string }>;
   directoryListing?: VendorDirectoryListingDraft | Record<string, unknown>;
@@ -255,12 +257,16 @@ function buildVendorDirectoryDraft(application: VendorPartnerApplication): Vendo
     .slice(0, 4);
   const category = application.category || "Wedding Vendor";
   const location = application.serviceArea || "Service area available on request";
+  const services = Array.isArray(application.services) && application.services.length
+    ? application.services.filter(Boolean).slice(0, 10)
+    : [`${category} services`, "Wedding consultation", "Custom quote"];
+  const about = application.about || application.description || `${application.businessName} is an A.I DO partner serving ${location}.`;
   return {
-    about: existing.about || application.description || `${application.businessName} is an A.I DO partner serving ${location}.`,
+    about: existing.about || about,
     category: existing.category || category,
     contactName: existing.contactName || application.contactName,
     email: existing.email || application.email,
-    fit: existing.fit || application.description?.slice(0, 180) || `${category} partner serving ${location}.`,
+    fit: existing.fit || application.description?.slice(0, 180) || about.slice(0, 180) || `${category} partner serving ${location}.`,
     gallery: Array.isArray(existing.gallery) && existing.gallery.length ? existing.gallery : fallbackGallery,
     id: existing.id || vendorDirectorySlug(application),
     instagram: existing.instagram || application.instagram || "",
@@ -275,7 +281,7 @@ function buildVendorDirectoryDraft(application: VendorPartnerApplication): Vendo
     responseTime: existing.responseTime || "Replies after inquiry",
     services: Array.isArray(existing.services) && existing.services.length
       ? existing.services
-      : [`${category} services`, "Wedding consultation", "Custom quote"],
+      : services,
     tags: Array.isArray(existing.tags) && existing.tags.length
       ? existing.tags
       : [category, location, "A.I DO Partner"],
@@ -1896,7 +1902,29 @@ export default function OperationsCenterPage() {
 
                       {application.description ? (
                         <div className="rounded-lg bg-[#FFF8F4] p-4 text-sm leading-6 text-[#4A3941]">
+                          <p className="mb-2 text-xs font-semibold uppercase text-[#8D294D]/70">Short profile intro</p>
                           {application.description}
+                        </div>
+                      ) : null}
+
+                      {application.about ? (
+                        <div className="rounded-lg border border-[#E6D2D8] bg-white p-4 text-sm leading-6 text-[#4A3941]">
+                          <p className="mb-2 text-xs font-semibold uppercase text-[#8D294D]/70">About Us</p>
+                          {application.about}
+                        </div>
+                      ) : null}
+
+                      {application.services && application.services.length > 0 ? (
+                        <div className="rounded-lg border border-[#E6D2D8] bg-white p-4">
+                          <p className="mb-3 text-xs font-semibold uppercase text-[#8D294D]/70">Services</p>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {application.services.map((service, index) => (
+                              <div key={`${application.id}-service-${index}`} className="flex gap-2 text-sm text-[#4A3941]">
+                                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#8D294D]" />
+                                <span>{service}</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       ) : null}
 

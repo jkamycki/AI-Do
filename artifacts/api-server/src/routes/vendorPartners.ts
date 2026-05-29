@@ -29,6 +29,23 @@ function cleanServicePhotos(value: unknown) {
   });
 }
 
+function cleanServices(value: unknown) {
+  if (Array.isArray(value)) {
+    return value
+      .map(item => cleanText(item, 120))
+      .filter(Boolean)
+      .slice(0, 10);
+  }
+  if (typeof value === "string") {
+    return value
+      .split(/\r?\n|,/)
+      .map(item => cleanText(item, 120))
+      .filter(Boolean)
+      .slice(0, 10);
+  }
+  return [];
+}
+
 function cleanBusinessLogo(value: unknown) {
   if (!value || typeof value !== "object") return null;
   const item = value as { name?: unknown; type?: unknown; dataUrl?: unknown };
@@ -53,11 +70,13 @@ router.post("/vendor-partners", async (req, res) => {
     const instagram = cleanText(req.body?.instagram, 120);
     const startingPrice = cleanText(req.body?.startingPrice, 80);
     const description = cleanText(req.body?.description, 1200);
+    const about = cleanText(req.body?.about, 1600);
+    const services = cleanServices(req.body?.services);
     const businessLogo = cleanBusinessLogo(req.body?.businessLogo);
     const servicePhotos = cleanServicePhotos(req.body?.servicePhotos);
 
-    if (!businessName || !contactName || !EMAIL_RE.test(email) || !category || !serviceArea) {
-      return res.status(400).json({ error: "Business name, contact name, email, category, and service area are required." });
+    if (!businessName || !contactName || !EMAIL_RE.test(email) || !category || !serviceArea || !about || services.length === 0) {
+      return res.status(400).json({ error: "Business name, contact name, email, category, service area, About Us, and at least one service are required." });
     }
 
     await ensureVendorPartnerDirectoryColumns();
@@ -74,6 +93,8 @@ router.post("/vendor-partners", async (req, res) => {
         instagram: instagram || null,
         startingPrice: startingPrice || null,
         description: description || null,
+        about,
+        services,
         businessLogo,
         servicePhotos,
       })
