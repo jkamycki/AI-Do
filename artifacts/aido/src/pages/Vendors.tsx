@@ -125,6 +125,15 @@ type VendorManagementTab = "vendors" | "contacts" | "directory";
 
 const VENDOR_DIRECTORY_PREVIEW_EMAIL = "kamyckijoseph@gmail.com";
 
+function getRequestedVendorManagementTab(
+  requestedTab: string | null,
+  canPreviewVendorDirectory: boolean,
+): VendorManagementTab {
+  if (requestedTab === "contacts") return "contacts";
+  if (requestedTab === "directory" && canPreviewVendorDirectory) return "directory";
+  return "vendors";
+}
+
 type VendorDirectoryListing = {
   category: string;
   contactName: string;
@@ -2167,6 +2176,7 @@ export default function Vendors() {
   const requestedManagementTab = query.get("management");
   const userEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase() ?? "";
   const canPreviewVendorDirectory = userEmail === VENDOR_DIRECTORY_PREVIEW_EMAIL;
+  const requestedManagementView = getRequestedVendorManagementTab(requestedManagementTab, canPreviewVendorDirectory);
 
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
@@ -2174,13 +2184,7 @@ export default function Vendors() {
   const [detailInitialTab, setDetailInitialTab] = useState<"overview" | "messages" | "files">("overview");
   const [deletingVendorId, setDeletingVendorId] = useState<number | null>(null);
   const [showSummarize, setShowSummarize] = useState(false);
-  const [activeManagementTab, setActiveManagementTab] = useState<VendorManagementTab>(
-    requestedManagementTab === "contacts"
-      ? "contacts"
-      : requestedManagementTab === "directory" && canPreviewVendorDirectory
-        ? "directory"
-      : "vendors",
-  );
+  const [activeManagementTab, setActiveManagementTab] = useState<VendorManagementTab>(requestedManagementView);
 
   const handleAddVendor = () => {
     if (!profileLoading && !profile) {
@@ -2254,16 +2258,18 @@ export default function Vendors() {
   }, [isLoading, requestedVendorId, requestedTab, setLocation]);
 
   useEffect(() => {
-    if (requestedManagementTab === "contacts") {
-      setActiveManagementTab("contacts");
-    } else if (requestedManagementTab === "directory" && canPreviewVendorDirectory) {
-      setActiveManagementTab("directory");
-    } else if (requestedManagementTab === "vendors") {
-      setActiveManagementTab("vendors");
-    } else if (activeManagementTab === "directory" && !canPreviewVendorDirectory) {
-      setActiveManagementTab("vendors");
-    }
-  }, [activeManagementTab, canPreviewVendorDirectory, requestedManagementTab]);
+    setActiveManagementTab(requestedManagementView);
+  }, [requestedManagementView]);
+
+  const handleManagementTabChange = (value: string) => {
+    const nextTab = value as VendorManagementTab;
+    const allowedTab = nextTab === "directory" && !canPreviewVendorDirectory ? "vendors" : nextTab;
+    setActiveManagementTab(allowedTab);
+    setLocation(
+      allowedTab === "vendors" ? "/vendors?management=vendors" : `/vendors?management=${allowedTab}`,
+      { replace: true },
+    );
+  };
 
   if (isLoading) {
     return (
@@ -2309,7 +2315,7 @@ export default function Vendors() {
         )}
       </div>
 
-      <Tabs value={activeManagementTab} onValueChange={(value) => setActiveManagementTab(value as VendorManagementTab)}>
+      <Tabs value={activeManagementTab} onValueChange={handleManagementTabChange}>
         <TabsList>
           <TabsTrigger value="vendors">{t("vendors.tab_vendors", { defaultValue: "Vendor List" })}</TabsTrigger>
           <TabsTrigger value="contacts">{t("vendors.tab_contacts", { defaultValue: "Contacts" })}</TabsTrigger>

@@ -415,8 +415,11 @@ export function Sidebar() {
     },
   ];
 
-  const isHrefActive = (href: string) =>
-    location === href || (href !== "/dashboard" && location.startsWith(href));
+  const isHrefActive = (href: string) => {
+    const hrefPath = href.split("?")[0];
+    const locationPath = location.split("?")[0];
+    return locationPath === hrefPath || (hrefPath !== "/dashboard" && locationPath.startsWith(`${hrefPath}/`));
+  };
 
   const toggleSection = (id: string) => {
     setCollapsedSections((current) => ({ ...current, [id]: !current[id] }));

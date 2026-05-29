@@ -1839,6 +1839,7 @@ function Router() {
     <Suspense fallback={<RouteLoading />}>
       <Switch>
         <Route path="/" component={HomeRedirect} />
+        <Route path="/for-vendors/:section" component={ForVendors} />
         <Route path="/for-vendors" component={ForVendors} />
         <Route path="/sign-in/*?" component={SignInPage} />
         <Route path="/sign-up/*?" component={SignUpPage} />
