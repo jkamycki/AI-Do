@@ -1932,11 +1932,79 @@ function VendorContactsTab() {
   );
 }
 
-function VendorDirectoryTab() {
+function VendorDirectoryTab({
+  onOpenVendorMessages,
+}: {
+  onOpenVendorMessages: (vendorId: number) => void;
+}) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { user } = useUser();
+  const { data: vendors = [] } = useListVendors();
   const [selectedListing, setSelectedListing] = useState<VendorDirectoryListing | null>(null);
+  const accountEmail = user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses?.[0]?.emailAddress ?? "";
+  const createPartnerVendorMutation = useCreateVendor({
+    mutation: {
+      onSuccess: async (created) => {
+        await qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
+        qc.invalidateQueries({ queryKey: vendorContactsQueryKey });
+        qc.invalidateQueries({ queryKey: ["vendor-financials"] });
+        qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+        if (accountEmail) {
+          sessionStorage.setItem(`aido_vendor_message_default_cc_${created.id}`, accountEmail);
+        }
+        toast({ title: "Partner added to your Vendor List" });
+        onOpenVendorMessages(created.id);
+      },
+      onError: () => {
+        toast({
+          title: "Could not start partner message",
+          description: "Try adding this partner to your Vendor List manually, then open Messages.",
+          variant: "destructive",
+        });
+      },
+    },
+  });
+
+  const openPartnerMessages = (listing: VendorDirectoryListing) => {
+    const existingVendor = vendors.find((vendor) => (
+      vendor.email?.toLowerCase() === listing.email.toLowerCase() ||
+      vendor.name.toLowerCase() === listing.name.toLowerCase()
+    ));
+    if (existingVendor) {
+      if (accountEmail) {
+        sessionStorage.setItem(`aido_vendor_message_default_cc_${existingVendor.id}`, accountEmail);
+      }
+      onOpenVendorMessages(existingVendor.id);
+      return;
+    }
+
+    createPartnerVendorMutation.mutate({
+      data: {
+        name: listing.name,
+        category: normalizeVendorCategory(listing.category),
+        email: listing.email,
+        phone: listing.phone,
+        website: listing.website,
+        notes: `Added from A.I DO Partner Network.\n\n${listing.fit}`,
+        totalCost: listing.price,
+        depositAmount: 0,
+        contractSigned: false,
+        primaryContact: listing.contactName,
+      },
+    });
+  };
 
   if (selectedListing) {
-    return <VendorDirectoryProfile listing={selectedListing} onBack={() => setSelectedListing(null)} />;
+    return (
+      <VendorDirectoryProfile
+        listing={selectedListing}
+        accountEmail={accountEmail}
+        isOpeningMessages={createPartnerVendorMutation.isPending}
+        onBack={() => setSelectedListing(null)}
+        onOpenMessages={() => openPartnerMessages(selectedListing)}
+      />
+    );
   }
 
   return (
@@ -1945,9 +2013,9 @@ function VendorDirectoryTab() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-primary">Private preview</p>
-            <h2 className="mt-1 font-serif text-2xl text-foreground">Vendor Directory</h2>
+            <h2 className="mt-1 font-serif text-2xl text-foreground">A.I DO Partner Network</h2>
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Sample vendor marketplace for your account only. This is hidden from all other signed-in users while you decide how it should work.
+              Curated preview of approved vendor partners connected with A.I DO. This is not a public vendor search marketplace yet.
             </p>
           </div>
           <Badge className="w-fit bg-primary text-primary-foreground">Only {VENDOR_DIRECTORY_PREVIEW_EMAIL}</Badge>
@@ -2012,11 +2080,18 @@ function VendorDirectoryTab() {
             </div>
 
             <div className="mt-5 flex gap-2">
-              <Button asChild size="sm" className="flex-1" onClick={(event) => event.stopPropagation()}>
-                <a href={`mailto:${listing.email}?subject=A.I Do vendor intro request`} onClick={(event) => event.stopPropagation()}>
-                  <Mail className="mr-1.5 h-3.5 w-3.5" />
-                  Intro
-                </a>
+              <Button
+                type="button"
+                size="sm"
+                className="flex-1"
+                disabled={createPartnerVendorMutation.isPending}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  openPartnerMessages(listing);
+                }}
+              >
+                <Mail className="mr-1.5 h-3.5 w-3.5" />
+                Request Intro
               </Button>
               <Button asChild variant="outline" size="sm" onClick={(event) => event.stopPropagation()}>
                 <a href={listing.website} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
@@ -2033,34 +2108,40 @@ function VendorDirectoryTab() {
 }
 
 function VendorDirectoryProfile({
+  accountEmail,
+  isOpeningMessages,
   listing,
   onBack,
+  onOpenMessages,
 }: {
+  accountEmail?: string;
+  isOpeningMessages?: boolean;
   listing: VendorDirectoryListing;
   onBack: () => void;
+  onOpenMessages: () => void;
 }) {
   const profileUrl = `https://aidowedding.net/vendors/${listing.id}`;
 
   return (
-    <div className="space-y-4">
-      <Button type="button" variant="ghost" className="gap-2 text-primary" onClick={onBack}>
+    <div className="space-y-5">
+      <Button type="button" variant="ghost" className="h-9 gap-2 px-2 text-primary" onClick={onBack}>
         <ArrowLeft className="h-4 w-4" />
         Back to directory
       </Button>
 
-      <div className="rounded-lg border border-border/70 bg-card p-5 shadow-sm">
-        <div className="grid gap-5 md:grid-cols-[160px_1fr] md:items-center">
-          <div className="flex h-24 items-center justify-center rounded-lg border border-[#E8DDE8] bg-[#FFF7F2] px-4 text-center">
+      <div className="rounded-xl border border-[#E8C9D4] bg-card p-5 shadow-sm">
+        <div className="grid gap-5 md:grid-cols-[140px_1fr] md:items-center">
+          <div className="flex h-24 items-center justify-center rounded-xl border border-[#E8C9D4] bg-[#FFF7F2] px-4 text-center">
             <div>
               <p className="font-serif text-2xl leading-none text-[#8D294D]">{listing.logoLabel}</p>
-              <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#B16C8E]">
+              <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.22em] text-[#B16C8E]">
                 {vendorCategoryLabel(listing.category)}
               </p>
             </div>
           </div>
-          <div>
-            <h2 className="font-serif text-3xl font-semibold text-foreground">{listing.name}</h2>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+          <div className="min-w-0">
+            <h2 className="font-serif text-3xl font-semibold leading-tight text-foreground">{listing.name}</h2>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm leading-none">
               <span className="flex items-center gap-0.5 text-amber-500">
                 {Array.from({ length: 5 }, (_, index) => (
                   <Star key={index} className="h-4 w-4 fill-current" />
@@ -2069,83 +2150,151 @@ function VendorDirectoryProfile({
               <span className="font-semibold text-foreground">{listing.rating}</span>
               <span className="text-muted-foreground">({listing.reviews} reviews)</span>
             </div>
-            <div className="mt-3 space-y-1 text-sm text-foreground">
-              <p><span className="font-semibold">Category:</span> {vendorCategoryLabel(listing.category)}</p>
-              <p><span className="font-semibold">Starting Price:</span> From {formatCurrency(listing.price)}</p>
-              <p><span className="font-semibold">Service Area:</span> {listing.location}</p>
+            <div className="mt-4 grid gap-2 text-sm text-foreground sm:grid-cols-3">
+              <div className="rounded-lg bg-[#FFF7F2] px-3 py-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#B16C8E]">Category</p>
+                <p className="mt-0.5 font-semibold">{vendorCategoryLabel(listing.category)}</p>
+              </div>
+              <div className="rounded-lg bg-[#FFF7F2] px-3 py-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#B16C8E]">Starting Price</p>
+                <p className="mt-0.5 font-semibold">From {formatCurrency(listing.price)}</p>
+              </div>
+              <div className="rounded-lg bg-[#FFF7F2] px-3 py-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#B16C8E]">Service Area</p>
+                <p className="mt-0.5 font-semibold">{listing.location}</p>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_270px]">
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_290px]">
+        <div className="space-y-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {listing.gallery.map((src, index) => (
               <img
                 key={`${listing.id}-gallery-${index}`}
                 src={src}
                 alt={`${listing.name} service example ${index + 1}`}
-                className="aspect-[4/3] w-full rounded-md border border-border/60 object-cover shadow-sm"
+                className="aspect-[4/3] w-full rounded-xl border border-[#E8C9D4] bg-card object-cover shadow-sm"
               />
             ))}
           </div>
 
-          <section className="rounded-lg border border-border/70 bg-card p-5">
-            <h3 className="border-b border-border/70 pb-2 text-lg font-semibold text-foreground">About Us</h3>
-            <p className="mt-4 text-sm leading-7 text-foreground">{listing.about}</p>
+          <section className="rounded-xl border border-[#E8C9D4] bg-card p-5 shadow-sm">
+            <h3 className="border-b border-[#E8C9D4] pb-3 font-serif text-xl font-semibold text-foreground">About Us</h3>
+            <p className="mt-4 text-sm leading-7 text-foreground/90">{listing.about}</p>
           </section>
 
-          <section className="rounded-lg border border-border/70 bg-card p-5">
-            <h3 className="border-b border-border/70 pb-2 text-lg font-semibold text-foreground">Services</h3>
-            <div className="mt-4 grid gap-3 text-sm text-foreground sm:grid-cols-2">
+          <section className="rounded-xl border border-[#E8C9D4] bg-card p-5 shadow-sm">
+            <h3 className="border-b border-[#E8C9D4] pb-3 font-serif text-xl font-semibold text-foreground">Services</h3>
+            <div className="mt-4 grid gap-x-6 gap-y-3 text-sm text-foreground sm:grid-cols-2">
               {listing.services.map((service) => (
                 <div key={service} className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-primary" />
+                  <Check className="h-4 w-4 shrink-0 text-primary" />
                   {service}
                 </div>
               ))}
             </div>
           </section>
+
+          <section className="rounded-xl border border-[#E8C9D4] bg-card p-5 shadow-sm">
+            <div className="flex flex-col gap-3 border-b border-[#E8C9D4] pb-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="font-serif text-xl font-semibold text-foreground">Partner Messages</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Use this thread area to keep track of introductions and replies.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-fit border-[#E8C9D4] text-primary"
+                disabled={isOpeningMessages}
+                onClick={onOpenMessages}
+              >
+                <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+                Start Message
+              </Button>
+            </div>
+            <div className="mt-4 space-y-3">
+              <div className="rounded-xl bg-[#FFF7F2] px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-foreground">Introduction email</p>
+                  <Badge variant="secondary" className="bg-primary/10 text-primary">Ready</Badge>
+                </div>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  We&apos;ll add this partner to your Vendor List and open the same Messages tab used for your saved vendors.
+                </p>
+              </div>
+              <div className="rounded-xl border border-dashed border-[#E8C9D4] px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-foreground">Vendor replies</p>
+                  <Badge variant="outline" className="border-[#E8C9D4] text-muted-foreground">Waiting</Badge>
+                </div>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  Replies sent through Vendor List messages are tracked and show as a conversation, just like your other vendor replies.
+                </p>
+              </div>
+            </div>
+          </section>
         </div>
 
-        <aside className="space-y-4">
-          <section className="rounded-lg border border-border/70 bg-card p-5 shadow-sm">
-            <h3 className="text-lg font-semibold text-foreground">Contact Us</h3>
-            <Button asChild className="mt-4 w-full bg-[linear-gradient(110deg,#E6A6B7,#8D6AD9)] text-white hover:opacity-95">
-              <a href={`mailto:${listing.email}?subject=A.I Do vendor intro request`}>
-                Contact This Vendor
-              </a>
+        <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+          <section className="rounded-xl border border-[#E8C9D4] bg-card p-5 shadow-sm">
+            <h3 className="font-serif text-xl font-semibold text-foreground">Contact Us</h3>
+            <Button
+              type="button"
+              disabled={isOpeningMessages}
+              className="mt-4 h-11 w-full rounded-lg bg-[linear-gradient(110deg,#D98984,#9D6AD8)] font-semibold text-white hover:opacity-95"
+              onClick={onOpenMessages}
+            >
+              {isOpeningMessages ? "Opening Messages..." : "Request Introduction"}
             </Button>
-            <div className="mt-5 space-y-3 text-sm text-muted-foreground">
-              <a className="flex items-center gap-2 hover:text-primary" href={`mailto:${listing.email}`}>
-                <Mail className="h-4 w-4 text-primary" />
-                <span className="font-semibold text-foreground">Email:</span> {listing.email}
+            {accountEmail && (
+              <p className="mt-3 rounded-lg bg-[#FFF7F2] px-3 py-2 text-xs leading-5 text-[#6F3E54]">
+                This opens the regular Vendor List messaging thread. Add CC recipients inside that message composer when needed.
+              </p>
+            )}
+            <div className="mt-5 space-y-4 text-sm">
+              <a className="grid grid-cols-[18px_1fr] gap-3 text-muted-foreground hover:text-primary" href={`mailto:${listing.email}`}>
+                <Mail className="mt-0.5 h-4 w-4 text-primary" />
+                <span className="min-w-0">
+                  <span className="block font-semibold text-foreground">Email</span>
+                  <span className="block break-words">{listing.email}</span>
+                </span>
               </a>
-              <div className="flex items-center gap-2">
-                <Instagram className="h-4 w-4 text-primary" />
-                <span className="font-semibold text-foreground">Instagram:</span> {listing.instagram}
+              <div className="grid grid-cols-[18px_1fr] gap-3 text-muted-foreground">
+                <Instagram className="mt-0.5 h-4 w-4 text-primary" />
+                <span className="min-w-0">
+                  <span className="block font-semibold text-foreground">Instagram</span>
+                  <span className="block break-words">{listing.instagram}</span>
+                </span>
               </div>
-              <a className="flex items-center gap-2 hover:text-primary" href={listing.website} target="_blank" rel="noreferrer">
-                <Globe className="h-4 w-4 text-primary" />
-                <span className="font-semibold text-foreground">Website:</span> {listing.website.replace(/^https?:\/\//, "")}
+              <a className="grid grid-cols-[18px_1fr] gap-3 text-muted-foreground hover:text-primary" href={listing.website} target="_blank" rel="noreferrer">
+                <Globe className="mt-0.5 h-4 w-4 text-primary" />
+                <span className="min-w-0">
+                  <span className="block font-semibold text-foreground">Website</span>
+                  <span className="block break-words">{listing.website.replace(/^https?:\/\//, "")}</span>
+                </span>
               </a>
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm">
-            <div className="grid grid-cols-[1fr_92px] items-center gap-2 bg-[linear-gradient(90deg,#FFF7F2,#FFFFFF)] p-3">
-              <div className="flex items-center gap-2">
-                <img src="/logo.png" alt="A.I DO logo" className="h-10 w-10 object-contain" />
+          <section className="overflow-hidden rounded-xl border border-[#E8C9D4] bg-card shadow-sm">
+            <div className="grid grid-cols-[1fr_86px] items-center gap-3 bg-[linear-gradient(90deg,#FFF7F2,#FFFFFF)] p-4">
+              <div className="flex min-w-0 items-center gap-2">
+                <img src="/logo.png" alt="A.I DO logo" className="h-11 w-11 shrink-0 object-contain" />
                 <div>
-                  <p className="text-xs font-semibold text-[#8D294D]">Proud Partner of</p>
+                  <p className="text-[11px] font-semibold text-[#8D294D]">Proud Partner of</p>
                   <p className="font-serif text-2xl leading-none text-[#8D294D]">A.I DO</p>
                   <p className="text-[10px] text-[#6F3E54]">AI Wedding Planner Assistant</p>
                 </div>
               </div>
-              <img src={qrSvgDataUrl(profileUrl, 3, 2)} alt={`${listing.name} profile QR code`} className="h-20 w-20 rounded bg-white p-1" />
+              <img src={qrSvgDataUrl(profileUrl, 3, 2)} alt={`${listing.name} profile QR code`} className="h-20 w-20 rounded-lg bg-white p-1 shadow-sm" />
             </div>
-            <p className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">
+            <p className="border-t border-[#E8C9D4] px-4 py-3 text-center text-sm font-medium text-muted-foreground">
               Scan to View Our Profile
             </p>
           </section>
@@ -2490,7 +2639,7 @@ export default function Vendors() {
           <TabsTrigger value="vendors">{t("vendors.tab_vendors", { defaultValue: "Vendor List" })}</TabsTrigger>
           <TabsTrigger value="contacts">{t("vendors.tab_contacts", { defaultValue: "Contacts" })}</TabsTrigger>
           {canPreviewVendorDirectory && (
-            <TabsTrigger value="directory">Directory</TabsTrigger>
+            <TabsTrigger value="directory">Partner Network</TabsTrigger>
           )}
         </TabsList>
 
@@ -2569,7 +2718,12 @@ export default function Vendors() {
         </TabsContent>
         {canPreviewVendorDirectory && (
           <TabsContent value="directory" className="mt-4">
-            <VendorDirectoryTab />
+            <VendorDirectoryTab
+              onOpenVendorMessages={(vendorId) => {
+                setDetailInitialTab("messages");
+                setViewingVendorId(vendorId);
+              }}
+            />
           </TabsContent>
         )}
       </Tabs>

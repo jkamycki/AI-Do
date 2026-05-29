@@ -150,13 +150,16 @@ export function VendorMessagesTab({ vendorId }: Props) {
     );
 
   const savedCcList = parseEmails(savedCcRaw);
+  const defaultCcRaw = typeof window !== "undefined" ? sessionStorage.getItem(`aido_vendor_message_default_cc_${vendorId}`) ?? "" : "";
+  const defaultCcList = parseEmails(defaultCcRaw);
   const [ccDraftList, setCcDraftList] = useState<string[] | null>(null);
   const [ccInput, setCcInput] = useState("");
-  const ccList = ccDraftList ?? savedCcList;
+  const baseCcList = Array.from(new Set([...savedCcList, ...defaultCcList]));
+  const ccList = ccDraftList ?? baseCcList;
   const ccDirty =
     ccDraftList !== null &&
-    (ccDraftList.length !== savedCcList.length ||
-      ccDraftList.some((e, i) => e !== savedCcList[i]));
+    (ccDraftList.length !== baseCcList.length ||
+      ccDraftList.some((e, i) => e !== baseCcList[i]));
   const ccInputInvalid = ccInput.trim() !== "" && !EMAIL_RE.test(ccInput.trim());
 
   const setCc = (next: string[]) => setCcDraftList(next);
@@ -203,6 +206,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
     mutation: {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getGetProfileQueryKey() });
+        sessionStorage.removeItem(`aido_vendor_message_default_cc_${vendorId}`);
         setCcDraftList(null);
         toast({
           title: ccList.length > 0 ? t("vendors.msg_cc_saved_toast") : t("vendors.msg_cc_cleared_toast"),
