@@ -41,7 +41,7 @@ const userAvatarUri =
 
 type TabId = 'today' | 'website' | 'plan' | 'guests' | 'vendors' | 'money' | 'more';
 type BottomTabId = TabId | 'aria';
-type GuestHubView = 'guests' | 'seating' | 'invites' | 'travel' | 'website';
+type GuestHubView = 'guests' | 'seating' | 'invites' | 'travel' | 'website' | 'photoDrop';
 
 type MobileSeatingTable = {
   guests: string[];
@@ -1882,7 +1882,11 @@ function WebsiteSection({
     },
     website: {
       title: 'Website',
-      subtitle: 'Website pages, registry, photo drop, preview, and publishing.',
+      subtitle: 'Website pages, registry, preview, and publishing.',
+    },
+    photoDrop: {
+      title: 'Photo Drop',
+      subtitle: 'Guest photo upload link, approval queue, and display settings.',
     },
   };
   const published = data.websiteSections.filter((section) => section.status === 'Published').length;
@@ -2115,6 +2119,7 @@ function WebsiteSection({
           ['invites', 'Invites', 'mail-open-outline'],
           ['travel', 'Travel', 'bed-outline'],
           ['website', 'Website', 'globe-outline'],
+          ['photoDrop', 'Photo Drop', 'camera-outline'],
         ].map(([id, label, icon]) => {
           const active = activeView === id;
           return (
@@ -2275,6 +2280,27 @@ function WebsiteSection({
             onUpdateHotel={onUpdateHotel}
             openMockAction={openMockAction}
           />
+        </>
+      ) : null}
+
+      {activeView === 'photoDrop' ? (
+        <>
+          <LinearGradient colors={['#FFF2EA', '#F8DDE5']} style={styles.websiteHero}>
+            <View style={styles.kickerRow}>
+              <Text style={styles.kicker}>Photo Drop</Text>
+              <View style={styles.livePill}>
+                <View style={styles.liveDot} />
+                <Text style={styles.liveText}>{data.guestPhotoDrop.enabled ? 'Photo Drop on' : 'Photo Drop off'}</Text>
+              </View>
+            </View>
+            <Text style={styles.websiteTitle}>Photo Drop</Text>
+            <Text style={styles.websiteMeta}>Share the upload link, review guest photos, and choose where approved photos appear.</Text>
+          </LinearGradient>
+          <View style={styles.summaryGrid}>
+            <SummaryCard label="Pending" value={String(data.guestPhotoUploads.filter((upload) => upload.status === 'Pending').length)} />
+            <SummaryCard label="Approved" value={String(data.guestPhotoUploads.filter((upload) => upload.status === 'Approved').length)} />
+            <SummaryCard label="Mode" value={photoDropModeLabel(data.guestPhotoDrop.displayMode)} />
+          </View>
         </>
       ) : null}
 
@@ -2518,7 +2544,7 @@ function WebsiteSection({
         </View>
       </Card> : null}
 
-      {activeView === 'website' ? (
+      {activeView === 'photoDrop' ? (
         <PhotoDropMobilePanel
           activeTab={photoDropTab}
           data={data}

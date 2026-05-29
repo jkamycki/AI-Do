@@ -467,7 +467,10 @@ router.get("/vendors/financials", requireAuth, async (req, res) => {
     const userVendors = await db
       .select()
       .from(vendors)
-      .where(eq(vendors.profileId, profile.id))
+      .where(and(
+        eq(vendors.profileId, profile.id),
+        sql`coalesce(${vendors.notes}, '') not like ${`${PARTNER_INQUIRY_NOTE_MARKER}%`}`,
+      ))
       .orderBy(vendors.createdAt);
 
     const totalCommitted = userVendors.reduce((s, v) => s + Number(v.totalCost), 0);
