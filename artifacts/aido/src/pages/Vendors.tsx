@@ -2155,6 +2155,7 @@ function VendorHubMessagesTab({
   initialVendorId?: number | null;
   onSelectVendor?: (vendorId: number) => void;
 }) {
+  const { data: vendors = [], isLoading: vendorsLoading } = useListVendors();
   const { data: conversations = [], isLoading } = useListConversations({
     query: {
       queryKey: getListConversationsQueryKey(),
@@ -2174,26 +2175,26 @@ function VendorHubMessagesTab({
   }, [conversations, selectedVendorId]);
 
   const selectedConversation = conversations.find((conversation) => conversation.vendorId === selectedVendorId);
+  const selectedVendor = vendors.find((vendor) => vendor.id === selectedVendorId);
+  const sortedVendors = useMemo(
+    () => [...vendors].sort((a, b) => a.name.localeCompare(b.name)),
+    [vendors]
+  );
+  const selectedVendorName = selectedConversation?.vendorName ?? selectedVendor?.name ?? "Vendor";
 
-  if (isLoading) {
+  function selectVendorMessages(vendorId: number) {
+    if (!Number.isFinite(vendorId)) return;
+    setSelectedVendorId(vendorId);
+    onSelectVendor?.(vendorId);
+  }
+
+  if (isLoading || vendorsLoading) {
     return (
       <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
         <div className="space-y-3">
           {[1, 2, 3].map((item) => <Skeleton key={item} className="h-20 rounded-xl" />)}
         </div>
         <Skeleton className="h-[520px] rounded-xl" />
-      </div>
-    );
-  }
-
-  if (conversations.length === 0) {
-    return (
-      <div className="rounded-2xl border border-dashed border-primary/25 bg-primary/5 px-6 py-12 text-center">
-        <Inbox className="mx-auto h-10 w-10 text-primary/70" />
-        <h2 className="mt-3 font-serif text-2xl text-foreground">No vendor messages yet</h2>
-        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-          Start a message from a saved vendor or request an introduction from the Partner Network. Replies will appear here as conversations.
-        </p>
       </div>
     );
   }
@@ -2205,6 +2206,36 @@ function VendorHubMessagesTab({
           <h2 className="font-serif text-xl text-foreground">Messages</h2>
           <p className="text-xs text-muted-foreground">Vendor and partner conversations in one place.</p>
         </div>
+        <div className="rounded-xl border border-border/70 bg-background/70 p-3">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-primary">New message</Label>
+          <Select
+            value={selectedVendorId ? String(selectedVendorId) : ""}
+            onValueChange={(value) => selectVendorMessages(Number(value))}
+          >
+            <SelectTrigger className="mt-2 bg-card" data-testid="select-message-vendor">
+              <SelectValue placeholder={sortedVendors.length ? "Select an existing vendor" : "No vendors yet"} />
+            </SelectTrigger>
+            <SelectContent>
+              {sortedVendors.map((vendor) => (
+                <SelectItem key={vendor.id} value={String(vendor.id)}>
+                  {vendor.name} {vendor.category ? `(${vendorCategoryLabel(vendor.category)})` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="mt-2 text-xs leading-5 text-muted-foreground">
+            Pick a saved vendor to compose a new message or continue their thread.
+          </p>
+        </div>
+        {conversations.length === 0 && (
+          <div className="rounded-xl border border-dashed border-primary/25 bg-primary/5 px-4 py-6 text-center">
+            <Inbox className="mx-auto h-7 w-7 text-primary/70" />
+            <p className="mt-2 text-sm font-semibold text-foreground">No conversations yet</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Use the dropdown above to start with an existing vendor.
+            </p>
+          </div>
+        )}
         {conversations.map((conversation) => {
           const isActive = conversation.vendorId === selectedVendorId;
           const lastMessageDate = new Date(conversation.lastMessageAt);
@@ -2221,8 +2252,7 @@ function VendorHubMessagesTab({
                   : "border-transparent hover:border-border hover:bg-muted/40"
               }`}
               onClick={() => {
-                setSelectedVendorId(conversation.vendorId);
-                onSelectVendor?.(conversation.vendorId);
+                selectVendorMessages(conversation.vendorId);
               }}
             >
               <div className="flex items-start justify-between gap-2">
@@ -2251,9 +2281,9 @@ function VendorHubMessagesTab({
           <div className="space-y-3">
             <div className="border-b border-border/70 pb-3">
               <p className="text-xs font-semibold uppercase tracking-wider text-primary">Conversation</p>
-              <h3 className="font-serif text-2xl text-foreground">{selectedConversation?.vendorName ?? "Vendor"}</h3>
-              {selectedConversation?.vendorEmail && (
-                <p className="text-sm text-muted-foreground">{selectedConversation.vendorEmail}</p>
+              <h3 className="font-serif text-2xl text-foreground">{selectedVendorName}</h3>
+              {(selectedConversation?.vendorEmail || selectedVendor?.email) && (
+                <p className="text-sm text-muted-foreground">{selectedConversation?.vendorEmail ?? selectedVendor?.email}</p>
               )}
             </div>
             <VendorMessagesTab vendorId={selectedVendorId} />
