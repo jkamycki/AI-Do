@@ -4,9 +4,27 @@ import { db, vendorPartnerApplications } from "@workspace/db";
 const router = Router();
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHOTO_DATA_URL_RE = /^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/;
+const MAX_SERVICE_PHOTOS = 3;
+const MAX_SERVICE_PHOTO_DATA_URL_LENGTH = 1_100_000;
 
 function cleanText(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+}
+
+function cleanServicePhotos(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, MAX_SERVICE_PHOTOS).flatMap((photo) => {
+    if (!photo || typeof photo !== "object") return [];
+    const item = photo as { name?: unknown; type?: unknown; dataUrl?: unknown };
+    const dataUrl = typeof item.dataUrl === "string" ? item.dataUrl : "";
+    if (!PHOTO_DATA_URL_RE.test(dataUrl) || dataUrl.length > MAX_SERVICE_PHOTO_DATA_URL_LENGTH) return [];
+    return [{
+      name: cleanText(item.name, 120) || "service-photo.jpg",
+      type: cleanText(item.type, 80) || "image/jpeg",
+      dataUrl,
+    }];
+  });
 }
 
 router.post("/vendor-partners", async (req, res) => {
@@ -21,6 +39,7 @@ router.post("/vendor-partners", async (req, res) => {
     const instagram = cleanText(req.body?.instagram, 120);
     const startingPrice = cleanText(req.body?.startingPrice, 80);
     const description = cleanText(req.body?.description, 1200);
+    const servicePhotos = cleanServicePhotos(req.body?.servicePhotos);
 
     if (!businessName || !contactName || !EMAIL_RE.test(email) || !category || !serviceArea) {
       return res.status(400).json({ error: "Business name, contact name, email, category, and service area are required." });
@@ -39,6 +58,7 @@ router.post("/vendor-partners", async (req, res) => {
         instagram: instagram || null,
         startingPrice: startingPrice || null,
         description: description || null,
+        servicePhotos,
       })
       .returning({ id: vendorPartnerApplications.id });
 
@@ -50,4 +70,3 @@ router.post("/vendor-partners", async (req, res) => {
 });
 
 export default router;
-

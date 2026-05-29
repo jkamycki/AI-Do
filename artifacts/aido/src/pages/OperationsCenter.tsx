@@ -185,6 +185,7 @@ type VendorPartnerApplication = {
   instagram: string | null;
   startingPrice: string | null;
   description: string | null;
+  servicePhotos?: Array<{ name: string; type: string; dataUrl: string }>;
   status: "new" | "reviewing" | "approved" | "declined" | string;
   notes: string | null;
   createdAt: string;
@@ -1693,6 +1694,29 @@ export default function OperationsCenterPage() {
                       {application.description ? (
                         <div className="rounded-lg bg-[#FFF8F4] p-4 text-sm leading-6 text-[#4A3941]">
                           {application.description}
+                        </div>
+                      ) : null}
+
+                      {application.servicePhotos && application.servicePhotos.length > 0 ? (
+                        <div className="rounded-lg border border-[#E6D2D8] bg-white p-3">
+                          <p className="mb-3 text-xs font-semibold uppercase text-[#8D294D]/70">Service photos</p>
+                          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                            {application.servicePhotos.map((photo, index) => (
+                              <a
+                                key={`${application.id}-photo-${index}`}
+                                href={photo.dataUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="group aspect-[4/3] overflow-hidden rounded-lg border border-[#E6D2D8] bg-[#FFF8F4]"
+                              >
+                                <img
+                                  src={photo.dataUrl}
+                                  alt={photo.name || `${application.businessName} service photo ${index + 1}`}
+                                  className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                                />
+                              </a>
+                            ))}
+                          </div>
                         </div>
                       ) : null}
 
