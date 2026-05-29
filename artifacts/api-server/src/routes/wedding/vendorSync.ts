@@ -9,6 +9,15 @@ import { getRequestLanguage } from "../../lib/language";
 const router = Router();
 const PARTNER_INQUIRY_NOTE_MARKER = "[A.I DO partner inquiry only]";
 
+function excludePartnerInquiryVendors() {
+  return sql`not (
+    coalesce(${vendors.notes}, '') like ${`${PARTNER_INQUIRY_NOTE_MARKER}%`}
+    or lower(coalesce(${vendors.notes}, '')) like '%partner inquiry%'
+    or lower(coalesce(${vendors.notes}, '')) like '%partner network%'
+    or lower(coalesce(${vendors.notes}, '')) like '%not added to the user''s vendor list%'
+  )`;
+}
+
 // Mark any "first vendor" / "add a vendor" style checklist items as
 // completed once the user has added at least one real vendor row. We
 // only flip items whose text mentions the literal word "vendor" so we
@@ -421,7 +430,7 @@ router.get("/vendors", requireAuth, async (req, res) => {
       .from(vendors)
       .where(and(
         eq(vendors.profileId, profile.id),
-        sql`coalesce(${vendors.notes}, '') not like ${`${PARTNER_INQUIRY_NOTE_MARKER}%`}`,
+        excludePartnerInquiryVendors(),
       ))
       .orderBy(vendors.createdAt);
 
@@ -469,7 +478,7 @@ router.get("/vendors/financials", requireAuth, async (req, res) => {
       .from(vendors)
       .where(and(
         eq(vendors.profileId, profile.id),
-        sql`coalesce(${vendors.notes}, '') not like ${`${PARTNER_INQUIRY_NOTE_MARKER}%`}`,
+        excludePartnerInquiryVendors(),
       ))
       .orderBy(vendors.createdAt);
 
