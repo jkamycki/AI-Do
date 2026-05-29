@@ -21,6 +21,7 @@ import { saveMobileGuestPhotoDropSettings } from './src/api/photoDrop';
 import { saveMobileProfile } from './src/api/profile';
 import { applySeatingChart, generateSeatingChart, saveSeatingChart, updateSeatingChart, type SeatingGuestPayload } from './src/api/seating';
 import { createMobileVendor, deleteMobileVendor, updateMobileVendor } from './src/api/vendors';
+import { getOrCreateMobileVendorConversation, listMobileVendorMessages, sendMobileVendorMessage } from './src/api/vendorMessaging';
 import { createMobileWeddingPartyMember, deleteMobileWeddingPartyMember, updateMobileWeddingPartyMember } from './src/api/weddingParty';
 import { samplePlanningData } from './src/data/sampleData';
 import type { Guest, GuestPhotoDropSettings } from './src/types';
@@ -6678,6 +6679,10 @@ function VendorMessageModal({ onClose, vendor }: { onClose: () => void; vendor: 
   const [channel, setChannel] = useState<'sms' | 'email' | 'both'>('sms');
   const [tone, setTone] = useState<'warm' | 'direct' | 'formal'>('warm');
   const [composeMode, setComposeMode] = useState<'aria' | 'custom'>('aria');
+  const [conversationId, setConversationId] = useState<number | null>(null);
+  const [conversationMessages, setConversationMessages] = useState<Array<{ body: string; createdAt: string; deliveryStatus: string; id: number; senderType: string }>>([]);
+  const [messageStatus, setMessageStatus] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
   const defaultMessage = vendor
     ? `Hi ${vendor.contactName ?? vendor.name}, this is Stacy from Stacy & Rick's wedding. Can you confirm our next payment and arrival details?`
     : '';
@@ -6687,6 +6692,28 @@ function VendorMessageModal({ onClose, vendor }: { onClose: () => void; vendor: 
     setMessage(defaultMessage);
     setComposeMode('aria');
     setTone('warm');
+    setConversationId(null);
+    setConversationMessages([]);
+    setMessageStatus('');
+    if (!vendor) return;
+    let alive = true;
+    async function hydrateConversation() {
+      try {
+        const conversation = await getOrCreateMobileVendorConversation(vendor.id);
+        if (!alive) return;
+        setConversationId(conversation.id);
+        const messages = await listMobileVendorMessages(conversation.id);
+        if (!alive) return;
+        setConversationMessages(messages);
+      } catch (error) {
+        if (!alive) return;
+        setMessageStatus(error instanceof Error ? error.message : 'Vendor conversation could not load.');
+      }
+    }
+    void hydrateConversation();
+    return () => {
+      alive = false;
+    };
   }, [defaultMessage]);
 
   const applyDraft = (draft: string, selectedTone = tone) => {
@@ -6698,6 +6725,28 @@ function VendorMessageModal({ onClose, vendor }: { onClose: () => void; vendor: 
     setComposeMode('aria');
     setTone(selectedTone);
     setMessage(tonedDraft);
+  };
+  const sendMessage = async () => {
+    if (!vendor || sendingMessage || !message.trim()) return;
+    setSendingMessage(true);
+    setMessageStatus('');
+    try {
+      const activeConversationId = conversationId ?? (await getOrCreateMobileVendorConversation(vendor.id)).id;
+      setConversationId(activeConversationId);
+      const sent = await sendMobileVendorMessage({
+        body: message.trim(),
+        conversationId: activeConversationId,
+        subject: `Wedding planning - ${vendor.name}`,
+      });
+      setConversationMessages((current) => [...current, sent]);
+      setMessageStatus(sent.deliveryStatus === 'sent' ? 'Message sent and conversation synced.' : sent.errorMessage || 'Message saved, but delivery needs attention.');
+      setMessage('');
+      setComposeMode('custom');
+    } catch (error) {
+      setMessageStatus(error instanceof Error ? error.message : 'Message could not be sent.');
+    } finally {
+      setSendingMessage(false);
+    }
   };
 
   return (
@@ -6719,6 +6768,21 @@ function VendorMessageModal({ onClose, vendor }: { onClose: () => void; vendor: 
             <VendorInfoRow icon="call-outline" label="SMS" value={vendor?.phone ?? 'No phone added'} />
             <VendorInfoRow icon="mail-outline" label="Email" value={vendor?.email ?? 'No email added'} />
           </View>
+          {messageStatus ? <SavedStrip label={messageStatus} /> : null}
+          {conversationMessages.length > 0 ? (
+            <View style={styles.vendorInfoList}>
+              {conversationMessages.slice(-3).map((item) => (
+                <View key={item.id} style={styles.workspaceRow}>
+                  <Ionicons color={item.senderType === 'vendor' ? colors.green : colors.rose} name={item.senderType === 'vendor' ? 'mail-unread-outline' : 'mail-outline'} size={18} />
+                  <View style={styles.hubCopy}>
+                    <Text style={styles.hubLabel}>{item.senderType === 'vendor' ? 'Vendor reply' : 'You'}</Text>
+                    <Text numberOfLines={2} style={styles.hubDetail}>{item.body}</Text>
+                  </View>
+                  <Text style={styles.smallStatus}>{item.deliveryStatus}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
 
           <View style={styles.eventTypeRow}>
             {[
@@ -6824,9 +6888,9 @@ function VendorMessageModal({ onClose, vendor }: { onClose: () => void; vendor: 
           </View>
 
           <View style={styles.websiteActions}>
-            <Pressable onPress={onClose} style={styles.primaryActionButton}>
-              <Ionicons color={colors.surface} name="send-outline" size={18} />
-              <Text style={styles.primaryActionText}>Send message</Text>
+            <Pressable disabled={sendingMessage || !message.trim()} onPress={sendMessage} style={[styles.primaryActionButton, (sendingMessage || !message.trim()) && styles.disabledActionButton]}>
+              <Ionicons color={colors.surface} name={sendingMessage ? 'sync-outline' : 'send-outline'} size={18} />
+              <Text style={styles.primaryActionText}>{sendingMessage ? 'Sending...' : 'Send message'}</Text>
             </Pressable>
             <Pressable onPress={onClose} style={styles.secondaryActionButton}>
               <Text style={styles.secondaryActionText}>Cancel</Text>
@@ -6919,11 +6983,34 @@ function VendorMessageComposer({ vendor }: { vendor: VendorRecord }) {
   const ariaDraft = `Hi ${vendor.contactName ?? vendor.name}, this is Stacy from Stacy & Rick's wedding. Can you confirm our next payment and arrival details?`;
   const [composeMode, setComposeMode] = useState<'aria' | 'custom'>('aria');
   const [message, setMessage] = useState(ariaDraft);
+  const [status, setStatus] = useState('');
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     setComposeMode('aria');
     setMessage(ariaDraft);
+    setStatus('');
   }, [ariaDraft]);
+  const sendMessage = async () => {
+    if (sending || !message.trim()) return;
+    setSending(true);
+    setStatus('');
+    try {
+      const conversation = await getOrCreateMobileVendorConversation(vendor.id);
+      const sent = await sendMobileVendorMessage({
+        body: message.trim(),
+        conversationId: conversation.id,
+        subject: `Wedding planning - ${vendor.name}`,
+      });
+      setStatus(sent.deliveryStatus === 'sent' ? 'Message sent and added to vendor conversation.' : sent.errorMessage || 'Message saved, but delivery needs attention.');
+      setComposeMode('custom');
+      setMessage('');
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Message could not be sent.');
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <View style={styles.actionWorkspace}>
@@ -6968,7 +7055,13 @@ function VendorMessageComposer({ vendor }: { vendor: VendorRecord }) {
         style={[styles.formInput, styles.messageInput]}
         value={message}
       />
-      <SavedStrip label={composeMode === 'custom' ? 'Custom message ready to send' : 'Aria draft ready to send'} />
+      <SavedStrip label={status || (composeMode === 'custom' ? 'Custom message ready to send' : 'Aria draft ready to send')} />
+      <View style={styles.websiteActions}>
+        <Pressable disabled={sending || !message.trim()} onPress={sendMessage} style={[styles.primaryActionButton, (sending || !message.trim()) && styles.disabledActionButton]}>
+          <Ionicons color={colors.surface} name={sending ? 'sync-outline' : 'send-outline'} size={18} />
+          <Text style={styles.primaryActionText}>{sending ? 'Sending...' : 'Send message'}</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
