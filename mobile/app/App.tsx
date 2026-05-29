@@ -96,6 +96,7 @@ type ScheduledPayment = {
   label: string;
 };
 type LocalBudgetRecord = BudgetRecord & {
+  manualExpenseId?: number;
   notes?: string;
   receiptName?: string;
   scheduledPayments: ScheduledPayment[];
@@ -140,7 +141,15 @@ type ApiManualExpense = {
   id: number;
   name: string;
   nextPaymentAmount?: number | null;
+  nextPaymentId?: number | null;
   nextPaymentDue?: string | null;
+  payments?: Array<{
+    amount: number;
+    description?: string | null;
+    dueDate?: string | null;
+    id: number;
+    isPaid?: boolean;
+  }>;
   notes?: string | null;
   receiptName?: string | null;
 };
@@ -5279,7 +5288,22 @@ function MoneySection({
     const amount = Number(newPayment.amount);
     if (!newPayment.itemId || !newPayment.label.trim() || !newPayment.date.trim() || !Number.isFinite(amount) || amount <= 0) return;
     const targetItem = budgetItems.find((item) => item.id === newPayment.itemId);
-    if (targetItem) void createPaymentInApi(targetItem, { amount, date: newPayment.date.trim(), id: '', label: newPayment.label.trim() });
+    const localPaymentId = `mobile-scheduled-${newPayment.itemId}-${Date.now()}`;
+    if (targetItem) {
+      void createPaymentInApi(targetItem, { amount, date: newPayment.date.trim(), id: localPaymentId, label: newPayment.label.trim() }).then((syncedPayment) => {
+        if (!syncedPayment) return;
+        setBudgetItems((current) =>
+          current.map((item) =>
+            item.id === targetItem.id
+              ? {
+                  ...item,
+                  scheduledPayments: item.scheduledPayments.map((payment) => (payment.id === localPaymentId ? syncedPayment : payment)),
+                }
+              : item,
+          ),
+        );
+      });
+    }
     setBudgetItems((current) =>
       current.map((item) =>
         item.id === newPayment.itemId
@@ -5290,7 +5314,7 @@ function MoneySection({
                 {
                   amount,
                   date: newPayment.date.trim(),
-                  id: `mobile-scheduled-${item.id}-${Date.now()}`,
+                  id: localPaymentId,
                   label: newPayment.label.trim(),
                 },
               ],
@@ -5317,26 +5341,39 @@ function MoneySection({
       Number.isFinite(nextAmount) && nextAmount > 0
         ? [{ amount: nextAmount, date: miscForm.nextDate.trim(), id: `scheduled-${id}`, label: 'Scheduled payment' }]
         : [];
-    setBudgetItems((current) => [
-      ...current,
-      {
-        id,
-        category: miscForm.category.trim(),
-        nextPayment: undefined,
-        paid,
-        payments: paid > 0 ? [{ amount: paid, date: dateKey(new Date()), id: `paid-${id}`, note: 'Already paid' }] : [],
-        notes: miscForm.notes.trim() || undefined,
-        receiptName: miscForm.receiptName.trim() || undefined,
-        scheduledPayments,
-        source: 'misc',
-        title: miscForm.title.trim(),
-        total,
-      },
-    ]);
+    const localExpense: LocalBudgetRecord = {
+      id,
+      category: miscForm.category.trim(),
+      nextPayment: undefined,
+      paid,
+      payments: paid > 0 ? [{ amount: paid, date: dateKey(new Date()), id: `paid-${id}`, note: 'Already paid' }] : [],
+      notes: miscForm.notes.trim() || undefined,
+      receiptName: miscForm.receiptName.trim() || undefined,
+      scheduledPayments,
+      source: 'misc',
+      title: miscForm.title.trim(),
+      total,
+    };
+    setBudgetItems((current) => [...current, localExpense]);
+    void createManualExpenseInApi({
+      amountPaid: paid,
+      category: localExpense.category,
+      cost: total,
+      name: localExpense.title,
+      nextPaymentAmount: scheduledPayments[0]?.amount,
+      nextPaymentDue: scheduledPayments[0]?.date,
+      notes: localExpense.notes,
+      receiptName: localExpense.receiptName,
+    }).then((syncedExpense) => {
+      if (!syncedExpense) return;
+      setBudgetItems((current) => current.map((item) => (item.id === localExpense.id ? syncedExpense : item)));
+    });
     setMiscForm({ category: 'Misc', nextAmount: '', nextDate: '', notes: '', paid: '', receiptName: '', title: '', total: '' });
     setAddMiscOpen(false);
   };
   const deleteMiscExpense = (itemId: string) => {
+    const item = budgetItems.find((budgetItem) => budgetItem.id === itemId);
+    if (item) void deleteManualExpenseInApi(item);
     setBudgetItems((current) => current.filter((item) => item.id !== itemId));
   };
   const openAddPayment = (itemId?: string) => {
@@ -5350,6 +5387,8 @@ function MoneySection({
     setAddPaymentOpen(true);
   };
   const deleteScheduledPayment = (itemId: string, paymentId: string) => {
+    const item = budgetItems.find((budgetItem) => budgetItem.id === itemId);
+    if (item) void deleteBudgetPaymentInApi(item, paymentId);
     setBudgetItems((current) =>
       current.map((item) =>
         item.id === itemId
@@ -7883,36 +7922,54 @@ async function loadBudgetItemsFromApi(): Promise<LocalBudgetRecord[]> {
     total: vendor.totalCost,
     vendorId: vendor.id,
   }));
-  const miscItems: LocalBudgetRecord[] = manualExpenses.map((expense) => ({
-    category: expense.category,
-    id: `api-misc-${expense.id}`,
-    nextPayment: expense.nextPaymentDue && expense.nextPaymentAmount
-      ? { amount: expense.nextPaymentAmount, date: expense.nextPaymentDue }
-      : undefined,
-    notes: expense.notes ?? undefined,
-    paid: expense.amountPaid,
-    payments: [],
-    receiptName: expense.receiptName ?? undefined,
-    scheduledPayments: expense.nextPaymentDue && expense.nextPaymentAmount
-      ? [{ amount: expense.nextPaymentAmount, date: expense.nextPaymentDue, id: `api-misc-payment-${expense.id}`, label: 'Scheduled payment' }]
-      : [],
-    source: 'misc',
-    title: expense.name,
-    total: expense.cost,
-  }));
+  const miscItems: LocalBudgetRecord[] = manualExpenses.map(manualExpenseToBudgetRecord);
 
   return [...vendorItems, ...miscItems];
 }
 
 async function createPaymentInApi(item: LocalBudgetRecord, payment: ScheduledPayment) {
-  if (!item.vendorId) return;
-  await mobileApiFetch(`/api/vendors/${item.vendorId}/payments`, {
+  type ApiPaymentResponse = { amount?: number; description?: string | null; dueDate?: string | null; id?: number; label?: string | null };
+  if (item.manualExpenseId) {
+    const response = await mobileApiFetch(`/api/manual-expenses/${item.manualExpenseId}/payments`, {
+      body: JSON.stringify({ amount: payment.amount, description: payment.label, dueDate: payment.date, isPaid: false }),
+      method: 'POST',
+    });
+    if (!response) return null;
+    const created = (await response.json()) as ApiPaymentResponse;
+    return {
+      amount: created.amount ?? payment.amount,
+      date: created.dueDate ?? payment.date,
+      id: created.id ? String(created.id) : payment.id,
+      label: created.description || payment.label,
+    };
+  }
+  if (!item.vendorId) return null;
+  const response = await mobileApiFetch(`/api/vendors/${item.vendorId}/payments`, {
     body: JSON.stringify({ amount: payment.amount, dueDate: payment.date, isPaid: false, label: payment.label }),
     method: 'POST',
   });
+  if (!response) return null;
+  const created = (await response.json()) as ApiPaymentResponse;
+  return {
+    amount: created.amount ?? payment.amount,
+    date: created.dueDate ?? payment.date,
+    id: created.id ? String(created.id) : payment.id,
+    label: created.label || created.description || payment.label,
+  };
 }
 
 async function markPaymentPaidInApi(item: LocalBudgetRecord, payment: ScheduledPayment) {
+  if (item.manualExpenseId) {
+    const paymentId = Number(payment.id);
+    const path = Number.isFinite(paymentId)
+      ? `/api/manual-expenses/${item.manualExpenseId}/payments/${paymentId}`
+      : `/api/manual-expenses/${item.manualExpenseId}/mark-paid`;
+    await mobileApiFetch(path, {
+      body: Number.isFinite(paymentId) ? JSON.stringify({ isPaid: true }) : undefined,
+      method: Number.isFinite(paymentId) ? 'PUT' : 'POST',
+    });
+    return;
+  }
   if (!item.vendorId) return;
   const paymentId = Number(payment.id);
   const path = Number.isFinite(paymentId)
@@ -7925,8 +7982,80 @@ async function markPaymentPaidInApi(item: LocalBudgetRecord, payment: ScheduledP
 }
 
 async function markPaidInFullInApi(item: LocalBudgetRecord) {
+  if (item.manualExpenseId) {
+    await mobileApiFetch(`/api/manual-expenses/${item.manualExpenseId}`, {
+      body: JSON.stringify({ amountPaid: item.total, nextPaymentAmount: null, nextPaymentDue: null }),
+      method: 'PUT',
+    });
+    return;
+  }
   if (!item.vendorId) return;
   await mobileApiFetch(`/api/vendors/${item.vendorId}/payments/mark-paid-in-full`, { method: 'POST' });
+}
+
+async function createManualExpenseInApi(payload: {
+  amountPaid: number;
+  category: string;
+  cost: number;
+  name: string;
+  nextPaymentAmount?: number;
+  nextPaymentDue?: string;
+  notes?: string;
+  receiptName?: string;
+}) {
+  const response = await mobileApiFetch('/api/manual-expenses', {
+    body: JSON.stringify(payload),
+    method: 'POST',
+  });
+  return response ? manualExpenseToBudgetRecord((await response.json()) as ApiManualExpense) : null;
+}
+
+async function deleteBudgetPaymentInApi(item: LocalBudgetRecord, paymentId: string) {
+  const numericPaymentId = Number(paymentId);
+  if (!Number.isFinite(numericPaymentId)) return;
+  if (item.manualExpenseId) {
+    await mobileApiFetch(`/api/manual-expenses/${item.manualExpenseId}/payments/${numericPaymentId}`, { method: 'DELETE' });
+    return;
+  }
+  if (item.vendorId) {
+    await mobileApiFetch(`/api/vendors/${item.vendorId}/payments/${numericPaymentId}`, { method: 'DELETE' });
+  }
+}
+
+async function deleteManualExpenseInApi(item: LocalBudgetRecord) {
+  if (!item.manualExpenseId) return;
+  await mobileApiFetch(`/api/manual-expenses/${item.manualExpenseId}`, { method: 'DELETE' });
+}
+
+function manualExpenseToBudgetRecord(expense: ApiManualExpense): LocalBudgetRecord {
+  const unpaidPayments = (expense.payments ?? []).filter((payment) => !payment.isPaid && payment.dueDate);
+  const scheduledPayments = unpaidPayments.length
+    ? unpaidPayments.map((payment) => ({
+        amount: payment.amount,
+        date: payment.dueDate ?? dateKey(new Date()),
+        id: String(payment.id),
+        label: payment.description || 'Scheduled payment',
+      }))
+    : expense.nextPaymentDue && expense.nextPaymentAmount
+      ? [{ amount: expense.nextPaymentAmount, date: expense.nextPaymentDue, id: String(expense.nextPaymentId ?? `api-misc-payment-${expense.id}`), label: 'Scheduled payment' }]
+      : [];
+
+  return {
+    category: expense.category,
+    id: `api-misc-${expense.id}`,
+    manualExpenseId: expense.id,
+    nextPayment: expense.nextPaymentDue && expense.nextPaymentAmount
+      ? { amount: expense.nextPaymentAmount, date: expense.nextPaymentDue }
+      : undefined,
+    notes: expense.notes ?? undefined,
+    paid: expense.amountPaid,
+    payments: [],
+    receiptName: expense.receiptName ?? undefined,
+    scheduledPayments,
+    source: 'misc',
+    title: expense.name,
+    total: expense.cost,
+  };
 }
 
 function buildCalendarEvents(data: typeof samplePlanningData): CalendarEvent[] {
