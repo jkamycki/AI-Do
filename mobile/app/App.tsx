@@ -12,6 +12,8 @@ import { getPlanningData, mergePlanningData } from './src/api/client';
 import { sendMobileAriaMessage } from './src/api/aria';
 import { syncDayOfChecklistCompletion, syncTaskCompletion } from './src/api/checklist';
 import { inviteMobileCollaborator, listMobileCollaborators } from './src/api/collaboration';
+import { listMobileContracts, type MobileContractRecord } from './src/api/contracts';
+import { listMobileDocuments, type MobileDocumentRecord } from './src/api/documents';
 import { createMobileGuest, deleteMobileGuest, updateMobileGuest } from './src/api/guests';
 import { sendPendingRsvpReminders, sendRsvpInvitations, sendSaveTheDates } from './src/api/guestMessaging';
 import { createMobileHotel, deleteMobileHotel, updateMobileHotel } from './src/api/hotels';
@@ -5596,8 +5598,34 @@ function FinanceContractsPanel({
   data: typeof samplePlanningData;
   openMockAction: (action: MockAction) => void;
 }) {
-  const signed = data.contracts.filter((contract) => contract.status === 'Signed').length;
-  const needsReview = data.contracts.filter((contract) => contract.status !== 'Signed').length;
+  const [apiContracts, setApiContracts] = useState<MobileContractRecord[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    listMobileContracts()
+      .then((contracts) => {
+        if (alive) setApiContracts(contracts);
+      })
+      .catch(() => {
+        if (alive) setApiContracts(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const contracts = apiContracts?.length
+    ? apiContracts.map((contract) => ({
+        clauses: [...(contract.analysis?.clauses ?? []), ...(contract.analysis?.keyTerms ?? [])].map((_, index) => `Clause ${index + 1}`),
+        id: `api-contract-${contract.id}`,
+        nextAction: contract.analysis?.summary || 'Review uploaded contract analysis.',
+        riskLevel: contract.analysis?.riskLevel || ((contract.analysis?.redFlags?.length ?? 0) > 0 ? 'Medium' : 'Low'),
+        status: (contract.analysis ? 'Needs review' : 'Uploaded') as 'Needs review' | 'Uploaded',
+        title: contract.fileName,
+        value: 0,
+        vendorName: contract.vendorName || contract.hotelName || 'Unlinked',
+      }))
+    : data.contracts;
+  const signed = contracts.filter((contract) => contract.status === 'Signed').length;
+  const needsReview = contracts.filter((contract) => contract.status !== 'Signed').length;
 
   return (
     <>
@@ -5612,10 +5640,10 @@ function FinanceContractsPanel({
             <Text style={styles.cardTitle}>Contracts</Text>
             <Text style={styles.hubDetail}>AI review status, key clauses, vendor link, value, and next action.</Text>
           </View>
-          <Text style={styles.smallStatus}>{needsReview} need review</Text>
+        <Text style={styles.smallStatus}>{apiContracts?.length ? 'Synced' : `${needsReview} need review`}</Text>
         </View>
         <View style={styles.calendarList}>
-          {data.contracts.map((contract) => (
+          {contracts.map((contract) => (
             <Pressable
               key={contract.id}
               onPress={() =>
@@ -5671,6 +5699,32 @@ function FinanceDocumentsPanel({
   data: typeof samplePlanningData;
   openMockAction: (action: MockAction) => void;
 }) {
+  const [apiDocuments, setApiDocuments] = useState<MobileDocumentRecord[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    listMobileDocuments()
+      .then((documents) => {
+        if (alive) setApiDocuments(documents);
+      })
+      .catch(() => {
+        if (alive) setApiDocuments(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const documents = apiDocuments?.length
+    ? apiDocuments.map((document) => ({
+        id: `api-document-${document.id}`,
+        linkedTo: document.linkedVendorName || document.folder || 'General',
+        status: 'Synced',
+        summary: document.summary || 'Uploaded to the website document library.',
+        title: document.originalFileName || document.fileName || `Document ${document.id}`,
+        type: document.fileType || 'Document',
+        updatedAt: document.updatedAt || dateKey(new Date()),
+      }))
+    : data.documents;
+
   return (
     <Card>
       <View style={styles.cardHeaderRow}>
@@ -5678,10 +5732,10 @@ function FinanceDocumentsPanel({
           <Text style={styles.cardTitle}>Documents</Text>
           <Text style={styles.hubDetail}>Contracts, receipts, timelines, exports, and shared planning files.</Text>
         </View>
-        <Text style={styles.smallStatus}>{data.documents.length} files</Text>
+        <Text style={styles.smallStatus}>{apiDocuments?.length ? 'Synced' : `${data.documents.length} files`}</Text>
       </View>
       <View style={styles.calendarList}>
-        {data.documents.map((document) => (
+        {documents.map((document) => (
           <Pressable
             key={document.id}
             onPress={() =>
