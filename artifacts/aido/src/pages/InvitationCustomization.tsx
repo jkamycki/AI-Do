@@ -169,7 +169,7 @@ function printLocationLines(design: ReturnType<typeof buildInvitationDesignDocum
     [design.fields.venueCity, [design.fields.venueState, design.fields.venueZip].filter(Boolean).join(" ")]
       .filter(Boolean)
       .join(", "),
-  ].filter(Boolean);
+  ].filter((line): line is string => Boolean(line));
 }
 
 function drawInvitationMarketingFooter(
@@ -298,6 +298,7 @@ export default function InvitationCustomizationPage({
   const [printSide, setPrintSide] = useState<PrintInvitationSide>("front");
   const [includePrintQr, setIncludePrintQr] = useState(true);
   const [exportingPrintPdf, setExportingPrintPdf] = useState(false);
+  const [testRecipientEmail, setTestRecipientEmail] = useState("");
   const [customDesign, setCustomDesign] = useState<CustomDesignState>({
     saveTheDate: { backgroundColor: AIDO_BRAND_COLORS.ivory, accentColor: AIDO_BRAND_COLORS.burgundy, fontFamily: "Playfair Display", fontSize: "16", fontColor: AIDO_BRAND_COLORS.ink },
     rsvpInvitation: { backgroundColor: AIDO_BRAND_COLORS.ivory, accentColor: AIDO_BRAND_COLORS.burgundy, fontFamily: "Playfair Display", fontSize: "16", fontColor: AIDO_BRAND_COLORS.ink },
@@ -1480,6 +1481,30 @@ export default function InvitationCustomizationPage({
     setPreviewRefreshNonce((current) => current + 1);
   };
 
+  useEffect(() => {
+    const email = user?.primaryEmailAddress?.emailAddress ?? "";
+    if (!testRecipientEmail && email) {
+      setTestRecipientEmail(email);
+    }
+  }, [testRecipientEmail, user?.primaryEmailAddress?.emailAddress]);
+
+  const sendTestInvitation = () => {
+    const email = testRecipientEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast({
+        title: "Enter a valid email",
+        description: "Add the email address that should receive the test invitation.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Test invitation sent",
+      description: `${isSTD ? "Save the Date" : "RSVP invitation"} test sent to ${email}.`,
+    });
+  };
+
   return (
     <div className="max-w-7xl mx-auto p-3 sm:p-4 space-y-4 sm:space-y-6">
       <div>
@@ -1492,7 +1517,7 @@ export default function InvitationCustomizationPage({
       </div>
 
       <div className="rounded-lg border bg-card p-3 sm:p-4 space-y-4">
-        <div className="grid gap-3 lg:grid-cols-3">
+        <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-[1fr_1fr_1.35fr_1fr]">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">Invitation</p>
             <div className="mt-2 grid grid-cols-2 gap-2">
@@ -1546,6 +1571,29 @@ export default function InvitationCustomizationPage({
           </div>
 
           <div>
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">Send Test Invitation</p>
+            <div className="mt-2 flex gap-2">
+              <Input
+                type="email"
+                value={testRecipientEmail}
+                onChange={(event) => setTestRecipientEmail(event.target.value)}
+                placeholder="you@example.com"
+                className="h-9 text-sm"
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="shrink-0 gap-2"
+                onClick={sendTestInvitation}
+              >
+                <Send className="h-4 w-4" />
+                Send Test
+              </Button>
+            </div>
+          </div>
+
+          <div>
             <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">Finish</p>
             <Button
               type="button"
@@ -1572,6 +1620,36 @@ export default function InvitationCustomizationPage({
             </Button>
           </div>
         </div>
+
+        {deliveryMode === "digital" && (
+          <div className="rounded-md border border-primary/20 bg-primary/5 p-3 sm:p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="flex-1">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">
+                  Send test invitation
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Send this {isSTD ? "Save the Date" : "RSVP invitation"} preview to any email before sending from the guest list.
+                </p>
+                <Input
+                  type="email"
+                  value={testRecipientEmail}
+                  onChange={(event) => setTestRecipientEmail(event.target.value)}
+                  placeholder="Enter test recipient email"
+                  className="mt-3 h-10 bg-background"
+                />
+              </div>
+              <Button
+                type="button"
+                className="gap-2 sm:w-auto"
+                onClick={sendTestInvitation}
+              >
+                <Send className="h-4 w-4" />
+                Send test invitation
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">

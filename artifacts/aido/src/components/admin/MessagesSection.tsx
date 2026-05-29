@@ -27,6 +27,7 @@ interface HelpMessage {
   email: string;
   subject: string;
   message: string;
+  source?: string | null;
   isRead: boolean;
   isResolved: boolean;
   createdAt: string;
@@ -39,6 +40,7 @@ interface FeedbackItem {
   rating: number | null;
   category: string | null;
   message: string;
+  source?: string | null;
   isRead: boolean;
   isResolved: boolean;
   createdAt: string;
@@ -50,6 +52,14 @@ const CATEGORY_META: Record<string, { label: string; icon: React.ElementType; co
   general: { label: "General Feedback", icon: ThumbsUp, color: "text-blue-600 bg-blue-50" },
   praise: { label: "Something I Love", icon: Heart, color: "text-rose-600 bg-rose-50" },
 };
+
+function issueSourceLabel(item: { message?: string; source?: string | null }) {
+  const source = item.source?.toLowerCase();
+  const message = item.message?.toLowerCase() ?? "";
+  if (source?.includes("app") || message.includes("source: app")) return "App";
+  if (source?.includes("website") || message.includes("source: website")) return "Website";
+  return "Website";
+}
 
 interface MessagesSectionProps {
   title?: string;
@@ -236,6 +246,9 @@ export default function MessagesSection({
                           <p className={`font-semibold text-sm truncate ${!msg.isRead && !msg.isResolved ? "text-[#24171D]" : "text-[#4A3941]"}`}>
                             {msg.subject}
                           </p>
+                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-primary/10 text-primary flex-shrink-0">
+                            {issueSourceLabel(msg)}
+                          </span>
                           {msg.isResolved && (
                             <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 flex-shrink-0">
                               Resolved
@@ -257,6 +270,7 @@ export default function MessagesSection({
                     <div className="grid grid-cols-2 gap-2 text-xs font-medium text-[#4A3941] mb-3 mt-3">
                       <span><strong>From:</strong> {msg.name}</span>
                       <span><strong>Email:</strong> {msg.email}</span>
+                      <span><strong>Source:</strong> {issueSourceLabel(msg)}</span>
                       <span><strong>Submitted:</strong> {new Date(msg.createdAt).toLocaleString()}</span>
                     </div>
                     <p className="text-sm font-medium text-[#24171D] leading-relaxed whitespace-pre-wrap bg-muted/30 rounded-lg p-3">
@@ -419,6 +433,9 @@ export default function MessagesSection({
                               {"★".repeat(item.rating)}{"☆".repeat(5 - item.rating)}
                             </span>
                           )}
+                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                            {issueSourceLabel(item)}
+                          </span>
                           {item.isResolved && (
                             <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
                               Resolved
@@ -441,7 +458,7 @@ export default function MessagesSection({
                       </p>
                       <div className="flex items-center justify-between mt-3 flex-wrap gap-2">
                         <p className="text-xs font-medium text-[#4A3941]">
-                          Submitted: {new Date(item.createdAt).toLocaleString()}
+                          Source: {issueSourceLabel(item)} | Submitted: {new Date(item.createdAt).toLocaleString()}
                         </p>
                         <div className="flex gap-2">
                           <Button

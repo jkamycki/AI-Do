@@ -35,6 +35,8 @@ import invitationCustomizationsRouter from "./invitationCustomizations";
 import websiteRouter from "./website";
 import trackRouter from "./track";
 import maintenanceRouter from "./maintenance";
+import mobileRouter from "./mobile";
+import vendorPartnersRouter from "./vendorPartners";
 
 const router: IRouter = Router();
 
@@ -74,5 +76,7 @@ router.use(invitationCustomizationsRouter);
 router.use(websiteRouter);
 router.use(trackRouter);
 router.use(maintenanceRouter);
+router.use(mobileRouter);
+router.use(vendorPartnersRouter);
 
 export default router;

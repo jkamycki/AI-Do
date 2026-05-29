@@ -397,6 +397,26 @@ export const feedbackSubmissions = pgTable("feedback_submissions", {
 
 export type FeedbackSubmission = typeof feedbackSubmissions.$inferSelect;
 
+export const vendorPartnerApplications = pgTable("vendor_partner_applications", {
+  id: serial("id").primaryKey(),
+  businessName: text("business_name").notNull(),
+  contactName: text("contact_name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  category: text("category").notNull(),
+  serviceArea: text("service_area").notNull(),
+  website: text("website"),
+  instagram: text("instagram"),
+  startingPrice: text("starting_price"),
+  description: text("description"),
+  status: text("status").notNull().default("new"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type VendorPartnerApplication = typeof vendorPartnerApplications.$inferSelect;
+
 export const vendorContracts = pgTable("vendor_contracts", {
   id: serial("id").primaryKey(),
   userId: text("user_id").notNull(),

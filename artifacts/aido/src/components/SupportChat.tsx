@@ -303,6 +303,7 @@ export function SupportChat() {
           category: `beta-${betaFeedbackCategory}`,
           message: [
             "Beta check-in feedback from Support Assistant",
+            "Source: Website",
             `Rating: ${betaFeedbackRating || "Not provided"}/5`,
             `Category: ${categoryLabel}`,
             "",

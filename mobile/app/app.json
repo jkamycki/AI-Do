@@ -2,6 +2,7 @@
   "expo": {
     "name": "A.I Do",
     "slug": "aido-wedding",
+    "scheme": "aidowedding",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -25,7 +26,9 @@
     },
     "plugins": [
       "expo-font",
-      "expo-sharing"
+      "expo-sharing",
+      "expo-secure-store",
+      "expo-web-browser"
     ]
   }
 }

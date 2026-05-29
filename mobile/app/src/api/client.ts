@@ -1,15 +1,11 @@
 import { samplePlanningData } from '../data/sampleData';
 import { PlanningData } from '../types';
-
-const API_BASE = 'https://aidowedding.net';
+import { mobileAuthFetch } from './mobileAuth';
 
 async function readJson<T>(path: string): Promise<T | null> {
   try {
-    const response = await fetch(`${API_BASE}${path}`, {
-      headers: {
-        Accept: 'application/json',
-      },
-    });
+    const response = await mobileAuthFetch(path);
+    if (!response) return null;
 
     if (!response.ok) {
       return null;

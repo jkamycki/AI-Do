@@ -16,6 +16,7 @@ import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 import { MaintenanceNotice } from "@/components/MaintenanceNotice";
 
 const Landing = lazy(() => import("@/pages/Landing"));
+const ForVendors = lazy(() => import("@/pages/ForVendors"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const Calendar = lazy(() => import("@/pages/Calendar"));
@@ -1840,6 +1841,7 @@ function Router() {
     <Suspense fallback={<RouteLoading />}>
       <Switch>
         <Route path="/" component={HomeRedirect} />
+        <Route path="/for-vendors" component={ForVendors} />
         <Route path="/sign-in/*?" component={SignInPage} />
         <Route path="/sign-up/*?" component={SignUpPage} />
         <Route path="/sso-callback" component={SsoCallbackPage} />

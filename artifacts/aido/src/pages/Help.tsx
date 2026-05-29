@@ -137,7 +137,7 @@ export default function HelpPage() {
     mutationFn: async () => {
       const r = await authedFetch("/api/help/contact", {
         method: "POST",
-        body: JSON.stringify(contactForm),
+        body: JSON.stringify({ ...contactForm, source: "website" }),
       });
       if (!r.ok) {
         const err = await r.json();
@@ -158,7 +158,7 @@ export default function HelpPage() {
     mutationFn: async () => {
       const r = await authedFetch("/api/help/feedback", {
         method: "POST",
-        body: JSON.stringify(feedbackForm),
+        body: JSON.stringify({ ...feedbackForm, source: "website" }),
       });
       if (!r.ok) {
         const err = await r.json();
