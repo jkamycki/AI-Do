@@ -717,7 +717,7 @@ export default function Profile() {
                     <FormItem>
                       <FormLabel>{t("profile.bride_first_name", { defaultValue: "Bride's First Name" })}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Gabriela" {...field} data-testid="input-partner2" className="bg-background" />
+                        <Input placeholder="Your first name" {...field} data-testid="input-partner2" className="bg-background" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -730,7 +730,7 @@ export default function Profile() {
                     <FormItem>
                       <FormLabel>{t("profile.groom_first_name", { defaultValue: "Groom's First Name" })}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Joey" {...field} data-testid="input-partner1" className="bg-background" />
+                        <Input placeholder="Partner's first name" {...field} data-testid="input-partner1" className="bg-background" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -748,7 +748,7 @@ export default function Profile() {
                       <Input placeholder="Rivera" {...field} data-testid="input-shared-last-name" className="bg-background" />
                     </FormControl>
                     <p className="text-xs text-muted-foreground">
-                      {t("profile.shared_last_name_hint", { defaultValue: "This displays like Gabriela & Joey Rivera across your website and invitations." })}
+                      {t("profile.shared_last_name_hint", { defaultValue: "This displays your names consistently across your website and invitations." })}
                     </p>
                     <FormMessage />
                   </FormItem>

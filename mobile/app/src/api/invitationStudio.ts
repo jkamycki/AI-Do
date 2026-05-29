@@ -7,11 +7,14 @@ type ProfileResponse = {
 type InvitationStudioPayload = {
   accent: string;
   background: 'blush' | 'ivory' | 'sage';
+  coupleNames?: string;
   designFont: 'playfair' | 'cormorant';
   designFontSize: number;
   includeHotel: boolean;
+  message?: string;
   rsvpBy: string;
   textColor: string;
+  type?: 'saveTheDate' | 'rsvp';
 };
 
 function backgroundColor(background: InvitationStudioPayload['background']) {
@@ -29,6 +32,15 @@ export async function saveMobileInvitationStudio(payload: InvitationStudioPayloa
   const profile = await mobileAuthJson<ProfileResponse>('/api/profile');
   const bg = backgroundColor(payload.background);
   const font = fontFamily(payload.designFont);
+  const textOverrides = payload.type === 'saveTheDate'
+    ? {
+        'std:couple': { text: payload.coupleNames },
+        'std:message': { text: payload.message },
+      }
+    : {
+        'dig:couple': { text: payload.coupleNames ? `${payload.coupleNames}'s Wedding` : undefined },
+        'dig:message': { text: payload.message },
+      };
   return mobileAuthJson('/api/invitation-customizations', {
     body: JSON.stringify({
       profileId: profile.id,
@@ -58,12 +70,27 @@ export async function saveMobileInvitationStudio(payload: InvitationStudioPayloa
       digitalInvitationFontSize: String(payload.designFontSize),
       saveTheDateAccentColor: payload.accent,
       digitalInvitationAccentColor: payload.accent,
+      textOverrides,
       selectedLayout: 'classic',
       saveTheDateLayout: 'classic',
       digitalInvitationLayout: 'classic',
       useGeneratedInvitation: false,
       rsvpByDate: payload.rsvpBy || null,
     }),
+    method: 'POST',
+  });
+}
+
+type SendMobileInvitationTestPayload = InvitationStudioPayload & {
+  coupleNames: string;
+  email: string;
+  message: string;
+  type: 'saveTheDate' | 'rsvp';
+};
+
+export async function sendMobileInvitationTest(payload: SendMobileInvitationTestPayload) {
+  return mobileAuthJson<{ emailSent: boolean; email: string; id: string | null }>('/api/mobile/invitation-studio/test', {
+    body: JSON.stringify(payload),
     method: 'POST',
   });
 }

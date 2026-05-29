@@ -2,9 +2,13 @@ import type { Guest, RsvpStatus } from '../types';
 import { mobileAuthFetch } from './mobileAuth';
 
 type BackendGuest = {
+  email?: string | null;
   id: number | string;
+  invitationStatus?: string | null;
   name?: string | null;
+  rsvpReminderStatus?: string | null;
   rsvpStatus?: string | null;
+  saveTheDateStatus?: string | null;
   mealChoice?: string | null;
   guestGroup?: string | null;
   tableAssignment?: string | null;
@@ -44,12 +48,16 @@ function guestPayload(guest: Guest) {
 
 function toMobileGuest(guest: BackendGuest, fallback?: Guest): Guest {
   return {
+    email: guest.email?.trim() || fallback?.email || '',
     id: String(guest.id ?? fallback?.id ?? `mobile-${Date.now()}`),
+    invitationStatus: guest.invitationStatus || fallback?.invitationStatus || 'pending',
     invitationStyle: fallback?.invitationStyle ?? 'cream',
     mealPreference: guest.mealChoice?.trim() || fallback?.mealPreference || 'Guest',
     name: guest.name?.trim() || fallback?.name || 'Guest',
+    rsvpReminderStatus: guest.rsvpReminderStatus || fallback?.rsvpReminderStatus || 'not_sent',
     role: guest.guestGroup?.trim() || fallback?.role || 'Guest',
     rsvp: backendRsvpToMobile(guest.rsvpStatus) || fallback?.rsvp || 'Pending',
+    saveTheDateStatus: guest.saveTheDateStatus || fallback?.saveTheDateStatus || 'not_sent',
     table: guest.tableAssignment?.trim() || fallback?.table || 'No table',
   };
 }

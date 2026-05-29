@@ -41,9 +41,13 @@ export type BudgetExpense = {
 };
 
 export type Guest = {
+  email?: string;
   id: string;
+  invitationStatus?: 'pending' | 'sent' | string;
   name: string;
+  rsvpReminderStatus?: 'not_sent' | 'sent' | string;
   rsvp: RsvpStatus;
+  saveTheDateStatus?: 'not_sent' | 'sent' | string;
   mealPreference: string;
   table: string;
   role: string;
@@ -158,8 +162,12 @@ export type GuestPhotoDropSettings = {
 };
 
 export type GuestPhotoUpload = {
+  imageUrl?: string;
+  publicImageUrl?: string;
   id: string;
+  guestEmail?: string;
   guestName: string;
+  originalName?: string;
   caption: string;
   status: 'Pending' | 'Approved' | 'Hidden';
   uploadedAt: string;

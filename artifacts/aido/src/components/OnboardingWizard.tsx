@@ -367,9 +367,6 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
       if (current.venueChoice === "booked") {
         requireField("venue", "Add the venue name.");
         requireField("location", "Add the city or location.");
-      } else if (!String(current.location || current.venueDiscovery.location || "").trim()) {
-        form.setError("location", { type: "manual", message: "Add the city or area where you are looking." });
-        valid = false;
       }
     }
 
@@ -452,7 +449,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
     const { sharedLastName } = saveValues;
     const venueStatus = saveValues.venueChoice === "booked" ? "booked" : "not_yet";
     const venueDiscovery = venueStatus === "not_yet" ? venueDiscoveryForSave(saveValues) : null;
-    const location = saveValues.location || saveValues.venueDiscovery.location || "";
+    const location = saveValues.location || saveValues.venueDiscovery.location || (venueStatus === "not_yet" ? "Location TBD" : "");
     const prompt = saveValues.ariaPrompt.trim();
 
     setSaving(true);

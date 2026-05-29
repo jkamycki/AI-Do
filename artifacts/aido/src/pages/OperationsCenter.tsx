@@ -919,6 +919,21 @@ export default function OperationsCenterPage() {
   });
   const signedUpUsers = signedUpUsersData?.activeUsers ?? signedUpUsersData?.users?.filter(user => !user.isDeleted) ?? [];
   const deletedSignedUpUsers = signedUpUsersData?.deletedUsers ?? signedUpUsersData?.users?.filter(user => user.isDeleted) ?? [];
+  const accountUsers = (() => {
+    const byIdentity = new Map<string, SignedUpUser>();
+    for (const user of [...signedUpUsers, ...deletedSignedUpUsers]) {
+      const key = user.email?.trim().toLowerCase() || user.id;
+      const current = byIdentity.get(key);
+      if (!current || (current.isDeleted && !user.isDeleted)) {
+        byIdentity.set(key, user);
+      }
+    }
+    return Array.from(byIdentity.values()).sort((a, b) => {
+      const aTime = new Date(a.deletedAt ?? a.joinedAt).getTime();
+      const bTime = new Date(b.deletedAt ?? b.joinedAt).getTime();
+      return bTime - aTime;
+    });
+  })();
 
   const { data: archiveData, isLoading: isLoadingArchive } = useQuery<{ archives: ArchiveEntry[] }>({
     queryKey: ["admin-archive"],
@@ -2297,7 +2312,7 @@ export default function OperationsCenterPage() {
             <div>
               <h2 className="text-xl font-serif font-semibold text-[#24171D]">Users & Workspace Sharing</h2>
               <p className="text-sm font-medium text-[#4A3941]">
-                Every signed-up account, who owns or shares workspaces, and accounts deleted in the last 7 days. Refreshes automatically while open.
+                Every account appears once with its current Active or Inactive status, workspace ownership, and sharing details. Refreshes automatically while open.
               </p>
             </div>
             <div className="w-full lg:w-80">
@@ -2313,11 +2328,11 @@ export default function OperationsCenterPage() {
           <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
             {[
               { label: "Signed up", value: signedUpUsersData?.summary?.signedUp ?? signedUpUsersData?.total ?? 0 },
-              { label: "Active users", value: signedUpUsersData?.summary?.active ?? signedUpUsers.length },
+              { label: "Active", value: signedUpUsersData?.summary?.active ?? signedUpUsers.length },
+              { label: "Inactive", value: signedUpUsersData?.summary?.deleted ?? deletedSignedUpUsers.length },
               { label: "Onboarded", value: signedUpUsersData?.summary?.onboarded ?? signedUpUsers.filter(user => user.onboarded).length },
               { label: "Created profile", value: signedUpUsersData?.summary?.createdProfile ?? signedUpUsers.filter(user => user.hasProfile).length },
               { label: "Shared workspace", value: signedUpUsersData?.summary?.sharedWorkspace ?? signedUpUsers.filter(user => user.hasSharedWorkspace).length },
-              { label: "Deleted", value: signedUpUsersData?.summary?.deleted ?? deletedSignedUpUsers.length },
             ].map(stat => (
               <Card key={stat.label}>
                 <CardContent className="py-4">
@@ -2332,7 +2347,7 @@ export default function OperationsCenterPage() {
             <div className="space-y-3">
               {[1, 2, 3].map(i => <Skeleton key={i} className="h-28 rounded-lg" />)}
             </div>
-          ) : signedUpUsers.length === 0 && deletedSignedUpUsers.length === 0 ? (
+          ) : accountUsers.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <Users className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
@@ -2343,28 +2358,22 @@ export default function OperationsCenterPage() {
             <div className="space-y-6">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold uppercase tracking-wide text-[#7A5062]">Active Users</h3>
-                  <Badge variant="outline">{signedUpUsers.length}</Badge>
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-[#7A5062]">Accounts</h3>
+                  <Badge variant="outline">{accountUsers.length}</Badge>
                 </div>
-                {signedUpUsers.length === 0 ? (
-                  <Card>
-                    <CardContent className="py-8 text-center text-sm font-medium text-[#4A3941]">
-                      No active users match this search.
-                    </CardContent>
-                  </Card>
-                ) : signedUpUsers.map(user => {
+                {accountUsers.map(user => {
                 const displayName = getSignedUpUserDisplayName(user);
                 const workspaceName = [user.partner1Name, user.partner2Name].filter(Boolean).join(" & ");
                 return (
-                  <Card key={user.id}>
+                  <Card key={`${user.isDeleted ? "inactive" : "active"}-${user.email ?? user.id}`} className={user.isDeleted ? "border-red-200 bg-red-50/30" : undefined}>
                     <CardContent className="py-4">
                       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <h3 className="font-semibold text-[#24171D]">{displayName}</h3>
-                            {user.isDeleted && (
-                              <Badge className="bg-red-100 text-red-800">Deleted account</Badge>
-                            )}
+                            <Badge className={user.isDeleted ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"}>
+                              {user.isDeleted ? "Inactive" : "Active"}
+                            </Badge>
                             <Badge className={user.onboarded ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-800"}>
                               {user.onboarded ? "Onboarded" : "Signed up"}
                             </Badge>
@@ -2378,7 +2387,7 @@ export default function OperationsCenterPage() {
                             <span className="inline-flex items-center gap-1.5">
                               <Clock className="h-3.5 w-3.5" />
                               {user.isDeleted && user.deletedAt
-                                ? `Deleted ${new Date(user.deletedAt).toLocaleString()}`
+                                ? `Inactive since ${new Date(user.deletedAt).toLocaleString()}`
                                 : `Joined ${new Date(user.joinedAt).toLocaleString()}`}
                             </span>
                           </div>
@@ -2421,7 +2430,7 @@ export default function OperationsCenterPage() {
                           <p className="mt-1"><span className="font-semibold text-[#24171D]">Events:</span> {user.eventCount}</p>
                           <p className="mt-1"><span className="font-semibold text-[#24171D]">Profile:</span> {user.hasProfile ? "Yes" : "No"}</p>
                           {user.deletedAt && (
-                            <p className="mt-1 text-red-700"><span className="font-semibold">Deleted:</span> {new Date(user.deletedAt).toLocaleString()}</p>
+                            <p className="mt-1 text-red-700"><span className="font-semibold">Inactive:</span> {new Date(user.deletedAt).toLocaleString()}</p>
                           )}
                           <Button
                             size="sm"
@@ -2431,7 +2440,7 @@ export default function OperationsCenterPage() {
                             onClick={() => setUserToDelete(user)}
                           >
                             <Trash2 className="mr-2 h-3.5 w-3.5" />
-                            {user.isDeleted ? "Already deleted" : "Delete user"}
+                            {user.isDeleted ? "Inactive account" : "Delete user"}
                           </Button>
                         </div>
                       </div>
@@ -2439,60 +2448,6 @@ export default function OperationsCenterPage() {
                   </Card>
                 );
               })}
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold uppercase tracking-wide text-red-700">Deleted Users</h3>
-                  <Badge className="bg-red-100 text-red-800">{deletedSignedUpUsers.length}</Badge>
-                </div>
-                {deletedSignedUpUsers.length === 0 ? (
-                  <Card>
-                    <CardContent className="py-8 text-center text-sm font-medium text-[#4A3941]">
-                      No deleted users match this search.
-                    </CardContent>
-                  </Card>
-                ) : deletedSignedUpUsers.map(user => {
-                  const displayName = getSignedUpUserDisplayName(user);
-                  const workspaceName = [user.partner1Name, user.partner2Name].filter(Boolean).join(" & ");
-                  return (
-                    <Card key={user.id} className="border-red-200 bg-red-50/30">
-                      <CardContent className="py-4">
-                        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="font-semibold text-[#24171D]">{displayName}</h3>
-                              <Badge className="bg-red-100 text-red-800">Deleted account</Badge>
-                              {user.onboarded && <Badge className="bg-emerald-100 text-emerald-800">Was onboarded</Badge>}
-                            </div>
-                            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm font-medium text-[#4A3941]">
-                              <span className="inline-flex items-center gap-1.5">
-                                <Mail className="h-3.5 w-3.5" />
-                                {user.email || "No email"}
-                              </span>
-                              <span className="inline-flex items-center gap-1.5">
-                                <Clock className="h-3.5 w-3.5" />
-                                {user.deletedAt ? `Deleted ${new Date(user.deletedAt).toLocaleString()}` : "Deleted date unknown"}
-                              </span>
-                            </div>
-                            <p className="mt-2 text-sm text-[#7A5062]">
-                              {[workspaceName || null, user.venue, user.weddingDate ? `Wedding: ${user.weddingDate}` : null].filter(Boolean).join(" | ") || "No archived wedding workspace details"}
-                            </p>
-                          </div>
-                          <div className="rounded-lg border border-red-200 bg-white px-4 py-3 text-xs font-medium text-[#4A3941] md:w-56">
-                            <p><span className="font-semibold text-[#24171D]">Events archived:</span> {user.eventCount}</p>
-                            <p className="mt-1"><span className="font-semibold text-[#24171D]">Profile:</span> {user.hasProfile ? "Archived" : "No"}</p>
-                            <p className="mt-1 text-red-700"><span className="font-semibold">Deleted:</span> {user.deletedAt ? new Date(user.deletedAt).toLocaleString() : "Unknown"}</p>
-                            <Button size="sm" variant="outline" className="mt-3 w-full" disabled>
-                              <Trash2 className="mr-2 h-3.5 w-3.5" />
-                              Already deleted
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
               </div>
             </div>
           )}

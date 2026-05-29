@@ -859,11 +859,13 @@ function CustomSignUpForm() {
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<"form" | "verify">("form");
   const [, setEmailAddressId] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [resendInfo, setResendInfo] = useState<string | null>(null);
+  const [verificationSending, setVerificationSending] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<"oauth_google" | "oauth_apple" | null>(null);
   const [switchingAccount, setSwitchingAccount] = useState(false);
   const activeEmail =
@@ -912,6 +914,8 @@ function CustomSignUpForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setResendInfo(null);
+    setSubmitStatus("");
     // Clear any stale OAuth-intent flags from a previously abandoned Google
     // flow so they can't trigger the "no-account" detector on this signup.
     try {
@@ -923,16 +927,20 @@ function CustomSignUpForm() {
       return;
     }
     setSubmitting(true);
+    setSubmitStatus("Creating your secure account...");
     if (isLoaded && isSignedIn) {
       if (matchesActiveEmail(email)) {
         setSubmitting(false);
+        setSubmitStatus("");
         setError("You are already signed in with this email. Continue with that account, or switch to another one first.");
         return;
       }
       try {
+        setSubmitStatus("Switching accounts...");
         await clerk.signOut();
       } catch (err) {
         setSubmitting(false);
+        setSubmitStatus("");
         setError((err as Error)?.message || "Could not switch accounts. Please try again.");
         return;
       }
@@ -947,6 +955,7 @@ function CustomSignUpForm() {
     const liveSignUp = clerk.client?.signUp;
     if (!clerk.loaded || !liveSignUp) {
       setSubmitting(false);
+      setSubmitStatus("");
       setError("Auth is still loading. Please try again in a moment.");
       return;
     }
@@ -961,12 +970,17 @@ function CustomSignUpForm() {
         emailAddress: email.trim(),
         password: generateRandomPassword(),
       });
-      await liveSignUp.prepareEmailAddressVerification({ strategy: "email_code" });
       const eaId =
         (liveSignUp as unknown as { emailAddressId?: string }).emailAddressId ?? null;
       setEmailAddressId(eaId);
       setStep("verify");
       setSubmitting(false);
+      setSubmitStatus("");
+      setVerificationSending(true);
+      setResendInfo(`Sending your 6-digit code to ${email.trim()}...`);
+      await liveSignUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      setResendInfo("Code sent. Check your inbox and spam folder.");
+      setVerificationSending(false);
     } catch (err: unknown) {
       const msg =
         (err as { errors?: Array<{ longMessage?: string; message?: string }> })?.errors?.[0]?.longMessage ||
@@ -975,6 +989,8 @@ function CustomSignUpForm() {
         "Something went wrong. Please try again.";
       setError(msg);
       setSubmitting(false);
+      setSubmitStatus("");
+      setVerificationSending(false);
     }
   }
 
@@ -988,6 +1004,10 @@ function CustomSignUpForm() {
     }
     if (!code.trim()) {
       setError("Enter the code from your email.");
+      return;
+    }
+    if (verificationSending) {
+      setError("Your verification code is still being sent. Please wait a moment.");
       return;
     }
     setSubmitting(true);
@@ -1027,6 +1047,8 @@ function CustomSignUpForm() {
     setError(null);
     setResendInfo(null);
     if (!signUpLoaded || !signUp) return;
+    setVerificationSending(true);
+    setResendInfo("Sending a new code...");
     try {
       await (signUp as unknown as { prepareEmailAddressVerification: (opts: { strategy: string }) => Promise<void> }).prepareEmailAddressVerification({ strategy: "email_code" });
       setResendInfo("A new code has been sent. Check your inbox and spam folder.");
@@ -1036,6 +1058,8 @@ function CustomSignUpForm() {
         (err as Error)?.message ||
         "Could not resend code.";
       setError(msg);
+    } finally {
+      setVerificationSending(false);
     }
   }
 
@@ -1158,7 +1182,7 @@ function CustomSignUpForm() {
             We sent a 6-digit verification code to <strong style={{ color: "#3B1C2B" }}>{email}</strong>.
           </p>
           <p style={{ color: "#8D294D", fontSize: "0.78rem", marginBottom: "1.25rem", fontWeight: 500 }}>
-            Don't see it? Please check your spam or junk folder.
+            {verificationSending ? "Your code is being sent now. This can take a few seconds." : "Don't see it? Please check your spam or junk folder."}
           </p>
 
           <form onSubmit={handleVerify} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
@@ -1207,7 +1231,7 @@ function CustomSignUpForm() {
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || verificationSending}
               style={{
                 width: "100%",
                 padding: "0.7rem",
@@ -1217,12 +1241,12 @@ function CustomSignUpForm() {
                 color: "#ffffff",
                 fontSize: "0.95rem",
                 fontWeight: 600,
-                cursor: submitting ? "not-allowed" : "pointer",
-                opacity: submitting ? 0.7 : 1,
+                cursor: submitting || verificationSending ? "not-allowed" : "pointer",
+                opacity: submitting || verificationSending ? 0.7 : 1,
                 marginTop: "0.25rem",
               }}
             >
-              {submitting ? "Verifying..." : "Verify and continue"}
+              {submitting ? "Verifying..." : verificationSending ? "Sending code..." : "Verify and continue"}
             </button>
           </form>
 
@@ -1237,9 +1261,10 @@ function CustomSignUpForm() {
             <button
               type="button"
               onClick={handleResend}
-              style={{ background: "none", border: "none", color: "#8D294D", cursor: "pointer", padding: 0, fontWeight: 500 }}
+              disabled={verificationSending}
+              style={{ background: "none", border: "none", color: "#8D294D", cursor: verificationSending ? "not-allowed" : "pointer", opacity: verificationSending ? 0.6 : 1, padding: 0, fontWeight: 500 }}
             >
-              Resend code
+              {verificationSending ? "Sending..." : "Resend code"}
             </button>
           </div>
         </>
@@ -1309,6 +1334,20 @@ function CustomSignUpForm() {
             }}
           >
             {error}
+          </div>
+        )}
+        {submitStatus && !error && (
+          <div
+            style={{
+              color: "#8D294D",
+              background: "rgba(141, 41, 77, 0.08)",
+              border: "1px solid rgba(141, 41, 77, 0.20)",
+              borderRadius: "0.5rem",
+              padding: "0.55rem 0.75rem",
+              fontSize: "0.82rem",
+            }}
+          >
+            {submitStatus}
           </div>
         )}
 

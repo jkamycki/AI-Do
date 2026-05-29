@@ -15,6 +15,7 @@ import {
 } from "@workspace/db";
 import { requireAuth } from "../middlewares/requireAuth";
 import { hasMinRole, resolveCallerRole, resolveProfile } from "../lib/workspaceAccess";
+import { FROM_EMAIL, sendEmail } from "../lib/resend";
 
 const router = Router();
 
@@ -33,6 +34,15 @@ function rsvpStatus(value: string | null | undefined): "Confirmed" | "Pending" |
   if (value === "attending" || value === "maybe") return "Confirmed";
   if (value === "declined") return "Declined";
   return "Pending";
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
 }
 
 router.get("/mobile/planning", requireAuth, async (req, res) => {
@@ -176,9 +186,13 @@ router.get("/mobile/planning", requireAuth, async (req, res) => {
       vendors: mobileVendors,
       budget: mobileBudget,
       guests: guestRows.map((guest) => ({
+        email: guest.email || "",
         id: String(guest.id),
+        invitationStatus: guest.invitationStatus || "pending",
         name: guest.name,
+        rsvpReminderStatus: guest.rsvpReminderStatus || "not_sent",
         rsvp: rsvpStatus(guest.rsvpStatus),
+        saveTheDateStatus: guest.saveTheDateStatus || "not_sent",
         mealPreference: guest.mealChoice || "Guest",
         table: guest.tableAssignment || "No table",
         role: guest.guestGroup || "Guest",
@@ -236,6 +250,78 @@ router.get("/mobile/planning", requireAuth, async (req, res) => {
 router.get("/mobile/profile", requireAuth, async (req, res) => {
   const profile = await resolveProfile(req);
   res.json(profile ?? {});
+});
+
+router.post("/mobile/invitation-studio/test", requireAuth, async (req, res) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) {
+      res.status(403).json({ error: "Insufficient permissions." });
+      return;
+    }
+
+    const profile = await resolveProfile(req);
+    if (!profile) {
+      res.status(400).json({ error: "No wedding profile found." });
+      return;
+    }
+
+    const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      res.status(400).json({ error: "Enter a valid test email address." });
+      return;
+    }
+
+    const type = req.body?.type === "saveTheDate" ? "saveTheDate" : "rsvp";
+    const coupleNames = typeof req.body?.coupleNames === "string" && req.body.coupleNames.trim()
+      ? req.body.coupleNames.trim().slice(0, 160)
+      : [profile.partner1Name, profile.partner2Name].filter(Boolean).join(" & ") || "The couple";
+    const message = typeof req.body?.message === "string" ? req.body.message.trim().slice(0, 800) : "";
+    const rsvpBy = typeof req.body?.rsvpBy === "string" ? req.body.rsvpBy.trim().slice(0, 40) : "";
+    const accent = typeof req.body?.accent === "string" && /^#[0-9a-f]{6}$/i.test(req.body.accent) ? req.body.accent : "#8D294D";
+    const textColor = typeof req.body?.textColor === "string" && /^#[0-9a-f]{6}$/i.test(req.body.textColor) ? req.body.textColor : "#3B1C2B";
+    const weddingDate = profile.weddingDate
+      ? new Date(`${profile.weddingDate}T12:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+      : "Wedding date coming soon";
+    const title = type === "saveTheDate" ? "Save the Date" : "You're invited";
+    const action = type === "saveTheDate" ? "Formal invitation to follow." : (rsvpBy ? `Please RSVP by ${rsvpBy}.` : "Please RSVP when you receive your invitation.");
+    const safeMessage = escapeHtml(message || (type === "saveTheDate"
+      ? `Please save ${weddingDate} for ${coupleNames}'s wedding.`
+      : `We are so excited to celebrate with you at ${coupleNames}'s wedding.`));
+
+    const html = `
+      <div style="margin:0;padding:28px;background:#fff7f2;font-family:Arial,Helvetica,sans-serif;color:${textColor};">
+        <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #ead8cf;border-radius:22px;overflow:hidden;">
+          <div style="padding:34px 28px;text-align:center;">
+            <p style="margin:0 0 10px;text-transform:uppercase;letter-spacing:0.22em;font-size:12px;color:${accent};font-weight:700;">A.I DO Test</p>
+            <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:42px;line-height:1.05;color:${accent};">${escapeHtml(title)}</h1>
+            <p style="margin:18px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:30px;line-height:1.15;color:${textColor};">${escapeHtml(coupleNames)}</p>
+            <p style="margin:16px 0 0;font-size:15px;line-height:1.7;color:${textColor};">${escapeHtml(weddingDate)}${profile.venue ? ` · ${escapeHtml(profile.venue)}` : ""}</p>
+            <p style="margin:24px 0 0;font-size:15px;line-height:1.8;color:${textColor};">${safeMessage}</p>
+            <p style="margin:24px 0 0;font-size:14px;line-height:1.7;color:${textColor};">${escapeHtml(action)}</p>
+          </div>
+        </div>
+      </div>`;
+
+    const result = await sendEmail({
+      to: email,
+      replyTo: FROM_EMAIL,
+      fromName: `${coupleNames} via A.IDO`,
+      subject: `${type === "saveTheDate" ? "Save the Date" : "RSVP Invitation"} test - ${coupleNames}`,
+      text: `A.I DO test\n\n${title}\n${coupleNames}\n${weddingDate}${profile.venue ? ` at ${profile.venue}` : ""}\n\n${message}\n\n${action}`,
+      html,
+    });
+
+    if (!result.ok) {
+      res.status(502).json({ error: result.error || "Could not send test email." });
+      return;
+    }
+
+    res.json({ emailSent: true, email, id: result.id ?? null });
+  } catch (err) {
+    req.log.error(err, "Failed to send mobile invitation studio test");
+    res.status(500).json({ error: "Could not send test email." });
+  }
 });
 
 export default router;

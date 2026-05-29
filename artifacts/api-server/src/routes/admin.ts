@@ -1257,18 +1257,29 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
       };
     });
 
+    const activeEmails = new Set(
+      clerkUsers
+        .map(cu => {
+          const primaryEmail = cu.emailAddresses.find(e => e.id === cu.primaryEmailAddressId)?.emailAddress
+            ?? cu.emailAddresses[0]?.emailAddress ?? null;
+          return primaryEmail?.trim().toLowerCase() || null;
+        })
+        .filter((email): email is string => Boolean(email))
+    );
+
     const latestArchiveRows = Array.from(
       [...archiveRows]
         .sort((a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime())
         .reduce((map, row) => {
-          if (!map.has(row.userId)) map.set(row.userId, row);
+          const key = row.email?.trim().toLowerCase() || row.userId;
+          if (!map.has(key)) map.set(key, row);
           return map;
         }, new Map<string, typeof archiveRows[number]>())
         .values()
     );
 
     const deletedUsers = latestArchiveRows
-      .filter(row => !clerkUsersById.has(row.userId))
+      .filter(row => !clerkUsersById.has(row.userId) && !activeEmails.has(row.email?.trim().toLowerCase() || ""))
       .map(row => {
         const archived = asRecord(row.archivedData);
         const profile = asRecord(archived.profile);

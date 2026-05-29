@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Image, Linking, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 
 import { getPlanningData, mergePlanningData } from './src/api/client';
 import { sendMobileAriaMessage } from './src/api/aria';
@@ -18,9 +18,9 @@ import { listMobileDocuments, uploadMobileContract, uploadMobileDocument, type M
 import { createMobileGuest, deleteMobileGuest, updateMobileGuest } from './src/api/guests';
 import { getGuestCampaignPreview, sendPendingRsvpReminders, sendRsvpInvitations, sendSaveTheDates, type GuestCampaign, type GuestCampaignPreview } from './src/api/guestMessaging';
 import { createMobileHotel, deleteMobileHotel, updateMobileHotel } from './src/api/hotels';
-import { saveMobileInvitationStudio } from './src/api/invitationStudio';
+import { saveMobileInvitationStudio, sendMobileInvitationTest } from './src/api/invitationStudio';
 import { getMobileAuthToken, hasMobileApiBase, mobileAuthFetch, saveMobileAuthToken, setMobileAuthTokenGetter } from './src/api/mobileAuth';
-import { saveMobileGuestPhotoDropSettings } from './src/api/photoDrop';
+import { listMobileGuestPhotoDrop, saveMobileGuestPhotoDropSettings, updateMobileGuestPhotoUploadStatus } from './src/api/photoDrop';
 import { saveMobileProfile } from './src/api/profile';
 import { applySeatingChart, generateSeatingChart, saveSeatingChart, updateSeatingChart, type SeatingGuestPayload } from './src/api/seating';
 import { createMobileVendor, deleteMobileVendor, updateMobileVendor } from './src/api/vendors';
@@ -28,7 +28,7 @@ import { getOrCreateMobileVendorConversation, listMobileVendorMessages, sendMobi
 import { createMobileWebsite, getMobileWebsite, publishMobileWebsite, saveMobileWebsiteQuickUpdate, saveMobileWebsiteSlug, type MobileWebsiteRecord } from './src/api/website';
 import { createMobileWeddingPartyMember, deleteMobileWeddingPartyMember, updateMobileWeddingPartyMember } from './src/api/weddingParty';
 import { samplePlanningData } from './src/data/sampleData';
-import type { Guest, GuestPhotoDropSettings } from './src/types';
+import type { Guest, GuestPhotoDropSettings, GuestPhotoUpload } from './src/types';
 import { daysFromToday, formatCurrency, formatDeadlineLabel, formatLongDate, formatShortDate, parseDate } from './src/utils/format';
 
 const logo = require('./assets/aido-logo.png');
@@ -71,6 +71,13 @@ type MockAction = {
   title: string;
   detail: string;
   primaryLabel?: string;
+};
+
+type GuestSendLink = {
+  emailSent: boolean;
+  guestId: number;
+  name: string;
+  url: string;
 };
 
 type AuthUser = {
@@ -504,6 +511,35 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
         });
       });
   };
+  const hydrateGuestPhotoDrop = (settings: GuestPhotoDropSettings, uploads: GuestPhotoUpload[]) => {
+    setData((current) => ({
+      ...current,
+      guestPhotoDrop: { ...current.guestPhotoDrop, ...settings },
+      guestPhotoUploads: uploads,
+    }));
+  };
+  const updateGuestPhotoUploadStatus = (uploadId: string, status: GuestPhotoUpload['status']) => {
+    const previousUploads = data.guestPhotoUploads;
+    setData((current) => ({
+      ...current,
+      guestPhotoUploads: current.guestPhotoUploads.map((upload) => (upload.id === uploadId ? { ...upload, status } : upload)),
+    }));
+    void updateMobileGuestPhotoUploadStatus(uploadId, status)
+      .then((upload) => {
+        setData((current) => ({
+          ...current,
+          guestPhotoUploads: current.guestPhotoUploads.map((item) => (item.id === uploadId ? upload : item)),
+        }));
+      })
+      .catch((error) => {
+        setData((current) => ({ ...current, guestPhotoUploads: previousUploads }));
+        setMockAction({
+          title: 'Photo status not saved',
+          detail: error instanceof Error ? error.message : 'The upload status could not be updated. Please try again.',
+          primaryLabel: 'Close',
+        });
+      });
+  };
   const addWeddingPartyMember = (member: (typeof samplePlanningData.weddingParty)[number]) => {
     const localMember = { ...member, id: `party-new-${Date.now()}` };
     setData((current) => ({ ...current, weddingParty: [localMember, ...current.weddingParty] }));
@@ -754,6 +790,8 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
               onUpdateHotel={updateHotel}
               onUpdateGuest={updateGuest}
               onUpdateGuestPhotoDropSettings={updateGuestPhotoDropSettings}
+              onUpdateGuestPhotoUploadStatus={updateGuestPhotoUploadStatus}
+              onHydrateGuestPhotoDrop={hydrateGuestPhotoDrop}
               openMockAction={setMockAction}
             />
           ) : null}
@@ -1786,6 +1824,8 @@ function WebsiteSection({
   onUpdateHotel,
   onUpdateGuest,
   onUpdateGuestPhotoDropSettings,
+  onUpdateGuestPhotoUploadStatus,
+  onHydrateGuestPhotoDrop,
   openMockAction,
 }: {
   activeView: GuestHubView;
@@ -1798,6 +1838,8 @@ function WebsiteSection({
   onUpdateHotel: (hotel: (typeof samplePlanningData.hotels)[number]) => void;
   onUpdateGuest: (guest: Guest) => void;
   onUpdateGuestPhotoDropSettings: (patch: Partial<GuestPhotoDropSettings>) => void;
+  onUpdateGuestPhotoUploadStatus: (uploadId: string, status: GuestPhotoUpload['status']) => void;
+  onHydrateGuestPhotoDrop: (settings: GuestPhotoDropSettings, uploads: GuestPhotoUpload[]) => void;
   openMockAction: (action: MockAction) => void;
 }) {
   const [registryConnected, setRegistryConnected] = useState(false);
@@ -1809,6 +1851,7 @@ function WebsiteSection({
   const [guestCampaignReview, setGuestCampaignReview] = useState<GuestCampaign | null>(null);
   const [guestCampaignPreview, setGuestCampaignPreview] = useState<GuestCampaignPreview | null>(null);
   const [guestCampaignPreviewLoading, setGuestCampaignPreviewLoading] = useState(false);
+  const [guestCampaignLinks, setGuestCampaignLinks] = useState<GuestSendLink[]>([]);
   const [photoDropTab, setPhotoDropTab] = useState<'share' | 'queue' | 'settings'>('share');
   const [selectedGuest, setSelectedGuest] = useState<(typeof samplePlanningData.guests)[number] | null>(null);
   const [seatingTableCount, setSeatingTableCount] = useState(Math.max(1, data.seating.length || 3));
@@ -1864,11 +1907,15 @@ function WebsiteSection({
   const openNewGuestEditor = () => {
     setSelectedGuest({
       id: `mobile-new-${Date.now()}`,
+      email: '',
+      invitationStatus: 'pending',
       invitationStyle: 'cream',
       mealPreference: '',
       name: '',
+      rsvpReminderStatus: 'not_sent',
       role: 'Guest',
       rsvp: 'Pending',
+      saveTheDateStatus: 'not_sent',
       table: 'No table',
     });
   };
@@ -1883,6 +1930,7 @@ function WebsiteSection({
           : sendRsvpInvitations;
     setGuestCampaignSending(campaign);
     setGuestCampaignMessage(null);
+    setGuestCampaignLinks([]);
     try {
       const result = await action();
       const campaignLabel =
@@ -1898,6 +1946,7 @@ function WebsiteSection({
       setGuestCampaignMessage(
         `${campaignLabel}: ${result.delivered} emailed, ${result.markedSent} marked sent, ${result.attempted} total processed.`,
       );
+      setGuestCampaignLinks(result.links.filter((link) => !link.emailSent));
       setGuestCampaignReview(null);
     } catch (error) {
       setGuestCampaignMessage(error instanceof Error ? `${error.message} Nothing was sent from the app.` : 'Could not send from the app.');
@@ -2318,6 +2367,11 @@ function WebsiteSection({
           </Pressable>
         </View>
         {guestCampaignMessage ? <SavedStrip label={guestCampaignMessage} /> : null}
+        {guestCampaignLinks.length > 0 ? (
+          <GuestManualSharePanel
+            links={guestCampaignLinks}
+          />
+        ) : null}
       </Card> : null}
 
       <GuestCampaignReviewModal
@@ -2469,7 +2523,9 @@ function WebsiteSection({
           activeTab={photoDropTab}
           data={data}
           onChangeTab={setPhotoDropTab}
+          onHydrate={onHydrateGuestPhotoDrop}
           onUpdateSettings={onUpdateGuestPhotoDropSettings}
+          onUpdateUploadStatus={onUpdateGuestPhotoUploadStatus}
           openMockAction={openMockAction}
         />
       ) : null}
@@ -3758,18 +3814,81 @@ function PhotoDropMobilePanel({
   activeTab,
   data,
   onChangeTab,
+  onHydrate,
   onUpdateSettings,
+  onUpdateUploadStatus,
   openMockAction,
 }: {
   activeTab: 'share' | 'queue' | 'settings';
   data: typeof samplePlanningData;
   onChangeTab: (tab: 'share' | 'queue' | 'settings') => void;
+  onHydrate: (settings: GuestPhotoDropSettings, uploads: GuestPhotoUpload[]) => void;
   onUpdateSettings: (patch: Partial<GuestPhotoDropSettings>) => void;
+  onUpdateUploadStatus: (uploadId: string, status: GuestPhotoUpload['status']) => void;
   openMockAction: (action: MockAction) => void;
 }) {
+  const [publicUploadUrl, setPublicUploadUrl] = useState('');
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const pendingUploads = data.guestPhotoUploads.filter((upload) => upload.status === 'Pending').length;
   const approvedUploads = data.guestPhotoUploads.filter((upload) => upload.status === 'Approved').length;
   const photoCount = data.guestPhotoUploads.reduce((sum, upload) => sum + upload.photoCount, 0);
+  const uploadLink = publicUploadUrl || 'Create or publish the wedding website to generate the guest upload link.';
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setSyncMessage(null);
+    void listMobileGuestPhotoDrop()
+      .then((result) => {
+        if (!active) return;
+        setPublicUploadUrl(result.publicUploadUrl);
+        onHydrate({ ...data.guestPhotoDrop, ...result.settings }, result.uploads);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setSyncMessage(error instanceof Error ? error.message : 'Photo Drop could not refresh. Showing the last saved app data.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const copyUploadLink = () => {
+    if (!publicUploadUrl) {
+      openMockAction({
+        title: 'Photo Drop link unavailable',
+        detail: 'Create or publish the wedding website first, then the guest upload link will appear here.',
+        primaryLabel: 'Close',
+      });
+      return;
+    }
+    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+      void navigator.clipboard.writeText(publicUploadUrl);
+    }
+    openMockAction({
+      title: 'Photo Drop link copied',
+      detail: publicUploadUrl,
+      primaryLabel: 'Done',
+    });
+  };
+
+  const shareUploadLink = () => {
+    if (!publicUploadUrl) {
+      copyUploadLink();
+      return;
+    }
+    void Share.share({ message: publicUploadUrl, url: publicUploadUrl }).catch(() => {
+      openMockAction({
+        title: 'Share did not open',
+        detail: 'Copy the Photo Drop link and send it by text, email, or printed signage.',
+        primaryLabel: 'Close',
+      });
+    });
+  };
 
   return (
     <Card style={styles.photoDropMobileCard}>
@@ -3806,6 +3925,12 @@ function PhotoDropMobilePanel({
 
       {activeTab === 'share' ? (
         <View style={styles.photoDropPanel}>
+          {syncMessage ? (
+            <View style={styles.inlineNotice}>
+              <Ionicons color={colors.rose} name="alert-circle-outline" size={16} />
+              <Text style={styles.inlineNoticeText}>{syncMessage}</Text>
+            </View>
+          ) : null}
           <LinearGradient colors={['#FFF2EA', '#F8DDE5']} style={styles.photoDropShareCard}>
             <View style={styles.photoDropQrBox}>
               <Ionicons color={colors.rose} name="qr-code-outline" size={46} />
@@ -3820,30 +3945,16 @@ function PhotoDropMobilePanel({
             <PhotoDropMiniStat label="Mode" value={photoDropModeLabel(data.guestPhotoDrop.displayMode)} />
             <PhotoDropMiniStat label="Limit" value={`${data.guestPhotoDrop.maxUploads}/guest`} />
           </View>
+          <View style={styles.photoDropLinkBox}>
+            <Text style={styles.photoDropControlLabel}>Guest upload link</Text>
+            <Text style={styles.photoDropLinkText}>{loading ? 'Refreshing Photo Drop link...' : uploadLink}</Text>
+          </View>
           <View style={styles.websiteActions}>
-            <Pressable
-              onPress={() =>
-                openMockAction({
-                  title: 'Photo Drop QR code',
-                  detail: 'Show, download, or share the QR code for the selected upload destination.',
-                  primaryLabel: 'Show QR',
-                })
-              }
-              style={styles.primaryActionButton}
-            >
-              <Ionicons color={colors.surface} name="qr-code-outline" size={18} />
-              <Text style={styles.primaryActionText}>Show QR</Text>
+            <Pressable onPress={shareUploadLink} style={styles.primaryActionButton}>
+              <Ionicons color={colors.surface} name="share-social-outline" size={18} />
+              <Text style={styles.primaryActionText}>Share link</Text>
             </Pressable>
-            <Pressable
-              onPress={() =>
-                openMockAction({
-                  title: 'Photo Drop link',
-                  detail: 'Copy the guest upload link so it can be shared by text, email, or printed signage.',
-                  primaryLabel: 'Copy link',
-                })
-              }
-              style={styles.secondaryActionButton}
-            >
+            <Pressable onPress={copyUploadLink} style={styles.secondaryActionButton}>
               <Ionicons color={colors.rose} name="link-outline" size={18} />
               <Text style={styles.secondaryActionText}>Copy link</Text>
             </Pressable>
@@ -3859,30 +3970,50 @@ function PhotoDropMobilePanel({
             <SummaryCard label="Photos" value={String(photoCount)} />
           </View>
           <View style={styles.photoDropUploadList}>
-            {data.guestPhotoUploads.map((upload) => (
-              <Pressable
-                key={upload.id}
-                onPress={() =>
-                  openMockAction({
-                    title: `${upload.guestName} upload`,
-                    detail: 'Approve, hide, caption, or feature this guest upload on the wedding website gallery.',
-                    primaryLabel: 'Review upload',
-                  })
-                }
-                style={styles.photoDropUploadRow}
-              >
-                <View style={styles.photoDropThumb}>
-                  <Ionicons color={colors.rose} name="image-outline" size={20} />
-                </View>
-                <View style={styles.hubCopy}>
-                  <View style={styles.websitePageTitleRow}>
-                    <Text style={styles.hubLabel}>{upload.guestName}</Text>
-                    <Text style={[styles.websiteStatusPill, photoUploadStatusStyle(upload.status)]}>{upload.status}</Text>
+            {data.guestPhotoUploads.length ? (
+              data.guestPhotoUploads.map((upload) => {
+                const imageUri = upload.publicImageUrl || upload.imageUrl;
+                return (
+                  <View key={upload.id} style={styles.photoDropUploadRow}>
+                    <View style={styles.photoDropThumb}>
+                      {imageUri ? (
+                        <Image source={{ uri: imageUri }} style={styles.photoDropThumbImage} />
+                      ) : (
+                        <Ionicons color={colors.rose} name="image-outline" size={20} />
+                      )}
+                    </View>
+                    <View style={styles.hubCopy}>
+                      <View style={styles.websitePageTitleRow}>
+                        <Text style={styles.hubLabel}>{upload.guestName}</Text>
+                        <Text style={[styles.websiteStatusPill, photoUploadStatusStyle(upload.status)]}>{upload.status}</Text>
+                      </View>
+                      <Text style={styles.hubDetail}>{upload.caption || upload.originalName || 'Guest photo upload'}</Text>
+                      <Text style={styles.photoDropUploadMeta}>{formatShortDate(upload.uploadedAt)}</Text>
+                      <View style={styles.photoDropUploadActions}>
+                        {(['Approved', 'Hidden', 'Pending'] as const).map((status) => {
+                          const active = upload.status === status;
+                          return (
+                            <Pressable
+                              key={status}
+                              onPress={() => onUpdateUploadStatus(upload.id, status)}
+                              style={[styles.photoDropStatusButton, active && styles.photoDropStatusButtonActive]}
+                            >
+                              <Text style={[styles.photoDropStatusButtonText, active && styles.photoDropStatusButtonTextActive]}>{status}</Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    </View>
                   </View>
-                  <Text style={styles.hubDetail}>{upload.photoCount} photos - {upload.caption}</Text>
-                </View>
-              </Pressable>
-            ))}
+                );
+              })
+            ) : (
+              <View style={styles.photoDropEmptyState}>
+                <Ionicons color={colors.rose} name="images-outline" size={22} />
+                <Text style={styles.hubLabel}>{loading ? 'Loading uploads' : 'No guest photos yet'}</Text>
+                <Text style={styles.hubDetail}>When guests upload photos, they will appear here for approval before showing on the website.</Text>
+              </View>
+            )}
           </View>
         </View>
       ) : null}
@@ -3999,6 +4130,8 @@ function InvitationStudioPanel({ data, openMockAction }: { data: typeof samplePl
   const [showPhoto, setShowPhoto] = useState(true);
   const [studioSavedMessage, setStudioSavedMessage] = useState('');
   const [studioSaving, setStudioSaving] = useState(false);
+  const [testEmail, setTestEmail] = useState('');
+  const [testSending, setTestSending] = useState(false);
   const [rsvpBy, setRsvpBy] = useState('2026-08-01');
   const isRsvp = mode === 'rsvp';
   const isDigital = sendType === 'digital';
@@ -4054,11 +4187,14 @@ function InvitationStudioPanel({ data, openMockAction }: { data: typeof samplePl
       await saveMobileInvitationStudio({
         accent,
         background,
+        coupleNames,
         designFont,
         designFontSize,
         includeHotel,
+        message,
         rsvpBy,
         textColor,
+        type: mode,
       });
       setStudioSavedMessage(messageText);
     } catch (error) {
@@ -4067,9 +4203,58 @@ function InvitationStudioPanel({ data, openMockAction }: { data: typeof samplePl
       setStudioSaving(false);
     }
   };
+  const sendStudioTest = async () => {
+    const email = testEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setStudioSavedMessage('Enter a valid test email first.');
+      setActiveStudioTool('delivery');
+      return;
+    }
+    setTestSending(true);
+    setStudioSavedMessage('');
+    try {
+      await saveMobileInvitationStudio({
+        accent,
+        background,
+        coupleNames,
+        designFont,
+        designFontSize,
+        includeHotel,
+        message,
+        rsvpBy,
+        textColor,
+        type: mode,
+      });
+      await sendMobileInvitationTest({
+        accent,
+        background,
+        coupleNames,
+        designFont,
+        designFontSize,
+        email,
+        includeHotel,
+        message,
+        rsvpBy,
+        textColor,
+        type: mode,
+      });
+      setStudioSavedMessage(`Test ${invitationLabel} sent to ${email}.`);
+    } catch (error) {
+      setStudioSavedMessage(error instanceof Error ? error.message : 'Could not send test invitation.');
+    } finally {
+      setTestSending(false);
+    }
+  };
 
   return (
     <View style={styles.invitationStudioPanel}>
+      <View style={styles.mobileStudioGuidance}>
+        <Ionicons color={colors.rose} name="phone-portrait-outline" size={18} />
+        <View style={styles.hubCopy}>
+          <Text style={styles.hubLabel}>Mobile quick edits</Text>
+          <Text style={styles.hubDetail}>Use the app for message, photo, RSVP deadline, preview, and sends. Use desktop for full layout and detailed design polish.</Text>
+        </View>
+      </View>
       <View style={styles.studioToolbar}>
         <StudioSegment
           label="Invitation"
@@ -4476,6 +4661,12 @@ function InvitationStudioPanel({ data, openMockAction }: { data: typeof samplePl
 
       {isDigital && activeStudioTool === 'delivery' ? <View style={styles.studioSettingsCard}>
         <Text style={styles.formLabel}>Delivery</Text>
+        <FormInput
+          label="Test email"
+          onChangeText={setTestEmail}
+          placeholder="you@example.com"
+          value={testEmail}
+        />
         <View style={styles.eventTypeRow}>
           {[
             ['sms', 'SMS'],
@@ -4490,6 +4681,7 @@ function InvitationStudioPanel({ data, openMockAction }: { data: typeof samplePl
             );
           })}
         </View>
+        <Text style={styles.hubDetail}>Send a real test email before messaging guests. Guest delivery still happens from the Guest Hub send buttons.</Text>
       </View> : null}
 
       <View style={styles.websiteActions}>
@@ -4497,10 +4689,12 @@ function InvitationStudioPanel({ data, openMockAction }: { data: typeof samplePl
           <Ionicons color={colors.surface} name={studioSaving ? 'sync-outline' : 'save-outline'} size={18} />
           <Text style={styles.primaryActionText}>{studioSaving ? 'Saving...' : 'Save design'}</Text>
         </Pressable>
-        <Pressable onPress={() => void saveStudioToWebsite(`Test ${invitationLabel} ready to send`)} style={styles.secondaryActionButton}>
-          <Ionicons color={colors.rose} name="paper-plane-outline" size={18} />
-          <Text style={styles.secondaryActionText}>Send test</Text>
-        </Pressable>
+        {isDigital ? (
+          <Pressable disabled={testSending} onPress={() => void sendStudioTest()} style={[styles.secondaryActionButton, testSending && styles.disabledActionButton]}>
+            <Ionicons color={colors.rose} name={testSending ? 'sync-outline' : 'paper-plane-outline'} size={18} />
+            <Text style={styles.secondaryActionText}>{testSending ? 'Sending...' : 'Send test'}</Text>
+          </Pressable>
+        ) : null}
       </View>
       {studioSavedMessage ? <SavedStrip label={studioSavedMessage} /> : null}
     </View>
@@ -7008,6 +7202,67 @@ function GuestCampaignReviewModal({
   );
 }
 
+function buildGuestShareMessage(link: GuestSendLink) {
+  return `Hi ${link.name}, here is your wedding link: ${link.url}`;
+}
+
+function GuestManualSharePanel({ links }: { links: GuestSendLink[] }) {
+  const [sharedGuestId, setSharedGuestId] = useState<number | null>(null);
+  const shareLink = async (link: GuestSendLink) => {
+    setSharedGuestId(link.guestId);
+    try {
+      await Share.share({ message: buildGuestShareMessage(link), url: link.url });
+    } finally {
+      setSharedGuestId(null);
+    }
+  };
+  const copyLink = async (link: GuestSendLink) => {
+    const clipboard = typeof navigator !== 'undefined' ? navigator.clipboard : undefined;
+    if (clipboard?.writeText) {
+      await clipboard.writeText(link.url);
+      return;
+    }
+    await shareLink(link);
+  };
+  const textLink = async (link: GuestSendLink) => {
+    const body = encodeURIComponent(buildGuestShareMessage(link));
+    const separator = Platform.OS === 'ios' ? '&' : '?';
+    await Linking.openURL(`sms:${separator}body=${body}`);
+  };
+
+  return (
+    <View style={styles.manualSharePanel}>
+      <View style={styles.manualShareHeader}>
+        <Ionicons color={colors.gold} name="link-outline" size={18} />
+        <View style={styles.hubCopy}>
+          <Text style={styles.hubLabel}>Needs manual share</Text>
+          <Text style={styles.hubDetail}>These guests do not have an email on file. Text or share their link from here.</Text>
+        </View>
+      </View>
+      {links.slice(0, 5).map((link) => (
+        <View key={`${link.guestId}-${link.url}`} style={styles.manualShareRow}>
+          <View style={styles.hubCopy}>
+            <Text style={styles.hubLabel}>{link.name}</Text>
+            <Text numberOfLines={1} style={styles.hubDetail}>{link.url}</Text>
+          </View>
+          <View style={styles.manualShareActions}>
+            <Pressable onPress={() => void textLink(link)} style={styles.iconMiniButton}>
+              <Ionicons color={colors.rose} name="chatbubble-outline" size={15} />
+            </Pressable>
+            <Pressable onPress={() => void copyLink(link)} style={styles.iconMiniButton}>
+              <Ionicons color={colors.rose} name="copy-outline" size={15} />
+            </Pressable>
+            <Pressable disabled={sharedGuestId === link.guestId} onPress={() => void shareLink(link)} style={styles.iconMiniButton}>
+              <Ionicons color={colors.rose} name={sharedGuestId === link.guestId ? 'sync-outline' : 'share-outline'} size={15} />
+            </Pressable>
+          </View>
+        </View>
+      ))}
+      {links.length > 5 ? <Text style={styles.hubDetail}>+{links.length - 5} more links are available from the guest records.</Text> : null}
+    </View>
+  );
+}
+
 function VendorDetailModal({
   data,
   onClose,
@@ -7854,7 +8109,14 @@ function WebsitePageRow({ detail, onPress, status, title }: { detail: string; on
   );
 }
 
-function GuestListRow({ guest, onPress }: { guest: (typeof samplePlanningData.guests)[number]; onPress?: () => void }) {
+function guestSendStatus(value: string | undefined, sentLabel = 'Sent') {
+  return value === 'sent' ? sentLabel : 'Not sent';
+}
+
+function GuestListRow({ guest, onPress }: { guest: Guest; onPress?: () => void }) {
+  const saveDateStatus = guestSendStatus(guest.saveTheDateStatus, 'STD sent');
+  const invitationStatus = guestSendStatus(guest.invitationStatus, 'Invite sent');
+  const reminderStatus = guestSendStatus(guest.rsvpReminderStatus, 'Reminder sent');
   return (
     <Pressable onPress={onPress} style={styles.guestListRow}>
       <View style={styles.guestListIcon}>
@@ -7866,6 +8128,11 @@ function GuestListRow({ guest, onPress }: { guest: (typeof samplePlanningData.gu
           <Text style={[styles.websiteStatusPill, guestStatusStyle(guest.rsvp)]}>{guest.rsvp}</Text>
         </View>
         <Text style={styles.hubDetail}>{guest.mealPreference} - {guest.table}</Text>
+        <View style={styles.guestTrackingRow}>
+          <Text style={[styles.guestTrackingPill, guest.saveTheDateStatus === 'sent' && styles.guestTrackingPillSent]}>{saveDateStatus}</Text>
+          <Text style={[styles.guestTrackingPill, guest.invitationStatus === 'sent' && styles.guestTrackingPillSent]}>{invitationStatus}</Text>
+          <Text style={[styles.guestTrackingPill, guest.rsvpReminderStatus === 'sent' && styles.guestTrackingPillSent]}>{reminderStatus}</Text>
+        </View>
       </View>
       <Ionicons color={colors.muted} name="chevron-forward" size={18} />
     </Pressable>
@@ -10575,6 +10842,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 38,
   },
+  guestTrackingRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 7,
+  },
+  guestTrackingPill: {
+    backgroundColor: colors.surface,
+    borderColor: colors.faint,
+    borderRadius: 999,
+    borderWidth: 1,
+    color: colors.muted,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 9,
+    overflow: 'hidden',
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    textTransform: 'uppercase',
+  },
+  guestTrackingPillSent: {
+    backgroundColor: '#E6EFE5',
+    borderColor: '#C7DEC5',
+    color: colors.green,
+  },
   websitePageTitleRow: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -10603,6 +10894,16 @@ const styles = StyleSheet.create({
     gap: 14,
     marginTop: 14,
     padding: 14,
+  },
+  mobileStudioGuidance: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceWarm,
+    borderColor: colors.faint,
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    padding: 12,
   },
   studioToolbar: {
     backgroundColor: colors.surfaceWarm,
@@ -11609,6 +11910,20 @@ const styles = StyleSheet.create({
     minHeight: 70,
     padding: 10,
   },
+  photoDropLinkBox: {
+    backgroundColor: colors.surfaceWarm,
+    borderColor: colors.faint,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 12,
+  },
+  photoDropLinkText: {
+    color: colors.ink,
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 5,
+  },
   photoDropUploadList: {
     gap: 10,
   },
@@ -11630,7 +11945,53 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     height: 44,
     justifyContent: 'center',
+    overflow: 'hidden',
     width: 44,
+  },
+  photoDropThumbImage: {
+    height: '100%',
+    width: '100%',
+  },
+  photoDropUploadMeta: {
+    color: colors.muted,
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 10,
+    marginTop: 4,
+  },
+  photoDropUploadActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 7,
+    marginTop: 10,
+  },
+  photoDropStatusButton: {
+    backgroundColor: colors.surface,
+    borderColor: colors.faint,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  photoDropStatusButtonActive: {
+    backgroundColor: colors.rose,
+    borderColor: colors.rose,
+  },
+  photoDropStatusButtonText: {
+    color: colors.rose,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+  },
+  photoDropStatusButtonTextActive: {
+    color: colors.surface,
+  },
+  photoDropEmptyState: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceWarm,
+    borderColor: colors.faint,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 6,
+    padding: 18,
   },
   photoDropSettingRow: {
     alignItems: 'center',
@@ -12740,6 +13101,51 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_700Bold',
     fontSize: 11,
     lineHeight: 16,
+  },
+  inlineNotice: {
+    alignItems: 'center',
+    backgroundColor: colors.goldSoft,
+    borderColor: '#F3C978',
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    padding: 11,
+  },
+  inlineNoticeText: {
+    color: colors.gold,
+    flex: 1,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  manualSharePanel: {
+    backgroundColor: colors.goldSoft,
+    borderColor: '#F3C978',
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 10,
+    marginTop: 14,
+    padding: 12,
+  },
+  manualShareHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+  },
+  manualShareRow: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderColor: '#F3C978',
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    padding: 10,
+  },
+  manualShareActions: {
+    flexDirection: 'row',
+    gap: 7,
   },
   saveDateGuestPreview: {
     alignItems: 'center',

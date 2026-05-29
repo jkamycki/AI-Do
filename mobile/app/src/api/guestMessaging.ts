@@ -31,7 +31,7 @@ type GuestCampaignResult = {
   attempted: number;
   delivered: number;
   markedSent: number;
-  links: Array<{ guestId: number; name: string; url: string }>;
+  links: Array<{ emailSent: boolean; guestId: number; name: string; url: string }>;
 };
 
 export type GuestCampaign = 'rsvp-reminders' | 'save-the-dates' | 'rsvp-invites';
@@ -108,14 +108,14 @@ async function sendGuestCampaign({
     if (result.emailSent) delivered += 1;
     else markedSent += 1;
     const url = result.rsvpUrl ?? result.saveTheDateUrl ?? result.previewUrl;
-    if (url) links.push({ guestId: guest.id, name: guest.name, url });
+    if (url) links.push({ emailSent: result.emailSent, guestId: guest.id, name: guest.name, url });
   }
 
   return { attempted: targetGuests.length, delivered, markedSent, links };
 }
 
 export async function sendPendingRsvpReminders() {
-  return sendGuestCampaign(campaignConfig['rsvp-reminders']) as Promise<GuestCampaignResult & { links: Array<{ guestId: number; name: string; url: string }> }>;
+  return sendGuestCampaign(campaignConfig['rsvp-reminders']);
 }
 
 export async function sendSaveTheDates() {
