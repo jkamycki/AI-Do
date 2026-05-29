@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, CheckCircle, Handshake, Loader2, Mail, MapPin, Sparkles } from "lucide-react";
+import { ArrowLeft, CheckCircle, Loader2, Mail, Sparkles } from "lucide-react";
 import { apiFetch } from "@/lib/authFetch";
 import { Button } from "@/components/ui/button";
 
@@ -97,18 +97,32 @@ export default function ForVendors() {
               Tell us about your business, where you serve, and what kind of weddings you love. We will review your details and follow up directly.
             </p>
           </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-lg border border-[#F2CFC6] bg-white/75 p-4">
-              <Handshake className="mb-3 h-5 w-5 text-[#B16C8E]" />
-              <h2 className="font-semibold text-[#8D294D]">Preferred vendor list</h2>
-              <p className="mt-1 text-sm text-[#7C3F5E]/70">Start building a curated network before opening broad listings.</p>
+          <div className="rounded-lg border border-[#F2CFC6] bg-white/75 p-5">
+            <h2 className="font-serif text-2xl text-[#8D294D]">Why join the vendor directory?</h2>
+            <ul className="mt-4 space-y-3 text-sm leading-6 text-[#7C3F5E]/80">
+              <li>Get discovered by couples already planning their wedding inside A.I Do.</li>
+              <li>Showcase your services, service area, website, Instagram, and starting price in one polished profile.</li>
+              <li>Receive an A.I DO Partner Vendor badge you can use on your website, proposals, email signature, or social links.</li>
+              <li>Build trust with couples by being part of a curated wedding planning experience.</li>
+            </ul>
+          </div>
+          <div className="rounded-lg border border-[#E6A6B7]/70 bg-white p-5 shadow-[0_16px_36px_rgba(141,41,77,0.08)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#B16C8E]">Badge preview</p>
+            <div className="mt-4 rounded-lg border border-[#E8C8B8] bg-[#FFF9F5] p-4">
+              <div className="mx-auto flex max-w-xs items-center gap-3 rounded-full border border-[#D8A565] bg-white px-4 py-3 shadow-[0_12px_30px_rgba(141,41,77,0.12)]">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-[#E6A6B7]/70 bg-[#FFF7F2]">
+                  <img src="/logo.png" alt="A.I DO logo" className="h-10 w-10 object-contain" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#B16C8E]">Official Partner</p>
+                  <p className="font-serif text-xl leading-tight text-[#8D294D]">A.I DO</p>
+                  <p className="text-xs font-semibold text-[#7C3F5E]/75">Partner Vendor</p>
+                </div>
+              </div>
             </div>
-            <div className="rounded-lg border border-[#F2CFC6] bg-white/75 p-4">
-              <MapPin className="mb-3 h-5 w-5 text-[#B16C8E]" />
-              <h2 className="font-semibold text-[#8D294D]">Local discovery</h2>
-              <p className="mt-1 text-sm text-[#7C3F5E]/70">Track categories and markets as vendor interest comes in.</p>
-            </div>
+            <p className="mt-3 text-sm leading-6 text-[#7C3F5E]/70">
+              Approved vendors can display this badge with their A.I DO partner link.
+            </p>
           </div>
         </section>
 

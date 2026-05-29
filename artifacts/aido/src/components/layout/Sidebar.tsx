@@ -372,9 +372,9 @@ export function Sidebar() {
       label: t("sidebar.vendors_section", { defaultValue: "Vendors" }),
       defaultOpen: true,
       items: [
+        { href: "/vendors?management=vendors", label: t("sidebar.vendor_contacts", { defaultValue: "Vendor List & Contacts" }) },
         ...(canPreviewVendorDirectory ? [{ href: "/vendors?management=directory", label: "Vendor Directory" }] : []),
         { href: "/budget", label: t("sidebar.budget_summary", { defaultValue: "Budget Summary" }) },
-        { href: "/vendors?management=contacts", label: t("sidebar.vendor_contacts", { defaultValue: "Vendor List & Contacts" }) },
       ],
     },
     {
