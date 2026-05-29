@@ -1,12 +1,13 @@
 import { Router } from "express";
 import { db, vendors, vendorPayments, checklistItems, vendorContacts } from "@workspace/db";
-import { eq, and, asc, inArray } from "drizzle-orm";
+import { eq, and, asc, inArray, sql } from "drizzle-orm";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { resolveProfile, resolveCallerRole, hasMinRole } from "../../lib/workspaceAccess";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { getRequestLanguage } from "../../lib/language";
 
 const router = Router();
+const PARTNER_INQUIRY_NOTE_MARKER = "[A.I DO partner inquiry only]";
 
 // Mark any "first vendor" / "add a vendor" style checklist items as
 // completed once the user has added at least one real vendor row. We
@@ -418,7 +419,10 @@ router.get("/vendors", requireAuth, async (req, res) => {
     const rows = await db
       .select()
       .from(vendors)
-      .where(eq(vendors.profileId, profile.id))
+      .where(and(
+        eq(vendors.profileId, profile.id),
+        sql`coalesce(${vendors.notes}, '') not like ${`${PARTNER_INQUIRY_NOTE_MARKER}%`}`,
+      ))
       .orderBy(vendors.createdAt);
 
     const vendorIds = rows.map((v) => v.id);

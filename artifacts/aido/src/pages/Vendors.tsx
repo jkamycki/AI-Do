@@ -42,7 +42,10 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -1969,6 +1972,38 @@ function VendorDirectoryTab({
       },
     },
   });
+  const createPartnerInquiryMutation = useMutation({
+    mutationFn: async (listing: VendorDirectoryListing) => {
+      const response = await authFetch("/api/messaging/partner-inquiries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: listing.name,
+          category: normalizeVendorCategory(listing.category),
+          email: listing.email,
+          phone: listing.phone,
+          website: listing.website,
+          primaryContact: listing.contactName,
+        }),
+      });
+      if (!response.ok) throw new Error("Could not start partner inquiry");
+      return response.json() as Promise<{ vendorId: number; conversationId: number }>;
+    },
+    onSuccess: ({ vendorId }) => {
+      if (accountEmail) {
+        sessionStorage.setItem(`aido_vendor_message_default_cc_${vendorId}`, accountEmail);
+      }
+      toast({ title: "Partner message opened" });
+      onOpenVendorMessages(vendorId);
+    },
+    onError: () => {
+      toast({
+        title: "Could not start partner message",
+        description: "Try again or add this partner to your Vendor List first.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const existingVendorForListing = (listing: VendorDirectoryListing) => vendors.find((vendor) => (
     vendor.email?.toLowerCase() === listing.email.toLowerCase() ||
@@ -1992,6 +2027,10 @@ function VendorDirectoryTab({
     });
   };
 
+  const createPartnerInquiryAndOpenMessages = (listing: VendorDirectoryListing) => {
+    createPartnerInquiryMutation.mutate(listing);
+  };
+
   const requestPartnerMessages = (listing: VendorDirectoryListing) => {
     const existingVendor = existingVendorForListing(listing);
     if (existingVendor) {
@@ -2010,14 +2049,29 @@ function VendorDirectoryTab({
         <AlertDialogHeader>
           <AlertDialogTitle>Add partner to your Vendor List?</AlertDialogTitle>
           <AlertDialogDescription>
-            To track replies as a conversation, A.I DO needs to add {pendingMessageListing?.name ?? "this partner"} to your Vendor List first.
-            You can edit or remove them later.
+            You can message {pendingMessageListing?.name ?? "this partner"} during discovery without adding them to your Vendor List,
+            or add them now if you want to track them as a saved vendor.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Not now</AlertDialogCancel>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={createPartnerInquiryMutation.isPending || createPartnerVendorMutation.isPending}
+            onClick={() => {
+              if (pendingMessageListing) {
+                createPartnerInquiryAndOpenMessages(pendingMessageListing);
+                setPendingMessageListing(null);
+              }
+            }}
+          >
+            Message only
+          </Button>
+          <AlertDialogCancel disabled={createPartnerInquiryMutation.isPending || createPartnerVendorMutation.isPending}>
+            Cancel
+          </AlertDialogCancel>
           <AlertDialogAction
-            disabled={createPartnerVendorMutation.isPending}
+            disabled={createPartnerVendorMutation.isPending || createPartnerInquiryMutation.isPending}
             onClick={() => {
               if (pendingMessageListing) {
                 createPartnerVendorAndOpenMessages(pendingMessageListing);
@@ -2025,7 +2079,7 @@ function VendorDirectoryTab({
               }
             }}
           >
-            Add and open Messages
+            Add and message
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -2155,6 +2209,7 @@ function VendorHubMessagesTab({
   initialVendorId?: number | null;
   onSelectVendor?: (vendorId: number) => void;
 }) {
+  const { toast } = useToast();
   const { data: vendors = [], isLoading: vendorsLoading } = useListVendors();
   const { data: conversations = [], isLoading } = useListConversations({
     query: {
@@ -2163,6 +2218,36 @@ function VendorHubMessagesTab({
     },
   });
   const [selectedVendorId, setSelectedVendorId] = useState<number | null>(initialVendorId ?? null);
+  const [selectedPartnerListing, setSelectedPartnerListing] = useState<VendorDirectoryListing | null>(null);
+  const createPartnerInquiryMutation = useMutation({
+    mutationFn: async (listing: VendorDirectoryListing) => {
+      const response = await authFetch("/api/messaging/partner-inquiries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: listing.name,
+          category: normalizeVendorCategory(listing.category),
+          email: listing.email,
+          phone: listing.phone,
+          website: listing.website,
+          primaryContact: listing.contactName,
+        }),
+      });
+      if (!response.ok) throw new Error("Could not start partner inquiry");
+      return response.json() as Promise<{ vendorId: number; conversationId: number }>;
+    },
+    onSuccess: ({ vendorId }) => {
+      setSelectedVendorId(vendorId);
+      onSelectVendor?.(vendorId);
+    },
+    onError: () => {
+      toast({
+        title: "Could not start partner message",
+        description: "Try again from the Partner Network profile.",
+        variant: "destructive",
+      });
+    },
+  });
 
   useEffect(() => {
     if (initialVendorId) setSelectedVendorId(initialVendorId);
@@ -2180,12 +2265,40 @@ function VendorHubMessagesTab({
     () => [...vendors].sort((a, b) => a.name.localeCompare(b.name)),
     [vendors]
   );
-  const selectedVendorName = selectedConversation?.vendorName ?? selectedVendor?.name ?? "Vendor";
+  const sortedPartnerListings = useMemo(
+    () => [...SAMPLE_VENDOR_DIRECTORY].sort((a, b) => a.name.localeCompare(b.name)),
+    []
+  );
+  const selectedVendorName = selectedConversation?.vendorName ?? selectedVendor?.name ?? selectedPartnerListing?.name ?? "Vendor";
+  const selectedVendorEmail = selectedConversation?.vendorEmail ?? selectedVendor?.email ?? selectedPartnerListing?.email;
+  const selectedDropdownValue = selectedVendorId ? `vendor:${selectedVendorId}` : "";
 
   function selectVendorMessages(vendorId: number) {
     if (!Number.isFinite(vendorId)) return;
+    setSelectedPartnerListing(null);
     setSelectedVendorId(vendorId);
     onSelectVendor?.(vendorId);
+  }
+
+  function selectPartnerMessages(listingId: string) {
+    const listing = SAMPLE_VENDOR_DIRECTORY.find((item) => item.id === listingId);
+    if (!listing) return;
+    const existingVendor = vendors.find((vendor) => (
+      vendor.email?.toLowerCase() === listing.email.toLowerCase() ||
+      vendor.name.toLowerCase() === listing.name.toLowerCase()
+    ));
+    if (existingVendor) {
+      selectVendorMessages(existingVendor.id);
+      return;
+    }
+    setSelectedPartnerListing(listing);
+    createPartnerInquiryMutation.mutate(listing);
+  }
+
+  function handleNewMessageSelect(value: string) {
+    const [type, id] = value.split(":");
+    if (type === "vendor") selectVendorMessages(Number(id));
+    if (type === "partner") selectPartnerMessages(id);
   }
 
   if (isLoading || vendorsLoading) {
@@ -2209,22 +2322,39 @@ function VendorHubMessagesTab({
         <div className="rounded-xl border border-border/70 bg-background/70 p-3">
           <Label className="text-xs font-semibold uppercase tracking-wider text-primary">New message</Label>
           <Select
-            value={selectedVendorId ? String(selectedVendorId) : ""}
-            onValueChange={(value) => selectVendorMessages(Number(value))}
+            value={selectedDropdownValue}
+            onValueChange={handleNewMessageSelect}
+            disabled={createPartnerInquiryMutation.isPending}
           >
             <SelectTrigger className="mt-2 bg-card" data-testid="select-message-vendor">
-              <SelectValue placeholder={sortedVendors.length ? "Select an existing vendor" : "No vendors yet"} />
+              <SelectValue placeholder="Select a vendor or partner" />
             </SelectTrigger>
             <SelectContent>
-              {sortedVendors.map((vendor) => (
-                <SelectItem key={vendor.id} value={String(vendor.id)}>
-                  {vendor.name} {vendor.category ? `(${vendorCategoryLabel(vendor.category)})` : ""}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                <SelectLabel>My Current Vendors</SelectLabel>
+                {sortedVendors.length > 0 ? (
+                  sortedVendors.map((vendor) => (
+                    <SelectItem key={vendor.id} value={`vendor:${vendor.id}`}>
+                      {vendor.name} {vendor.category ? `(${vendorCategoryLabel(vendor.category)})` : ""}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="vendor:none" disabled>No current vendors yet</SelectItem>
+                )}
+              </SelectGroup>
+              <SelectSeparator />
+              <SelectGroup>
+                <SelectLabel>Partner Vendors</SelectLabel>
+                {sortedPartnerListings.map((listing) => (
+                  <SelectItem key={listing.id} value={`partner:${listing.id}`}>
+                    {listing.name} ({listing.category})
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">
-            Pick a saved vendor to compose a new message or continue their thread.
+            Pick a current vendor, or message a partner vendor while you are still deciding.
           </p>
         </div>
         {conversations.length === 0 && (
@@ -2282,8 +2412,8 @@ function VendorHubMessagesTab({
             <div className="border-b border-border/70 pb-3">
               <p className="text-xs font-semibold uppercase tracking-wider text-primary">Conversation</p>
               <h3 className="font-serif text-2xl text-foreground">{selectedVendorName}</h3>
-              {(selectedConversation?.vendorEmail || selectedVendor?.email) && (
-                <p className="text-sm text-muted-foreground">{selectedConversation?.vendorEmail ?? selectedVendor?.email}</p>
+              {selectedVendorEmail && (
+                <p className="text-sm text-muted-foreground">{selectedVendorEmail}</p>
               )}
             </div>
             <VendorMessagesTab vendorId={selectedVendorId} />

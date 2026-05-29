@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { clerkClient } from "@clerk/express";
 import { db } from "@workspace/db";
 import { vendors, vendorConversations, vendorMessages, weddingProfiles } from "@workspace/db/schema";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { trackEvent } from "../../lib/trackEvent";
@@ -17,6 +17,7 @@ import { hasMinRole, resolveCallerRole, resolveProfile, resolveScopeUserId } fro
 import { getRequestLanguage } from "../../lib/language";
 
 const router = Router();
+const PARTNER_INQUIRY_NOTE_MARKER = "[A.I DO partner inquiry only]";
 
 async function ensurePlannerAccess(req: Request, res: Response): Promise<boolean> {
   const callerRole = await resolveCallerRole(req);
@@ -61,6 +62,62 @@ async function getOrCreateConversation(userId: string, vendorId: number, profile
   return { vendor, conversation: created };
 }
 
+function cleanBodyText(value: unknown, fallback = "") {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text || fallback;
+}
+
+router.post("/messaging/partner-inquiries", requireAuth, async (req, res) => {
+  try {
+    if (!(await ensurePlannerAccess(req, res))) return;
+    const userId = await resolveScopeUserId(req);
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(400).json({ error: "No wedding profile found" });
+
+    const name = cleanBodyText(req.body?.name);
+    if (!name) return res.status(400).json({ error: "Partner name is required" });
+
+    const email = cleanBodyText(req.body?.email);
+    const category = cleanBodyText(req.body?.category, "Other");
+    const phone = cleanBodyText(req.body?.phone);
+    const website = cleanBodyText(req.body?.website);
+    const primaryContact = cleanBodyText(req.body?.primaryContact);
+    const note = `${PARTNER_INQUIRY_NOTE_MARKER}\nDiscovery message from the A.I DO Partner Network. Not added to the user's Vendor List.`;
+
+    const [existingInquiry] = await db.select().from(vendors)
+      .where(and(
+        eq(vendors.profileId, profile.id),
+        sql`${vendors.notes} like ${`${PARTNER_INQUIRY_NOTE_MARKER}%`}`,
+        email
+          ? sql`lower(coalesce(${vendors.email}, '')) = ${email.toLowerCase()}`
+          : sql`lower(${vendors.name}) = ${name.toLowerCase()}`,
+      ))
+      .limit(1);
+
+    const vendor = existingInquiry ?? (await db.insert(vendors).values({
+      profileId: profile.id,
+      userId,
+      name,
+      category,
+      email: email || null,
+      phone: phone || null,
+      website: website || null,
+      notes: note,
+      totalCost: "0",
+      depositAmount: "0",
+      contractSigned: false,
+      primaryContact: primaryContact || null,
+    }).returning())[0];
+
+    const r = await getOrCreateConversation(userId, vendor.id, profile.id);
+    if (!r) return res.status(500).json({ error: "Could not create partner inquiry" });
+    res.status(existingInquiry ? 200 : 201).json({ vendorId: vendor.id, conversationId: r.conversation.id });
+  } catch (err) {
+    req.log.error(err, "createPartnerInquiry failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/messaging/conversations", requireAuth, async (req, res) => {
   try {
     if (!(await ensurePlannerAccess(req, res))) return;
@@ -80,7 +137,15 @@ router.get("/messaging/conversations", requireAuth, async (req, res) => {
       })
       .from(vendorConversations)
       .innerJoin(vendors, eq(vendorConversations.vendorId, vendors.id))
-      .where(and(eq(vendorConversations.userId, userId), eq(vendors.profileId, profile.id)))
+      .where(and(
+        eq(vendorConversations.userId, userId),
+        eq(vendors.profileId, profile.id),
+        sql`exists (
+          select 1
+          from ${vendorMessages}
+          where ${vendorMessages.conversationId} = ${vendorConversations.id}
+        )`
+      ))
       .orderBy(desc(vendorConversations.lastMessageAt));
     res.json(rows.map((r) => ({ ...r, lastMessagePreview: r.lastMessagePreview ?? "", lastMessageAt: r.lastMessageAt.toISOString() })));
   } catch (err) {
