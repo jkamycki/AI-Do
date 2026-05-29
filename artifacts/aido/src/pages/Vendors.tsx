@@ -2601,16 +2601,7 @@ function VendorDirectoryProfile({
                 Open in Messages
               </Button>
             </div>
-            <div className="mt-4 space-y-3">
-              <div className="rounded-xl bg-[#FFF7F2] px-4 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-foreground">Message this partner</p>
-                  <Badge variant="secondary" className="bg-primary/10 text-primary">Messages tab</Badge>
-                </div>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  A.I DO opens a partner inquiry conversation under Vendor Hub Messages, separate from your saved vendor list.
-                </p>
-              </div>
+            <div className="mt-4">
               <div className="rounded-xl border border-dashed border-[#E8C9D4] px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-semibold text-foreground">Ready to save them?</p>
