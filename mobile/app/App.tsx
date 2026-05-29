@@ -9,6 +9,7 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 
 import { getPlanningData, mergePlanningData } from './src/api/client';
+import { sendMobileAriaMessage } from './src/api/aria';
 import { syncDayOfChecklistCompletion, syncTaskCompletion } from './src/api/checklist';
 import { inviteMobileCollaborator, listMobileCollaborators } from './src/api/collaboration';
 import { createMobileGuest, deleteMobileGuest, updateMobileGuest } from './src/api/guests';
@@ -5935,28 +5936,61 @@ function AriaModal({
   onClose: () => void;
   open: boolean;
 }) {
-  type AriaChatMessage = { id: string; role: 'assistant' | 'user'; text: string };
+  type AriaChatMessage = { id: string; role: 'assistant' | 'user'; text: string; pending?: boolean };
   const [messages, setMessages] = useState<AriaChatMessage[]>([
     { id: 'aria-welcome', role: 'assistant', text: 'What can I help you plan right now?' },
   ]);
   const [ariaDraft, setAriaDraft] = useState('');
+  const [ariaSending, setAriaSending] = useState(false);
   const trimmedAriaDraft = ariaDraft.trim();
-  const sendAriaMessage = (messageText = trimmedAriaDraft) => {
+  const sendAriaMessage = async (messageText = trimmedAriaDraft) => {
     const cleanMessage = messageText.trim();
-    if (!cleanMessage) return;
+    if (!cleanMessage || ariaSending) return;
 
     const timestamp = Date.now();
-    const followUp =
-      cleanMessage.toLowerCase().includes('vendor')
-        ? 'I can draft that vendor message and include payment, timing, and contract details so it feels polished.'
-        : 'Got it. I will help you turn that into the next clean planning step.';
+    const userMessage: AriaChatMessage = { id: `user-${timestamp}`, role: 'user', text: cleanMessage };
+    const assistantMessage: AriaChatMessage = {
+      id: `aria-${timestamp}`,
+      pending: true,
+      role: 'assistant',
+      text: 'Thinking...',
+    };
 
-    setMessages((current) => [
-      ...current,
-      { id: `user-${timestamp}`, role: 'user', text: cleanMessage },
-      { id: `aria-${timestamp}`, role: 'assistant', text: followUp },
-    ]);
+    const history = [...messages, userMessage].map((message) => ({
+      content: message.text,
+      role: message.role,
+    }));
+
+    setMessages((current) => [...current, userMessage, assistantMessage]);
     setAriaDraft('');
+    setAriaSending(true);
+
+    try {
+      const reply = await sendMobileAriaMessage(history);
+      setMessages((current) =>
+        current.map((message) =>
+          message.id === assistantMessage.id ? { ...message, pending: false, text: reply } : message,
+        ),
+      );
+    } catch (error) {
+      const fallback =
+        error instanceof Error && error.message
+          ? error.message
+          : 'Aria could not respond right now. Please try again.';
+      setMessages((current) =>
+        current.map((message) =>
+          message.id === assistantMessage.id
+            ? {
+                ...message,
+                pending: false,
+                text: `${fallback}\n\nYou can still use the website Aria chat for the full synced assistant while we finish mobile parity.`,
+              }
+            : message,
+        ),
+      );
+    } finally {
+      setAriaSending(false);
+    }
   };
 
   const sheet = (
@@ -5988,6 +6022,7 @@ function AriaModal({
             <Text style={styles.ariaComposerLabel}>Type your message</Text>
             <View style={styles.ariaInputMock}>
               <TextInput
+                editable={!ariaSending}
                 multiline
                 onChangeText={setAriaDraft}
                 onSubmitEditing={() => sendAriaMessage()}
@@ -5998,11 +6033,11 @@ function AriaModal({
                 value={ariaDraft}
               />
               <Pressable
-                disabled={!trimmedAriaDraft}
+                disabled={!trimmedAriaDraft || ariaSending}
                 onPress={() => sendAriaMessage()}
-                style={[styles.ariaSendButton, !trimmedAriaDraft && styles.ariaSendButtonDisabled]}
+                style={[styles.ariaSendButton, (!trimmedAriaDraft || ariaSending) && styles.ariaSendButtonDisabled]}
               >
-                <Ionicons color={colors.surface} name="send" size={17} />
+                <Ionicons color={colors.surface} name={ariaSending ? 'hourglass' : 'send'} size={17} />
               </Pressable>
             </View>
           </View>
@@ -6015,7 +6050,7 @@ function AriaModal({
               'Check my website',
               'Review this week',
             ].map((prompt) => (
-              <Pressable key={prompt} onPress={() => sendAriaMessage(prompt)} style={styles.ariaPrompt}>
+              <Pressable disabled={ariaSending} key={prompt} onPress={() => sendAriaMessage(prompt)} style={styles.ariaPrompt}>
                 <Text style={styles.ariaPromptText}>{prompt}</Text>
               </Pressable>
             ))}
