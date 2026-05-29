@@ -120,7 +120,7 @@ function getVendorPartnerPage(path: string): VendorPartnerPage {
   if (path.endsWith("/vendors")) return "vendors";
   if (path.endsWith("/how-it-works")) return "how-it-works";
   if (path.endsWith("/apply")) return "apply";
-  return "home";
+  return "vendors";
 }
 
 function vendorPartnerNavClass(isActive: boolean) {
@@ -211,7 +211,7 @@ export default function ForVendors() {
             <img src="/logo.png" alt="A.I DO" className="h-14 w-auto object-contain" />
           </Link>
           <nav className="hidden items-center gap-2 text-sm font-bold md:flex">
-            <Link href="/for-vendors" className={vendorPartnerNavClass(page === "home")}>Home</Link>
+            <Link href="/" className={vendorPartnerNavClass(false)}>Home</Link>
             <Link href="/for-vendors/vendors" className={vendorPartnerNavClass(page === "vendors")}>Benefits</Link>
             <Link href="/for-vendors/how-it-works" className={vendorPartnerNavClass(page === "how-it-works")}>How It Works</Link>
             <Link href="/for-vendors/apply" className={vendorPartnerNavClass(page === "apply")}>Apply</Link>
