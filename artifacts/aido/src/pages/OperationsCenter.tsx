@@ -186,6 +186,9 @@ type VendorPartnerApplication = {
   startingPrice: string | null;
   description: string | null;
   servicePhotos?: Array<{ name: string; type: string; dataUrl: string }>;
+  directoryListing?: VendorDirectoryListingDraft | Record<string, unknown>;
+  directoryStatus?: "not_created" | "draft" | "published" | "unpublished" | string;
+  directoryPublishedAt?: string | null;
   status: "new" | "reviewing" | "approved" | "declined" | string;
   notes: string | null;
   createdAt: string;
@@ -201,6 +204,89 @@ type VendorPartnerApplication = {
     createdAt: string;
   }>;
 };
+
+type VendorDirectoryListingDraft = {
+  about: string;
+  category: string;
+  contactName: string;
+  email: string;
+  fit: string;
+  gallery: string[];
+  id: string;
+  instagram: string;
+  location: string;
+  logoLabel: string;
+  name: string;
+  phone: string;
+  price: number;
+  reviews: number;
+  rating: string;
+  responseTime: string;
+  services: string[];
+  tags: string[];
+  website: string;
+};
+
+function vendorDirectorySlug(application: Pick<VendorPartnerApplication, "id" | "businessName">) {
+  const slug = application.businessName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 60);
+  return `${slug || "vendor"}-${application.id}`;
+}
+
+function parseVendorPrice(value: string | number | null | undefined) {
+  if (typeof value === "number" && Number.isFinite(value)) return Math.max(0, Math.round(value));
+  if (!value) return 0;
+  const numeric = Number(String(value).replace(/[^\d.]/g, ""));
+  return Number.isFinite(numeric) ? Math.max(0, Math.round(numeric)) : 0;
+}
+
+function buildVendorDirectoryDraft(application: VendorPartnerApplication): VendorDirectoryListingDraft {
+  const existing = application.directoryListing && typeof application.directoryListing === "object"
+    ? application.directoryListing as Partial<VendorDirectoryListingDraft>
+    : {};
+  const fallbackGallery = (application.servicePhotos ?? [])
+    .map(photo => photo.dataUrl)
+    .filter(Boolean)
+    .slice(0, 4);
+  const category = application.category || "Wedding Vendor";
+  const location = application.serviceArea || "Service area available on request";
+  return {
+    about: existing.about || application.description || `${application.businessName} is an A.I DO partner serving ${location}.`,
+    category: existing.category || category,
+    contactName: existing.contactName || application.contactName,
+    email: existing.email || application.email,
+    fit: existing.fit || application.description?.slice(0, 180) || `${category} partner serving ${location}.`,
+    gallery: Array.isArray(existing.gallery) && existing.gallery.length ? existing.gallery : fallbackGallery,
+    id: existing.id || vendorDirectorySlug(application),
+    instagram: existing.instagram || application.instagram || "",
+    location: existing.location || location,
+    logoLabel: existing.logoLabel || application.businessName,
+    name: existing.name || application.businessName,
+    phone: existing.phone || application.phone || "",
+    price: parseVendorPrice(existing.price ?? application.startingPrice),
+    reviews: Number.isFinite(existing.reviews) ? Number(existing.reviews) : 0,
+    rating: existing.rating || "New",
+    responseTime: existing.responseTime || "Replies after inquiry",
+    services: Array.isArray(existing.services) && existing.services.length
+      ? existing.services
+      : [`${category} services`, "Wedding consultation", "Custom quote"],
+    tags: Array.isArray(existing.tags) && existing.tags.length
+      ? existing.tags
+      : [category, location, "A.I DO Partner"],
+    website: existing.website || application.website || "",
+  };
+}
+
+function listToTextarea(value: string[]) {
+  return value.join("\n");
+}
+
+function textareaToList(value: string) {
+  return value.split("\n").map(item => item.trim()).filter(Boolean);
+}
 
 type ArchiveSummary = {
   archiveType: string;
@@ -567,6 +653,8 @@ export default function OperationsCenterPage() {
   const [launchPlanEmailRecipients, setLaunchPlanEmailRecipients] = useState<Record<string, string>>({});
   const [vendorReplyOpenId, setVendorReplyOpenId] = useState<number | null>(null);
   const [vendorReplyText, setVendorReplyText] = useState<Record<number, string>>({});
+  const [vendorDirectoryEditorId, setVendorDirectoryEditorId] = useState<number | null>(null);
+  const [vendorDirectoryDrafts, setVendorDirectoryDrafts] = useState<Record<number, VendorDirectoryListingDraft>>({});
   const [launchPlanItems, setLaunchPlanItems] = useState<LaunchPlanItem[]>(() => {
     if (typeof window === "undefined") return fallbackLaunchPlanItems;
     try {
@@ -677,6 +765,44 @@ export default function OperationsCenterPage() {
     onError: (error) => {
       toast({
         title: "Vendor reply could not be sent",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateVendorDirectoryListingMutation = useMutation({
+    mutationFn: async ({
+      id,
+      directoryListing,
+      directoryStatus,
+    }: {
+      id: number;
+      directoryListing: VendorDirectoryListingDraft;
+      directoryStatus: "draft" | "published" | "unpublished";
+    }) => {
+      const r = await authedFetch(`/api/admin/vendor-partner-applications/${id}/directory-listing`, {
+        method: "PATCH",
+        body: JSON.stringify({ directoryListing, directoryStatus }),
+      });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(body.error ?? "Failed to update directory listing");
+      return body;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-vendor-partner-applications"] });
+      queryClient.invalidateQueries({ queryKey: ["published-vendor-partner-directory"] });
+      toast({
+        title: variables.directoryStatus === "published"
+          ? "Partner listing published"
+          : variables.directoryStatus === "unpublished"
+            ? "Partner listing unpublished"
+            : "Directory draft saved",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Directory listing could not be saved",
         description: error instanceof Error ? error.message : "Please try again.",
         variant: "destructive",
       });
@@ -1593,12 +1719,13 @@ export default function OperationsCenterPage() {
               </p>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-3 sm:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                 {[
                   { label: "Total", value: vendorApplications.length },
                   { label: "New", value: vendorApplications.filter(application => application.status === "new").length },
                   { label: "Reviewing", value: vendorApplications.filter(application => application.status === "reviewing").length },
                   { label: "Approved", value: vendorApplications.filter(application => application.status === "approved").length },
+                  { label: "Published", value: vendorApplications.filter(application => application.directoryStatus === "published").length },
                 ].map(item => (
                   <div key={item.label} className="rounded-lg border border-[#E6D2D8] bg-[#FFF8F4] p-4">
                     <p className="text-xs font-semibold uppercase tracking-wider text-[#8D294D]/70">{item.label}</p>
@@ -1632,6 +1759,16 @@ export default function OperationsCenterPage() {
                       : application.status === "reviewing"
                         ? "bg-amber-50 text-amber-700 border-amber-200"
                         : "bg-primary/10 text-primary border-primary/20";
+                const directoryDraft = vendorDirectoryDrafts[application.id] ?? buildVendorDirectoryDraft(application);
+                const directoryStatus = application.directoryStatus || "not_created";
+                const directoryStatusClass =
+                  directoryStatus === "published"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : directoryStatus === "draft"
+                      ? "border-amber-200 bg-amber-50 text-amber-700"
+                      : directoryStatus === "unpublished"
+                        ? "border-slate-200 bg-slate-50 text-slate-700"
+                        : "border-[#E6D2D8] bg-[#FFF8F4] text-[#6F3E54]";
                 return (
                   <Card key={application.id}>
                     <CardContent className="space-y-4 pt-6">
@@ -1640,6 +1777,9 @@ export default function OperationsCenterPage() {
                           <div className="flex flex-wrap items-center gap-2">
                             <h2 className="font-serif text-2xl font-semibold text-[#24171D]">{application.businessName}</h2>
                             <Badge className={`border ${statusClass}`}>{application.status}</Badge>
+                            <Badge variant="outline" className={`border ${directoryStatusClass}`}>
+                              Directory: {directoryStatus.replace("_", " ")}
+                            </Badge>
                           </div>
                           <p className="mt-1 text-sm font-medium text-[#4A3941]">
                             {application.category} | {application.serviceArea}
@@ -1719,6 +1859,236 @@ export default function OperationsCenterPage() {
                           </div>
                         </div>
                       ) : null}
+
+                      <div className="rounded-lg border border-[#E6D2D8] bg-white p-4">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                          <div>
+                            <p className="font-serif text-lg font-semibold text-[#24171D]">Partner Network listing</p>
+                            <p className="text-sm text-[#4A3941]">
+                              Build the user-facing directory profile from this intake, edit each section, then publish it to the website Partner Network.
+                            </p>
+                            {application.directoryPublishedAt ? (
+                              <p className="mt-1 text-xs font-medium text-[#6F3E54]">
+                                Published {new Date(application.directoryPublishedAt).toLocaleString()}
+                              </p>
+                            ) : null}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-2"
+                              onClick={() => {
+                                const draft = buildVendorDirectoryDraft(application);
+                                setVendorDirectoryDrafts(current => ({ ...current, [application.id]: draft }));
+                                setVendorDirectoryEditorId(current => current === application.id ? null : application.id);
+                              }}
+                            >
+                              <Eye className="h-4 w-4" />
+                              {vendorDirectoryEditorId === application.id ? "Close editor" : "Edit listing"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={updateVendorDirectoryListingMutation.isPending}
+                              onClick={() => updateVendorDirectoryListingMutation.mutate({
+                                id: application.id,
+                                directoryListing: directoryDraft,
+                                directoryStatus: "draft",
+                              })}
+                            >
+                              Save draft
+                            </Button>
+                            <Button
+                              size="sm"
+                              disabled={updateVendorDirectoryListingMutation.isPending}
+                              onClick={() => updateVendorDirectoryListingMutation.mutate({
+                                id: application.id,
+                                directoryListing: directoryDraft,
+                                directoryStatus: "published",
+                              })}
+                            >
+                              Publish
+                            </Button>
+                            {directoryStatus === "published" ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={updateVendorDirectoryListingMutation.isPending}
+                                onClick={() => updateVendorDirectoryListingMutation.mutate({
+                                  id: application.id,
+                                  directoryListing: directoryDraft,
+                                  directoryStatus: "unpublished",
+                                })}
+                              >
+                                Unpublish
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        {vendorDirectoryEditorId === application.id && (
+                          <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+                            <div className="space-y-4 rounded-lg border border-[#E6D2D8] bg-[#FFF8F4] p-4">
+                              <div className="grid gap-3 md:grid-cols-2">
+                                <div>
+                                  <p className="mb-1 text-xs font-semibold uppercase text-[#8D294D]/70">Display name</p>
+                                  <Input
+                                    value={directoryDraft.name}
+                                    onChange={event => setVendorDirectoryDrafts(current => ({
+                                      ...current,
+                                      [application.id]: { ...directoryDraft, name: event.target.value, logoLabel: directoryDraft.logoLabel || event.target.value },
+                                    }))}
+                                    className="bg-white"
+                                  />
+                                </div>
+                                <div>
+                                  <p className="mb-1 text-xs font-semibold uppercase text-[#8D294D]/70">Logo label</p>
+                                  <Input
+                                    value={directoryDraft.logoLabel}
+                                    onChange={event => setVendorDirectoryDrafts(current => ({
+                                      ...current,
+                                      [application.id]: { ...directoryDraft, logoLabel: event.target.value },
+                                    }))}
+                                    className="bg-white"
+                                  />
+                                </div>
+                                <div>
+                                  <p className="mb-1 text-xs font-semibold uppercase text-[#8D294D]/70">Category</p>
+                                  <Input
+                                    value={directoryDraft.category}
+                                    onChange={event => setVendorDirectoryDrafts(current => ({
+                                      ...current,
+                                      [application.id]: { ...directoryDraft, category: event.target.value },
+                                    }))}
+                                    className="bg-white"
+                                  />
+                                </div>
+                                <div>
+                                  <p className="mb-1 text-xs font-semibold uppercase text-[#8D294D]/70">Service area</p>
+                                  <Input
+                                    value={directoryDraft.location}
+                                    onChange={event => setVendorDirectoryDrafts(current => ({
+                                      ...current,
+                                      [application.id]: { ...directoryDraft, location: event.target.value },
+                                    }))}
+                                    className="bg-white"
+                                  />
+                                </div>
+                                <div>
+                                  <p className="mb-1 text-xs font-semibold uppercase text-[#8D294D]/70">Starting price</p>
+                                  <Input
+                                    type="number"
+                                    value={directoryDraft.price}
+                                    onChange={event => setVendorDirectoryDrafts(current => ({
+                                      ...current,
+                                      [application.id]: { ...directoryDraft, price: parseVendorPrice(event.target.value) },
+                                    }))}
+                                    className="bg-white"
+                                  />
+                                </div>
+                                <div>
+                                  <p className="mb-1 text-xs font-semibold uppercase text-[#8D294D]/70">Response time</p>
+                                  <Input
+                                    value={directoryDraft.responseTime}
+                                    onChange={event => setVendorDirectoryDrafts(current => ({
+                                      ...current,
+                                      [application.id]: { ...directoryDraft, responseTime: event.target.value },
+                                    }))}
+                                    className="bg-white"
+                                  />
+                                </div>
+                              </div>
+
+                              <div>
+                                <p className="mb-1 text-xs font-semibold uppercase text-[#8D294D]/70">Short card summary</p>
+                                <Textarea
+                                  value={directoryDraft.fit}
+                                  onChange={event => setVendorDirectoryDrafts(current => ({
+                                    ...current,
+                                    [application.id]: { ...directoryDraft, fit: event.target.value },
+                                  }))}
+                                  className="min-h-[90px] bg-white"
+                                />
+                              </div>
+                              <div>
+                                <p className="mb-1 text-xs font-semibold uppercase text-[#8D294D]/70">About section</p>
+                                <Textarea
+                                  value={directoryDraft.about}
+                                  onChange={event => setVendorDirectoryDrafts(current => ({
+                                    ...current,
+                                    [application.id]: { ...directoryDraft, about: event.target.value },
+                                  }))}
+                                  className="min-h-[120px] bg-white"
+                                />
+                              </div>
+                              <div className="grid gap-3 md:grid-cols-2">
+                                <div>
+                                  <p className="mb-1 text-xs font-semibold uppercase text-[#8D294D]/70">Services, one per line</p>
+                                  <Textarea
+                                    value={listToTextarea(directoryDraft.services)}
+                                    onChange={event => setVendorDirectoryDrafts(current => ({
+                                      ...current,
+                                      [application.id]: { ...directoryDraft, services: textareaToList(event.target.value) },
+                                    }))}
+                                    className="min-h-[130px] bg-white"
+                                  />
+                                </div>
+                                <div>
+                                  <p className="mb-1 text-xs font-semibold uppercase text-[#8D294D]/70">Tags, one per line</p>
+                                  <Textarea
+                                    value={listToTextarea(directoryDraft.tags)}
+                                    onChange={event => setVendorDirectoryDrafts(current => ({
+                                      ...current,
+                                      [application.id]: { ...directoryDraft, tags: textareaToList(event.target.value) },
+                                    }))}
+                                    className="min-h-[130px] bg-white"
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid gap-3 md:grid-cols-2">
+                                {(["contactName", "email", "phone", "website", "instagram"] as const).map(field => (
+                                  <div key={field}>
+                                    <p className="mb-1 text-xs font-semibold uppercase text-[#8D294D]/70">{field}</p>
+                                    <Input
+                                      value={String(directoryDraft[field] ?? "")}
+                                      onChange={event => setVendorDirectoryDrafts(current => ({
+                                        ...current,
+                                        [application.id]: { ...directoryDraft, [field]: event.target.value },
+                                      }))}
+                                      className="bg-white"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="space-y-3 rounded-lg border border-[#E6D2D8] bg-white p-4">
+                              <p className="text-xs font-semibold uppercase tracking-wider text-[#8D294D]/70">Preview</p>
+                              <div className="rounded-xl border border-[#E8C9D4] bg-[#FFF8F4] p-4">
+                                <div className="flex h-20 items-center justify-center rounded-lg border border-[#E8C9D4] bg-white px-3 text-center">
+                                  <p className="font-serif text-xl text-[#8D294D]">{directoryDraft.logoLabel}</p>
+                                </div>
+                                <h3 className="mt-3 font-serif text-2xl text-[#24171D]">{directoryDraft.name}</h3>
+                                <p className="text-sm font-medium text-[#6F3E54]">{directoryDraft.category} | {directoryDraft.location}</p>
+                                <p className="mt-3 text-sm leading-6 text-[#4A3941]">{directoryDraft.fit}</p>
+                                <div className="mt-3 flex flex-wrap gap-1.5">
+                                  {directoryDraft.tags.slice(0, 4).map(tag => (
+                                    <span key={tag} className="rounded-full bg-primary/10 px-2 py-1 text-xs text-primary">{tag}</span>
+                                  ))}
+                                </div>
+                                {directoryDraft.gallery.length > 0 ? (
+                                  <div className="mt-3 grid grid-cols-3 gap-2">
+                                    {directoryDraft.gallery.slice(0, 3).map((photo, index) => (
+                                      <img key={`${application.id}-directory-preview-${index}`} src={photo} alt="" className="aspect-square rounded-lg object-cover" />
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
 
                       <Textarea
                         defaultValue={application.notes ?? ""}

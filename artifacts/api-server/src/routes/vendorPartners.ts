@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { db, vendorPartnerApplications } from "@workspace/db";
+import { desc, eq } from "drizzle-orm";
+import { cleanVendorDirectoryListing, ensureVendorPartnerDirectoryColumns } from "../lib/vendorPartnerDirectory";
 
 const router = Router();
 
@@ -66,6 +68,26 @@ router.post("/vendor-partners", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Vendor partner application submit error");
     res.status(500).json({ error: "Could not submit vendor partner application." });
+  }
+});
+
+router.get("/vendor-partners/directory", async (req, res) => {
+  try {
+    await ensureVendorPartnerDirectoryColumns();
+    const applications = await db
+      .select()
+      .from(vendorPartnerApplications)
+      .where(eq(vendorPartnerApplications.directoryStatus, "published"))
+      .orderBy(desc(vendorPartnerApplications.directoryPublishedAt), desc(vendorPartnerApplications.updatedAt));
+
+    res.json({
+      listings: applications.map((application) =>
+        cleanVendorDirectoryListing(application.directoryListing, application),
+      ),
+    });
+  } catch (err) {
+    req.log.error({ err }, "Vendor partner directory load error");
+    res.status(500).json({ error: "Could not load vendor partner directory." });
   }
 });
 

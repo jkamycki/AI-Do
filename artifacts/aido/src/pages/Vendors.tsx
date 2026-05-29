@@ -273,6 +273,28 @@ const SAMPLE_VENDOR_DIRECTORY: VendorDirectoryListing[] = [
   },
 ];
 
+function usePublishedPartnerListings() {
+  return useQuery<VendorDirectoryListing[]>({
+    queryKey: ["published-vendor-partner-directory"],
+    queryFn: async () => {
+      const response = await authFetch("/api/vendor-partners/directory");
+      if (!response.ok) return [];
+      const body = await response.json().catch(() => ({}));
+      return Array.isArray(body.listings) ? body.listings : [];
+    },
+    staleTime: 60_000,
+  });
+}
+
+function mergePartnerListings(publishedListings: VendorDirectoryListing[] | undefined) {
+  const published = publishedListings ?? [];
+  const publishedIds = new Set(published.map(listing => listing.id));
+  return [
+    ...published,
+    ...SAMPLE_VENDOR_DIRECTORY.filter(listing => !publishedIds.has(listing.id)),
+  ];
+}
+
 function normalizeVendorCategory(category: string | null | undefined) {
   const raw = String(category ?? "").trim();
   if (/^dj\s*\/?\s*(band)?$/i.test(raw) || /^dj\s*\/\s*band$/i.test(raw)) return "DJ / Band";
@@ -1992,6 +2014,8 @@ function VendorDirectoryTab({
   const { toast } = useToast();
   const { user } = useUser();
   const { data: vendors = [] } = useListVendors();
+  const { data: publishedPartnerListings = [] } = usePublishedPartnerListings();
+  const partnerListings = useMemo(() => mergePartnerListings(publishedPartnerListings), [publishedPartnerListings]);
   const [selectedListing, setSelectedListing] = useState<VendorDirectoryListing | null>(null);
   const [pendingMessageListing, setPendingMessageListing] = useState<VendorDirectoryListing | null>(null);
   const accountEmail = user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses?.[0]?.emailAddress ?? "";
@@ -2172,7 +2196,7 @@ function VendorDirectoryTab({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {SAMPLE_VENDOR_DIRECTORY.map((listing) => (
+        {partnerListings.map((listing) => (
           <div
             key={listing.id}
             role="button"
@@ -2266,6 +2290,7 @@ function VendorHubMessagesTab({
 }) {
   const { toast } = useToast();
   const { data: vendors = [], isLoading: vendorsLoading } = useListVendors();
+  const { data: publishedPartnerListings = [] } = usePublishedPartnerListings();
   const { data: conversations = [], isLoading } = useListConversations({
     query: {
       queryKey: getListConversationsQueryKey(),
@@ -2321,8 +2346,8 @@ function VendorHubMessagesTab({
     [vendors]
   );
   const sortedPartnerListings = useMemo(
-    () => [...SAMPLE_VENDOR_DIRECTORY].sort((a, b) => a.name.localeCompare(b.name)),
-    []
+    () => mergePartnerListings(publishedPartnerListings).sort((a, b) => a.name.localeCompare(b.name)),
+    [publishedPartnerListings]
   );
   const selectedConversationName = typeof selectedConversation?.vendorName === "string" ? selectedConversation.vendorName.trim() : "";
   const selectedVendorName = selectedConversationName || vendorDisplayName(selectedVendor) || selectedPartnerListing?.name || "Vendor";
@@ -2337,7 +2362,7 @@ function VendorHubMessagesTab({
   }
 
   function selectPartnerMessages(listingId: string) {
-    const listing = SAMPLE_VENDOR_DIRECTORY.find((item) => item.id === listingId);
+    const listing = sortedPartnerListings.find((item) => item.id === listingId);
     if (!listing) return;
     const existingVendor = vendors.find((vendor) => (
       vendor.email?.toLowerCase() === listing.email.toLowerCase() ||

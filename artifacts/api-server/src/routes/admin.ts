@@ -29,6 +29,11 @@ import {
   upsertMaintenanceFlag,
 } from "../lib/maintenance";
 import { buildVendorPartnerThreadAddress, ensureVendorPartnerThreadToken, getSupportInboxAddresses } from "../lib/supportInbox";
+import {
+  buildVendorDirectoryListing,
+  cleanVendorDirectoryListing,
+  ensureVendorPartnerDirectoryColumns,
+} from "../lib/vendorPartnerDirectory";
 
 const router = Router();
 
@@ -551,6 +556,7 @@ router.get("/admin/test-sessions", requireAuth, requireAdmin, async (req, res) =
 
 router.get("/admin/vendor-partner-applications", requireAuth, requireAdmin, async (req, res) => {
   try {
+    await ensureVendorPartnerDirectoryColumns();
     const applications = await db
       .select()
       .from(vendorPartnerApplications)
@@ -583,6 +589,7 @@ router.get("/admin/vendor-partner-applications", requireAuth, requireAdmin, asyn
 
 router.patch("/admin/vendor-partner-applications/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
+    await ensureVendorPartnerDirectoryColumns();
     const id = Number(req.params.id);
     const status = typeof req.body?.status === "string" ? req.body.status.trim() : "";
     const notes = typeof req.body?.notes === "string" ? req.body.notes.trim() : undefined;
@@ -610,6 +617,56 @@ router.patch("/admin/vendor-partner-applications/:id", requireAuth, requireAdmin
     res.json(updated);
   } catch (err) {
     req.log.error(err, "Failed to update vendor partner application");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/admin/vendor-partner-applications/:id/directory-listing", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    await ensureVendorPartnerDirectoryColumns();
+    const id = Number(req.params.id);
+    const directoryStatus = typeof req.body?.directoryStatus === "string" ? req.body.directoryStatus.trim() : "draft";
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(400).json({ error: "Invalid application id" });
+      return;
+    }
+    if (!["draft", "published", "unpublished"].includes(directoryStatus)) {
+      res.status(400).json({ error: "Invalid directory status" });
+      return;
+    }
+
+    const [application] = await db
+      .select()
+      .from(vendorPartnerApplications)
+      .where(eq(vendorPartnerApplications.id, id))
+      .limit(1);
+    if (!application) {
+      res.status(404).json({ error: "Application not found" });
+      return;
+    }
+
+    const currentListing = application.directoryListing && Object.keys(application.directoryListing).length
+      ? application.directoryListing
+      : buildVendorDirectoryListing(application);
+    const directoryListing = cleanVendorDirectoryListing(req.body?.directoryListing ?? currentListing, application);
+    const [updated] = await db
+      .update(vendorPartnerApplications)
+      .set({
+        directoryListing,
+        directoryStatus,
+        directoryPublishedAt: directoryStatus === "published" ? new Date() : application.directoryPublishedAt,
+        status: directoryStatus === "published" && application.status !== "approved" ? "approved" : application.status,
+        updatedAt: new Date(),
+      })
+      .where(eq(vendorPartnerApplications.id, id))
+      .returning();
+
+    res.json({
+      ...updated,
+      directoryListing,
+    });
+  } catch (err) {
+    req.log.error(err, "Failed to update vendor partner directory listing");
     res.status(500).json({ error: "Internal server error" });
   }
 });
