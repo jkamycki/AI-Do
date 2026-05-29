@@ -94,7 +94,7 @@ export default function ForVendors() {
               Partner with couples already planning inside A.I Do.
             </h1>
             <p className="max-w-xl text-base leading-7 text-[#7C3F5E]/80">
-              Tell us about your business, where you serve, and what kind of weddings you love. We will review fit from the Operations Center and follow up directly.
+              Tell us about your business, where you serve, and what kind of weddings you love. We will review your details and follow up directly.
             </p>
           </div>
 
@@ -121,7 +121,7 @@ export default function ForVendors() {
               <div>
                 <h2 className="font-serif text-3xl text-[#8D294D]">Application received</h2>
                 <p className="mt-2 max-w-md text-sm leading-6 text-[#7C3F5E]/75">
-                  Thanks for reaching out. Your submission is now in the Operations Center for review.
+                  Thanks for reaching out. Your submission has been received and will be reviewed soon.
                 </p>
               </div>
               <Button className="rounded-full bg-[#8D294D] text-white hover:bg-[#7C3F5E]" onClick={() => setSubmitted(false)}>

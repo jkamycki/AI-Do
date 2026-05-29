@@ -252,6 +252,7 @@ export function Sidebar() {
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const isPlannerOwnWorkspace = false;
+  const canPreviewVendorDirectory = user?.primaryEmailAddress?.emailAddress?.toLowerCase() === "kamyckijoseph@gmail.com";
 
   const handlePicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -372,6 +373,7 @@ export function Sidebar() {
       defaultOpen: true,
       items: [
         { href: "/vendors", label: t("sidebar.my_vendors", { defaultValue: "My Vendors" }) },
+        ...(canPreviewVendorDirectory ? [{ href: "/vendors?management=directory", label: "Vendor Directory" }] : []),
         { href: "/budget", label: t("sidebar.budget_summary", { defaultValue: "Budget Summary" }) },
         { href: "/vendors?management=contacts", label: t("sidebar.vendor_contacts", { defaultValue: "Vendor List & Contacts" }) },
       ],

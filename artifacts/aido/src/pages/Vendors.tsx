@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useEffect } from "react";
-import { useAuth } from "@clerk/react";
+import { useAuth, useUser } from "@clerk/react";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { authFetch } from "@/lib/authFetch";
 import { getCurrentLanguageName } from "@/lib/languagePreference";
@@ -121,7 +121,73 @@ const CATEGORY_COLORS: Record<string, string> = {
   "Other": "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
 };
 
-type VendorManagementTab = "vendors" | "contacts";
+type VendorManagementTab = "vendors" | "contacts" | "directory";
+
+const VENDOR_DIRECTORY_PREVIEW_EMAIL = "kamyckijoseph@gmail.com";
+
+type VendorDirectoryListing = {
+  category: string;
+  contactName: string;
+  email: string;
+  fit: string;
+  id: string;
+  location: string;
+  name: string;
+  phone: string;
+  price: number;
+  rating: string;
+  responseTime: string;
+  tags: string[];
+  website: string;
+};
+
+const SAMPLE_VENDOR_DIRECTORY: VendorDirectoryListing[] = [
+  {
+    category: "Photography",
+    contactName: "Maya Bennett",
+    email: "hello@lumenandlace.example",
+    fit: "Editorial style, warm film tones, and strong getting-ready coverage.",
+    id: "lumen-lace-photo",
+    location: "South Florida",
+    name: "Lumen & Lace Photo",
+    phone: "(555) 021-1402",
+    price: 4200,
+    rating: "4.9",
+    responseTime: "Replies in 1 day",
+    tags: ["Editorial", "Film look", "Engagement session"],
+    website: "https://example.com/lumen-lace",
+  },
+  {
+    category: "Florist",
+    contactName: "Isabel Cruz",
+    email: "studio@verdepetal.example",
+    fit: "Romantic garden arrangements, ceremony arches, and candle-heavy reception styling.",
+    id: "verde-petal-studio",
+    location: "Miami / Fort Lauderdale",
+    name: "Verde Petal Studio",
+    phone: "(555) 019-7288",
+    price: 2800,
+    rating: "4.8",
+    responseTime: "Replies same day",
+    tags: ["Garden", "Installations", "Candles"],
+    website: "https://example.com/verde-petal",
+  },
+  {
+    category: "DJ / Band",
+    contactName: "Andre Cole",
+    email: "bookings@coleevents.example",
+    fit: "Clean MC style, bilingual announcements, ceremony sound, and reception dance floor.",
+    id: "cole-events-dj",
+    location: "Tri-County Area",
+    name: "Cole Events DJ",
+    phone: "(555) 017-9091",
+    price: 1650,
+    rating: "5.0",
+    responseTime: "Replies in 2 hours",
+    tags: ["Bilingual", "Ceremony audio", "Lighting"],
+    website: "https://example.com/cole-events",
+  },
+];
 
 function normalizeVendorCategory(category: string | null | undefined) {
   const raw = String(category ?? "").trim();
@@ -1828,6 +1894,88 @@ function VendorContactsTab() {
   );
 }
 
+function VendorDirectoryTab() {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-primary/15 bg-primary/5 p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary">Private preview</p>
+            <h2 className="mt-1 font-serif text-2xl text-foreground">Vendor Directory</h2>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+              Sample vendor marketplace for your account only. This is hidden from all other signed-in users while you decide how it should work.
+            </p>
+          </div>
+          <Badge className="w-fit bg-primary text-primary-foreground">Only {VENDOR_DIRECTORY_PREVIEW_EMAIL}</Badge>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {SAMPLE_VENDOR_DIRECTORY.map((listing) => (
+          <div key={listing.id} className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <Badge className={vendorCategoryBadgeClass(listing.category)}>
+                  {vendorCategoryLabel(listing.category)}
+                </Badge>
+                <h3 className="mt-3 font-serif text-xl text-foreground">{listing.name}</h3>
+                <p className="text-sm text-muted-foreground">{listing.location}</p>
+              </div>
+              <div className="rounded-full bg-amber-50 px-2.5 py-1 text-sm font-semibold text-amber-700">
+                {listing.rating}
+              </div>
+            </div>
+
+            <p className="mt-4 text-sm leading-6 text-foreground">{listing.fit}</p>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              {listing.tags.map((tag) => (
+                <span key={tag} className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+                  {tag}
+                </span>
+              ))}
+            </div>
+
+            <div className="mt-5 space-y-2 text-sm">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <DollarSign className="h-4 w-4 text-primary" />
+                From {formatCurrency(listing.price)}
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="h-4 w-4 text-primary" />
+                {listing.responseTime}
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Mail className="h-4 w-4 text-primary" />
+                <a className="hover:text-primary" href={`mailto:${listing.email}`}>{listing.email}</a>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Phone className="h-4 w-4 text-primary" />
+                <a className="hover:text-primary" href={phoneHref(listing.phone, "tel")}>{listing.phone}</a>
+              </div>
+            </div>
+
+            <div className="mt-5 flex gap-2">
+              <Button asChild size="sm" className="flex-1">
+                <a href={`mailto:${listing.email}?subject=A.I Do vendor intro request`}>
+                  <Mail className="mr-1.5 h-3.5 w-3.5" />
+                  Intro
+                </a>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <a href={listing.website} target="_blank" rel="noreferrer">
+                  <Globe className="mr-1.5 h-3.5 w-3.5" />
+                  Site
+                </a>
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function VendorCard({
   vendor,
   onClick,
@@ -2007,6 +2155,7 @@ export default function Vendors() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { user } = useUser();
   const { data: vendors = [], isLoading } = useListVendors();
   const { data: profile, isLoading: profileLoading } = useGetProfile();
   const [location, setLocation] = useLocation();
@@ -2016,6 +2165,8 @@ export default function Vendors() {
   const requestedVendorId = Number(query.get("vendorId") ?? "");
   const requestedTab = query.get("tab");
   const requestedManagementTab = query.get("management");
+  const userEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase() ?? "";
+  const canPreviewVendorDirectory = userEmail === VENDOR_DIRECTORY_PREVIEW_EMAIL;
 
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
@@ -2026,6 +2177,8 @@ export default function Vendors() {
   const [activeManagementTab, setActiveManagementTab] = useState<VendorManagementTab>(
     requestedManagementTab === "contacts"
       ? "contacts"
+      : requestedManagementTab === "directory" && canPreviewVendorDirectory
+        ? "directory"
       : "vendors",
   );
 
@@ -2103,10 +2256,14 @@ export default function Vendors() {
   useEffect(() => {
     if (requestedManagementTab === "contacts") {
       setActiveManagementTab("contacts");
+    } else if (requestedManagementTab === "directory" && canPreviewVendorDirectory) {
+      setActiveManagementTab("directory");
     } else if (requestedManagementTab === "vendors") {
       setActiveManagementTab("vendors");
+    } else if (activeManagementTab === "directory" && !canPreviewVendorDirectory) {
+      setActiveManagementTab("vendors");
     }
-  }, [requestedManagementTab]);
+  }, [activeManagementTab, canPreviewVendorDirectory, requestedManagementTab]);
 
   if (isLoading) {
     return (
@@ -2156,6 +2313,9 @@ export default function Vendors() {
         <TabsList>
           <TabsTrigger value="vendors">{t("vendors.tab_vendors", { defaultValue: "Vendor List" })}</TabsTrigger>
           <TabsTrigger value="contacts">{t("vendors.tab_contacts", { defaultValue: "Contacts" })}</TabsTrigger>
+          {canPreviewVendorDirectory && (
+            <TabsTrigger value="directory">Directory</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="vendors" className="space-y-6 mt-4">
@@ -2231,6 +2391,11 @@ export default function Vendors() {
         <TabsContent value="contacts" className="mt-4">
           <VendorContactsTab />
         </TabsContent>
+        {canPreviewVendorDirectory && (
+          <TabsContent value="directory" className="mt-4">
+            <VendorDirectoryTab />
+          </TabsContent>
+        )}
       </Tabs>
 
       {showAddDialog && (

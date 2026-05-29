@@ -28,7 +28,6 @@ const couplePhotoUri =
   'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=640&q=90';
 const userAvatarUri =
   'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=180&q=80';
-const vendorDirectoryPreviewEmail = 'kamyckijoseph@gmail.com';
 
 type TabId = 'today' | 'website' | 'plan' | 'guests' | 'vendors' | 'money' | 'more';
 type BottomTabId = TabId | 'aria';
@@ -127,70 +126,6 @@ type ApiVendorFinancials = {
     totalPaid: number;
   }>;
 };
-
-type VendorDirectoryListing = {
-  arrivalTime: string;
-  category: string;
-  contactName: string;
-  email: string;
-  fit: string;
-  id: string;
-  location: string;
-  name: string;
-  phone: string;
-  price: number;
-  rating: string;
-  responseTime: string;
-  tags: string[];
-};
-
-const sampleVendorDirectory: VendorDirectoryListing[] = [
-  {
-    arrivalTime: '10:00 AM',
-    category: 'Photography',
-    contactName: 'Maya Bennett',
-    email: 'hello@lumenandlace.example',
-    fit: 'Editorial style, warm film tones, strong getting-ready coverage.',
-    id: 'directory-lumen-lace',
-    location: 'South Florida',
-    name: 'Lumen & Lace Photo',
-    phone: '(555) 021-1402',
-    price: 4200,
-    rating: '4.9',
-    responseTime: 'Replies in 1 day',
-    tags: ['Editorial', 'Film look', 'Engagement shoot'],
-  },
-  {
-    arrivalTime: '11:30 AM',
-    category: 'Florist',
-    contactName: 'Isabel Cruz',
-    email: 'studio@verdepetal.example',
-    fit: 'Romantic garden arrangements, ceremony arches, and candle-heavy reception styling.',
-    id: 'directory-verde-petal',
-    location: 'Miami / Fort Lauderdale',
-    name: 'Verde Petal Studio',
-    phone: '(555) 019-7288',
-    price: 2800,
-    rating: '4.8',
-    responseTime: 'Replies same day',
-    tags: ['Garden', 'Installations', 'Candles'],
-  },
-  {
-    arrivalTime: '3:00 PM',
-    category: 'DJ & Entertainment',
-    contactName: 'Andre Cole',
-    email: 'bookings@coleevents.example',
-    fit: 'Clean MC style, bilingual announcements, ceremony sound, and reception dance floor.',
-    id: 'directory-cole-events',
-    location: 'Tri-County Area',
-    name: 'Cole Events DJ',
-    phone: '(555) 017-9091',
-    price: 1650,
-    rating: '5.0',
-    responseTime: 'Replies in 2 hours',
-    tags: ['Bilingual', 'Ceremony audio', 'Lighting'],
-  },
-];
 
 type ApiManualExpense = {
   amountPaid: number;
@@ -319,7 +254,6 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
     const websiteDrafts = data.websiteSections.filter((section) => section.status !== 'Published').length;
     return { progress, confirmed, pending, paid, total, reviewContracts, websiteDrafts };
   }, [data]);
-  const canPreviewVendorDirectory = authUser?.email.toLowerCase() === vendorDirectoryPreviewEmail;
 
   const showPhonePreview = Platform.OS === 'web' && width >= 520;
   const maxWidth = showPhonePreview ? 390 : Math.min(width, 560);
@@ -658,7 +592,7 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
               progress={stats.progress}
             />
           ) : null}
-          {activeTab === 'vendors' ? <VendorsSection canPreviewDirectory={canPreviewVendorDirectory} data={data} onAddVendor={addVendor} openMockAction={setMockAction} openVendor={setSelectedVendor} /> : null}
+          {activeTab === 'vendors' ? <VendorsSection data={data} onAddVendor={addVendor} openMockAction={setMockAction} openVendor={setSelectedVendor} /> : null}
           {activeTab === 'money' ? <MoneySection data={data} openMockAction={setMockAction} paid={stats.paid} total={stats.total} /> : null}
           {activeTab === 'more' ? (
             <FeatureHub
@@ -4765,31 +4699,23 @@ function WeddingPartyEditorModal({
 }
 
 function VendorsSection({
-  canPreviewDirectory,
   data,
   onAddVendor,
   openMockAction,
   openVendor,
 }: {
-  canPreviewDirectory: boolean;
   data: typeof samplePlanningData;
   onAddVendor: (vendor: VendorRecord) => void;
   openMockAction: (action: MockAction) => void;
   openVendor: (vendor: VendorRecord) => void;
 }) {
   const [addingVendor, setAddingVendor] = useState<VendorRecord | null>(null);
-  const [vendorView, setVendorView] = useState<'list' | 'contacts' | 'messages' | 'directory'>('list');
+  const [vendorView, setVendorView] = useState<'list' | 'contacts' | 'messages'>('list');
   const [messageVendor, setMessageVendor] = useState<VendorRecord | null>(null);
   const vendors = data.vendors;
   const totalCommitted = vendors.reduce((sum, vendor) => sum + vendor.committed, 0);
   const totalPaid = vendors.reduce((sum, vendor) => sum + vendor.paid, 0);
   const signedCount = vendors.filter((vendor) => vendor.status === 'Signed' || vendor.status === 'Completed').length;
-  const vendorTabs = [
-    ['list', 'Vendor List', 'storefront-outline'],
-    ['contacts', 'Contacts', 'people-outline'],
-    ['messages', 'Messages', 'chatbubbles-outline'],
-    ...(canPreviewDirectory ? [['directory', 'Directory', 'search-outline']] : []),
-  ] as Array<['list' | 'contacts' | 'messages' | 'directory', string, keyof typeof Ionicons.glyphMap]>;
 
   return (
     <Section title="Vendors" subtitle="Track vendor contacts, contracts, payment status, files, and messages.">
@@ -4840,11 +4766,15 @@ function VendorsSection({
       </View>
 
       <View style={styles.plannerSwitch}>
-        {vendorTabs.map(([id, label, icon]) => {
+        {[
+          ['list', 'Vendor List', 'storefront-outline'],
+          ['contacts', 'Contacts', 'people-outline'],
+          ['messages', 'Messages', 'chatbubbles-outline'],
+        ].map(([id, label, icon]) => {
           const active = vendorView === id;
           return (
-            <Pressable key={id} onPress={() => setVendorView(id)} style={[styles.plannerSwitchButton, active && styles.plannerSwitchButtonActive]}>
-              <Ionicons color={active ? colors.surface : colors.rose} name={icon} size={16} />
+            <Pressable key={id} onPress={() => setVendorView(id as 'list' | 'contacts' | 'messages')} style={[styles.plannerSwitchButton, active && styles.plannerSwitchButtonActive]}>
+              <Ionicons color={active ? colors.surface : colors.rose} name={icon as keyof typeof Ionicons.glyphMap} size={16} />
               <Text style={[styles.plannerSwitchText, active && styles.plannerSwitchTextActive]}>{label}</Text>
             </Pressable>
           );
@@ -4918,39 +4848,6 @@ function VendorsSection({
             ))}
           </View>
         </Card>
-      ) : null}
-
-      {canPreviewDirectory && vendorView === 'directory' ? (
-        <VendorDirectoryPreview
-          onAddVendor={(listing) => {
-            onAddVendor({
-              arrivalTime: listing.arrivalTime,
-              category: listing.category,
-              committed: listing.price,
-              contactName: listing.contactName,
-              email: listing.email,
-              id: listing.id,
-              name: listing.name,
-              paid: 0,
-              payments: [],
-              phone: listing.phone,
-              remaining: listing.price,
-              status: 'Pending',
-            });
-            openMockAction({
-              title: `${listing.name} added`,
-              detail: `${listing.name} was copied from the private sample directory into your vendor list. This preview is only visible for ${vendorDirectoryPreviewEmail}.`,
-              primaryLabel: 'Done',
-            });
-          }}
-          onRequestIntro={(listing) =>
-            openMockAction({
-              title: `${listing.name} intro request`,
-              detail: `Sample intro flow for ${listing.contactName}. In production, this can become a lead request, email handoff, or preferred-vendor referral workflow.`,
-              primaryLabel: 'Close',
-            })
-          }
-        />
       ) : null}
 
       <VendorMessageModal onClose={() => setMessageVendor(null)} vendor={messageVendor} />
@@ -7254,71 +7151,6 @@ function PaymentActionRow({
         </View>
       )}
     </View>
-  );
-}
-
-function VendorDirectoryPreview({
-  onAddVendor,
-  onRequestIntro,
-}: {
-  onAddVendor: (listing: VendorDirectoryListing) => void;
-  onRequestIntro: (listing: VendorDirectoryListing) => void;
-}) {
-  return (
-    <Card>
-      <View style={styles.cardHeaderRow}>
-        <View style={styles.hubCopy}>
-          <Text style={styles.cardTitle}>Private Vendor Directory</Text>
-          <Text style={styles.hubDetail}>Sample marketplace preview, visible only for {vendorDirectoryPreviewEmail}.</Text>
-        </View>
-        <Text style={styles.smallStatus}>Private</Text>
-      </View>
-      <View style={styles.calendarList}>
-        {sampleVendorDirectory.map((listing) => (
-          <View key={listing.id} style={styles.vendorTrackerCard}>
-            <View style={styles.vendorTrackerMain}>
-              <View style={styles.financeRowIcon}>
-                <Ionicons color={colors.rose} name="ribbon-outline" size={18} />
-              </View>
-              <View style={styles.hubCopy}>
-                <View style={styles.websitePageTitleRow}>
-                  <Text style={styles.hubLabel}>{listing.name}</Text>
-                  <Text style={[styles.websiteStatusPill, websiteStatusStyle('Published')]}>{listing.rating}</Text>
-                </View>
-                <Text style={styles.hubDetail}>{listing.category} - {listing.location} - from {formatCurrency(listing.price)}</Text>
-              </View>
-            </View>
-            <Text style={styles.hubDetail}>{listing.fit}</Text>
-            <View style={styles.websiteActions}>
-              {listing.tags.map((tag) => (
-                <View key={tag} style={styles.eventTypePill}>
-                  <Text style={styles.eventTypeText}>{tag}</Text>
-                </View>
-              ))}
-            </View>
-            <View style={styles.vendorInfoList}>
-              <VendorInfoRow icon="person-outline" label="Contact" value={listing.contactName} />
-              <VendorInfoRow icon="time-outline" label="Response" value={listing.responseTime} />
-              <VendorInfoRow icon="mail-outline" label="Email" value={listing.email} />
-            </View>
-            <View style={styles.vendorQuickGrid}>
-              <Pressable onPress={() => onRequestIntro(listing)} style={styles.vendorQuickButton}>
-                <Ionicons color={colors.rose} name="mail-open-outline" size={15} />
-                <Text style={styles.vendorQuickText}>Intro</Text>
-              </Pressable>
-              <Pressable onPress={() => onAddVendor(listing)} style={styles.vendorQuickButton}>
-                <Ionicons color={colors.rose} name="add-circle-outline" size={15} />
-                <Text style={styles.vendorQuickText}>Add</Text>
-              </Pressable>
-              <Pressable onPress={() => onRequestIntro(listing)} style={styles.vendorQuickButton}>
-                <Ionicons color={colors.rose} name="heart-outline" size={15} />
-                <Text style={styles.vendorQuickText}>Shortlist</Text>
-              </Pressable>
-            </View>
-          </View>
-        ))}
-      </View>
-    </Card>
   );
 }
 
