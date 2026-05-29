@@ -774,6 +774,35 @@ export default function OperationsCenterPage() {
     },
   });
 
+  const deleteVendorApplicationMutation = useMutation({
+    mutationFn: async ({ id }: { id: number }) => {
+      const r = await authedFetch(`/api/admin/vendor-partner-applications/${id}`, {
+        method: "DELETE",
+      });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(body.error ?? "Failed to delete vendor application");
+      return body;
+    },
+    onSuccess: (_data, variables) => {
+      setVendorReplyOpenId(current => current === variables.id ? null : current);
+      setVendorDirectoryEditorId(current => current === variables.id ? null : current);
+      setVendorDirectoryDrafts(current => {
+        const next = { ...current };
+        delete next[variables.id];
+        return next;
+      });
+      queryClient.invalidateQueries({ queryKey: ["admin-vendor-partner-applications"] });
+      toast({ title: "Vendor intake deleted" });
+    },
+    onError: (error) => {
+      toast({
+        title: "Vendor intake could not be deleted",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const updateVendorDirectoryListingMutation = useMutation({
     mutationFn: async ({
       id,
@@ -1791,24 +1820,42 @@ export default function OperationsCenterPage() {
                             Submitted {new Date(application.createdAt).toLocaleString()}
                           </p>
                         </div>
-                        <Select
-                          value={application.status}
-                          onValueChange={status => updateVendorApplicationMutation.mutate({
-                            id: application.id,
-                            notes: application.notes ?? "",
-                            status,
-                          })}
-                        >
-                          <SelectTrigger className="w-full lg:w-44">
-                            <SelectValue placeholder="Status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="new">New</SelectItem>
-                            <SelectItem value="reviewing">Reviewing</SelectItem>
-                            <SelectItem value="approved">Approved</SelectItem>
-                            <SelectItem value="declined">Declined</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+                          <Select
+                            value={application.status}
+                            onValueChange={status => updateVendorApplicationMutation.mutate({
+                              id: application.id,
+                              notes: application.notes ?? "",
+                              status,
+                            })}
+                          >
+                            <SelectTrigger className="w-full lg:w-44">
+                              <SelectValue placeholder="Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="new">New</SelectItem>
+                              <SelectItem value="reviewing">Reviewing</SelectItem>
+                              <SelectItem value="approved">Approved</SelectItem>
+                              <SelectItem value="declined">Declined</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
+                            disabled={deleteVendorApplicationMutation.isPending || directoryStatus === "published"}
+                            onClick={() => {
+                              const confirmed = window.confirm(
+                                `Delete ${application.businessName} from Vendor Intake? This removes the intake details and response thread.`,
+                              );
+                              if (confirmed) deleteVendorApplicationMutation.mutate({ id: application.id });
+                            }}
+                            title={directoryStatus === "published" ? "Unpublish this partner listing before deleting the intake." : "Delete vendor intake"}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </Button>
+                        </div>
                       </div>
 
                       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">

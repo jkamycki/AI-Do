@@ -621,6 +621,43 @@ router.patch("/admin/vendor-partner-applications/:id", requireAuth, requireAdmin
   }
 });
 
+router.delete("/admin/vendor-partner-applications/:id", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    await ensureVendorPartnerDirectoryColumns();
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(400).json({ error: "Invalid application id" });
+      return;
+    }
+
+    const [application] = await db
+      .select({ id: vendorPartnerApplications.id, directoryStatus: vendorPartnerApplications.directoryStatus })
+      .from(vendorPartnerApplications)
+      .where(eq(vendorPartnerApplications.id, id))
+      .limit(1);
+    if (!application) {
+      res.status(404).json({ error: "Application not found" });
+      return;
+    }
+    if (application.directoryStatus === "published") {
+      res.status(409).json({ error: "Unpublish this partner listing before deleting the intake." });
+      return;
+    }
+
+    await db
+      .delete(vendorPartnerApplicationReplies)
+      .where(eq(vendorPartnerApplicationReplies.applicationId, id));
+    await db
+      .delete(vendorPartnerApplications)
+      .where(eq(vendorPartnerApplications.id, id));
+
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error(err, "Failed to delete vendor partner application");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.patch("/admin/vendor-partner-applications/:id/directory-listing", requireAuth, requireAdmin, async (req, res) => {
   try {
     await ensureVendorPartnerDirectoryColumns();
