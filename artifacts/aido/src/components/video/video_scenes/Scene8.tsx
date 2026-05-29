@@ -2,18 +2,38 @@ import { motion } from "framer-motion";
 import { Camera, CheckCircle2, Download, ImagePlus, QrCode, Smartphone, UploadCloud } from "lucide-react";
 import { burgundyGradientText, videoBadgeStyle, videoCardStyle, videoSmallCardStyle } from "../videoPalette";
 
-const QR_CELLS = new Set([
-  0, 1, 2, 4, 5, 6,
-  7, 9, 13,
-  14, 16, 17, 18, 20,
-  22, 24, 26, 28, 30, 32, 34,
-  35, 36, 38, 39, 41, 42,
-  43, 45, 46, 48,
-  49, 50, 51, 53, 55,
-  56, 58, 60, 61, 62,
-  64, 66, 67, 68, 70,
-  72, 73, 75, 77, 78, 80,
-]);
+const QR_GRID_SIZE = 21;
+
+function isFinderCell(x: number, y: number, originX: number, originY: number) {
+  const localX = x - originX;
+  const localY = y - originY;
+  if (localX < 0 || localY < 0 || localX > 6 || localY > 6) return null;
+  const isOuter = localX === 0 || localX === 6 || localY === 0 || localY === 6;
+  const isCenter = localX >= 2 && localX <= 4 && localY >= 2 && localY <= 4;
+  return isOuter || isCenter;
+}
+
+function isQrCellDark(index: number) {
+  const x = index % QR_GRID_SIZE;
+  const y = Math.floor(index / QR_GRID_SIZE);
+  const finder =
+    isFinderCell(x, y, 0, 0) ??
+    isFinderCell(x, y, QR_GRID_SIZE - 7, 0) ??
+    isFinderCell(x, y, 0, QR_GRID_SIZE - 7);
+  if (finder !== null) return finder;
+
+  const isSeparator =
+    (x <= 7 && y <= 7) ||
+    (x >= QR_GRID_SIZE - 8 && y <= 7) ||
+    (x <= 7 && y >= QR_GRID_SIZE - 8);
+  if (isSeparator) return false;
+
+  return (
+    (x * 3 + y * 5) % 7 === 0 ||
+    (x + y * 2) % 5 === 0 ||
+    (x > 9 && y > 9 && (x * y) % 11 < 4)
+  );
+}
 
 const PHOTO_STEPS = [
   { icon: QrCode, label: "Scan the QR code" },
@@ -24,11 +44,15 @@ const PHOTO_STEPS = [
 
 function MiniQrCode() {
   return (
-    <div className="grid h-28 w-28 grid-cols-9 gap-1 rounded-2xl border border-[#E6A6B7]/45 bg-white p-3 shadow-[0_16px_34px_rgba(141,41,77,0.14)] sm:h-32 sm:w-32">
-      {Array.from({ length: 81 }, (_, i) => (
+    <div
+      className="grid h-32 w-32 gap-[2px] rounded-2xl border border-[#E6A6B7]/45 bg-white p-3 shadow-[0_16px_34px_rgba(141,41,77,0.14)] sm:h-36 sm:w-36"
+      style={{ gridTemplateColumns: `repeat(${QR_GRID_SIZE}, minmax(0, 1fr))` }}
+      aria-label="Sample guest photo QR code"
+    >
+      {Array.from({ length: QR_GRID_SIZE * QR_GRID_SIZE }, (_, i) => (
         <span
           key={i}
-          className={`rounded-[2px] ${QR_CELLS.has(i) ? "bg-[#5B0F2A]" : "bg-[#FFF7F2]"}`}
+          className={`rounded-[1px] ${isQrCellDark(i) ? "bg-[#5B0F2A]" : "bg-white"}`}
         />
       ))}
     </div>

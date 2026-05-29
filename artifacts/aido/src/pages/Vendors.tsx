@@ -2,6 +2,7 @@ import { useState, useRef, useMemo, useEffect } from "react";
 import { useAuth, useUser } from "@clerk/react";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { authFetch } from "@/lib/authFetch";
+import { qrSvgDataUrl } from "@/lib/localQr";
 import { getCurrentLanguageName } from "@/lib/languagePreference";
 import {
   useListVendors,
@@ -60,6 +61,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import {
   Store,
+  ArrowLeft,
   Plus,
   Trash2,
   Edit,
@@ -81,6 +83,9 @@ import {
   ChevronRight,
   Bell,
   MessageSquare,
+  Star,
+  Instagram,
+  Check,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
@@ -135,64 +140,88 @@ function getRequestedVendorManagementTab(
 }
 
 type VendorDirectoryListing = {
+  about: string;
   category: string;
   contactName: string;
   email: string;
   fit: string;
+  gallery: string[];
   id: string;
+  instagram: string;
   location: string;
+  logoLabel: string;
   name: string;
   phone: string;
   price: number;
+  reviews: number;
   rating: string;
   responseTime: string;
+  services: string[];
   tags: string[];
   website: string;
 };
 
 const SAMPLE_VENDOR_DIRECTORY: VendorDirectoryListing[] = [
   {
+    about: "Lumen & Lace creates editorial wedding photography with soft film tones, calm direction, and strong coverage from getting-ready moments through the final dance.",
     category: "Photography",
     contactName: "Maya Bennett",
     email: "hello@lumenandlace.example",
     fit: "Editorial style, warm film tones, and strong getting-ready coverage.",
+    gallery: ["/images/default-wedding-couple.jpg", "/images/floral-bg.png", "/opengraph.jpg", "/images/bokeh-bg.png"],
     id: "lumen-lace-photo",
+    instagram: "@lumenandlacephoto",
     location: "South Florida",
+    logoLabel: "Lumen & Lace",
     name: "Lumen & Lace Photo",
     phone: "(555) 021-1402",
     price: 4200,
+    reviews: 128,
     rating: "4.9",
     responseTime: "Replies in 1 day",
+    services: ["Full wedding day coverage", "Engagement sessions", "Second photographer", "Online gallery delivery"],
     tags: ["Editorial", "Film look", "Engagement session"],
     website: "https://example.com/lumen-lace",
   },
   {
+    about: "Verde Petal Studio designs romantic, garden-style florals for ceremonies and receptions, with a focus on soft movement, layered texture, and candlelit tables.",
     category: "Florist",
     contactName: "Isabel Cruz",
     email: "studio@verdepetal.example",
     fit: "Romantic garden arrangements, ceremony arches, and candle-heavy reception styling.",
+    gallery: ["/images/floral-bg.png", "/images/default-wedding-couple.jpg", "/images/bokeh-bg.png", "/opengraph.jpg"],
     id: "verde-petal-studio",
+    instagram: "@verdepetalstudio",
     location: "Miami / Fort Lauderdale",
+    logoLabel: "Verde Petal",
     name: "Verde Petal Studio",
     phone: "(555) 019-7288",
     price: 2800,
+    reviews: 96,
     rating: "4.8",
     responseTime: "Replies same day",
+    services: ["Bridal bouquets", "Ceremony arches", "Reception centerpieces", "Full-service floral design"],
     tags: ["Garden", "Installations", "Candles"],
     website: "https://example.com/verde-petal",
   },
   {
+    about: "Cole Events DJ brings clean MC hosting, bilingual announcements, polished ceremony sound, and a reception flow built around a packed dance floor.",
     category: "DJ / Band",
     contactName: "Andre Cole",
     email: "bookings@coleevents.example",
     fit: "Clean MC style, bilingual announcements, ceremony sound, and reception dance floor.",
+    gallery: ["/opengraph.jpg", "/images/bokeh-bg.png", "/images/default-wedding-couple.jpg", "/images/floral-bg.png"],
     id: "cole-events-dj",
+    instagram: "@coleeventsdj",
     location: "Tri-County Area",
+    logoLabel: "Cole Events",
     name: "Cole Events DJ",
     phone: "(555) 017-9091",
     price: 1650,
+    reviews: 84,
     rating: "5.0",
     responseTime: "Replies in 2 hours",
+    services: ["Reception DJ", "Ceremony audio", "Bilingual MC services", "Dance floor lighting"],
     tags: ["Bilingual", "Ceremony audio", "Lighting"],
     website: "https://example.com/cole-events",
   },
@@ -1904,6 +1933,12 @@ function VendorContactsTab() {
 }
 
 function VendorDirectoryTab() {
+  const [selectedListing, setSelectedListing] = useState<VendorDirectoryListing | null>(null);
+
+  if (selectedListing) {
+    return <VendorDirectoryProfile listing={selectedListing} onBack={() => setSelectedListing(null)} />;
+  }
+
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-primary/15 bg-primary/5 p-5">
@@ -1921,7 +1956,19 @@ function VendorDirectoryTab() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {SAMPLE_VENDOR_DIRECTORY.map((listing) => (
-          <div key={listing.id} className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
+          <div
+            key={listing.id}
+            role="button"
+            tabIndex={0}
+            className="cursor-pointer rounded-2xl border border-border/70 bg-card p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/40"
+            onClick={() => setSelectedListing(listing)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                setSelectedListing(listing);
+              }
+            }}
+          >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <Badge className={vendorCategoryBadgeClass(listing.category)}>
@@ -1965,14 +2012,14 @@ function VendorDirectoryTab() {
             </div>
 
             <div className="mt-5 flex gap-2">
-              <Button asChild size="sm" className="flex-1">
-                <a href={`mailto:${listing.email}?subject=A.I Do vendor intro request`}>
+              <Button asChild size="sm" className="flex-1" onClick={(event) => event.stopPropagation()}>
+                <a href={`mailto:${listing.email}?subject=A.I Do vendor intro request`} onClick={(event) => event.stopPropagation()}>
                   <Mail className="mr-1.5 h-3.5 w-3.5" />
                   Intro
                 </a>
               </Button>
-              <Button asChild variant="outline" size="sm">
-                <a href={listing.website} target="_blank" rel="noreferrer">
+              <Button asChild variant="outline" size="sm" onClick={(event) => event.stopPropagation()}>
+                <a href={listing.website} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
                   <Globe className="mr-1.5 h-3.5 w-3.5" />
                   Site
                 </a>
@@ -1980,6 +2027,129 @@ function VendorDirectoryTab() {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function VendorDirectoryProfile({
+  listing,
+  onBack,
+}: {
+  listing: VendorDirectoryListing;
+  onBack: () => void;
+}) {
+  const profileUrl = `https://aidowedding.net/vendors/${listing.id}`;
+
+  return (
+    <div className="space-y-4">
+      <Button type="button" variant="ghost" className="gap-2 text-primary" onClick={onBack}>
+        <ArrowLeft className="h-4 w-4" />
+        Back to directory
+      </Button>
+
+      <div className="rounded-lg border border-border/70 bg-card p-5 shadow-sm">
+        <div className="grid gap-5 md:grid-cols-[160px_1fr] md:items-center">
+          <div className="flex h-24 items-center justify-center rounded-lg border border-[#E8DDE8] bg-[#FFF7F2] px-4 text-center">
+            <div>
+              <p className="font-serif text-2xl leading-none text-[#8D294D]">{listing.logoLabel}</p>
+              <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#B16C8E]">
+                {vendorCategoryLabel(listing.category)}
+              </p>
+            </div>
+          </div>
+          <div>
+            <h2 className="font-serif text-3xl font-semibold text-foreground">{listing.name}</h2>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+              <span className="flex items-center gap-0.5 text-amber-500">
+                {Array.from({ length: 5 }, (_, index) => (
+                  <Star key={index} className="h-4 w-4 fill-current" />
+                ))}
+              </span>
+              <span className="font-semibold text-foreground">{listing.rating}</span>
+              <span className="text-muted-foreground">({listing.reviews} reviews)</span>
+            </div>
+            <div className="mt-3 space-y-1 text-sm text-foreground">
+              <p><span className="font-semibold">Category:</span> {vendorCategoryLabel(listing.category)}</p>
+              <p><span className="font-semibold">Starting Price:</span> From {formatCurrency(listing.price)}</p>
+              <p><span className="font-semibold">Service Area:</span> {listing.location}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[1fr_270px]">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {listing.gallery.map((src, index) => (
+              <img
+                key={`${listing.id}-gallery-${index}`}
+                src={src}
+                alt={`${listing.name} service example ${index + 1}`}
+                className="aspect-[4/3] w-full rounded-md border border-border/60 object-cover shadow-sm"
+              />
+            ))}
+          </div>
+
+          <section className="rounded-lg border border-border/70 bg-card p-5">
+            <h3 className="border-b border-border/70 pb-2 text-lg font-semibold text-foreground">About Us</h3>
+            <p className="mt-4 text-sm leading-7 text-foreground">{listing.about}</p>
+          </section>
+
+          <section className="rounded-lg border border-border/70 bg-card p-5">
+            <h3 className="border-b border-border/70 pb-2 text-lg font-semibold text-foreground">Services</h3>
+            <div className="mt-4 grid gap-3 text-sm text-foreground sm:grid-cols-2">
+              {listing.services.map((service) => (
+                <div key={service} className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-primary" />
+                  {service}
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <aside className="space-y-4">
+          <section className="rounded-lg border border-border/70 bg-card p-5 shadow-sm">
+            <h3 className="text-lg font-semibold text-foreground">Contact Us</h3>
+            <Button asChild className="mt-4 w-full bg-[linear-gradient(110deg,#E6A6B7,#8D6AD9)] text-white hover:opacity-95">
+              <a href={`mailto:${listing.email}?subject=A.I Do vendor intro request`}>
+                Contact This Vendor
+              </a>
+            </Button>
+            <div className="mt-5 space-y-3 text-sm text-muted-foreground">
+              <a className="flex items-center gap-2 hover:text-primary" href={`mailto:${listing.email}`}>
+                <Mail className="h-4 w-4 text-primary" />
+                <span className="font-semibold text-foreground">Email:</span> {listing.email}
+              </a>
+              <div className="flex items-center gap-2">
+                <Instagram className="h-4 w-4 text-primary" />
+                <span className="font-semibold text-foreground">Instagram:</span> {listing.instagram}
+              </div>
+              <a className="flex items-center gap-2 hover:text-primary" href={listing.website} target="_blank" rel="noreferrer">
+                <Globe className="h-4 w-4 text-primary" />
+                <span className="font-semibold text-foreground">Website:</span> {listing.website.replace(/^https?:\/\//, "")}
+              </a>
+            </div>
+          </section>
+
+          <section className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm">
+            <div className="grid grid-cols-[1fr_92px] items-center gap-2 bg-[linear-gradient(90deg,#FFF7F2,#FFFFFF)] p-3">
+              <div className="flex items-center gap-2">
+                <img src="/logo.png" alt="A.I DO logo" className="h-10 w-10 object-contain" />
+                <div>
+                  <p className="text-xs font-semibold text-[#8D294D]">Proud Partner of</p>
+                  <p className="font-serif text-2xl leading-none text-[#8D294D]">A.I DO</p>
+                  <p className="text-[10px] text-[#6F3E54]">AI Wedding Planner Assistant</p>
+                </div>
+              </div>
+              <img src={qrSvgDataUrl(profileUrl, 3, 2)} alt={`${listing.name} profile QR code`} className="h-20 w-20 rounded bg-white p-1" />
+            </div>
+            <p className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">
+              Scan to View Our Profile
+            </p>
+          </section>
+        </aside>
       </div>
     </div>
   );
