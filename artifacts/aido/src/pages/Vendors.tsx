@@ -87,6 +87,7 @@ import {
   ChevronDown,
   ChevronRight,
   Bell,
+  Inbox,
   MessageSquare,
   Star,
   Instagram,
