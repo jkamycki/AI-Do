@@ -185,6 +185,7 @@ type VendorPartnerApplication = {
   instagram: string | null;
   startingPrice: string | null;
   description: string | null;
+  businessLogo?: { name: string; type: string; dataUrl: string } | null;
   servicePhotos?: Array<{ name: string; type: string; dataUrl: string }>;
   directoryListing?: VendorDirectoryListingDraft | Record<string, unknown>;
   directoryStatus?: "not_created" | "draft" | "published" | "unpublished" | string;
@@ -215,6 +216,7 @@ type VendorDirectoryListingDraft = {
   id: string;
   instagram: string;
   location: string;
+  logoUrl: string;
   logoLabel: string;
   name: string;
   phone: string;
@@ -263,6 +265,7 @@ function buildVendorDirectoryDraft(application: VendorPartnerApplication): Vendo
     id: existing.id || vendorDirectorySlug(application),
     instagram: existing.instagram || application.instagram || "",
     location: existing.location || location,
+    logoUrl: existing.logoUrl || application.businessLogo?.dataUrl || "",
     logoLabel: existing.logoLabel || application.businessName,
     name: existing.name || application.businessName,
     phone: existing.phone || application.phone || "",
@@ -1831,6 +1834,19 @@ export default function OperationsCenterPage() {
                         </div>
                       </div>
 
+                      {application.businessLogo ? (
+                        <div className="rounded-lg border border-[#E6D2D8] bg-white p-3">
+                          <p className="mb-3 text-xs font-semibold uppercase text-[#8D294D]/70">Business logo</p>
+                          <div className="flex h-24 w-40 items-center justify-center overflow-hidden rounded-lg border border-[#E6D2D8] bg-[#FFF8F4]">
+                            <img
+                              src={application.businessLogo.dataUrl}
+                              alt={`${application.businessName} logo`}
+                              className="h-full w-full object-contain p-3"
+                            />
+                          </div>
+                        </div>
+                      ) : null}
+
                       {application.description ? (
                         <div className="rounded-lg bg-[#FFF8F4] p-4 text-sm leading-6 text-[#4A3941]">
                           {application.description}
@@ -2047,7 +2063,7 @@ export default function OperationsCenterPage() {
                                 </div>
                               </div>
                               <div className="grid gap-3 md:grid-cols-2">
-                                {(["contactName", "email", "phone", "website", "instagram"] as const).map(field => (
+                                {(["contactName", "email", "phone", "website", "instagram", "logoUrl"] as const).map(field => (
                                   <div key={field}>
                                     <p className="mb-1 text-xs font-semibold uppercase text-[#8D294D]/70">{field}</p>
                                     <Input
@@ -2067,7 +2083,11 @@ export default function OperationsCenterPage() {
                               <p className="text-xs font-semibold uppercase tracking-wider text-[#8D294D]/70">Preview</p>
                               <div className="rounded-xl border border-[#E8C9D4] bg-[#FFF8F4] p-4">
                                 <div className="flex h-20 items-center justify-center rounded-lg border border-[#E8C9D4] bg-white px-3 text-center">
-                                  <p className="font-serif text-xl text-[#8D294D]">{directoryDraft.logoLabel}</p>
+                                  {directoryDraft.logoUrl ? (
+                                    <img src={directoryDraft.logoUrl} alt={`${directoryDraft.name} logo`} className="h-full w-full object-contain p-2" />
+                                  ) : (
+                                    <p className="font-serif text-xl text-[#8D294D]">{directoryDraft.logoLabel}</p>
+                                  )}
                                 </div>
                                 <h3 className="mt-3 font-serif text-2xl text-[#24171D]">{directoryDraft.name}</h3>
                                 <p className="text-sm font-medium text-[#6F3E54]">{directoryDraft.category} | {directoryDraft.location}</p>

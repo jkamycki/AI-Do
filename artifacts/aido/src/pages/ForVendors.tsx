@@ -52,10 +52,11 @@ type VendorPartnerForm = {
   instagram: string;
   startingPrice: string;
   description: string;
+  businessLogo: VendorServicePhoto | null;
   servicePhotos: VendorServicePhoto[];
 };
 
-type VendorPartnerTextField = Exclude<keyof VendorPartnerForm, "servicePhotos">;
+type VendorPartnerTextField = Exclude<keyof VendorPartnerForm, "businessLogo" | "servicePhotos">;
 
 const EMPTY_FORM: VendorPartnerForm = {
   businessName: "",
@@ -68,6 +69,7 @@ const EMPTY_FORM: VendorPartnerForm = {
   instagram: "",
   startingPrice: "",
   description: "",
+  businessLogo: null,
   servicePhotos: [],
 };
 
@@ -171,6 +173,25 @@ export default function ForVendors() {
       ...current,
       servicePhotos: [...current.servicePhotos, ...photos].slice(0, MAX_SERVICE_PHOTOS),
     }));
+    setError("");
+    event.target.value = "";
+  };
+
+  const handleLogoUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_PHOTO_BYTES) {
+      setError("Business logo must be under 750 KB.");
+      event.target.value = "";
+      return;
+    }
+    if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) {
+      setError("Please upload a JPG, PNG, or WEBP logo.");
+      event.target.value = "";
+      return;
+    }
+    const logo = await readPhotoFile(file);
+    setForm(current => ({ ...current, businessLogo: logo }));
     setError("");
     event.target.value = "";
   };
@@ -392,6 +413,50 @@ export default function ForVendors() {
                       placeholder="What do you offer, what couples are a great fit, and what makes your work stand out?"
                     />
                   </label>
+
+                  <div className="space-y-3 rounded-lg border border-dashed border-[#E6A6B7] bg-white p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-[#8D294D]">Business logo</p>
+                        <p className="text-xs leading-5 text-[#6F3E54]">
+                          Upload your logo so your partner profile can show your real branding.
+                        </p>
+                      </div>
+                      <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-[#E6A6B7] bg-[#FFF7F2] px-4 text-sm font-semibold text-[#8D294D] hover:border-[#8D294D]">
+                        <ImagePlus className="h-4 w-4" />
+                        Upload logo
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="sr-only"
+                          onChange={handleLogoUpload}
+                        />
+                      </label>
+                    </div>
+
+                    {form.businessLogo && (
+                      <div className="flex items-center gap-3 rounded-lg border border-[#E8DDE8] bg-[#FFF7F2] p-3">
+                        <div className="flex h-20 w-28 items-center justify-center overflow-hidden rounded-lg border border-[#E8DDE8] bg-white">
+                          <img src={form.businessLogo.dataUrl} alt={form.businessLogo.name} className="h-full w-full object-contain p-2" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-[#3B1C2B]">{form.businessLogo.name}</p>
+                          <p className="text-xs text-[#6F3E54]">Logo ready for your profile.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setForm(current => ({ ...current, businessLogo: null }))}
+                          className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-[#8D294D] shadow-sm transition hover:bg-[#F8E3EE]"
+                          aria-label="Remove business logo"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+                    <p className="text-[11px] text-[#6F3E54]">
+                      JPG, PNG, or WEBP. Transparent PNG works best. Keep the logo under 750 KB.
+                    </p>
+                  </div>
 
                   <div className="space-y-3 rounded-lg border border-dashed border-[#D9D1E3] bg-[#FAF9FC] p-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

@@ -12,6 +12,7 @@ export type VendorDirectoryListing = {
   id: string;
   instagram: string;
   location: string;
+  logoUrl: string;
   logoLabel: string;
   name: string;
   phone: string;
@@ -29,6 +30,7 @@ let directoryColumnsReady: Promise<void> | null = null;
 export function ensureVendorPartnerDirectoryColumns() {
   directoryColumnsReady ??= db.execute(sql`
     ALTER TABLE "vendor_partner_applications"
+      ADD COLUMN IF NOT EXISTS "business_logo" jsonb,
       ADD COLUMN IF NOT EXISTS "directory_listing" jsonb NOT NULL DEFAULT '{}'::jsonb,
       ADD COLUMN IF NOT EXISTS "directory_status" text NOT NULL DEFAULT 'not_created',
       ADD COLUMN IF NOT EXISTS "directory_published_at" timestamp
@@ -81,6 +83,7 @@ export function buildVendorDirectoryListing(application: VendorPartnerApplicatio
     id: makeListingId(application),
     instagram: application.instagram || "",
     location,
+    logoUrl: application.businessLogo?.dataUrl || "",
     logoLabel: application.businessName,
     name: application.businessName,
     phone: application.phone || "",
@@ -107,6 +110,7 @@ export function cleanVendorDirectoryListing(raw: unknown, application: VendorPar
     id: cleanText(value.id, fallback.id, 90).replace(/[^a-zA-Z0-9-]/g, "-"),
     instagram: cleanText(value.instagram, fallback.instagram, 120),
     location: cleanText(value.location, fallback.location, 140),
+    logoUrl: cleanText(value.logoUrl, fallback.logoUrl, 1_100_000),
     logoLabel: cleanText(value.logoLabel, fallback.logoLabel, 80),
     name: cleanText(value.name, fallback.name, 140),
     phone: cleanText(value.phone, fallback.phone, 60),

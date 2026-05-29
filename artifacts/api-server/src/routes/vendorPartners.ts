@@ -29,6 +29,18 @@ function cleanServicePhotos(value: unknown) {
   });
 }
 
+function cleanBusinessLogo(value: unknown) {
+  if (!value || typeof value !== "object") return null;
+  const item = value as { name?: unknown; type?: unknown; dataUrl?: unknown };
+  const dataUrl = typeof item.dataUrl === "string" ? item.dataUrl : "";
+  if (!PHOTO_DATA_URL_RE.test(dataUrl) || dataUrl.length > MAX_SERVICE_PHOTO_DATA_URL_LENGTH) return null;
+  return {
+    name: cleanText(item.name, 120) || "business-logo.png",
+    type: cleanText(item.type, 80) || "image/png",
+    dataUrl,
+  };
+}
+
 router.post("/vendor-partners", async (req, res) => {
   try {
     const businessName = cleanText(req.body?.businessName, 140);
@@ -41,12 +53,14 @@ router.post("/vendor-partners", async (req, res) => {
     const instagram = cleanText(req.body?.instagram, 120);
     const startingPrice = cleanText(req.body?.startingPrice, 80);
     const description = cleanText(req.body?.description, 1200);
+    const businessLogo = cleanBusinessLogo(req.body?.businessLogo);
     const servicePhotos = cleanServicePhotos(req.body?.servicePhotos);
 
     if (!businessName || !contactName || !EMAIL_RE.test(email) || !category || !serviceArea) {
       return res.status(400).json({ error: "Business name, contact name, email, category, and service area are required." });
     }
 
+    await ensureVendorPartnerDirectoryColumns();
     const [application] = await db
       .insert(vendorPartnerApplications)
       .values({
@@ -60,6 +74,7 @@ router.post("/vendor-partners", async (req, res) => {
         instagram: instagram || null,
         startingPrice: startingPrice || null,
         description: description || null,
+        businessLogo,
         servicePhotos,
       })
       .returning({ id: vendorPartnerApplications.id });

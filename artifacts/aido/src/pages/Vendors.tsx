@@ -156,6 +156,7 @@ type VendorDirectoryListing = {
   id: string;
   instagram: string;
   location: string;
+  logoUrl?: string;
   logoLabel: string;
   name: string;
   phone: string;
@@ -218,6 +219,7 @@ const SAMPLE_VENDOR_DIRECTORY: VendorDirectoryListing[] = [
     id: "lumen-lace-photo",
     instagram: "@lumenandlacephoto",
     location: "South Florida",
+    logoUrl: "",
     logoLabel: "Lumen & Lace",
     name: "Lumen & Lace Photo",
     phone: "(555) 021-1402",
@@ -239,6 +241,7 @@ const SAMPLE_VENDOR_DIRECTORY: VendorDirectoryListing[] = [
     id: "verde-petal-studio",
     instagram: "@verdepetalstudio",
     location: "Miami / Fort Lauderdale",
+    logoUrl: "",
     logoLabel: "Verde Petal",
     name: "Verde Petal Studio",
     phone: "(555) 019-7288",
@@ -260,6 +263,7 @@ const SAMPLE_VENDOR_DIRECTORY: VendorDirectoryListing[] = [
     id: "cole-events-dj",
     instagram: "@coleeventsdj",
     location: "Tri-County Area",
+    logoUrl: "",
     logoLabel: "Cole Events",
     name: "Cole Events DJ",
     phone: "(555) 017-9091",
@@ -293,6 +297,11 @@ function mergePartnerListings(publishedListings: VendorDirectoryListing[] | unde
     ...published,
     ...SAMPLE_VENDOR_DIRECTORY.filter(listing => !publishedIds.has(listing.id)),
   ];
+}
+
+function isUsableImageSrc(src: string | null | undefined) {
+  const value = typeof src === "string" ? src.trim() : "";
+  return /^data:image\/(jpeg|jpg|png|webp);base64,/i.test(value) || value.startsWith("/") || /^https?:\/\//i.test(value);
 }
 
 function normalizeVendorCategory(category: string | null | undefined) {
@@ -2529,6 +2538,7 @@ function VendorDirectoryProfile({
   onOpenMessages: () => void;
 }) {
   const profileUrl = `https://aidowedding.net/vendors/${listing.id}`;
+  const galleryImages = listing.gallery.filter(isUsableImageSrc);
 
   return (
     <div className="space-y-5">
@@ -2540,12 +2550,23 @@ function VendorDirectoryProfile({
       <div className="rounded-xl border border-[#E8C9D4] bg-card p-5 shadow-sm">
         <div className="grid gap-5 md:grid-cols-[140px_1fr] md:items-center">
           <div className="flex h-24 items-center justify-center rounded-xl border border-[#E8C9D4] bg-[#FFF7F2] px-4 text-center">
-            <div>
-              <p className="font-serif text-2xl leading-none text-[#8D294D]">{listing.logoLabel}</p>
-              <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.22em] text-[#B16C8E]">
-                {vendorCategoryLabel(listing.category)}
-              </p>
-            </div>
+            {isUsableImageSrc(listing.logoUrl) ? (
+              <img
+                src={listing.logoUrl}
+                alt={`${listing.name} logo`}
+                className="h-full w-full object-contain p-2"
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                }}
+              />
+            ) : (
+              <div>
+                <p className="font-serif text-2xl leading-none text-[#8D294D]">{listing.logoLabel}</p>
+                <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.22em] text-[#B16C8E]">
+                  {vendorCategoryLabel(listing.category)}
+                </p>
+              </div>
+            )}
           </div>
           <div className="min-w-0">
             <h2 className="font-serif text-3xl font-semibold leading-tight text-foreground">{listing.name}</h2>
@@ -2578,16 +2599,21 @@ function VendorDirectoryProfile({
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_290px]">
         <div className="space-y-5">
+          {galleryImages.length > 0 && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {listing.gallery.map((src, index) => (
+            {galleryImages.map((src, index) => (
               <img
                 key={`${listing.id}-gallery-${index}`}
                 src={src}
                 alt={`${listing.name} service example ${index + 1}`}
                 className="aspect-[4/3] w-full rounded-xl border border-[#E8C9D4] bg-card object-cover shadow-sm"
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                }}
               />
             ))}
           </div>
+          )}
 
           <section className="rounded-xl border border-[#E8C9D4] bg-card p-5 shadow-sm">
             <h3 className="border-b border-[#E8C9D4] pb-3 font-serif text-xl font-semibold text-foreground">About Us</h3>
