@@ -14,7 +14,7 @@ export function HelpScreen() {
 
   return (
     <Screen>
-      <SectionHeader subtitle="Support, guides, feedback, contact forms, updates, privacy, terms, security, and data handling." title="Help" />
+      <SectionHeader subtitle="Support, guides, feedback, contact forms, privacy, terms, security, and data handling." title="Help" />
 
       <Card style={styles.supportCard}>
         <View style={[styles.supportIcon, { backgroundColor: colors.primarySoft }]}>
@@ -22,7 +22,7 @@ export function HelpScreen() {
         </View>
         <View style={styles.supportCopy}>
           <Text style={[styles.supportTitle, { color: colors.text }]}>Need help?</Text>
-          <Text style={[styles.supportText, { color: colors.muted }]}>Send a support ticket, share feedback, or review the latest app improvements.</Text>
+          <Text style={[styles.supportText, { color: colors.muted }]}>Send a support ticket, share feedback, or review account and planning guidance.</Text>
         </View>
         <PrimaryButton icon="send-outline" label="Contact" onPress={() => respondAsAria('Help me contact A.I Do support')} />
       </Card>

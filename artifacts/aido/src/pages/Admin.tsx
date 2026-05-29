@@ -2055,7 +2055,6 @@ const EVENT_PATH_FEATURES: Array<{ pattern: RegExp; feature: string }> = [
   { pattern: /^\/aria\/?$/, feature: "Aria - Planner AI" },
   { pattern: /^\/day-of\/?$/, feature: "Day-Of Coordinator" },
   { pattern: /^\/website-editor\/?$/, feature: "Website Editor" },
-  { pattern: /^\/help\/updates-improvements\/?$/, feature: "Updates & Improvements" },
   { pattern: /^\/help\/?$/, feature: "Help & Support" },
   { pattern: /^\/admin\/?$/, feature: "Admin" },
   { pattern: /^\/operations-center\/?$/, feature: "Operations Center" },

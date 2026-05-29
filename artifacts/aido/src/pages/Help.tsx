@@ -11,7 +11,7 @@ import { useTranslation } from "react-i18next";
 import {
   HelpCircle, MessageSquare, Star, Send, CheckCircle2,
   ChevronDown, ChevronUp, Mail, Lightbulb, Bug, Heart,
-  ThumbsUp, BookOpen, Sparkles,
+  ThumbsUp, BookOpen,
 } from "lucide-react";
 
 const FEEDBACK_CATEGORIES = [
@@ -204,25 +204,6 @@ export default function HelpPage() {
           </button>
         ))}
       </div>
-
-      <Card className="border-primary/15 bg-white shadow-sm">
-        <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-serif text-lg font-semibold text-foreground">Updates & Improvements</p>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                See what is new, what improved, what was fixed, and what is coming soon in A.IDO.
-              </p>
-            </div>
-          </div>
-          <Button asChild variant="outline" className="shrink-0">
-            <Link href="/help/updates-improvements">View Updates</Link>
-          </Button>
-        </CardContent>
-      </Card>
 
       {activeTab === "contact" && (
         <Card className="border-none shadow-sm">

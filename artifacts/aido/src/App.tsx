@@ -52,7 +52,6 @@ const Privacy = lazy(() => import("@/pages/Privacy"));
 const BetaDisclaimer = lazy(() => import("@/pages/BetaDisclaimer"));
 const Security = lazy(() => import("@/pages/Security"));
 const DataHandling = lazy(() => import("@/pages/DataHandling"));
-const UpdatesImprovements = lazy(() => import("@/pages/UpdatesImprovements"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 const VideoTemplate = lazy(() => import("@/components/video/VideoTemplate"));
 
@@ -1525,7 +1524,6 @@ const PORTAL_TRACKING_ROUTES: Array<{ pattern: RegExp } & PortalTrackingContext>
   { pattern: /^\/aria\/?$/, feature: "Aria — Planner AI", section: "AI & Day-Of", tool: "Aria — Planner AI", step: "Opened Aria planner AI" },
   { pattern: /^\/settings\/?$/, feature: "Settings", section: "Account", step: "Viewed settings" },
   { pattern: /^\/help\/?$/, feature: "Help & Support", section: "Support", step: "Viewed help center" },
-  { pattern: /^\/help\/updates-improvements\/?$/, feature: "Updates & Improvements", section: "Support", step: "Viewed updates and improvements" },
   { pattern: /^\/operations-center\/?$/, feature: "Operations Center", section: "Admin", tool: "Operations Center", step: "Viewed operations center" },
   { pattern: /^\/admin\/?$/, feature: "Admin", section: "Admin", tool: "Admin Dashboard", step: "Viewed admin dashboard" },
   { pattern: /^\/workspace\/[^/]+\/?$/, feature: "Shared Workspace", section: "Planning", tool: "Shared Workspace", step: "Viewed shared workspace" },
@@ -1868,7 +1866,6 @@ function Router() {
         <Route path="/day-of" component={() => <ProtectedRoute component={DayOf} maintenanceSection="portal-day-of" />} />
         <Route path="/admin" component={() => <ProtectedRoute component={Admin} />} />
         <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
-        <Route path="/help/updates-improvements" component={UpdatesImprovements} />
         <Route path="/help" component={() => <ProtectedRoute component={Help} />} />
         <Route path="/operations-center" component={() => <ProtectedRoute component={OperationsCenter} />} />
         <Route path="/seating-chart" component={() => <ProtectedRoute component={SeatingChart} maintenanceSection="portal-seating-chart" />} />

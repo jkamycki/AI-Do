@@ -24,7 +24,6 @@ import { ProfileSettingsScreen } from '../screens/ProfileSettingsScreen';
 import { SeatingChartScreen } from '../screens/SeatingChartScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { TimelineScreen } from '../screens/TimelineScreen';
-import { UpdatesScreen } from '../screens/UpdatesScreen';
 import { WebPortalScreen } from '../screens/WebPortalScreen';
 import { VendorsScreen } from '../screens/VendorsScreen';
 import { WebsiteEditorScreen } from '../screens/WebsiteEditorScreen';
@@ -48,7 +47,6 @@ export type RootStackParamList = {
   SeatingChart: undefined;
   Settings: undefined;
   Timeline: undefined;
-  Updates: undefined;
   Vendors: undefined;
   WebPortal: undefined;
   WebsiteEditor: undefined;
@@ -188,7 +186,6 @@ export function RootNavigator() {
       <Stack.Screen component={InvitationsScreen} name="Invitations" options={{ title: 'Invitations' }} />
       <Stack.Screen component={WorkspaceScreen} name="Workspace" options={{ title: 'Workspace' }} />
       <Stack.Screen component={HelpScreen} name="Help" options={{ title: 'Help' }} />
-      <Stack.Screen component={UpdatesScreen} name="Updates" options={{ title: 'Updates' }} />
       <Stack.Screen component={WebPortalScreen} name="WebPortal" options={{ title: 'Website Portal' }} />
     </Stack.Navigator>
   );

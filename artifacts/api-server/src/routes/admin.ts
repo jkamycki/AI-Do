@@ -8,7 +8,7 @@ import {
   checklistItems, vendors, guests, vendorContracts, seatingCharts,
   hotelBlocks, weddingParty, manualExpenses, vendorPayments,
   workspaceCollaborators, adminLaunchPlanItems,
-  weddingWebsites, websiteRsvps,
+  weddingWebsites, websiteRsvps, vendorPartnerApplications,
 } from "@workspace/db";
 import { eq, gte, desc, sql, and, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -544,6 +544,52 @@ router.get("/admin/test-sessions", requireAuth, requireAdmin, async (req, res) =
     res.json({ sessions, mode });
   } catch (err) {
     req.log.error(err, "Admin test sessions error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/admin/vendor-partner-applications", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const applications = await db
+      .select()
+      .from(vendorPartnerApplications)
+      .orderBy(desc(vendorPartnerApplications.createdAt));
+    res.json({ applications });
+  } catch (err) {
+    req.log.error(err, "Failed to list vendor partner applications");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/admin/vendor-partner-applications/:id", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const status = typeof req.body?.status === "string" ? req.body.status.trim() : "";
+    const notes = typeof req.body?.notes === "string" ? req.body.notes.trim() : undefined;
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(400).json({ error: "Invalid application id" });
+      return;
+    }
+    if (!["new", "reviewing", "approved", "declined"].includes(status)) {
+      res.status(400).json({ error: "Invalid status" });
+      return;
+    }
+    const [updated] = await db
+      .update(vendorPartnerApplications)
+      .set({
+        status,
+        ...(notes !== undefined ? { notes: notes || null } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(vendorPartnerApplications.id, id))
+      .returning();
+    if (!updated) {
+      res.status(404).json({ error: "Application not found" });
+      return;
+    }
+    res.json(updated);
+  } catch (err) {
+    req.log.error(err, "Failed to update vendor partner application");
     res.status(500).json({ error: "Internal server error" });
   }
 });

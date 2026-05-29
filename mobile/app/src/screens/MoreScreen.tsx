@@ -26,7 +26,6 @@ type AppRoute =
   | 'SeatingChart'
   | 'Settings'
   | 'Timeline'
-  | 'Updates'
   | 'Vendors'
   | 'WebPortal'
   | 'WebsiteEditor'
@@ -84,7 +83,6 @@ const groups: Array<{ title: string; items: FeatureItem[] }> = [
       { icon: 'phone-portrait-outline', label: 'Full Portal', detail: 'Open the authenticated website app when you need desktop-grade tools.', route: 'WebPortal' },
       { icon: 'settings-outline', label: 'Settings', detail: 'Reminders, RSVP emails, Aria memory, exports, and privacy.', route: 'Settings' },
       { icon: 'help-circle-outline', label: 'Help', detail: 'Guides, support resources, security, and legal information.', route: 'Help' },
-      { icon: 'megaphone-outline', label: 'Updates', detail: 'Release notes and product improvements.', route: 'Updates' },
     ],
   },
 ];

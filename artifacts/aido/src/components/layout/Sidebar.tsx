@@ -47,7 +47,6 @@ const routePrefetchers: Record<string, () => Promise<unknown>> = {
   "/website-editor": () => import("@/pages/WebsiteEditor"),
   "/settings": () => import("@/pages/Settings"),
   "/help": () => import("@/pages/Help"),
-  "/help/updates-improvements": () => import("@/pages/UpdatesImprovements"),
   "/operations-center": () => import("@/pages/OperationsCenter"),
 };
 
@@ -413,7 +412,6 @@ export function Sidebar() {
       items: [
         { href: "/settings", label: t("sidebar.account_collaborators", { defaultValue: "Account & Collaborators" }) },
         { href: "/help", label: t("nav.help", { defaultValue: "Help & Support" }) },
-        { href: "/help/updates-improvements", label: t("nav.updates_improvements", { defaultValue: "Updates & Improvements" }) },
         ...(isAdmin ? [{ href: "/operations-center", label: t("nav.admin", { defaultValue: "Operations Center" }), special: true }] : []),
       ],
     },

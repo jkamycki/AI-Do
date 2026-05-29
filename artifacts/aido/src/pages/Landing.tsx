@@ -293,7 +293,6 @@ export default function Landing() {
             <Link href="/terms" className="underline-offset-4 hover:underline">{t("landing.footer_terms", { defaultValue: "Terms of Service" })}</Link>
             <Link href="/privacy" className="underline-offset-4 hover:underline">Privacy Policy</Link>
             <Link href="/beta" className="underline-offset-4 hover:underline">Beta Disclaimer</Link>
-            <Link href="/help/updates-improvements" className="underline-offset-4 hover:underline">Updates & Improvements</Link>
             <Link href="/security" className="underline-offset-4 hover:underline">Security</Link>
             <Link href="/data-handling" className="underline-offset-4 hover:underline">Data Handling</Link>
           </div>

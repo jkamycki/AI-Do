@@ -13,10 +13,13 @@ import { syncDayOfChecklistCompletion, syncTaskCompletion } from './src/api/chec
 import { inviteMobileCollaborator, listMobileCollaborators } from './src/api/collaboration';
 import { createMobileGuest, deleteMobileGuest, updateMobileGuest } from './src/api/guests';
 import { sendPendingRsvpReminders, sendRsvpInvitations, sendSaveTheDates } from './src/api/guestMessaging';
+import { createMobileHotel, deleteMobileHotel, updateMobileHotel } from './src/api/hotels';
 import { saveMobileInvitationStudio } from './src/api/invitationStudio';
 import { getMobileAuthToken, hasMobileApiBase, mobileAuthFetch, saveMobileAuthToken, setMobileAuthTokenGetter } from './src/api/mobileAuth';
 import { saveMobileProfile } from './src/api/profile';
 import { applySeatingChart, generateSeatingChart, saveSeatingChart, updateSeatingChart, type SeatingGuestPayload } from './src/api/seating';
+import { createMobileVendor, deleteMobileVendor, updateMobileVendor } from './src/api/vendors';
+import { createMobileWeddingPartyMember, deleteMobileWeddingPartyMember, updateMobileWeddingPartyMember } from './src/api/weddingParty';
 import { samplePlanningData } from './src/data/sampleData';
 import type { Guest } from './src/types';
 import { daysFromToday, formatCurrency, formatDeadlineLabel, formatShortDate, parseDate } from './src/utils/format';
@@ -353,35 +356,182 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
     });
   };
   const addVendor = (vendor: VendorRecord) => {
-    setData((current) => ({ ...current, vendors: [{ ...vendor, id: `vendor-${Date.now()}` }, ...current.vendors] }));
+    const localVendor = { ...vendor, id: `vendor-new-${Date.now()}`, remaining: Math.max(0, vendor.committed - vendor.paid) };
+    setData((current) => ({ ...current, vendors: [localVendor, ...current.vendors] }));
+    void createMobileVendor(localVendor)
+      .then((result) => {
+        if (!result.synced || !result.vendor) return;
+        setData((current) => ({
+          ...current,
+          vendors: current.vendors.map((item) => (item.id === localVendor.id ? result.vendor! : item)),
+        }));
+      })
+      .catch((error) => {
+        setData((current) => ({ ...current, vendors: current.vendors.filter((item) => item.id !== localVendor.id) }));
+        setMockAction({
+          title: 'Vendor not saved',
+          detail: error instanceof Error ? error.message : 'The vendor could not be saved. Please try again.',
+          primaryLabel: 'Close',
+        });
+      });
   };
   const updateVendor = (vendor: VendorRecord) => {
+    const previous = data.vendors.find((item) => item.id === vendor.id);
     setData((current) => ({ ...current, vendors: current.vendors.map((item) => (item.id === vendor.id ? vendor : item)) }));
+    setSelectedVendor(vendor);
+    void updateMobileVendor(vendor)
+      .then((result) => {
+        if (!result.synced || !result.vendor) return;
+        setData((current) => ({
+          ...current,
+          vendors: current.vendors.map((item) => (item.id === vendor.id ? result.vendor! : item)),
+        }));
+        setSelectedVendor(result.vendor);
+      })
+      .catch((error) => {
+        if (previous) {
+          setData((current) => ({ ...current, vendors: current.vendors.map((item) => (item.id === vendor.id ? previous : item)) }));
+          setSelectedVendor(previous);
+        }
+        setMockAction({
+          title: 'Vendor not updated',
+          detail: error instanceof Error ? error.message : 'The vendor could not be updated. Please try again.',
+          primaryLabel: 'Close',
+        });
+      });
   };
   const removeVendor = (vendorId: string) => {
+    const previous = data.vendors.find((item) => item.id === vendorId);
     setData((current) => ({ ...current, vendors: current.vendors.filter((item) => item.id !== vendorId) }));
     setSelectedVendor(null);
+    void deleteMobileVendor(vendorId).catch((error) => {
+      if (previous) {
+        setData((current) => ({ ...current, vendors: [previous, ...current.vendors] }));
+      }
+      setMockAction({
+        title: 'Vendor not deleted',
+        detail: error instanceof Error ? error.message : 'The vendor could not be deleted. Please try again.',
+        primaryLabel: 'Close',
+      });
+    });
   };
   const addHotel = (hotel: (typeof samplePlanningData.hotels)[number]) => {
-    setData((current) => ({ ...current, hotels: [{ ...hotel, id: `hotel-${Date.now()}` }, ...current.hotels] }));
+    const localHotel = { ...hotel, id: `hotel-new-${Date.now()}` };
+    setData((current) => ({ ...current, hotels: [localHotel, ...current.hotels] }));
+    void createMobileHotel(localHotel)
+      .then((result) => {
+        if (!result.synced || !result.hotel) return;
+        setData((current) => ({
+          ...current,
+          hotels: current.hotels.map((item) => (item.id === localHotel.id ? result.hotel! : item)),
+        }));
+      })
+      .catch((error) => {
+        setData((current) => ({ ...current, hotels: current.hotels.filter((item) => item.id !== localHotel.id) }));
+        setMockAction({
+          title: 'Hotel not saved',
+          detail: error instanceof Error ? error.message : 'The hotel block could not be saved. Please try again.',
+          primaryLabel: 'Close',
+        });
+      });
   };
   const updateHotel = (hotel: (typeof samplePlanningData.hotels)[number]) => {
+    const previous = data.hotels.find((item) => item.id === hotel.id);
     setData((current) => ({ ...current, hotels: current.hotels.map((item) => (item.id === hotel.id ? hotel : item)) }));
+    void updateMobileHotel(hotel)
+      .then((result) => {
+        if (!result.synced || !result.hotel) return;
+        setData((current) => ({
+          ...current,
+          hotels: current.hotels.map((item) => (item.id === hotel.id ? result.hotel! : item)),
+        }));
+      })
+      .catch((error) => {
+        if (previous) {
+          setData((current) => ({ ...current, hotels: current.hotels.map((item) => (item.id === hotel.id ? previous : item)) }));
+        }
+        setMockAction({
+          title: 'Hotel not updated',
+          detail: error instanceof Error ? error.message : 'The hotel block could not be updated. Please try again.',
+          primaryLabel: 'Close',
+        });
+      });
   };
   const removeHotel = (hotelId: string) => {
+    const previous = data.hotels.find((item) => item.id === hotelId);
     setData((current) => ({ ...current, hotels: current.hotels.filter((item) => item.id !== hotelId) }));
+    void deleteMobileHotel(hotelId).catch((error) => {
+      if (previous) {
+        setData((current) => ({ ...current, hotels: [previous, ...current.hotels] }));
+      }
+      setMockAction({
+        title: 'Hotel not deleted',
+        detail: error instanceof Error ? error.message : 'The hotel block could not be deleted. Please try again.',
+        primaryLabel: 'Close',
+      });
+    });
   };
   const addWeddingPartyMember = (member: (typeof samplePlanningData.weddingParty)[number]) => {
-    setData((current) => ({ ...current, weddingParty: [{ ...member, id: `party-${Date.now()}` }, ...current.weddingParty] }));
+    const localMember = { ...member, id: `party-new-${Date.now()}` };
+    setData((current) => ({ ...current, weddingParty: [localMember, ...current.weddingParty] }));
+    void createMobileWeddingPartyMember(localMember)
+      .then((result) => {
+        if (!result.synced || !result.member) return;
+        setData((current) => ({
+          ...current,
+          weddingParty: current.weddingParty.map((item) => (item.id === localMember.id ? result.member! : item)),
+        }));
+      })
+      .catch((error) => {
+        setData((current) => ({ ...current, weddingParty: current.weddingParty.filter((item) => item.id !== localMember.id) }));
+        setMockAction({
+          title: 'Wedding party member not saved',
+          detail: error instanceof Error ? error.message : 'The wedding party member could not be saved. Please try again.',
+          primaryLabel: 'Close',
+        });
+      });
   };
   const updateWeddingPartyMember = (member: (typeof samplePlanningData.weddingParty)[number]) => {
+    const previous = data.weddingParty.find((item) => item.id === member.id);
     setData((current) => ({
       ...current,
       weddingParty: current.weddingParty.map((item) => (item.id === member.id ? member : item)),
     }));
+    void updateMobileWeddingPartyMember(member)
+      .then((result) => {
+        if (!result.synced || !result.member) return;
+        setData((current) => ({
+          ...current,
+          weddingParty: current.weddingParty.map((item) => (item.id === member.id ? result.member! : item)),
+        }));
+      })
+      .catch((error) => {
+        if (previous) {
+          setData((current) => ({
+            ...current,
+            weddingParty: current.weddingParty.map((item) => (item.id === member.id ? previous : item)),
+          }));
+        }
+        setMockAction({
+          title: 'Wedding party member not updated',
+          detail: error instanceof Error ? error.message : 'The wedding party member could not be updated. Please try again.',
+          primaryLabel: 'Close',
+        });
+      });
   };
   const removeWeddingPartyMember = (memberId: string) => {
+    const previous = data.weddingParty.find((item) => item.id === memberId);
     setData((current) => ({ ...current, weddingParty: current.weddingParty.filter((item) => item.id !== memberId) }));
+    void deleteMobileWeddingPartyMember(memberId).catch((error) => {
+      if (previous) {
+        setData((current) => ({ ...current, weddingParty: [previous, ...current.weddingParty] }));
+      }
+      setMockAction({
+        title: 'Wedding party member not deleted',
+        detail: error instanceof Error ? error.message : 'The wedding party member could not be deleted. Please try again.',
+        primaryLabel: 'Close',
+      });
+    });
   };
 
   useEffect(() => {

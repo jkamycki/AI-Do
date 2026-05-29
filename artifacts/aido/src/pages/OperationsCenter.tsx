@@ -40,6 +40,7 @@ import {
   ListChecks,
   Plus,
   Sparkles,
+  Store,
   Users,
   Wrench,
 } from "lucide-react";
@@ -168,6 +169,24 @@ type ArchiveEntry = {
   deletedAt: string;
   restoredAt: string | null;
   restoredToUserId: string | null;
+};
+
+type VendorPartnerApplication = {
+  id: number;
+  businessName: string;
+  contactName: string;
+  email: string;
+  phone: string | null;
+  category: string;
+  serviceArea: string;
+  website: string | null;
+  instagram: string | null;
+  startingPrice: string | null;
+  description: string | null;
+  status: "new" | "reviewing" | "approved" | "declined" | string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 type ArchiveSummary = {
@@ -518,7 +537,7 @@ export default function OperationsCenterPage() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [expandedTicketIds, setExpandedTicketIds] = useState<Set<number | string>>(new Set());
-  const [activeTab, setActiveTab] = useState<"tickets" | "messages" | "users" | "recovery" | "workflow" | "testActivity" | "launchPlan" | "maintenance">("tickets");
+  const [activeTab, setActiveTab] = useState<"tickets" | "messages" | "vendorIntake" | "users" | "recovery" | "workflow" | "testActivity" | "launchPlan" | "maintenance">("tickets");
   const [workflowFilter, setWorkflowFilter] = useState<"all" | "completed" | "in_progress" | "not_started">("all");
   const [testSessionFilter, setTestSessionFilter] = useState<"test" | "all" | "real">("test");
   const [userSearch, setUserSearch] = useState("");
@@ -592,6 +611,37 @@ export default function OperationsCenterPage() {
     refetchInterval: 30000,
   });
   const unreadMessageCount = messagesData?.unreadCount ?? 0;
+
+  const { data: vendorApplicationsData, isLoading: isLoadingVendorApplications } = useQuery<{ applications: VendorPartnerApplication[] }>({
+    queryKey: ["admin-vendor-partner-applications"],
+    queryFn: async () => {
+      const r = await authedFetch("/api/admin/vendor-partner-applications");
+      if (!r.ok) throw new Error("Failed to fetch vendor partner applications");
+      return r.json();
+    },
+    enabled: activeTab === "vendorIntake",
+    refetchInterval: activeTab === "vendorIntake" ? 30000 : false,
+  });
+  const vendorApplications = vendorApplicationsData?.applications ?? [];
+  const newVendorApplicationCount = vendorApplications.filter(application => application.status === "new").length;
+
+  const updateVendorApplicationMutation = useMutation({
+    mutationFn: async ({ id, notes, status }: { id: number; notes?: string; status: string }) => {
+      const r = await authedFetch(`/api/admin/vendor-partner-applications/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ notes, status }),
+      });
+      if (!r.ok) throw new Error("Failed to update vendor application");
+      return r.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-vendor-partner-applications"] });
+      toast({ title: "Vendor application updated" });
+    },
+    onError: () => {
+      toast({ title: "Vendor application could not be updated", variant: "destructive" });
+    },
+  });
 
   const { data: testSessionsData, isLoading: isLoadingTestSessions } = useQuery<{ sessions: TestSessionRow[] }>({
     queryKey: ["admin-test-sessions", testSessionFilter],
@@ -1285,6 +1335,19 @@ export default function OperationsCenterPage() {
           )}
         </button>
         <button
+          onClick={() => setActiveTab("vendorIntake")}
+          className={`flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
+            ${activeTab === "vendorIntake" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
+        >
+          <Store className="h-4 w-4" />
+          Vendor Intake
+          {newVendorApplicationCount > 0 && (
+            <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-white text-xs font-bold">
+              {newVendorApplicationCount}
+            </span>
+          )}
+        </button>
+        <button
           onClick={() => setActiveTab("users")}
           className={`flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
             ${activeTab === "users" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
@@ -1478,6 +1541,138 @@ export default function OperationsCenterPage() {
           title="Messages & Feedback"
           description="Contact requests (including emails to support@aidowedding.net) and user feedback."
         />
+      )}
+
+      {activeTab === "vendorIntake" && (
+        <div className="space-y-5">
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-serif text-xl text-[#24171D]">Vendor Intake</CardTitle>
+              <p className="text-sm font-medium text-[#4A3941]">
+                Applications submitted from the public vendor partner form. Use this as the review queue before adding vendors to the directory.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 sm:grid-cols-4">
+                {[
+                  { label: "Total", value: vendorApplications.length },
+                  { label: "New", value: vendorApplications.filter(application => application.status === "new").length },
+                  { label: "Reviewing", value: vendorApplications.filter(application => application.status === "reviewing").length },
+                  { label: "Approved", value: vendorApplications.filter(application => application.status === "approved").length },
+                ].map(item => (
+                  <div key={item.label} className="rounded-lg border border-[#E6D2D8] bg-[#FFF8F4] p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-[#8D294D]/70">{item.label}</p>
+                    <p className="mt-1 text-2xl font-serif font-bold text-[#24171D]">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {isLoadingVendorApplications ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-44 rounded-lg" />)}
+            </div>
+          ) : vendorApplications.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Store className="mx-auto h-10 w-10 text-[#8D294D]/60" />
+                <h2 className="mt-3 font-serif text-xl font-semibold text-[#24171D]">No vendor applications yet</h2>
+                <p className="mt-1 text-sm text-[#4A3941]">When vendors fill out the website intake form, they will show up here.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {vendorApplications.map(application => {
+                const statusClass =
+                  application.status === "approved"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : application.status === "declined"
+                      ? "bg-red-50 text-red-700 border-red-200"
+                      : application.status === "reviewing"
+                        ? "bg-amber-50 text-amber-700 border-amber-200"
+                        : "bg-primary/10 text-primary border-primary/20";
+                return (
+                  <Card key={application.id}>
+                    <CardContent className="space-y-4 pt-6">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="font-serif text-2xl font-semibold text-[#24171D]">{application.businessName}</h2>
+                            <Badge className={`border ${statusClass}`}>{application.status}</Badge>
+                          </div>
+                          <p className="mt-1 text-sm font-medium text-[#4A3941]">
+                            {application.category} | {application.serviceArea}
+                          </p>
+                          <p className="mt-1 text-xs text-[#4A3941]/70">
+                            Submitted {new Date(application.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <Select
+                          value={application.status}
+                          onValueChange={status => updateVendorApplicationMutation.mutate({
+                            id: application.id,
+                            notes: application.notes ?? "",
+                            status,
+                          })}
+                        >
+                          <SelectTrigger className="w-full lg:w-44">
+                            <SelectValue placeholder="Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="new">New</SelectItem>
+                            <SelectItem value="reviewing">Reviewing</SelectItem>
+                            <SelectItem value="approved">Approved</SelectItem>
+                            <SelectItem value="declined">Declined</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                        <div className="rounded-lg border border-[#E6D2D8] p-3">
+                          <p className="text-xs font-semibold uppercase text-[#8D294D]/70">Contact</p>
+                          <p className="mt-1 text-sm font-semibold text-[#24171D]">{application.contactName}</p>
+                          <a className="text-sm text-primary underline-offset-2 hover:underline" href={`mailto:${application.email}`}>{application.email}</a>
+                          {application.phone ? <p className="text-sm text-[#4A3941]">{application.phone}</p> : null}
+                        </div>
+                        <div className="rounded-lg border border-[#E6D2D8] p-3">
+                          <p className="text-xs font-semibold uppercase text-[#8D294D]/70">Pricing</p>
+                          <p className="mt-1 text-sm text-[#24171D]">{application.startingPrice || "Not provided"}</p>
+                        </div>
+                        <div className="rounded-lg border border-[#E6D2D8] p-3">
+                          <p className="text-xs font-semibold uppercase text-[#8D294D]/70">Website</p>
+                          {application.website ? (
+                            <a className="break-all text-sm text-primary underline-offset-2 hover:underline" href={application.website} rel="noreferrer" target="_blank">{application.website}</a>
+                          ) : <p className="text-sm text-[#4A3941]">Not provided</p>}
+                        </div>
+                        <div className="rounded-lg border border-[#E6D2D8] p-3">
+                          <p className="text-xs font-semibold uppercase text-[#8D294D]/70">Instagram</p>
+                          <p className="mt-1 break-all text-sm text-[#24171D]">{application.instagram || "Not provided"}</p>
+                        </div>
+                      </div>
+
+                      {application.description ? (
+                        <div className="rounded-lg bg-[#FFF8F4] p-4 text-sm leading-6 text-[#4A3941]">
+                          {application.description}
+                        </div>
+                      ) : null}
+
+                      <Textarea
+                        defaultValue={application.notes ?? ""}
+                        onBlur={event => updateVendorApplicationMutation.mutate({
+                          id: application.id,
+                          notes: event.target.value,
+                          status: application.status,
+                        })}
+                        placeholder="Internal notes: fit, follow-up, market, badge/referral plan..."
+                      />
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
 
       {activeTab === "users" && (
