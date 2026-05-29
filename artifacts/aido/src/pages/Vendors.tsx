@@ -15,7 +15,9 @@ import {
   useDeleteVendorPayment,
   useSummarizeVendorEmail,
   useGetProfile,
+  useListConversations,
   getListVendorsQueryKey,
+  getListConversationsQueryKey,
   getGetVendorQueryKey,
   getGetDashboardSummaryQueryKey,
 } from "@workspace/api-client-react";
@@ -126,7 +128,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   "Other": "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
 };
 
-type VendorManagementTab = "vendors" | "contacts" | "directory";
+type VendorManagementTab = "vendors" | "messages" | "contacts" | "directory";
 
 const VENDOR_DIRECTORY_PREVIEW_EMAIL = "kamyckijoseph@gmail.com";
 
@@ -135,6 +137,7 @@ function getRequestedVendorManagementTab(
   canPreviewVendorDirectory: boolean,
 ): VendorManagementTab {
   if (requestedTab === "contacts") return "contacts";
+  if (requestedTab === "messages") return "messages";
   if (requestedTab === "directory" && canPreviewVendorDirectory) return "directory";
   return "vendors";
 }
@@ -2107,6 +2110,126 @@ function VendorDirectoryTab({
   );
 }
 
+function VendorHubMessagesTab({
+  initialVendorId,
+  onSelectVendor,
+}: {
+  initialVendorId?: number | null;
+  onSelectVendor?: (vendorId: number) => void;
+}) {
+  const { data: conversations = [], isLoading } = useListConversations({
+    query: {
+      queryKey: getListConversationsQueryKey(),
+      refetchInterval: 5000,
+    },
+  });
+  const [selectedVendorId, setSelectedVendorId] = useState<number | null>(initialVendorId ?? null);
+
+  useEffect(() => {
+    if (initialVendorId) setSelectedVendorId(initialVendorId);
+  }, [initialVendorId]);
+
+  useEffect(() => {
+    if (!selectedVendorId && conversations.length > 0) {
+      setSelectedVendorId(conversations[0].vendorId);
+    }
+  }, [conversations, selectedVendorId]);
+
+  const selectedConversation = conversations.find((conversation) => conversation.vendorId === selectedVendorId);
+
+  if (isLoading) {
+    return (
+      <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
+        <div className="space-y-3">
+          {[1, 2, 3].map((item) => <Skeleton key={item} className="h-20 rounded-xl" />)}
+        </div>
+        <Skeleton className="h-[520px] rounded-xl" />
+      </div>
+    );
+  }
+
+  if (conversations.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-primary/25 bg-primary/5 px-6 py-12 text-center">
+        <Inbox className="mx-auto h-10 w-10 text-primary/70" />
+        <h2 className="mt-3 font-serif text-2xl text-foreground">No vendor messages yet</h2>
+        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+          Start a message from a saved vendor or request an introduction from the Partner Network. Replies will appear here as conversations.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
+      <aside className="space-y-2 rounded-2xl border border-border/70 bg-card p-3 shadow-sm lg:max-h-[680px] lg:overflow-y-auto">
+        <div className="px-2 pb-2">
+          <h2 className="font-serif text-xl text-foreground">Messages</h2>
+          <p className="text-xs text-muted-foreground">Vendor and partner conversations in one place.</p>
+        </div>
+        {conversations.map((conversation) => {
+          const isActive = conversation.vendorId === selectedVendorId;
+          const lastMessageDate = new Date(conversation.lastMessageAt);
+          const lastMessageLabel = Number.isNaN(lastMessageDate.getTime())
+            ? ""
+            : lastMessageDate.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+          return (
+            <button
+              key={conversation.id}
+              type="button"
+              className={`w-full rounded-xl border px-3 py-3 text-left transition ${
+                isActive
+                  ? "border-primary/40 bg-primary/10 text-foreground"
+                  : "border-transparent hover:border-border hover:bg-muted/40"
+              }`}
+              onClick={() => {
+                setSelectedVendorId(conversation.vendorId);
+                onSelectVendor?.(conversation.vendorId);
+              }}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{conversation.vendorName}</p>
+                  <p className="mt-1 truncate text-xs text-muted-foreground">
+                    {conversation.lastMessagePreview || conversation.subject || "No messages yet"}
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  {lastMessageLabel && <span className="text-[10px] text-muted-foreground">{lastMessageLabel}</span>}
+                  {conversation.unreadCount > 0 && (
+                    <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
+                      {conversation.unreadCount}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </aside>
+
+      <section className="min-w-0 rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
+        {selectedVendorId ? (
+          <div className="space-y-3">
+            <div className="border-b border-border/70 pb-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary">Conversation</p>
+              <h3 className="font-serif text-2xl text-foreground">{selectedConversation?.vendorName ?? "Vendor"}</h3>
+              {selectedConversation?.vendorEmail && (
+                <p className="text-sm text-muted-foreground">{selectedConversation.vendorEmail}</p>
+              )}
+            </div>
+            <VendorMessagesTab vendorId={selectedVendorId} />
+          </div>
+        ) : (
+          <div className="flex min-h-[360px] items-center justify-center text-center text-sm text-muted-foreground">
+            Select a conversation to view messages.
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function VendorDirectoryProfile({
   accountEmail,
   isOpeningMessages,
@@ -2504,6 +2627,9 @@ export default function Vendors() {
   const [deletingVendorId, setDeletingVendorId] = useState<number | null>(null);
   const [showSummarize, setShowSummarize] = useState(false);
   const [activeManagementTab, setActiveManagementTab] = useState<VendorManagementTab>(requestedManagementView);
+  const [selectedMessageVendorId, setSelectedMessageVendorId] = useState<number | null>(
+    requestedManagementView === "messages" && requestedVendorId ? requestedVendorId : null,
+  );
 
   const handleAddVendor = () => {
     if (!profileLoading && !profile) {
@@ -2567,6 +2693,10 @@ export default function Vendors() {
 
   useEffect(() => {
     if (isLoading || !requestedVendorId) return;
+    if (requestedManagementTab === "messages") {
+      setSelectedMessageVendorId(requestedVendorId);
+      return;
+    }
     setDetailInitialTab(
       requestedTab === "messages" || requestedTab === "files"
         ? requestedTab
@@ -2574,7 +2704,7 @@ export default function Vendors() {
     );
     setViewingVendorId(requestedVendorId);
     setLocation("/vendors", { replace: true });
-  }, [isLoading, requestedVendorId, requestedTab, setLocation]);
+  }, [isLoading, requestedManagementTab, requestedVendorId, requestedTab, setLocation]);
 
   useEffect(() => {
     setActiveManagementTab(requestedManagementView);
@@ -2588,6 +2718,12 @@ export default function Vendors() {
       allowedTab === "vendors" ? "/vendors?management=vendors" : `/vendors?management=${allowedTab}`,
       { replace: true },
     );
+  };
+
+  const openVendorHubMessages = (vendorId: number) => {
+    setSelectedMessageVendorId(vendorId);
+    setActiveManagementTab("messages");
+    setLocation(`/vendors?management=messages&vendorId=${vendorId}`, { replace: true });
   };
 
   if (isLoading) {
@@ -2637,10 +2773,11 @@ export default function Vendors() {
       <Tabs value={activeManagementTab} onValueChange={handleManagementTabChange}>
         <TabsList>
           <TabsTrigger value="vendors">{t("vendors.tab_vendors", { defaultValue: "Vendor List" })}</TabsTrigger>
-          <TabsTrigger value="contacts">{t("vendors.tab_contacts", { defaultValue: "Contacts" })}</TabsTrigger>
+          <TabsTrigger value="messages">Messages</TabsTrigger>
           {canPreviewVendorDirectory && (
             <TabsTrigger value="directory">Partner Network</TabsTrigger>
           )}
+          <TabsTrigger value="contacts">{t("vendors.tab_contacts", { defaultValue: "Contacts" })}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="vendors" className="space-y-6 mt-4">
@@ -2713,16 +2850,23 @@ export default function Vendors() {
           )}
         </TabsContent>
 
+        <TabsContent value="messages" className="mt-4">
+          <VendorHubMessagesTab
+            initialVendorId={selectedMessageVendorId}
+            onSelectVendor={(vendorId) => {
+              setSelectedMessageVendorId(vendorId);
+              setLocation(`/vendors?management=messages&vendorId=${vendorId}`, { replace: true });
+            }}
+          />
+        </TabsContent>
+
         <TabsContent value="contacts" className="mt-4">
           <VendorContactsTab />
         </TabsContent>
         {canPreviewVendorDirectory && (
           <TabsContent value="directory" className="mt-4">
             <VendorDirectoryTab
-              onOpenVendorMessages={(vendorId) => {
-                setDetailInitialTab("messages");
-                setViewingVendorId(vendorId);
-              }}
+              onOpenVendorMessages={openVendorHubMessages}
             />
           </TabsContent>
         )}
