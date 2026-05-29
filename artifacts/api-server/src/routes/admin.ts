@@ -8,9 +8,9 @@ import {
   checklistItems, vendors, guests, vendorContracts, seatingCharts,
   hotelBlocks, weddingParty, manualExpenses, vendorPayments,
   workspaceCollaborators, adminLaunchPlanItems,
-  weddingWebsites, websiteRsvps, vendorPartnerApplications,
+  weddingWebsites, websiteRsvps, vendorPartnerApplications, vendorPartnerApplicationReplies,
 } from "@workspace/db";
-import { eq, gte, desc, sql, and, inArray } from "drizzle-orm";
+import { eq, gte, desc, sql, and, inArray, asc } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { purgeUserData, snapshotUserData } from "../lib/userCleanup";
 import {
@@ -28,6 +28,7 @@ import {
   listMaintenanceFlags,
   upsertMaintenanceFlag,
 } from "../lib/maintenance";
+import { buildVendorPartnerThreadAddress, ensureVendorPartnerThreadToken, getSupportInboxAddresses } from "../lib/supportInbox";
 
 const router = Router();
 
@@ -554,7 +555,26 @@ router.get("/admin/vendor-partner-applications", requireAuth, requireAdmin, asyn
       .select()
       .from(vendorPartnerApplications)
       .orderBy(desc(vendorPartnerApplications.createdAt));
-    res.json({ applications });
+    const applicationIds = applications.map((application) => application.id);
+    const replies = applicationIds.length
+      ? await db
+        .select()
+        .from(vendorPartnerApplicationReplies)
+        .where(inArray(vendorPartnerApplicationReplies.applicationId, applicationIds))
+        .orderBy(asc(vendorPartnerApplicationReplies.createdAt))
+      : [];
+    const repliesByApplication = new Map<number, typeof replies>();
+    for (const reply of replies) {
+      const list = repliesByApplication.get(reply.applicationId) ?? [];
+      list.push(reply);
+      repliesByApplication.set(reply.applicationId, list);
+    }
+    res.json({
+      applications: applications.map((application) => ({
+        ...application,
+        replies: repliesByApplication.get(application.id) ?? [],
+      })),
+    });
   } catch (err) {
     req.log.error(err, "Failed to list vendor partner applications");
     res.status(500).json({ error: "Internal server error" });
@@ -590,6 +610,72 @@ router.patch("/admin/vendor-partner-applications/:id", requireAuth, requireAdmin
     res.json(updated);
   } catch (err) {
     req.log.error(err, "Failed to update vendor partner application");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/admin/vendor-partner-applications/:id/reply", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const replyText = typeof req.body?.replyText === "string" ? req.body.replyText.trim() : "";
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(400).json({ error: "Invalid application id" });
+      return;
+    }
+    if (!replyText) {
+      res.status(400).json({ error: "Reply text is required" });
+      return;
+    }
+    const [application] = await db
+      .select()
+      .from(vendorPartnerApplications)
+      .where(eq(vendorPartnerApplications.id, id))
+      .limit(1);
+    if (!application) {
+      res.status(404).json({ error: "Application not found" });
+      return;
+    }
+
+    const supportAddress = getSupportInboxAddresses()[0] ?? FROM_EMAIL;
+    const threadToken = await ensureVendorPartnerThreadToken(id);
+    const replyToAddress = threadToken ? buildVendorPartnerThreadAddress(id, threadToken) : supportAddress;
+    const result = await sendEmail({
+      to: application.email,
+      replyTo: replyToAddress,
+      subject: `Re: A.I DO Vendor Partner Application`,
+      text: [
+        replyText,
+        "",
+        "- A.I DO Vendor Partnerships",
+      ].join("\n"),
+    });
+
+    if (!result.ok) {
+      req.log.error({ error: result.error, applicationId: id }, "Failed to send vendor partner reply");
+      res.status(502).json({ error: "Email delivery failed." });
+      return;
+    }
+
+    const [reply] = await db
+      .insert(vendorPartnerApplicationReplies)
+      .values({
+        applicationId: id,
+        direction: "outbound",
+        body: replyText,
+        senderUserId: req.userId ?? null,
+        senderEmail: supportAddress,
+        senderName: "A.I DO Vendor Partnerships",
+      })
+      .returning();
+
+    await db
+      .update(vendorPartnerApplications)
+      .set({ status: application.status === "new" ? "reviewing" : application.status, updatedAt: new Date() })
+      .where(eq(vendorPartnerApplications.id, id));
+
+    res.json({ success: true, reply });
+  } catch (err) {
+    req.log.error(err, "Failed to reply to vendor partner application");
     res.status(500).json({ error: "Internal server error" });
   }
 });

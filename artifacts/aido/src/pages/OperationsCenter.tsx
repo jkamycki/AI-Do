@@ -35,10 +35,12 @@ import {
   RotateCcw,
   FileDown,
   Inbox,
+  Loader2,
   Ticket,
   FlaskConical,
   ListChecks,
   Plus,
+  Send,
   Sparkles,
   Store,
   Users,
@@ -187,6 +189,16 @@ type VendorPartnerApplication = {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  replies?: Array<{
+    id: number;
+    applicationId: number;
+    direction: "outbound" | "inbound";
+    body: string;
+    senderUserId: string | null;
+    senderEmail: string | null;
+    senderName: string | null;
+    createdAt: string;
+  }>;
 };
 
 type ArchiveSummary = {
@@ -552,6 +564,8 @@ export default function OperationsCenterPage() {
   const launchPlanItemsRef = useRef<LaunchPlanItem[]>([]);
   const hasLoadedLaunchPlanRef = useRef(false);
   const [launchPlanEmailRecipients, setLaunchPlanEmailRecipients] = useState<Record<string, string>>({});
+  const [vendorReplyOpenId, setVendorReplyOpenId] = useState<number | null>(null);
+  const [vendorReplyText, setVendorReplyText] = useState<Record<number, string>>({});
   const [launchPlanItems, setLaunchPlanItems] = useState<LaunchPlanItem[]>(() => {
     if (typeof window === "undefined") return fallbackLaunchPlanItems;
     try {
@@ -640,6 +654,31 @@ export default function OperationsCenterPage() {
     },
     onError: () => {
       toast({ title: "Vendor application could not be updated", variant: "destructive" });
+    },
+  });
+
+  const replyVendorApplicationMutation = useMutation({
+    mutationFn: async ({ id, replyText }: { id: number; replyText: string }) => {
+      const r = await authedFetch(`/api/admin/vendor-partner-applications/${id}/reply`, {
+        method: "POST",
+        body: JSON.stringify({ replyText }),
+      });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(body.error ?? "Failed to send vendor reply");
+      return body;
+    },
+    onSuccess: (_data, variables) => {
+      setVendorReplyOpenId(null);
+      setVendorReplyText(current => ({ ...current, [variables.id]: "" }));
+      queryClient.invalidateQueries({ queryKey: ["admin-vendor-partner-applications"] });
+      toast({ title: "Vendor reply sent" });
+    },
+    onError: (error) => {
+      toast({
+        title: "Vendor reply could not be sent",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -1666,6 +1705,94 @@ export default function OperationsCenterPage() {
                         })}
                         placeholder="Internal notes: fit, follow-up, market, badge/referral plan..."
                       />
+
+                      <div className="rounded-lg border border-[#E6D2D8] bg-white p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="font-serif text-lg font-semibold text-[#24171D]">Response thread</p>
+                            <p className="text-sm text-[#4A3941]">
+                              Email {application.contactName} and keep the conversation attached to this application.
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-2"
+                            onClick={() => {
+                              setVendorReplyOpenId(current => current === application.id ? null : application.id);
+                              setVendorReplyText(current => ({
+                                ...current,
+                                [application.id]: current[application.id] ?? "",
+                              }));
+                            }}
+                          >
+                            <Send className="h-4 w-4" />
+                            {vendorReplyOpenId === application.id ? "Cancel reply" : "Reply"}
+                          </Button>
+                        </div>
+
+                        {application.replies && application.replies.length > 0 ? (
+                          <div className="mt-4 space-y-3">
+                            {application.replies.map(reply => {
+                              const isOutbound = reply.direction === "outbound";
+                              return (
+                                <div
+                                  key={reply.id}
+                                  className={`rounded-lg border p-3 ${isOutbound ? "ml-5 border-primary/20 bg-primary/5" : "mr-5 border-[#E6D2D8] bg-[#FFF8F4]"}`}
+                                >
+                                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-[#4A3941]/75">
+                                    <span>
+                                      {isOutbound
+                                        ? `A.I DO replied${reply.senderEmail ? ` (${reply.senderEmail})` : ""}`
+                                        : `${reply.senderName || reply.senderEmail || "Vendor"} replied`}
+                                    </span>
+                                    <span>{new Date(reply.createdAt).toLocaleString()}</span>
+                                  </div>
+                                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#24171D]">{reply.body}</p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="mt-4 rounded-lg bg-[#FFF8F4] p-3 text-sm text-[#4A3941]">
+                            No replies yet. Send the approval or follow-up email from here so future vendor responses stay attached.
+                          </p>
+                        )}
+
+                        {vendorReplyOpenId === application.id && (
+                          <div className="mt-4 space-y-3 rounded-lg border border-primary/20 bg-[#FFF8F4] p-3">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-[#8D294D]/70">
+                              To {application.email}
+                            </p>
+                            <Textarea
+                              value={vendorReplyText[application.id] ?? ""}
+                              onChange={event => setVendorReplyText(current => ({ ...current, [application.id]: event.target.value }))}
+                              placeholder="Write your vendor approval, follow-up, or question..."
+                              className="min-h-[150px] bg-white"
+                            />
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                onClick={() => setVendorReplyOpenId(null)}
+                                disabled={replyVendorApplicationMutation.isPending}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                className="gap-2"
+                                onClick={() => replyVendorApplicationMutation.mutate({
+                                  id: application.id,
+                                  replyText: vendorReplyText[application.id] ?? "",
+                                })}
+                                disabled={replyVendorApplicationMutation.isPending || !(vendorReplyText[application.id] ?? "").trim()}
+                              >
+                                {replyVendorApplicationMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                Send email
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                 );

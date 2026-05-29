@@ -9,6 +9,7 @@ import { ObjectStorageService } from "../lib/objectStorage";
 import { evaluateCustomDesignCompleteness } from "../lib/customDesignValidation";
 import { openai, getModel, supportsCustomTemperature } from "@workspace/integrations-openai-ai-server";
 import { sendMaintenanceIfActive } from "../lib/maintenance";
+import { normalizePlusOneStatus, plusOneCountsAsGuest, plusOneNameForStatus } from "../lib/plusOneStatus";
 import crypto from "crypto";
 
 const objectStorageService = new ObjectStorageService();
@@ -1750,6 +1751,7 @@ router.post("/rsvp/:token", async (req, res) => {
       attendance,
       mealChoice,
       plusOne,
+      plusOneStatus,
       plusOneName,
       plusOneFirstName,
       plusOneLastName,
@@ -1796,7 +1798,6 @@ router.post("/rsvp/:token", async (req, res) => {
       updateData.bookedHotelBlockId = null;
       updateData.bookedHotelRoomCount = null;
       if (plusOne !== undefined) {
-        updateData.plusOne = !!plusOne;
         // Prefer split first/last when provided; fall back to combined plusOneName.
         const combined = [
           typeof plusOneFirstName === "string" ? plusOneFirstName.trim() : "",
@@ -1804,11 +1805,16 @@ router.post("/rsvp/:token", async (req, res) => {
         ].filter(Boolean).join(" ");
         const fallback = typeof plusOneName === "string" ? plusOneName.trim() : "";
         const finalName = combined || fallback;
-        updateData.plusOneName = plusOne && finalName ? finalName : null;
-        updateData.plusOneMealChoice = plusOne ? normalizeMeal(plusOneMealChoice) : null;
+        const normalizedPlusOneStatus = normalizePlusOneStatus(plusOneStatus, plusOne, finalName);
+        const hasPlusOneSeat = plusOneCountsAsGuest(normalizedPlusOneStatus);
+        updateData.plusOne = hasPlusOneSeat;
+        updateData.plusOneStatus = normalizedPlusOneStatus;
+        updateData.plusOneName = plusOneNameForStatus(normalizedPlusOneStatus, finalName);
+        updateData.plusOneMealChoice = hasPlusOneSeat ? normalizeMeal(plusOneMealChoice) : null;
       }
     } else {
       updateData.plusOne = false;
+      updateData.plusOneStatus = "none";
       updateData.plusOneName = null;
       updateData.plusOneMealChoice = null;
       updateData.mealChoice = null;

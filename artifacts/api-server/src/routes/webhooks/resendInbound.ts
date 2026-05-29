@@ -3,7 +3,14 @@ import { db } from "@workspace/db";
 import { vendorConversations, vendorMessages, vendors } from "@workspace/db/schema";
 import { and, eq } from "drizzle-orm";
 import { cleanInboundText, findRoutingAddressInText, htmlToText, parseInboundAddress, getEmail } from "../../lib/resend";
-import { isSupportInboxRecipient, saveSupportInboxMessage, parseSupportThreadAddress, appendInboundReply } from "../../lib/supportInbox";
+import {
+  appendInboundReply,
+  appendInboundVendorPartnerReply,
+  isSupportInboxRecipient,
+  parseSupportThreadAddress,
+  parseVendorPartnerThreadAddress,
+  saveSupportInboxMessage,
+} from "../../lib/supportInbox";
 import { logger } from "../../lib/logger";
 import { Webhook } from "svix";
 import { requireAuth } from "../../middlewares/requireAuth";
@@ -190,6 +197,39 @@ router.post("/webhooks/resend/inbound", raw({ type: "*/*", limit: "20mb" }), asy
         logger.warn({ recipients, contactMessageId: threadMatch.contactMessageId }, "Resend inbound: thread token mismatch");
         logHit("ignored:thread_token_mismatch");
         return res.status(200).json({ ignored: true, reason: "thread token mismatch" });
+      }
+
+      let vendorPartnerThreadMatch: { applicationId: number; token: string } | null = null;
+      for (const r of recipients) {
+        const m = parseVendorPartnerThreadAddress(r);
+        if (m) { vendorPartnerThreadMatch = m; break; }
+      }
+      if (vendorPartnerThreadMatch) {
+        const sender = extractSender(data.from);
+        let bodyText = (data.text && data.text.trim()) || "";
+        let bodyHtml = data.html || "";
+        if (!bodyText && !bodyHtml && data.email_id) {
+          const full = await getEmail(data.email_id);
+          bodyText = full?.text?.trim() || "";
+          bodyHtml = full?.html || "";
+        }
+        const rawText = bodyText || (bodyHtml ? htmlToText(bodyHtml) : "");
+        const cleaned = cleanInboundText(rawText) || rawText.trim();
+        const saved = await appendInboundVendorPartnerReply({
+          applicationId: vendorPartnerThreadMatch.applicationId,
+          token: vendorPartnerThreadMatch.token,
+          fromEmail: sender.email,
+          fromName: sender.name,
+          body: cleaned,
+        });
+        if (saved) {
+          logger.info({ recipients, applicationId: vendorPartnerThreadMatch.applicationId, replyId: saved.id }, "Resend inbound: appended to vendor partner thread");
+          logHit("saved:vendor_partner_thread", { conversationId: vendorPartnerThreadMatch.applicationId, senderEmail: sender.email });
+          return res.json({ ok: true, applicationId: vendorPartnerThreadMatch.applicationId, replyId: saved.id });
+        }
+        logger.warn({ recipients, applicationId: vendorPartnerThreadMatch.applicationId }, "Resend inbound: vendor partner thread token mismatch");
+        logHit("ignored:vendor_partner_thread_token_mismatch");
+        return res.status(200).json({ ignored: true, reason: "vendor partner thread token mismatch" });
       }
 
       if (isSupportInboxRecipient(recipients)) {

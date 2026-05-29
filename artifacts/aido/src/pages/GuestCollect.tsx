@@ -8,7 +8,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Heart, CheckCircle2, AlertCircle, Loader2, MapPin } from "lucide-react";
 import { MaintenanceNotice } from "@/components/MaintenanceNotice";
@@ -20,8 +19,15 @@ const schema = z.object({
   phone: z.string().optional(),
   address: z.string().optional(),
   plusOne: z.boolean().default(false),
+  plusOneStatus: z.enum(["none", "named", "name_tbd", "unsure"]).default("none"),
   plusOneFirstName: z.string().optional(),
   plusOneLastName: z.string().optional(),
+}).refine((data) => {
+  if (data.plusOneStatus !== "named") return true;
+  return !!(data.plusOneFirstName?.trim() && data.plusOneLastName?.trim());
+}, {
+  message: "Please enter your plus-one's first and last name, or choose name coming later.",
+  path: ["plusOneFirstName"],
 });
 
 type FormData = z.infer<typeof schema>;
@@ -87,12 +93,14 @@ export default function GuestCollect() {
       phone: "",
       address: "",
       plusOne: false,
+      plusOneStatus: "none",
       plusOneFirstName: "",
       plusOneLastName: "",
     },
   });
 
-  const plusOne = form.watch("plusOne");
+  const plusOneStatus = form.watch("plusOneStatus");
+  const needsPlusOneName = plusOneStatus === "named";
 
   const submit = useMutation({
     mutationFn: async (data: FormData) => {
@@ -271,24 +279,46 @@ export default function GuestCollect() {
                   <div className="space-y-4 rounded-2xl border border-[#D9A9B7] bg-[#FFF7F2] p-4 shadow-sm">
                     <FormField
                       control={form.control}
-                      name="plusOne"
+                      name="plusOneStatus"
                       render={({ field }) => (
-                        <FormItem className="flex items-center justify-between gap-4">
+                        <FormItem className="space-y-3">
                           <div>
-                            <FormLabel className="text-sm font-semibold text-[#3B1C2B]">Will you have a Plus One?</FormLabel>
-                            <p className="mt-0.5 text-xs text-[#6F3E54]">Let them know if someone will be joining you</p>
+                            <FormLabel className="text-sm font-semibold text-[#3B1C2B]">Will you have a plus-one?</FormLabel>
+                            <p className="mt-0.5 text-xs text-[#6F3E54]">It is okay if you do not know their name yet.</p>
                           </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              className="data-[state=checked]:bg-[#8D294D] data-[state=unchecked]:bg-[#D9A9B7]"
-                            />
-                          </FormControl>
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            {[
+                              { value: "none", label: "No" },
+                              { value: "named", label: "Yes, I know their name" },
+                              { value: "name_tbd", label: "Yes, name coming later" },
+                              { value: "unsure", label: "Not sure yet" },
+                            ].map((option) => (
+                              <button
+                                key={option.value}
+                                type="button"
+                                onClick={() => {
+                                  field.onChange(option.value);
+                                  form.setValue("plusOne", option.value === "named" || option.value === "name_tbd", { shouldDirty: true });
+                                  if (option.value !== "named") {
+                                    form.setValue("plusOneFirstName", "", { shouldDirty: true });
+                                    form.setValue("plusOneLastName", "", { shouldDirty: true });
+                                  }
+                                }}
+                                className={`rounded-xl border px-3 py-2 text-left text-sm font-semibold transition-colors ${
+                                  field.value === option.value
+                                    ? "border-[#8D294D] bg-[#8D294D] text-white"
+                                    : "border-[#D9A9B7] bg-white text-[#6F3E54] hover:border-[#8D294D]/60"
+                                }`}
+                              >
+                                {option.label}
+                              </button>
+                            ))}
+                          </div>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
-                    {plusOne && (
+                    {needsPlusOneName && (
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <FormField
                           control={form.control}

@@ -4,6 +4,7 @@ import { eq, and, or, ilike, not } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveProfile, resolveCallerRole, hasMinRole, logActivity } from "../lib/workspaceAccess";
 import { sendGuestRsvpBackupEmail, shouldSendManualRsvpBackupEmail } from "../lib/rsvpBackupEmail";
+import { normalizePlusOneStatus, plusOneCountsAsGuest, plusOneNameForStatus } from "../lib/plusOneStatus";
 
 const router = Router();
 const INVITATION_STATUSES = new Set(["pending", "sent"]);
@@ -64,7 +65,7 @@ router.post("/guests", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "No wedding profile found. Create a profile first." });
     }
 
-    const { name, email, invitationStatus, rsvpStatus, mealChoice, dietaryNotes, guestGroup, plusOne, plusOneName, tableAssignment, needsHotel, bookedHotelBlockId, bookedHotelRoomCount, notes, phone, address, aptUnit, guestCity, guestState, guestZip, guestCountry } = req.body;
+    const { name, email, invitationStatus, rsvpStatus, mealChoice, dietaryNotes, guestGroup, plusOne, plusOneStatus, plusOneName, tableAssignment, needsHotel, bookedHotelBlockId, bookedHotelRoomCount, notes, phone, address, aptUnit, guestCity, guestState, guestZip, guestCountry } = req.body;
 
     if (!name || typeof name !== "string" || name.trim().length === 0) {
       return res.status(400).json({ error: "Guest name is required" });
@@ -96,6 +97,8 @@ router.post("/guests", requireAuth, async (req, res) => {
       }
     }
 
+    const normalizedPlusOneStatus = normalizePlusOneStatus(plusOneStatus, plusOne, plusOneName);
+    const hasPlusOneSeat = plusOneCountsAsGuest(normalizedPlusOneStatus);
     const [created] = await db
       .insert(guests)
       .values({
@@ -107,8 +110,9 @@ router.post("/guests", requireAuth, async (req, res) => {
         mealChoice: mealChoice || null,
         dietaryNotes: dietaryNotes || null,
         guestGroup: guestGroup || null,
-        plusOne: !!plusOne,
-        plusOneName: plusOneName || null,
+        plusOne: hasPlusOneSeat,
+        plusOneStatus: normalizedPlusOneStatus,
+        plusOneName: plusOneNameForStatus(normalizedPlusOneStatus, plusOneName),
         tableAssignment: tableAssignment || null,
         needsHotel: !!needsHotel || bookedHotelBlockId != null,
         bookedHotelBlockId: bookedHotelBlockId != null ? Number(bookedHotelBlockId) : null,
@@ -152,7 +156,7 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
     const profileId = profile?.id ?? null;
     if (!profileId) return res.status(400).json({ error: "No wedding profile found." });
 
-    const { name, email, invitationStatus, rsvpStatus, mealChoice, dietaryNotes, guestGroup, plusOne, plusOneName, tableAssignment, needsHotel, bookedHotelBlockId, bookedHotelRoomCount, notes, phone, address, aptUnit, guestCity, guestState, guestZip, guestCountry, saveTheDateStatus, rsvpReminderStatus } = req.body;
+    const { name, email, invitationStatus, rsvpStatus, mealChoice, dietaryNotes, guestGroup, plusOne, plusOneStatus, plusOneName, tableAssignment, needsHotel, bookedHotelBlockId, bookedHotelRoomCount, notes, phone, address, aptUnit, guestCity, guestState, guestZip, guestCountry, saveTheDateStatus, rsvpReminderStatus } = req.body;
     if (invitationStatus !== undefined && invalidStatus(invitationStatus, INVITATION_STATUSES)) {
       return res.status(400).json({ error: "Invalid invitation status" });
     }
@@ -204,8 +208,16 @@ router.put("/guests/:id", requireAuth, async (req, res) => {
     if (mealChoice !== undefined) updateData.mealChoice = mealChoice || null;
     if (dietaryNotes !== undefined) updateData.dietaryNotes = dietaryNotes || null;
     if (guestGroup !== undefined) updateData.guestGroup = guestGroup || null;
-    if (plusOne !== undefined) updateData.plusOne = !!plusOne;
-    if (plusOneName !== undefined) updateData.plusOneName = plusOneName || null;
+    if (plusOne !== undefined || plusOneStatus !== undefined || plusOneName !== undefined) {
+      const normalizedPlusOneStatus = normalizePlusOneStatus(
+        plusOneStatus,
+        plusOne ?? existingGuest.plusOne,
+        plusOneName ?? existingGuest.plusOneName,
+      );
+      updateData.plusOne = plusOneCountsAsGuest(normalizedPlusOneStatus);
+      updateData.plusOneStatus = normalizedPlusOneStatus;
+      updateData.plusOneName = plusOneNameForStatus(normalizedPlusOneStatus, plusOneName ?? existingGuest.plusOneName);
+    }
     if (tableAssignment !== undefined) updateData.tableAssignment = tableAssignment || null;
     if (needsHotel !== undefined) updateData.needsHotel = !!needsHotel;
     if (bookedHotelBlockId !== undefined) {

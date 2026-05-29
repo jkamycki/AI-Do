@@ -1,5 +1,10 @@
 import { db } from "@workspace/db";
-import { contactMessages, contactMessageReplies } from "@workspace/db/schema";
+import {
+  contactMessages,
+  contactMessageReplies,
+  vendorPartnerApplications,
+  vendorPartnerApplicationReplies,
+} from "@workspace/db/schema";
 import { and, eq } from "drizzle-orm";
 import { randomBytes } from "crypto";
 
@@ -44,6 +49,10 @@ export function buildSupportThreadAddress(contactMessageId: number, token: strin
   return `${getSupportInboxLocal()}+t.${contactMessageId}.${token}@${getSupportInboxDomain()}`;
 }
 
+export function buildVendorPartnerThreadAddress(applicationId: number, token: string): string {
+  return `${getSupportInboxLocal()}+vp.${applicationId}.${token}@${getSupportInboxDomain()}`;
+}
+
 export function parseSupportThreadAddress(addr: string): { contactMessageId: number; token: string } | null {
   if (!addr) return null;
   const norm = addr.trim().toLowerCase();
@@ -64,6 +73,26 @@ export function parseSupportThreadAddress(addr: string): { contactMessageId: num
   return { contactMessageId: id, token };
 }
 
+export function parseVendorPartnerThreadAddress(addr: string): { applicationId: number; token: string } | null {
+  if (!addr) return null;
+  const norm = addr.trim().toLowerCase();
+  const at = norm.indexOf("@");
+  if (at < 0) return null;
+  const local = norm.slice(0, at);
+  const domain = norm.slice(at + 1);
+  if (domain !== getSupportInboxDomain().toLowerCase()) return null;
+  const expectedLocal = getSupportInboxLocal().toLowerCase();
+  if (!local.startsWith(`${expectedLocal}+vp.`)) return null;
+  const rest = local.slice(expectedLocal.length + 4);
+  const dot = rest.indexOf(".");
+  if (dot <= 0) return null;
+  const idStr = rest.slice(0, dot);
+  const token = rest.slice(dot + 1);
+  const id = Number.parseInt(idStr, 10);
+  if (!Number.isFinite(id) || id <= 0 || !token) return null;
+  return { applicationId: id, token };
+}
+
 export function generateThreadToken(): string {
   return randomBytes(12).toString("hex");
 }
@@ -81,6 +110,22 @@ export async function ensureContactThreadToken(contactMessageId: number): Promis
     .update(contactMessages)
     .set({ threadToken: token })
     .where(eq(contactMessages.id, contactMessageId));
+  return token;
+}
+
+export async function ensureVendorPartnerThreadToken(applicationId: number): Promise<string | null> {
+  const [row] = await db
+    .select({ id: vendorPartnerApplications.id, threadToken: vendorPartnerApplications.threadToken })
+    .from(vendorPartnerApplications)
+    .where(eq(vendorPartnerApplications.id, applicationId))
+    .limit(1);
+  if (!row) return null;
+  if (row.threadToken) return row.threadToken;
+  const token = generateThreadToken();
+  await db
+    .update(vendorPartnerApplications)
+    .set({ threadToken: token, updatedAt: new Date() })
+    .where(eq(vendorPartnerApplications.id, applicationId));
   return token;
 }
 
@@ -115,6 +160,40 @@ export async function appendInboundReply(args: {
     .update(contactMessages)
     .set({ isRead: false, isResolved: false })
     .where(eq(contactMessages.id, parent.id));
+  return saved ? { id: saved.id } : null;
+}
+
+export async function appendInboundVendorPartnerReply(args: {
+  applicationId: number;
+  token: string;
+  fromEmail: string;
+  fromName?: string | null;
+  body?: string | null;
+}): Promise<{ id: number } | null> {
+  const email = (args.fromEmail || "").trim().toLowerCase();
+  if (!email) return null;
+  const [parent] = await db
+    .select({ id: vendorPartnerApplications.id, threadToken: vendorPartnerApplications.threadToken })
+    .from(vendorPartnerApplications)
+    .where(and(eq(vendorPartnerApplications.id, args.applicationId), eq(vendorPartnerApplications.threadToken, args.token)))
+    .limit(1);
+  if (!parent) return null;
+  const body = (args.body || "").trim() || "(empty message)";
+  const [saved] = await db
+    .insert(vendorPartnerApplicationReplies)
+    .values({
+      applicationId: parent.id,
+      direction: "inbound",
+      body,
+      senderUserId: null,
+      senderEmail: email,
+      senderName: (args.fromName || "").trim() || null,
+    })
+    .returning({ id: vendorPartnerApplicationReplies.id });
+  await db
+    .update(vendorPartnerApplications)
+    .set({ status: "reviewing", updatedAt: new Date() })
+    .where(eq(vendorPartnerApplications.id, parent.id));
   return saved ? { id: saved.id } : null;
 }
 

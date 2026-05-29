@@ -4,7 +4,14 @@ import { vendorConversations, vendorMessages, vendors } from "@workspace/db/sche
 import { and, eq } from "drizzle-orm";
 import PostalMime from "postal-mime";
 import { cleanInboundText, findRoutingAddressInText, htmlToText, parseInboundAddress } from "../../lib/resend";
-import { isSupportInboxRecipient, saveSupportInboxMessage, parseSupportThreadAddress, appendInboundReply } from "../../lib/supportInbox";
+import {
+  appendInboundReply,
+  appendInboundVendorPartnerReply,
+  isSupportInboxRecipient,
+  parseSupportThreadAddress,
+  parseVendorPartnerThreadAddress,
+  saveSupportInboxMessage,
+} from "../../lib/supportInbox";
 import { logger } from "../../lib/logger";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { clerkClient } from "@clerk/express";
@@ -162,6 +169,38 @@ router.post("/webhooks/cloudflare/inbound", json({ limit: "20mb" }), async (req,
         logger.warn({ recipient, contactMessageId: threadMatch.contactMessageId }, "Cloudflare inbound: thread token mismatch");
         logCfHit("ignored:thread_token_mismatch", { recipient });
         return res.status(200).json({ ignored: true, reason: "thread token mismatch" });
+      }
+
+      let vendorPartnerThreadMatch: { applicationId: number; token: string } | null = null;
+      for (const r of allRecipients) {
+        const m = parseVendorPartnerThreadAddress(r);
+        if (m) { vendorPartnerThreadMatch = m; break; }
+      }
+      if (vendorPartnerThreadMatch) {
+        const fromAddr = parsedMime?.from?.address ?? "";
+        const fromName = parsedMime?.from?.name ?? "";
+        const sender = fromAddr
+          ? { email: fromAddr, name: fromName || undefined }
+          : parseFromHeader(payload.from);
+        const bodyText = (parsedMime?.text && parsedMime.text.trim()) || "";
+        const bodyHtml = parsedMime?.html || "";
+        const rawText = bodyText || (bodyHtml ? htmlToText(bodyHtml) : "");
+        const cleaned = cleanInboundText(rawText) || rawText.trim();
+        const saved = await appendInboundVendorPartnerReply({
+          applicationId: vendorPartnerThreadMatch.applicationId,
+          token: vendorPartnerThreadMatch.token,
+          fromEmail: sender.email,
+          fromName: sender.name,
+          body: cleaned,
+        });
+        if (saved) {
+          logger.info({ recipient, applicationId: vendorPartnerThreadMatch.applicationId, replyId: saved.id }, "Cloudflare inbound: appended to vendor partner thread");
+          logCfHit("saved:vendor_partner_thread", { recipient, conversationId: vendorPartnerThreadMatch.applicationId, senderEmail: sender.email });
+          return res.json({ ok: true, applicationId: vendorPartnerThreadMatch.applicationId, replyId: saved.id });
+        }
+        logger.warn({ recipient, applicationId: vendorPartnerThreadMatch.applicationId }, "Cloudflare inbound: vendor partner thread token mismatch");
+        logCfHit("ignored:vendor_partner_thread_token_mismatch", { recipient });
+        return res.status(200).json({ ignored: true, reason: "vendor partner thread token mismatch" });
       }
 
       if (isSupportInboxRecipient(allRecipients)) {

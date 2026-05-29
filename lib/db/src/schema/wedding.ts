@@ -411,11 +411,25 @@ export const vendorPartnerApplications = pgTable("vendor_partner_applications", 
   description: text("description"),
   status: text("status").notNull().default("new"),
   notes: text("notes"),
+  threadToken: text("thread_token"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export type VendorPartnerApplication = typeof vendorPartnerApplications.$inferSelect;
+
+export const vendorPartnerApplicationReplies = pgTable("vendor_partner_application_replies", {
+  id: serial("id").primaryKey(),
+  applicationId: integer("application_id").notNull(),
+  direction: text("direction").notNull(),
+  body: text("body").notNull(),
+  senderUserId: text("sender_user_id"),
+  senderEmail: text("sender_email"),
+  senderName: text("sender_name"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type VendorPartnerApplicationReply = typeof vendorPartnerApplicationReplies.$inferSelect;
 
 export const vendorContracts = pgTable("vendor_contracts", {
   id: serial("id").primaryKey(),
@@ -511,6 +525,7 @@ export const guests = pgTable("guests", {
   dietaryNotes: text("dietary_notes"),
   guestGroup: text("guest_group"),
   plusOne: boolean("plus_one").notNull().default(false),
+  plusOneStatus: text("plus_one_status").notNull().default("none"),
   plusOneName: text("plus_one_name"),
   plusOneMealChoice: text("plus_one_meal_choice"),
   tableAssignment: text("table_assignment"),

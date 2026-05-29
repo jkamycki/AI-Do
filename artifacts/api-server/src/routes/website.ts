@@ -15,6 +15,7 @@ import { sendMaintenanceIfActive } from "../lib/maintenance";
 import { getRequestLanguage } from "../lib/language";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
 import { sendGuestRsvpBackupEmail, sendWebsiteRsvpBackupEmail } from "../lib/rsvpBackupEmail";
+import { normalizePlusOneStatus, plusOneCountsAsGuest, plusOneNameForStatus } from "../lib/plusOneStatus";
 
 const scryptAsync = promisify(scrypt);
 
@@ -1445,6 +1446,7 @@ router.get("/invitation-shares/:token/guests/:guestId", guestSearchLimiter, asyn
       mealChoice: guest.mealChoice,
       dietaryNotes: guest.dietaryNotes,
       plusOne: guest.plusOne,
+      plusOneStatus: guest.plusOneStatus,
       plusOneName: guest.plusOneName,
       plusOneMealChoice: guest.plusOneMealChoice,
       needsHotel: guest.needsHotel,
@@ -1468,6 +1470,7 @@ router.post("/invitation-shares/:token/rsvp/self-add", publicRsvpLimiter, async 
       attendance,
       mealChoice,
       plusOne,
+      plusOneStatus,
       plusOneName,
       plusOneMealChoice,
       dietaryRestrictions,
@@ -1490,7 +1493,8 @@ router.post("/invitation-shares/:token/rsvp/self-add", publicRsvpLimiter, async 
       return val.trim();
     };
     const isAttending = attendance === "attending";
-    const wantsPlusOne = isAttending && plusOne === true;
+    const normalizedPlusOneStatus = isAttending ? normalizePlusOneStatus(plusOneStatus, plusOne, plusOneName) : "none";
+    const wantsPlusOne = plusOneCountsAsGuest(normalizedPlusOneStatus);
     const [created] = await db.insert(guests).values({
       profileId: profile.id,
       name: cleanName,
@@ -1500,7 +1504,8 @@ router.post("/invitation-shares/:token/rsvp/self-add", publicRsvpLimiter, async 
       dietaryNotes: typeof dietaryRestrictions === "string" && dietaryRestrictions.trim() ? dietaryRestrictions.trim() : null,
       rsvpRespondedAt: new Date(),
       plusOne: wantsPlusOne,
-      plusOneName: wantsPlusOne && typeof plusOneName === "string" && plusOneName.trim() ? plusOneName.trim() : null,
+      plusOneStatus: normalizedPlusOneStatus,
+      plusOneName: plusOneNameForStatus(normalizedPlusOneStatus, plusOneName),
       plusOneMealChoice: wantsPlusOne ? normalizeMeal(plusOneMealChoice) : null,
       notes: "Guest used RSVP anyway because they could not find themselves on the guest list. Review before sending future invites.",
       rsvpMessage: typeof message === "string" && message.trim() ? message.trim().slice(0, 1000) : null,
@@ -1533,6 +1538,7 @@ router.post("/invitation-shares/:token/rsvp", publicRsvpLimiter, async (req, res
       attendance,
       mealChoice,
       plusOne,
+      plusOneStatus,
       plusOneName,
       plusOneMealChoice,
       dietaryRestrictions,
@@ -1570,13 +1576,17 @@ router.post("/invitation-shares/:token/rsvp", publicRsvpLimiter, async (req, res
       updateData.bookedHotelBlockId = null;
       updateData.bookedHotelRoomCount = null;
       if (plusOne !== undefined) {
-        updateData.plusOne = !!plusOne;
         const finalName = typeof plusOneName === "string" ? plusOneName.trim() : "";
-        updateData.plusOneName = plusOne && finalName ? finalName : null;
-        updateData.plusOneMealChoice = plusOne ? normalizeMeal(plusOneMealChoice) : null;
+        const normalizedPlusOneStatus = normalizePlusOneStatus(plusOneStatus, plusOne, finalName);
+        const hasPlusOneSeat = plusOneCountsAsGuest(normalizedPlusOneStatus);
+        updateData.plusOne = hasPlusOneSeat;
+        updateData.plusOneStatus = normalizedPlusOneStatus;
+        updateData.plusOneName = plusOneNameForStatus(normalizedPlusOneStatus, finalName);
+        updateData.plusOneMealChoice = hasPlusOneSeat ? normalizeMeal(plusOneMealChoice) : null;
       }
     } else {
       updateData.plusOne = false;
+      updateData.plusOneStatus = "none";
       updateData.plusOneName = null;
       updateData.plusOneMealChoice = null;
       updateData.mealChoice = null;
@@ -2087,6 +2097,7 @@ router.get("/website/public/:slug/guests/:guestId", guestSearchLimiter, async (r
       mealChoice: guest.mealChoice,
       dietaryNotes: guest.dietaryNotes,
       plusOne: guest.plusOne,
+      plusOneStatus: guest.plusOneStatus,
       plusOneName: guest.plusOneName,
       plusOneMealChoice: guest.plusOneMealChoice,
       needsHotel: guest.needsHotel,
@@ -2183,6 +2194,7 @@ router.post("/website/public/:slug/rsvp/self-add", publicRsvpLimiter, async (req
       attendance,
       mealChoice,
       plusOne,
+      plusOneStatus,
       plusOneName,
       plusOneMealChoice,
       dietaryRestrictions,
@@ -2196,6 +2208,7 @@ router.post("/website/public/:slug/rsvp/self-add", publicRsvpLimiter, async (req
       attendance?: string;
       mealChoice?: string;
       plusOne?: boolean;
+      plusOneStatus?: string;
       plusOneName?: string;
       plusOneMealChoice?: string;
       dietaryRestrictions?: string;
@@ -2233,7 +2246,8 @@ router.post("/website/public/:slug/rsvp/self-add", publicRsvpLimiter, async (req
       : "";
 
     const isAttending = attendance === "attending";
-    const wantsPlusOne = isAttending && plusOne === true;
+    const normalizedPlusOneStatus = isAttending ? normalizePlusOneStatus(plusOneStatus, plusOne, plusOneName) : "none";
+    const wantsPlusOne = plusOneCountsAsGuest(normalizedPlusOneStatus);
     const cleanPlusOneName = typeof plusOneName === "string" ? plusOneName.trim() : "";
     const [created] = await db.insert(guests).values({
       profileId: r.site.profileId,
@@ -2244,7 +2258,8 @@ router.post("/website/public/:slug/rsvp/self-add", publicRsvpLimiter, async (req
       dietaryNotes: dietaryClean,
       rsvpRespondedAt: new Date(),
       plusOne: wantsPlusOne,
-      plusOneName: wantsPlusOne && cleanPlusOneName ? cleanPlusOneName : null,
+      plusOneStatus: normalizedPlusOneStatus,
+      plusOneName: plusOneNameForStatus(normalizedPlusOneStatus, cleanPlusOneName),
       plusOneMealChoice: wantsPlusOne ? normalizeMeal(plusOneMealChoice) : null,
       // Notes column is reserved for couple-authored notes; the guest's
       // RSVP message lives in rsvpMessage so it can render in the RSVP
@@ -2286,6 +2301,7 @@ router.post("/website/public/:slug/rsvp", publicRsvpLimiter, async (req, res) =>
       attendance,
       mealChoice,
       plusOne,
+      plusOneStatus,
       plusOneName,
       plusOneMealChoice,
       dietaryRestrictions,
@@ -2299,6 +2315,7 @@ router.post("/website/public/:slug/rsvp", publicRsvpLimiter, async (req, res) =>
       attendance?: string;
       mealChoice?: string;
       plusOne?: boolean;
+      plusOneStatus?: string;
       plusOneName?: string;
       plusOneMealChoice?: string;
       dietaryRestrictions?: string;
@@ -2348,13 +2365,17 @@ router.post("/website/public/:slug/rsvp", publicRsvpLimiter, async (req, res) =>
       updateData.bookedHotelBlockId = null;
       updateData.bookedHotelRoomCount = null;
       if (plusOne !== undefined) {
-        updateData.plusOne = !!plusOne;
         const finalName = typeof plusOneName === "string" ? plusOneName.trim() : "";
-        updateData.plusOneName = plusOne && finalName ? finalName : null;
-        updateData.plusOneMealChoice = plusOne ? normalizeMeal(plusOneMealChoice) : null;
+        const normalizedPlusOneStatus = normalizePlusOneStatus(plusOneStatus, plusOne, finalName);
+        const hasPlusOneSeat = plusOneCountsAsGuest(normalizedPlusOneStatus);
+        updateData.plusOne = hasPlusOneSeat;
+        updateData.plusOneStatus = normalizedPlusOneStatus;
+        updateData.plusOneName = plusOneNameForStatus(normalizedPlusOneStatus, finalName);
+        updateData.plusOneMealChoice = hasPlusOneSeat ? normalizeMeal(plusOneMealChoice) : null;
       }
     } else {
       updateData.plusOne = false;
+      updateData.plusOneStatus = "none";
       updateData.plusOneName = null;
       updateData.plusOneMealChoice = null;
       updateData.mealChoice = null;

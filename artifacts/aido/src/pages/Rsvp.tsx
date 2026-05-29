@@ -30,6 +30,7 @@ const schema = z.object({
   attendance: z.enum(["attending", "declined"], { required_error: "Please select Accept or Decline." }),
   mealChoice: z.string().optional(),
   plusOne: z.boolean().default(false),
+  plusOneStatus: z.enum(["none", "named", "name_tbd", "unsure"]).default("none"),
   plusOneFirstName: z.string().optional(),
   plusOneLastName: z.string().optional(),
   plusOneMealChoice: z.string().optional(),
@@ -39,7 +40,7 @@ const schema = z.object({
   bookedHotelRoomCount: z.string().default("1"),
 }).refine(
   (data) => {
-    if (data.attendance !== "attending" || !data.plusOne) return true;
+    if (data.attendance !== "attending" || data.plusOneStatus !== "named") return true;
     return !!(data.plusOneFirstName?.trim() && data.plusOneLastName?.trim());
   },
   {
@@ -192,6 +193,7 @@ export default function Rsvp() {
       attendance: undefined,
       mealChoice: "",
       plusOne: false,
+      plusOneStatus: "none",
       plusOneFirstName: "",
       plusOneLastName: "",
       plusOneMealChoice: "",
@@ -203,7 +205,9 @@ export default function Rsvp() {
   });
 
   const attendance = form.watch("attendance");
-  const plusOne = form.watch("plusOne");
+  const plusOneStatus = form.watch("plusOneStatus");
+  const plusOne = plusOneStatus === "named" || plusOneStatus === "name_tbd";
+  const needsPlusOneName = plusOneStatus === "named";
   const hotelNeeded = form.watch("hotelNeeded");
   const selectedHotelBlockId = form.watch("bookedHotelBlockId");
   const selectedHotelRoomCount = form.watch("bookedHotelRoomCount");
@@ -235,15 +239,17 @@ export default function Rsvp() {
 
   const submit = useMutation({
     mutationFn: async (data: FormData) => {
-      const plusOneName = data.plusOne
+      const plusOneName = data.plusOneStatus === "named"
         ? [data.plusOneFirstName?.trim(), data.plusOneLastName?.trim()]
             .filter(Boolean)
             .join(" ")
         : "";
+      const hasPlusOneSeat = data.plusOneStatus === "named" || data.plusOneStatus === "name_tbd";
       const payload = {
         attendance: data.attendance,
         mealChoice: data.mealChoice,
-        plusOne: data.plusOne,
+        plusOne: hasPlusOneSeat,
+        plusOneStatus: data.plusOneStatus,
         plusOneName,
         plusOneFirstName: data.plusOneFirstName?.trim() || "",
         plusOneLastName: data.plusOneLastName?.trim() || "",
@@ -995,36 +1001,40 @@ export default function Rsvp() {
                     <div className="rounded-xl p-4 space-y-4" style={{ border: `1px solid ${GOLD}33`, background: `${GOLD}0d` }}>
                       <FormField
                         control={form.control}
-                        name="plusOne"
+                        name="plusOneStatus"
                         render={({ field }) => (
                           <FormItem className="space-y-3">
                             <div>
                               <FormLabel className="text-base" style={{ color: WHITE, fontFamily: jakarta }}>Are you bringing a plus one?</FormLabel>
-                              <p className="text-xs mt-0.5" style={{ color: MUTED, fontFamily: jakarta }}>You're welcome to bring a guest with you.</p>
+                              <p className="text-xs mt-0.5" style={{ color: MUTED, fontFamily: jakarta }}>You're welcome to bring a guest with you. It is okay if you do not know their name yet.</p>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              <button
-                                type="button"
-                                onClick={() => field.onChange(true)}
-                                className="px-4 py-2 rounded-lg border transition-colors text-sm font-medium"
-                                style={field.value
-                                  ? { background: GOLD, borderColor: GOLD, color: BG, fontFamily: jakarta }
-                                  : { background: "rgba(255,255,255,0.05)", borderColor: CARD_BDR, color: MUTED, fontFamily: jakarta }
-                                }
-                              >
-                                Yes
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => field.onChange(false)}
-                                className="px-4 py-2 rounded-lg border transition-colors text-sm font-medium"
-                                style={!field.value
-                                  ? { background: GOLD, borderColor: GOLD, color: BG, fontFamily: jakarta }
-                                  : { background: "rgba(255,255,255,0.05)", borderColor: CARD_BDR, color: MUTED, fontFamily: jakarta }
-                                }
-                              >
-                                No
-                              </button>
+                              {[
+                                { value: "none", label: "No" },
+                                { value: "named", label: "Yes, I know their name" },
+                                { value: "name_tbd", label: "Yes, name coming later" },
+                                { value: "unsure", label: "Not sure yet" },
+                              ].map((option) => (
+                                <button
+                                  key={option.value}
+                                  type="button"
+                                  onClick={() => {
+                                    field.onChange(option.value);
+                                    form.setValue("plusOne", option.value === "named" || option.value === "name_tbd", { shouldDirty: true });
+                                    if (option.value !== "named") {
+                                      form.setValue("plusOneFirstName", "", { shouldDirty: true });
+                                      form.setValue("plusOneLastName", "", { shouldDirty: true });
+                                    }
+                                  }}
+                                  className="px-4 py-2 rounded-lg border transition-colors text-sm font-medium text-left"
+                                  style={field.value === option.value
+                                    ? { background: GOLD, borderColor: GOLD, color: BG, fontFamily: jakarta }
+                                    : { background: "rgba(255,255,255,0.05)", borderColor: CARD_BDR, color: MUTED, fontFamily: jakarta }
+                                  }
+                                >
+                                  {option.label}
+                                </button>
+                              ))}
                             </div>
                           </FormItem>
                         )}
@@ -1032,6 +1042,7 @@ export default function Rsvp() {
 
                       {plusOne && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-150">
+                          {needsPlusOneName && (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <FormField
                               control={form.control}
@@ -1070,6 +1081,7 @@ export default function Rsvp() {
                               )}
                             />
                           </div>
+                          )}
 
                           <FormField
                             control={form.control}
@@ -1346,10 +1358,16 @@ export default function Rsvp() {
                         <span style={{ color: WHITE, fontWeight: 500, fontFamily: jakarta }}>{mealLabel(pendingData.mealChoice)}</span>
                       </div>
                     )}
-                    {pendingData.plusOne && (pendingData.plusOneFirstName || pendingData.plusOneLastName) && (
+                    {pendingData.plusOneStatus !== "none" && (
                       <div className="flex justify-between">
                         <span style={{ color: MUTED, fontFamily: jakarta }}>Plus-one</span>
-                        <span style={{ color: WHITE, fontWeight: 500, fontFamily: jakarta }}>{[pendingData.plusOneFirstName, pendingData.plusOneLastName].filter(Boolean).join(" ")}</span>
+                        <span style={{ color: WHITE, fontWeight: 500, fontFamily: jakarta }}>
+                          {pendingData.plusOneStatus === "named"
+                            ? [pendingData.plusOneFirstName, pendingData.plusOneLastName].filter(Boolean).join(" ")
+                            : pendingData.plusOneStatus === "name_tbd"
+                              ? "Name coming later"
+                              : "Not sure yet"}
+                        </span>
                       </div>
                     )}
                     {pendingData.plusOne && pendingData.plusOneMealChoice && (

@@ -18,6 +18,7 @@ interface GuestDetails {
   mealChoice: string | null;
   dietaryNotes: string | null;
   plusOne: boolean;
+  plusOneStatus?: "none" | "named" | "name_tbd" | "unsure" | null;
   plusOneName: string | null;
   plusOneMealChoice: string | null;
   needsHotel?: boolean;
@@ -81,6 +82,7 @@ export function RsvpFlow({
   const [mealChoice, setMealChoice] = useState("");
   const [dietary, setDietary] = useState("");
   const [plusOne, setPlusOne] = useState(false);
+  const [plusOneStatus, setPlusOneStatus] = useState<"none" | "named" | "name_tbd" | "unsure">("none");
   const [plusOneName, setPlusOneName] = useState("");
   const [plusOneMeal, setPlusOneMeal] = useState("");
   const [hotelNeeded, setHotelNeeded] = useState(false);
@@ -105,6 +107,12 @@ export function RsvpFlow({
     : allHotelOptions;
   const showHotelQuestion = false;
   const selectedHotel = hotelOptions.find((hotel) => String(hotel.id) === hotelBlockId) ?? null;
+  const handlePlusOneStatusChange = (value: "none" | "named" | "name_tbd" | "unsure") => {
+    setPlusOneStatus(value);
+    setPlusOne(value === "named" || value === "name_tbd");
+    if (value !== "named") setPlusOneName("");
+    if (value === "none" || value === "unsure") setPlusOneMeal("");
+  };
   const renderHotelDetails = () => selectedHotel ? (
     <div className="rounded-lg p-3 space-y-2 text-sm" style={{ border: `1px solid ${accent}33`, background: `${accent}10`, color: text }}>
       <div>
@@ -154,7 +162,9 @@ export function RsvpFlow({
     setAttendance(status === "declined" ? "declined" : "attending");
     setMealChoice(guest.mealChoice ?? "");
     setDietary(guest.dietaryNotes ?? "");
-    setPlusOne(guest.plusOne);
+    const nextPlusOneStatus = guest.plusOneStatus ?? (guest.plusOne ? (guest.plusOneName ? "named" : "name_tbd") : "none");
+    setPlusOneStatus(nextPlusOneStatus);
+    setPlusOne(nextPlusOneStatus === "named" || nextPlusOneStatus === "name_tbd");
     setPlusOneName(guest.plusOneName ?? "");
     setPlusOneMeal(guest.plusOneMealChoice ?? "");
     setHotelNeeded(!!guest.needsHotel);
@@ -271,7 +281,8 @@ export function RsvpFlow({
           attendance,
           mealChoice: mealChoice || undefined,
           plusOne: attendance === "attending" ? plusOne : false,
-          plusOneName: plusOne ? plusOneName : undefined,
+          plusOneStatus: attendance === "attending" ? plusOneStatus : "none",
+          plusOneName: plusOneStatus === "named" ? plusOneName : undefined,
           plusOneMealChoice: plusOne ? plusOneMeal : undefined,
           dietaryRestrictions: dietary || undefined,
           hotelNeeded: false,
@@ -319,7 +330,8 @@ export function RsvpFlow({
           attendance,
           mealChoice: mealChoice || undefined,
           plusOne: attendance === "attending" ? plusOne : false,
-          plusOneName: plusOne ? plusOneName : undefined,
+          plusOneStatus: attendance === "attending" ? plusOneStatus : "none",
+          plusOneName: plusOneStatus === "named" ? plusOneName : undefined,
           plusOneMealChoice: plusOne ? plusOneMeal : undefined,
           dietaryRestrictions: dietary || undefined,
           hotelNeeded: false,
@@ -565,21 +577,35 @@ export function RsvpFlow({
                     </select>
                   </div>
 
-                  <div>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={plusOne}
-                        onChange={(e) => setPlusOne(e.target.checked)}
-                        className="h-4 w-4"
-                        style={{ accentColor: accent }}
-                      />
-                      <span className="text-sm" style={{ color: text }}>{t("rsvp.bringing_plus_one", { defaultValue: "I'm bringing a plus one" })}</span>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold uppercase tracking-wider block" style={{ color: text }}>
+                      {t("rsvp.bringing_plus_one", { defaultValue: "Are you bringing a plus one?" })}
                     </label>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {[
+                        { value: "none", label: "No" },
+                        { value: "named", label: "Yes, I know their name" },
+                        { value: "name_tbd", label: "Yes, name coming later" },
+                        { value: "unsure", label: "Not sure yet" },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => handlePlusOneStatusChange(option.value as "none" | "named" | "name_tbd" | "unsure")}
+                          className="rounded-lg border px-4 py-2 text-left text-sm font-medium transition-colors"
+                          style={plusOneStatus === option.value
+                            ? { background: accent, borderColor: accent, color: "#fff" }
+                            : { ...inputBase, background: "transparent" }}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {plusOne && (
                     <>
+                      {plusOneStatus === "named" && (
                       <div>
                         <label className="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: text }}>{t("rsvp.plus_one_name", { defaultValue: "Plus one's name" })}</label>
                         <input
@@ -590,6 +616,7 @@ export function RsvpFlow({
                           style={inputBase}
                         />
                       </div>
+                      )}
                       <div>
                         <label className="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: text }}>{t("rsvp.plus_one_meal", { defaultValue: "Plus one's meal choice" })}</label>
                         <select
@@ -804,21 +831,35 @@ export function RsvpFlow({
                     </select>
                   </div>
 
-                  <div>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={plusOne}
-                        onChange={(e) => setPlusOne(e.target.checked)}
-                        className="h-4 w-4"
-                        style={{ accentColor: accent }}
-                      />
-                      <span className="text-sm" style={{ color: text }}>{t("rsvp.bringing_plus_one", { defaultValue: "I'm bringing a plus one" })}</span>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold uppercase tracking-wider block" style={{ color: text }}>
+                      {t("rsvp.bringing_plus_one", { defaultValue: "Are you bringing a plus one?" })}
                     </label>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {[
+                        { value: "none", label: "No" },
+                        { value: "named", label: "Yes, I know their name" },
+                        { value: "name_tbd", label: "Yes, name coming later" },
+                        { value: "unsure", label: "Not sure yet" },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => handlePlusOneStatusChange(option.value as "none" | "named" | "name_tbd" | "unsure")}
+                          className="rounded-lg border px-4 py-2 text-left text-sm font-medium transition-colors"
+                          style={plusOneStatus === option.value
+                            ? { background: accent, borderColor: accent, color: "#fff" }
+                            : { ...inputBase, background: "transparent" }}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {plusOne && (
                     <>
+                      {plusOneStatus === "named" && (
                       <div>
                         <label className="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: text }}>{t("rsvp.plus_one_name", { defaultValue: "Plus one's name" })}</label>
                         <input
@@ -829,6 +870,7 @@ export function RsvpFlow({
                           style={inputBase}
                         />
                       </div>
+                      )}
                       <div>
                         <label className="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: text }}>{t("rsvp.plus_one_meal", { defaultValue: "Plus one's meal choice" })}</label>
                         <select

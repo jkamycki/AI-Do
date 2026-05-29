@@ -213,6 +213,21 @@ function bookedHotelClasses(guest: Guest): string {
   return "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-800/50";
 }
 
+function getPlusOneStatus(guest: Guest): "none" | "named" | "name_tbd" | "unsure" {
+  const raw = (guest as any).plusOneStatus;
+  if (raw === "named" || raw === "name_tbd" || raw === "unsure" || raw === "none") return raw;
+  if (guest.plusOne) return guest.plusOneName ? "named" : "name_tbd";
+  return "none";
+}
+
+function plusOneLabel(guest: Guest, t: (key: string, options?: Record<string, unknown>) => string): string {
+  const status = getPlusOneStatus(guest);
+  if (status === "named") return guest.plusOneName || t("guests.plus_one_yes");
+  if (status === "name_tbd") return "Name coming later";
+  if (status === "unsure") return "Not sure yet";
+  return t("guests.plus_one_no");
+}
+
 const MEAL_OPTIONS = [
   { value: "chicken", label: "Chicken" },
   { value: "fish", label: "Fish" },
@@ -1307,7 +1322,7 @@ function GuestCollectorCard() {
   const { data: profile } = useGetProfile();
 
   const collectorUrl = token
-    ? `${publicAppOrigin()}/api/guest-collect/${token}/preview`
+    ? `${publicAppOrigin()}/collect/${token}`
     : null;
 
   const coupleNames = profile
@@ -3857,13 +3872,13 @@ export default function Guests({
                             )}
                             {g.name}
                           </p>
-                          {g.plusOne && (
+                          {getPlusOneStatus(g) !== "none" && (
                             <div className="mt-2 flex items-start gap-2 rounded-lg border border-primary/15 bg-primary/5 px-2.5 py-2 text-sm">
                               <Heart className="mt-0.5 h-3.5 w-3.5 shrink-0 fill-primary/20 text-primary" />
                               <div className="min-w-0">
                                 <p className="text-[10px] font-bold uppercase tracking-wide text-primary/70">Plus one</p>
                                 <p className="break-words font-semibold leading-snug text-primary">
-                                  {g.plusOneName || t("guests.plus_one_yes")}
+                                  {plusOneLabel(g, t)}
                                 </p>
                               </div>
                             </div>
@@ -4470,11 +4485,11 @@ export default function Guests({
                           </Select>
                         </TableCell>
                         <TableCell className="hidden lg:table-cell align-top text-xs lg:text-sm">
-                          {g.plusOne ? (
+                          {getPlusOneStatus(g) !== "none" ? (
                             <div className="inline-flex max-w-full items-start gap-1.5 rounded-full bg-primary/5 px-2 py-1 font-bold leading-snug text-primary">
                               <span className="shrink-0 leading-snug">♥</span>
                               <span className="min-w-0 whitespace-normal break-normal hyphens-none [overflow-wrap:normal]">
-                                {g.plusOneName || t("guests.plus_one_yes")}
+                                {plusOneLabel(g, t)}
                               </span>
                             </div>
                           ) : (

@@ -6,6 +6,7 @@ import { publicRsvpLimiter } from "../middlewares/rateLimiter";
 import { hasMinRole, resolveCallerRole, resolveProfile } from "../lib/workspaceAccess";
 import crypto from "crypto";
 import { sendMaintenanceIfActive } from "../lib/maintenance";
+import { normalizePlusOneStatus, plusOneCountsAsGuest, plusOneNameForStatus } from "../lib/plusOneStatus";
 
 const router = Router();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -330,7 +331,7 @@ router.post("/guest-collect/:token", publicRsvpLimiter, async (req, res) => {
       return res.status(404).json({ error: "Invalid link." });
     }
 
-    const { name, email, phone, address, mealChoice, dietaryNotes, plusOne, plusOneFirstName, plusOneLastName } = req.body;
+    const { name, email, phone, address, mealChoice, dietaryNotes, plusOne, plusOneStatus, plusOneFirstName, plusOneLastName } = req.body;
     const trimmedName = cleanTextField(name, 120);
     const trimmedEmail = cleanTextField(email, 254).toLowerCase() || null;
     const cleanPhone = cleanTextField(phone, 40) || null;
@@ -364,9 +365,10 @@ router.post("/guest-collect/:token", publicRsvpLimiter, async (req, res) => {
       return res.status(200).json({ success: true });
     }
 
-    const plusOneName = plusOne
-      ? [cleanPlusOneFirstName, cleanPlusOneLastName].filter(Boolean).join(" ") || null
-      : null;
+    const requestedPlusOneName = [cleanPlusOneFirstName, cleanPlusOneLastName].filter(Boolean).join(" ");
+    const normalizedPlusOneStatus = normalizePlusOneStatus(plusOneStatus, plusOne, requestedPlusOneName);
+    const hasPlusOneSeat = plusOneCountsAsGuest(normalizedPlusOneStatus);
+    const plusOneName = plusOneNameForStatus(normalizedPlusOneStatus, requestedPlusOneName);
 
     const [created] = await db
       .insert(guests)
@@ -379,7 +381,8 @@ router.post("/guest-collect/:token", publicRsvpLimiter, async (req, res) => {
         rsvpStatus: "pending",
         mealChoice: cleanMeal,
         dietaryNotes: cleanDietary,
-        plusOne: !!plusOne,
+        plusOne: hasPlusOneSeat,
+        plusOneStatus: normalizedPlusOneStatus,
         plusOneName,
         source: "self_collect",
         acknowledgedAt: null,
