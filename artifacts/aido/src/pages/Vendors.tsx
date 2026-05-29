@@ -2085,6 +2085,15 @@ function VendorDirectoryTab({
       onOpenVendorMessages(existingVendor.id);
       return;
     }
+    createPartnerInquiryAndOpenMessages(listing);
+  };
+
+  const askToAddPartnerAndMessage = (listing: VendorDirectoryListing) => {
+    const existingVendor = existingVendorForListing(listing);
+    if (existingVendor) {
+      requestPartnerMessages(listing);
+      return;
+    }
     setPendingMessageListing(listing);
   };
 
@@ -2137,7 +2146,8 @@ function VendorDirectoryTab({
         <VendorDirectoryProfile
           listing={selectedListing}
           accountEmail={accountEmail}
-          isOpeningMessages={createPartnerVendorMutation.isPending}
+          isOpeningMessages={createPartnerVendorMutation.isPending || createPartnerInquiryMutation.isPending}
+          onAddPartner={() => askToAddPartnerAndMessage(selectedListing)}
           onBack={() => setSelectedListing(null)}
           onOpenMessages={() => requestPartnerMessages(selectedListing)}
         />
@@ -2223,14 +2233,14 @@ function VendorDirectoryTab({
                 type="button"
                 size="sm"
                 className="flex-1"
-                disabled={createPartnerVendorMutation.isPending}
+                disabled={createPartnerVendorMutation.isPending || createPartnerInquiryMutation.isPending}
                 onClick={(event) => {
                   event.stopPropagation();
                   requestPartnerMessages(listing);
                 }}
               >
-                <Mail className="mr-1.5 h-3.5 w-3.5" />
-                Request Intro
+                <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+                Message Partner
               </Button>
               <Button asChild variant="outline" size="sm" onClick={(event) => event.stopPropagation()}>
                 <a href={listing.website} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
@@ -2482,12 +2492,14 @@ function VendorDirectoryProfile({
   accountEmail,
   isOpeningMessages,
   listing,
+  onAddPartner,
   onBack,
   onOpenMessages,
 }: {
   accountEmail?: string;
   isOpeningMessages?: boolean;
   listing: VendorDirectoryListing;
+  onAddPartner: () => void;
   onBack: () => void;
   onOpenMessages: () => void;
 }) {
@@ -2574,38 +2586,47 @@ function VendorDirectoryProfile({
               <div>
                 <h3 className="font-serif text-xl font-semibold text-foreground">Partner Messages</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Use this thread area to keep track of introductions and replies.
+                  Start a discovery thread in the Messages tab without adding this partner to your Vendor List.
                 </p>
               </div>
               <Button
                 type="button"
-                variant="outline"
+                variant="default"
                 size="sm"
-                className="w-fit border-[#E8C9D4] text-primary"
+                className="w-fit"
                 disabled={isOpeningMessages}
                 onClick={onOpenMessages}
               >
                 <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
-                Start Message
+                Open in Messages
               </Button>
             </div>
             <div className="mt-4 space-y-3">
               <div className="rounded-xl bg-[#FFF7F2] px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-foreground">Introduction email</p>
-                  <Badge variant="secondary" className="bg-primary/10 text-primary">Ready</Badge>
+                  <p className="text-sm font-semibold text-foreground">Message this partner</p>
+                  <Badge variant="secondary" className="bg-primary/10 text-primary">Messages tab</Badge>
                 </div>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  We&apos;ll add this partner to your Vendor List and open the same Messages tab used for your saved vendors.
+                  A.I DO opens a partner inquiry conversation under Vendor Hub Messages, separate from your saved vendor list.
                 </p>
               </div>
               <div className="rounded-xl border border-dashed border-[#E8C9D4] px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-foreground">Vendor replies</p>
-                  <Badge variant="outline" className="border-[#E8C9D4] text-muted-foreground">Waiting</Badge>
+                  <p className="text-sm font-semibold text-foreground">Ready to save them?</p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 border-[#E8C9D4] text-primary"
+                    disabled={isOpeningMessages}
+                    onClick={onAddPartner}
+                  >
+                    Add to Vendor List
+                  </Button>
                 </div>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  Replies sent through Vendor List messages are tracked and show as a conversation, just like your other vendor replies.
+                  Add this partner only when you want them tracked with your current vendors, payments, files, and contacts.
                 </p>
               </div>
             </div>
@@ -2621,11 +2642,11 @@ function VendorDirectoryProfile({
               className="mt-4 h-11 w-full rounded-lg bg-[linear-gradient(110deg,#D98984,#9D6AD8)] font-semibold text-white hover:opacity-95"
               onClick={onOpenMessages}
             >
-              {isOpeningMessages ? "Opening Messages..." : "Request Introduction"}
+              {isOpeningMessages ? "Opening Messages..." : "Message Partner"}
             </Button>
             {accountEmail && (
               <p className="mt-3 rounded-lg bg-[#FFF7F2] px-3 py-2 text-xs leading-5 text-[#6F3E54]">
-                If this partner is not in your Vendor List yet, A.I DO will ask before adding them and opening Messages.
+                This opens under Vendor Hub Messages. It will not add the partner to your Vendor List unless you choose to save them.
               </p>
             )}
             <div className="mt-5 space-y-4 text-sm">
