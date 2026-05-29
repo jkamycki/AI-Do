@@ -169,17 +169,17 @@ type VendorDirectoryListing = {
 
 class VendorMessagesErrorBoundary extends Component<
   { children: ReactNode; resetKey?: string | number | null },
-  { hasError: boolean }
+  { hasError: boolean; message: string }
 > {
-  state = { hasError: false };
+  state = { hasError: false, message: "" };
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, message: error?.message || String(error) };
   }
 
   componentDidUpdate(prevProps: { resetKey?: string | number | null }) {
     if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
-      this.setState({ hasError: false });
+      this.setState({ hasError: false, message: "" });
     }
   }
 
@@ -195,6 +195,9 @@ class VendorMessagesErrorBoundary extends Component<
           <p className="mt-1 leading-6">
             Select another vendor from the dropdown, or refresh and try this conversation again.
           </p>
+          {this.state.message && (
+            <p className="mt-3 text-xs text-amber-800/80">Error: {this.state.message}</p>
+          )}
         </div>
       );
     }
@@ -283,6 +286,11 @@ function vendorCategoryLabel(category: string | null | undefined) {
 function vendorCategoryBadgeClass(category: string | null | undefined) {
   const normalized = normalizeVendorCategory(category);
   return CATEGORY_COLORS[normalized] ?? CATEGORY_COLORS.Other;
+}
+
+function vendorDisplayName(vendor: Pick<Vendor, "id" | "name"> | null | undefined) {
+  const name = typeof vendor?.name === "string" ? vendor.name.trim() : "";
+  return name || `Vendor ${vendor?.id ?? ""}`.trim();
 }
 
 function formatCurrency(n: number | null | undefined) {
@@ -2298,14 +2306,15 @@ function VendorHubMessagesTab({
   const selectedConversation = conversations.find((conversation) => conversation.vendorId === selectedVendorId);
   const selectedVendor = vendors.find((vendor) => vendor.id === selectedVendorId);
   const sortedVendors = useMemo(
-    () => [...vendors].sort((a, b) => a.name.localeCompare(b.name)),
+    () => [...vendors].sort((a, b) => vendorDisplayName(a).localeCompare(vendorDisplayName(b))),
     [vendors]
   );
   const sortedPartnerListings = useMemo(
     () => [...SAMPLE_VENDOR_DIRECTORY].sort((a, b) => a.name.localeCompare(b.name)),
     []
   );
-  const selectedVendorName = selectedConversation?.vendorName ?? selectedVendor?.name ?? selectedPartnerListing?.name ?? "Vendor";
+  const selectedConversationName = typeof selectedConversation?.vendorName === "string" ? selectedConversation.vendorName.trim() : "";
+  const selectedVendorName = selectedConversationName || vendorDisplayName(selectedVendor) || selectedPartnerListing?.name || "Vendor";
   const selectedVendorEmail = selectedConversation?.vendorEmail ?? selectedVendor?.email ?? selectedPartnerListing?.email;
   const selectedDropdownValue = selectedVendorId ? `vendor:${selectedVendorId}` : "";
 
@@ -2371,7 +2380,7 @@ function VendorHubMessagesTab({
                 {sortedVendors.length > 0 ? (
                   sortedVendors.map((vendor) => (
                     <SelectItem key={vendor.id} value={`vendor:${vendor.id}`}>
-                      {vendor.name} {vendor.category ? `(${vendorCategoryLabel(vendor.category)})` : ""}
+                      {vendorDisplayName(vendor)} {vendor.category ? `(${vendorCategoryLabel(vendor.category)})` : ""}
                     </SelectItem>
                   ))
                 ) : (
@@ -2423,7 +2432,9 @@ function VendorHubMessagesTab({
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">{conversation.vendorName}</p>
+                  <p className="truncate text-sm font-semibold">
+                    {(typeof conversation.vendorName === "string" && conversation.vendorName.trim()) || `Vendor ${conversation.vendorId}`}
+                  </p>
                   <p className="mt-1 truncate text-xs text-muted-foreground">
                     {conversation.lastMessagePreview || conversation.subject || "No messages yet"}
                   </p>
