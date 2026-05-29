@@ -405,6 +405,9 @@ export default function ForVendors() {
 
                   <label className="block space-y-1.5 text-sm font-semibold text-[#8D294D]">
                     Tell us about your services
+                    <span className="block text-xs font-normal leading-5 text-[#6F3E54]">
+                      Write this as the public description couples will see on your A.I DO partner profile.
+                    </span>
                     <textarea
                       value={form.description}
                       onChange={event => updateField("description", event.target.value)}

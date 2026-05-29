@@ -24,6 +24,7 @@ import { saveMobileProfile } from './src/api/profile';
 import { applySeatingChart, generateSeatingChart, saveSeatingChart, updateSeatingChart, type SeatingGuestPayload } from './src/api/seating';
 import { createMobileVendor, deleteMobileVendor, updateMobileVendor } from './src/api/vendors';
 import { getOrCreateMobileVendorConversation, listMobileVendorMessages, sendMobileVendorMessage } from './src/api/vendorMessaging';
+import { createMobileWebsite, getMobileWebsite, publishMobileWebsite, saveMobileWebsiteQuickUpdate, saveMobileWebsiteSlug, type MobileWebsiteRecord } from './src/api/website';
 import { createMobileWeddingPartyMember, deleteMobileWeddingPartyMember, updateMobileWeddingPartyMember } from './src/api/weddingParty';
 import { samplePlanningData } from './src/data/sampleData';
 import type { Guest, GuestPhotoDropSettings } from './src/types';
@@ -3158,10 +3159,13 @@ function WebsiteMobilePreview({
   const [slug, setSlug] = useState('stacy-rick');
   const [passwordEnabled, setPasswordEnabled] = useState(false);
   const [published, setPublished] = useState(false);
-  const [accentColor, setAccentColor] = useState(colors.rose);
-  const [paperColor, setPaperColor] = useState('#FFF8F5');
-  const [fontStyle, setFontStyle] = useState<'script' | 'classic' | 'modern'>('script');
+  const [accentColor] = useState(colors.rose);
+  const [paperColor] = useState('#FFF8F5');
+  const [fontStyle] = useState<'script' | 'classic' | 'modern'>('script');
   const [photoFilter, setPhotoFilter] = useState<'original' | 'soft' | 'bw' | 'warm'>('original');
+  const [websiteRecord, setWebsiteRecord] = useState<MobileWebsiteRecord | null>(null);
+  const [websiteSaving, setWebsiteSaving] = useState(false);
+  const [websiteSyncMessage, setWebsiteSyncMessage] = useState('');
   const [sectionState, setSectionState] = useState({
     story: true,
     schedule: true,
@@ -3176,13 +3180,119 @@ function WebsiteMobilePreview({
   const parsedWeddingDate = parseDate(data.profile.weddingDate);
   const countdownDays = parsedWeddingDate ? Math.max(0, Math.ceil((parsedWeddingDate.getTime() - Date.now()) / 86400000)) : 0;
   const venueLine = [data.profile.venue, data.profile.location].filter(Boolean).join(', ');
+  const mobileWebsiteSections = () => ({
+    faq: Boolean(websiteRecord?.sectionsEnabled?.faq),
+    gallery: Boolean(websiteRecord?.sectionsEnabled?.gallery),
+    registry: sectionState.registry,
+    rsvp: sectionState.rsvp,
+    schedule: sectionState.schedule,
+    story: sectionState.story,
+    travel: sectionState.travel,
+    weddingParty: Boolean(websiteRecord?.sectionsEnabled?.weddingParty),
+    welcome: true,
+  });
+  const mobileWebsiteCustomText = () => ({
+    ...(websiteRecord?.customText ?? {}),
+    _registryLinks: registryUrl.trim()
+      ? JSON.stringify([{ label: 'Registry', url: registryUrl.trim() }])
+      : (websiteRecord?.customText?._registryLinks ?? '[]'),
+    registry: registryUrl.trim() ? 'Registry details are linked below.' : (websiteRecord?.customText?.registry ?? ''),
+    rsvp_deadline: rsvpDeadline,
+    rsvp_thankyou: thankYouMessage,
+    welcome: welcomeCopy,
+  });
+  const applyMobileWebsiteRecord = (record: MobileWebsiteRecord) => {
+    setWebsiteRecord(record);
+    setSlug(record.slug || slug);
+    setPublished(Boolean(record.published));
+    setPasswordEnabled(Boolean(record.passwordEnabled));
+    setWelcomeCopy(record.customText?.welcome || welcomeCopy);
+    setRsvpDeadline(record.customText?.rsvp_deadline || rsvpDeadline);
+    setThankYouMessage(record.customText?.rsvp_thankyou || thankYouMessage);
+    setRegistryUrl(extractFirstRegistryUrl(record.customText?._registryLinks) || registryUrl);
+    setSectionState((current) => ({
+      ...current,
+      registry: record.sectionsEnabled?.registry ?? current.registry,
+      rsvp: record.sectionsEnabled?.rsvp ?? current.rsvp,
+      schedule: record.sectionsEnabled?.schedule ?? current.schedule,
+      story: record.sectionsEnabled?.story ?? current.story,
+      travel: record.sectionsEnabled?.travel ?? current.travel,
+    }));
+  };
+  const saveMobileWebsite = async (message = 'Website quick updates saved.') => {
+    if (websiteSaving) return null;
+    setWebsiteSaving(true);
+    setWebsiteSyncMessage('');
+    try {
+      let record = websiteRecord;
+      if (!record) {
+        record = await createMobileWebsite();
+        setWebsiteRecord(record);
+      }
+      const updated = await saveMobileWebsiteQuickUpdate({
+        customText: mobileWebsiteCustomText(),
+        sectionsEnabled: mobileWebsiteSections(),
+      });
+      applyMobileWebsiteRecord(updated);
+      setWebsiteSyncMessage(message);
+      return updated;
+    } catch (error) {
+      setWebsiteSyncMessage(error instanceof Error ? error.message : 'Website updates could not sync.');
+      return null;
+    } finally {
+      setWebsiteSaving(false);
+    }
+  };
+  const toggleMobileWebsitePublish = async () => {
+    if (websiteSaving) return;
+    setWebsiteSaving(true);
+    setWebsiteSyncMessage('');
+    try {
+      let record = websiteRecord;
+      if (!record) {
+        record = await createMobileWebsite();
+        setWebsiteRecord(record);
+      }
+      if (slug.trim() && slug.trim() !== record.slug && !record.published) {
+        record = await saveMobileWebsiteSlug(slug.trim());
+        setWebsiteRecord(record);
+      }
+      const saved = await saveMobileWebsiteQuickUpdate({
+        customText: mobileWebsiteCustomText(),
+        sectionsEnabled: mobileWebsiteSections(),
+      });
+      const updated = await publishMobileWebsite(!Boolean(saved.published));
+      applyMobileWebsiteRecord(updated);
+      setWebsiteSyncMessage(updated.published ? 'Website published from the app.' : 'Website unpublished from the app.');
+    } catch (error) {
+      setWebsiteSyncMessage(error instanceof Error ? error.message : 'Publish status could not sync.');
+    } finally {
+      setWebsiteSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    let alive = true;
+    async function hydrateWebsite() {
+      try {
+        const record = await getMobileWebsite();
+        if (alive) applyMobileWebsiteRecord(record);
+      } catch {
+        // Keep local preview values when the website is not created or sync is unavailable.
+      }
+    }
+    void hydrateWebsite();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   return (
     <Card>
       <View style={styles.cardHeaderRow}>
         <View>
           <Text style={styles.cardTitle}>Website preview</Text>
-          <Text style={styles.hubDetail}>Edit content and review the guest-facing mobile or desktop layout.</Text>
+          <Text style={styles.hubDetail}>Use the app for quick website updates, preview, publishing, and guest activity.</Text>
         </View>
         <Pressable onPress={onPreview} style={styles.previewMiniButton}>
           <Ionicons color={colors.rose} name="eye-outline" size={15} />
@@ -3190,11 +3300,30 @@ function WebsiteMobilePreview({
         </Pressable>
       </View>
 
+      <View style={styles.mobileEditorGuidance}>
+        <View style={styles.mobileEditorGuidanceIcon}>
+          <Ionicons color={colors.rose} name="phone-portrait-outline" size={18} />
+        </View>
+        <View style={styles.hubCopy}>
+          <Text style={styles.mobileEditorGuidanceTitle}>Mobile controls are for quick updates</Text>
+          <Text style={styles.hubDetail}>
+            Preview the site, update simple copy, toggle sections, manage photos, publish changes, send invites, and check RSVP activity here. Use desktop for full layout, templates, detailed design, drag-and-drop ordering, and invitation polish.
+          </Text>
+        </View>
+      </View>
+      <View style={styles.websiteActions}>
+        <Pressable disabled={websiteSaving} onPress={() => void saveMobileWebsite()} style={[styles.secondaryActionButton, websiteSaving && styles.disabledActionButton]}>
+          <Ionicons color={colors.rose} name={websiteSaving ? 'sync-outline' : 'save-outline'} size={18} />
+          <Text style={styles.secondaryActionText}>{websiteSaving ? 'Saving...' : 'Save quick updates'}</Text>
+        </Pressable>
+      </View>
+      {websiteSyncMessage ? <SavedStrip label={websiteSyncMessage} /> : null}
+
       <View style={styles.websiteEditorTabRow}>
         {[
           ['setup', 'Setup', 'settings-outline'],
           ['copy', 'Copy', 'create-outline'],
-          ['design', 'Design', 'color-palette-outline'],
+          ['design', 'Photos', 'image-outline'],
           ['sections', 'Sections', 'toggle-outline'],
           ['rsvp', 'RSVP', 'heart-outline'],
           ['publish', 'Publish', 'globe-outline'],
@@ -3239,32 +3368,7 @@ function WebsiteMobilePreview({
         {editorTab === 'design' ? (
           <>
             <View>
-              <Text style={styles.formLabel}>Quick themes</Text>
-              <View style={styles.websiteEditorThemeRow}>
-                <EditorThemeButton active={accentColor === colors.rose} color={colors.rose} label="Blush" onPress={() => { setAccentColor(colors.rose); setPaperColor('#FFF8F5'); }} />
-                <EditorThemeButton active={accentColor === '#7D5BA6'} color="#7D5BA6" label="Plum" onPress={() => { setAccentColor('#7D5BA6'); setPaperColor('#F8F3FF'); }} />
-                <EditorThemeButton active={accentColor === '#3F6F5B'} color="#3F6F5B" label="Garden" onPress={() => { setAccentColor('#3F6F5B'); setPaperColor('#F6FBF6'); }} />
-              </View>
-            </View>
-            <View>
-              <Text style={styles.formLabel}>Font</Text>
-              <View style={styles.eventTypeRow}>
-                {[
-                  ['script', 'Script'],
-                  ['classic', 'Classic'],
-                  ['modern', 'Modern'],
-                ].map(([id, label]) => {
-                  const active = fontStyle === id;
-                  return (
-                    <Pressable key={id} onPress={() => setFontStyle(id as typeof fontStyle)} style={[styles.eventTypePill, active && styles.eventTypePillActive]}>
-                      <Text style={[styles.eventTypeText, active && styles.eventTypeTextActive]}>{label}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-            <View>
-              <Text style={styles.formLabel}>Photo effects</Text>
+              <Text style={styles.formLabel}>Photo preview</Text>
               <View style={styles.eventTypeRow}>
                 {[
                   ['original', 'Original'],
@@ -3282,8 +3386,16 @@ function WebsiteMobilePreview({
               </View>
             </View>
             <View style={styles.websiteEditorToolGrid}>
+              <EditorToolButton icon="image-outline" label="Upload hero photo" onPress={() => onOpenEditor('Home Page Photos')} />
               <EditorToolButton icon="images-outline" label="Gallery photos" onPress={() => onOpenEditor('Gallery')} />
-              <EditorToolButton icon="sparkles-outline" label="Hero animation" onPress={() => onOpenEditor('Hero Animation')} />
+              <EditorToolButton icon="scan-outline" label="Reposition photo" onPress={() => onOpenEditor('Photo position')} />
+            </View>
+            <View style={styles.desktopStudioNotice}>
+              <Ionicons color={colors.gold} name="desktop-outline" size={18} />
+              <View style={styles.hubCopy}>
+                <Text style={styles.hubLabel}>Full design studio lives on desktop</Text>
+                <Text style={styles.hubDetail}>Use the website editor on desktop for themes, templates, layout, section order, animation, and detailed invitation design.</Text>
+              </View>
             </View>
           </>
         ) : null}
@@ -3335,9 +3447,9 @@ function WebsiteMobilePreview({
                 <Ionicons color={colors.rose} name="eye-outline" size={18} />
                 <Text style={styles.secondaryActionText}>Preview</Text>
               </Pressable>
-              <Pressable onPress={() => setPublished((current) => !current)} style={styles.primaryActionButton}>
-                <Ionicons color={colors.surface} name={published ? 'checkmark-circle-outline' : 'cloud-upload-outline'} size={18} />
-                <Text style={styles.primaryActionText}>{published ? 'Published' : 'Publish'}</Text>
+              <Pressable disabled={websiteSaving} onPress={toggleMobileWebsitePublish} style={[styles.primaryActionButton, websiteSaving && styles.disabledActionButton]}>
+                <Ionicons color={colors.surface} name={websiteSaving ? 'sync-outline' : published ? 'checkmark-circle-outline' : 'cloud-upload-outline'} size={18} />
+                <Text style={styles.primaryActionText}>{websiteSaving ? 'Saving...' : published ? 'Published' : 'Publish'}</Text>
               </Pressable>
             </View>
           </>
@@ -3554,20 +3666,21 @@ function EditorToggleRow({ label, onPress, value }: { label: string; onPress: ()
   );
 }
 
-function EditorThemeButton({ active, color, label, onPress }: { active: boolean; color: string; label: string; onPress: () => void }) {
-  return (
-    <Pressable onPress={onPress} style={[styles.websiteEditorThemeButton, active && styles.websiteEditorThemeButtonActive]}>
-      <View style={[styles.websiteEditorThemeSwatch, { backgroundColor: color }]} />
-      <Text style={[styles.eventTypeText, active && styles.eventTypeTextActive]}>{label}</Text>
-    </Pressable>
-  );
-}
-
 function photoFilterStyle(filter: 'original' | 'soft' | 'bw' | 'warm') {
   if (filter === 'soft') return { opacity: 0.86 };
   if (filter === 'bw') return { tintColor: 'rgba(190,190,190,0.18)' };
   if (filter === 'warm') return { opacity: 0.92 };
   return null;
+}
+
+function extractFirstRegistryUrl(raw: string | undefined) {
+  if (!raw) return '';
+  try {
+    const parsed = JSON.parse(raw) as Array<{ url?: string }>;
+    return parsed.find((item) => typeof item.url === 'string' && item.url.trim())?.url?.trim() ?? '';
+  } catch {
+    return '';
+  }
 }
 
 function PhotoDropMobilePanel({
@@ -9462,6 +9575,41 @@ const styles = StyleSheet.create({
     color: colors.rose,
     fontFamily: 'Inter_700Bold',
     fontSize: 11,
+  },
+  mobileEditorGuidance: {
+    alignItems: 'flex-start',
+    backgroundColor: '#FFF9EA',
+    borderColor: '#E9C978',
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+    padding: 12,
+  },
+  mobileEditorGuidanceIcon: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 999,
+    height: 34,
+    justifyContent: 'center',
+    width: 34,
+  },
+  mobileEditorGuidanceTitle: {
+    color: colors.ink,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  desktopStudioNotice: {
+    alignItems: 'flex-start',
+    backgroundColor: '#FFF9EA',
+    borderColor: '#E9C978',
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 9,
+    padding: 11,
   },
   websiteEditorPreviewGrid: {
     gap: 14,
