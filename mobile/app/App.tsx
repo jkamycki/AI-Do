@@ -7088,6 +7088,20 @@ function MockActionModal({ action, data, onClose }: { action: MockAction | null;
   const sendAction = async () => {
     if (!action || sending) return;
     const actionTitle = action.title.toLowerCase();
+    if (actionTitle.includes('help & support')) {
+      setSending(true);
+      setStatusMessage('');
+      try {
+        await Linking.openURL('mailto:support@aidowedding.net?subject=A.I%20DO%20mobile%20app%20support');
+        setSaved(true);
+        setStatusMessage('Opening your email app to contact support.');
+      } catch {
+        setStatusMessage('Email app could not open. Contact support at support@aidowedding.net.');
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
     if (actionTitle.includes('rsvp reminders') || actionTitle.includes('send save the date') || actionTitle.includes('send rsvp invitation')) {
       setSending(true);
       setStatusMessage('');
@@ -7151,6 +7165,50 @@ function MockActionModal({ action, data, onClose }: { action: MockAction | null;
 
 function ActionWorkspace({ action, data, saved }: { action: MockAction; data: typeof samplePlanningData; saved: boolean }) {
   const title = action.title.toLowerCase();
+
+  if (title.includes('help & support')) {
+    return (
+      <View style={styles.actionWorkspace}>
+        <View style={styles.workspaceRow}>
+          <Ionicons color={colors.rose} name="mail-outline" size={18} />
+          <View style={styles.hubCopy}>
+            <Text style={styles.hubLabel}>Email support</Text>
+            <Text style={styles.hubDetail}>Use support@aidowedding.net for account access, sync issues, guest sending, vendor files, and Photo Drop help.</Text>
+          </View>
+        </View>
+        <View style={styles.workspaceRow}>
+          <Ionicons color={colors.rose} name="sync-outline" size={18} />
+          <View style={styles.hubCopy}>
+            <Text style={styles.hubLabel}>Before contacting support</Text>
+            <Text style={styles.hubDetail}>Try refreshing the app, confirm you are signed into the same A.I DO account as the website, and note the page you were on.</Text>
+          </View>
+        </View>
+        {saved ? <SavedStrip label="Support email opened" /> : null}
+      </View>
+    );
+  }
+
+  if (title.includes('desktop tools')) {
+    return (
+      <View style={styles.actionWorkspace}>
+        <View style={styles.workspaceRow}>
+          <Ionicons color={colors.rose} name="phone-portrait-outline" size={18} />
+          <View style={styles.hubCopy}>
+            <Text style={styles.hubLabel}>Best on app</Text>
+            <Text style={styles.hubDetail}>Quick website edits, guest updates, RSVP sends, vendor messages, payments, Photo Drop review, and Aria prompts.</Text>
+          </View>
+        </View>
+        <View style={styles.workspaceRow}>
+          <Ionicons color={colors.rose} name="desktop-outline" size={18} />
+          <View style={styles.hubCopy}>
+            <Text style={styles.hubLabel}>Best on desktop</Text>
+            <Text style={styles.hubDetail}>Full website design, invitation polish, drag-and-drop layout work, exports, admin workflows, and advanced reports.</Text>
+          </View>
+        </View>
+        {saved ? <SavedStrip label="Desktop guidance saved" /> : null}
+      </View>
+    );
+  }
 
   if (title === 'guest rsvp') {
     return (
