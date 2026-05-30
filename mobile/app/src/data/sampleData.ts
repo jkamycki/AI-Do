@@ -233,7 +233,7 @@ export const samplePlanningData: PlanningData = {
   guestPhotoDrop: {
     enabled: true,
     displayMode: 'both',
-    maxUploads: 5,
+    maxUploads: 10,
     title: 'Guest Photo Drop',
     instructions:
       "Share your favorite wedding day moments here. Add a caption if you'd like, and once approved they may appear in the couple's gallery.",

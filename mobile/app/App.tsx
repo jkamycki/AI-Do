@@ -3994,11 +3994,15 @@ function PhotoDropMobilePanel({
   const pendingUploads = data.guestPhotoUploads.filter((upload) => upload.status === 'Pending').length;
   const approvedUploads = data.guestPhotoUploads.filter((upload) => upload.status === 'Approved').length;
   const hiddenUploads = data.guestPhotoUploads.filter((upload) => upload.status === 'Hidden').length;
+  const websiteGuestPhotoLimit = 50;
+  const photoDropDisplayMode = data.guestPhotoDrop.displayMode === 'website' ? 'both' : data.guestPhotoDrop.displayMode;
+  const websitePublishesGuestPhotos = photoDropDisplayMode === 'both';
+  const websiteGalleryFull = websitePublishesGuestPhotos && approvedUploads >= websiteGuestPhotoLimit;
   const photoCount = data.guestPhotoUploads.reduce((sum, upload) => sum + upload.photoCount, 0);
   const visibleUploads = queueFilter === 'All'
     ? data.guestPhotoUploads
     : data.guestPhotoUploads.filter((upload) => upload.status === queueFilter);
-  const uploadLink = publicUploadUrl || 'Create or publish the wedding website to generate the guest upload link.';
+  const uploadLink = publicUploadUrl || 'Create or publish the wedding website to generate the disposable camera link.';
 
   useEffect(() => {
     let active = true;
@@ -4026,7 +4030,7 @@ function PhotoDropMobilePanel({
     if (!publicUploadUrl) {
       openMockAction({
         title: 'Photo Drop link unavailable',
-        detail: 'Create or publish the wedding website first, then the guest upload link will appear here.',
+        detail: 'Create or publish the wedding website first, then the disposable camera link will appear here.',
         primaryLabel: 'Close',
       });
       return;
@@ -4035,7 +4039,7 @@ function PhotoDropMobilePanel({
       void navigator.clipboard.writeText(publicUploadUrl);
     }
     openMockAction({
-      title: 'Photo Drop link copied',
+      title: 'Disposable camera link copied',
       detail: publicUploadUrl,
       primaryLabel: 'Done',
     });
@@ -4049,7 +4053,7 @@ function PhotoDropMobilePanel({
     void Share.share({ message: `${data.guestPhotoDrop.title}: ${publicUploadUrl}`, url: publicUploadUrl }).catch(() => {
       openMockAction({
         title: 'Share did not open',
-        detail: 'Copy the Photo Drop link and send it by text, email, or printed signage.',
+        detail: 'Copy the disposable camera link and send it by text, email, or printed signage.',
         primaryLabel: 'Close',
       });
     });
@@ -4113,21 +4117,21 @@ function PhotoDropMobilePanel({
             <Ionicons color={colors.muted} name="chevron-forward" size={14} />
             <View style={styles.photoDropGuestFlowStep}>
               <Ionicons color={colors.rose} name="cloud-upload-outline" size={16} />
-              <Text style={styles.photoDropGuestFlowText}>Uploads photos</Text>
+              <Text style={styles.photoDropGuestFlowText}>Takes 10 shots</Text>
             </View>
             <Ionicons color={colors.muted} name="chevron-forward" size={14} />
             <View style={styles.photoDropGuestFlowStep}>
               <Ionicons color={colors.rose} name="checkmark-circle-outline" size={16} />
-              <Text style={styles.photoDropGuestFlowText}>You approve</Text>
+              <Text style={styles.photoDropGuestFlowText}>Uploads roll</Text>
             </View>
           </View>
           <View style={styles.photoDropQuickStats}>
             <PhotoDropMiniStat label="Target" value={data.guestPhotoDrop.selectedQrTarget === 'website' ? 'Website' : 'Portal'} />
-            <PhotoDropMiniStat label="Mode" value={photoDropModeLabel(data.guestPhotoDrop.displayMode)} />
-            <PhotoDropMiniStat label="Limit" value={`${data.guestPhotoDrop.maxUploads}/guest`} />
+            <PhotoDropMiniStat label="Mode" value={photoDropModeLabel(photoDropDisplayMode)} />
+            <PhotoDropMiniStat label="Website cap" value={websitePublishesGuestPhotos ? `${approvedUploads}/${websiteGuestPhotoLimit}` : 'Portal only'} />
           </View>
           <View style={styles.photoDropLinkBox}>
-            <Text style={styles.photoDropControlLabel}>Guest upload link</Text>
+            <Text style={styles.photoDropControlLabel}>Disposable camera link</Text>
             <Text style={styles.photoDropLinkText}>{loading ? 'Refreshing Photo Drop link...' : uploadLink}</Text>
           </View>
           <View style={styles.websiteActions}>
@@ -4150,6 +4154,14 @@ function PhotoDropMobilePanel({
             <SummaryCard label="Approved" value={String(approvedUploads)} />
             <SummaryCard label="Photos" value={String(photoCount)} />
           </View>
+          {websitePublishesGuestPhotos ? (
+            <View style={styles.inlineNotice}>
+              <Ionicons color={colors.rose} name="globe-outline" size={16} />
+              <Text style={styles.inlineNoticeText}>
+                Wedding website gallery limit: {approvedUploads}/{websiteGuestPhotoLimit} approved guest photos.
+              </Text>
+            </View>
+          ) : null}
           <View style={styles.photoDropFilterRow}>
             {([
               ['Pending', pendingUploads],
@@ -4170,6 +4182,7 @@ function PhotoDropMobilePanel({
             {visibleUploads.length ? (
               visibleUploads.map((upload) => {
                 const imageUri = upload.publicImageUrl || upload.imageUrl;
+                const approveDisabled = upload.status === 'Approved' || (websiteGalleryFull && upload.status !== 'Approved');
                 return (
                   <View key={upload.id} style={styles.photoDropUploadRow}>
                     <View style={styles.photoDropThumb}>
@@ -4188,12 +4201,18 @@ function PhotoDropMobilePanel({
                       <Text style={styles.photoDropUploadMeta}>{formatShortDate(upload.uploadedAt)}</Text>
                       <View style={styles.photoDropUploadActions}>
                         <Pressable
-                          disabled={upload.status === 'Approved'}
+                          disabled={approveDisabled}
                           onPress={() => onUpdateUploadStatus(upload.id, 'Approved')}
-                          style={[styles.photoDropStatusButton, upload.status === 'Approved' && styles.photoDropStatusButtonActive]}
+                          style={[
+                            styles.photoDropStatusButton,
+                            upload.status === 'Approved' && styles.photoDropStatusButtonActive,
+                            approveDisabled && upload.status !== 'Approved' && styles.photoDropStatusButtonDisabled,
+                          ]}
                         >
                           <Ionicons color={upload.status === 'Approved' ? colors.surface : colors.rose} name="checkmark-outline" size={13} />
-                          <Text style={[styles.photoDropStatusButtonText, upload.status === 'Approved' && styles.photoDropStatusButtonTextActive]}>Approve</Text>
+                          <Text style={[styles.photoDropStatusButtonText, upload.status === 'Approved' && styles.photoDropStatusButtonTextActive]}>
+                            {websiteGalleryFull && upload.status !== 'Approved' ? 'Limit' : 'Approve'}
+                          </Text>
                         </Pressable>
                         <Pressable
                           disabled={upload.status === 'Hidden'}
@@ -4227,11 +4246,11 @@ function PhotoDropMobilePanel({
 
       {activeTab === 'settings' ? (
         <View style={styles.photoDropPanel}>
-          <PhotoDropSettingRow icon="albums-outline" label="Display mode" value={photoDropModeLabel(data.guestPhotoDrop.displayMode)} />
-          <Text style={styles.hubDetail}>Choose whether approved guest photos appear in the private portal, wedding website, or both.</Text>
+          <PhotoDropSettingRow icon="albums-outline" label="Display mode" value={photoDropModeLabel(photoDropDisplayMode)} />
+          <Text style={styles.hubDetail}>Every upload routes to the portal first. Choose whether up to 50 approved favorites also publish to the wedding website.</Text>
           <View style={styles.eventTypeRow}>
-            {(['portal', 'website', 'both'] as const).map((mode) => {
-              const active = data.guestPhotoDrop.displayMode === mode;
+            {(['portal', 'both'] as const).map((mode) => {
+              const active = photoDropDisplayMode === mode;
               return (
                 <Pressable
                   key={mode}
@@ -4259,12 +4278,12 @@ function PhotoDropMobilePanel({
               );
             })}
           </View>
-          <PhotoDropSettingRow icon="cloud-upload-outline" label="Upload limit" value={`${data.guestPhotoDrop.maxUploads} photos per guest`} />
+          <PhotoDropSettingRow icon="cloud-upload-outline" label="Disposable roll size" value={`${data.guestPhotoDrop.maxUploads} photos per guest`} />
           <View style={styles.fontStepperRow}>
             <Pressable
               accessibilityLabel="Decrease photo upload limit"
               accessibilityRole="button"
-              onPress={() => onUpdateSettings({ maxUploads: Math.max(1, data.guestPhotoDrop.maxUploads - 1) })}
+              onPress={() => onUpdateSettings({ maxUploads: Math.max(5, data.guestPhotoDrop.maxUploads - 5) })}
               style={styles.iconMiniButton}
             >
               <Ionicons color={colors.rose} name="remove" size={15} />
@@ -4275,7 +4294,7 @@ function PhotoDropMobilePanel({
             <Pressable
               accessibilityLabel="Increase photo upload limit"
               accessibilityRole="button"
-              onPress={() => onUpdateSettings({ maxUploads: Math.min(20, data.guestPhotoDrop.maxUploads + 1) })}
+              onPress={() => onUpdateSettings({ maxUploads: Math.min(10, data.guestPhotoDrop.maxUploads + 5) })}
               style={styles.iconMiniButton}
             >
               <Ionicons color={colors.rose} name="add" size={15} />
@@ -9693,7 +9712,7 @@ function buildInvitationMessageDraft({
 }
 
 function photoDropModeLabel(mode: string) {
-  if (mode === 'website') return 'Website only';
+  if (mode === 'website') return 'Portal + website';
   if (mode === 'portal') return 'Portal only';
   return 'Portal + website';
 }
@@ -12822,6 +12841,9 @@ const styles = StyleSheet.create({
   photoDropStatusButtonActive: {
     backgroundColor: colors.rose,
     borderColor: colors.rose,
+  },
+  photoDropStatusButtonDisabled: {
+    opacity: 0.45,
   },
   photoDropStatusButtonText: {
     color: colors.rose,

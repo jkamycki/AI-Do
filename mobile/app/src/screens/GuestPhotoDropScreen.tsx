@@ -22,24 +22,20 @@ const destinationCopy: Record<GuestPhotoDisplayMode, { label: string; detail: st
     preview: 'Guests will not see the wedding website link after uploading.',
   },
   website: {
-    label: 'Wedding website',
-    detail: 'Approved photos appear in Guest Uploads on the published wedding website.',
-    preview: 'Guests can jump to the wedding gallery after their final upload.',
+    label: 'Portal + website highlights',
+    detail: 'All photos route to the portal first. Up to 50 approved favorites can also appear on the wedding website.',
+    preview: 'Guests see the gallery link, while every upload remains managed in the portal.',
   },
   both: {
-    label: 'Portal + website',
-    detail: 'Approved photos are available in the portal and published website gallery.',
-    preview: 'Guests see the gallery link, while the couple still manages approvals here.',
+    label: 'Portal + website highlights',
+    detail: 'All photos route to the portal first. Up to 50 approved favorites can also appear on the wedding website.',
+    preview: 'Guests see the gallery link, while every upload remains managed in the portal.',
   },
 };
 
 function defaultInstructions(displayMode: GuestPhotoDisplayMode) {
   if (displayMode === 'portal') {
     return "Share your favorite wedding day moments here. Add a caption if you'd like, and the couple will review every photo privately.";
-  }
-
-  if (displayMode === 'website') {
-    return "Share your favorite wedding day moments here. Add a caption if you'd like, and once approved they may appear in the wedding website gallery.";
   }
 
   return "Share your favorite wedding day moments here. Add a caption if you'd like, and once approved they may appear in the couple's gallery.";
@@ -53,9 +49,10 @@ export function GuestPhotoDropScreen() {
   const [instructions, setInstructions] = useState(settings.instructions);
   const pending = data.guestPhotoUploads.filter((upload) => upload.status === 'Pending').length;
   const approved = data.guestPhotoUploads.filter((upload) => upload.status === 'Approved').length;
-  const websiteEnabled = settings.displayMode === 'website' || settings.displayMode === 'both';
+  const displayMode = settings.displayMode === 'website' ? 'both' : settings.displayMode;
+  const websiteEnabled = displayMode === 'both';
   const coupleSlug = slugifyCoupleName(data.profile.coupleName);
-  const publicUrl = `aidowedding.net/photo-drop/${coupleSlug}`;
+  const publicUrl = `aidowedding.net/wedding/${coupleSlug}/disposable`;
   const weddingUrl = `aidowedding.net/w/${coupleSlug}`;
 
   function setDestination(displayMode: GuestPhotoDisplayMode) {
@@ -70,14 +67,14 @@ export function GuestPhotoDropScreen() {
 
   function saveCopy() {
     updateGuestPhotoDropSettings({
-      instructions: instructions.trim() || defaultInstructions(settings.displayMode),
+      instructions: instructions.trim() || defaultInstructions(displayMode),
       title: title.trim() || 'Guest Photo Drop',
     });
   }
 
   function generateCopy() {
     const generated =
-      settings.displayMode === 'portal'
+      displayMode === 'portal'
         ? 'Add your favorite wedding day photos here. The couple will review everything privately and save the memories they love most.'
         : 'Add your favorite wedding day photos here. After the couple approves them, your memories may appear in the wedding gallery.';
     setInstructions(generated);
@@ -101,8 +98,8 @@ export function GuestPhotoDropScreen() {
           <Ionicons color={colors.primary} name="camera-outline" size={30} />
         </View>
         <View style={styles.heroCopy}>
-          <Text style={[styles.heroTitle, { color: colors.text }]}>QR upload page</Text>
-          <Text style={[styles.heroText, { color: colors.muted }]}>Guests scan, take or choose photos, add a caption, and submit. Every upload waits for approval.</Text>
+          <Text style={[styles.heroTitle, { color: colors.text }]}>Disposable camera</Text>
+          <Text style={[styles.heroText, { color: colors.muted }]}>Guests scan, pick a film effect, take 10 locked shots, then upload the roll for approval.</Text>
         </View>
         <Switch
           onValueChange={(enabled) => updateGuestPhotoDropSettings({ enabled })}
@@ -124,22 +121,22 @@ export function GuestPhotoDropScreen() {
         </View>
         <Text style={[styles.qrUrl, { backgroundColor: colors.primarySoft, color: colors.text }]}>{publicUrl}</Text>
         <Text style={[styles.helper, { color: colors.muted }]}>
-          This QR always opens the camera-friendly guest upload page. Website and RSVP QR choices live in Website Editor.
+          This QR always opens the disposable camera page. Shared links open the same camera experience as the QR code.
         </Text>
       </Card>
 
       <Card style={styles.cardGap}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Where approved photos show</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Photo routing</Text>
         <View style={styles.choiceRow}>
-          {(Object.keys(destinationCopy) as GuestPhotoDisplayMode[]).map((mode) => (
-            <FilterPill active={settings.displayMode === mode} key={mode} label={destinationCopy[mode].label} onPress={() => setDestination(mode)} />
+          {(['portal', 'both'] as GuestPhotoDisplayMode[]).map((mode) => (
+            <FilterPill active={displayMode === mode} key={mode} label={destinationCopy[mode].label} onPress={() => setDestination(mode)} />
           ))}
         </View>
-        <Text style={[styles.helper, { color: colors.muted }]}>{destinationCopy[settings.displayMode].detail}</Text>
+        <Text style={[styles.helper, { color: colors.muted }]}>{destinationCopy[displayMode].detail}</Text>
         <View style={[styles.previewNote, { backgroundColor: colors.cardStrong, borderColor: colors.border }]}>
           <Ionicons color={websiteEnabled ? colors.accent : colors.primary} name={websiteEnabled ? 'globe-outline' : 'lock-closed-outline'} size={20} />
           <Text style={[styles.previewText, { color: colors.text }]}>
-            {destinationCopy[settings.displayMode].preview}
+            {destinationCopy[displayMode].preview}
             {websiteEnabled ? ` Gallery link shown after upload: ${weddingUrl}` : ''}
           </Text>
         </View>
@@ -151,16 +148,16 @@ export function GuestPhotoDropScreen() {
         <FormField label="Guest instructions" multiline onChangeText={setInstructions} value={instructions} />
         <View style={styles.actions}>
           <PrimaryButton icon="sparkles-outline" label="Generate" onPress={generateCopy} variant="gold" />
-          <PrimaryButton icon="refresh-outline" label="Reset" onPress={() => setInstructions(defaultInstructions(settings.displayMode))} variant="ghost" />
+          <PrimaryButton icon="refresh-outline" label="Reset" onPress={() => setInstructions(defaultInstructions(displayMode))} variant="ghost" />
           <PrimaryButton icon="save-outline" label="Save" onPress={saveCopy} />
         </View>
       </Card>
 
       <Card style={styles.cardGap}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Upload limits</Text>
-        <Text style={[styles.helper, { color: colors.muted }]}>Limit how many photos each phone can submit for this wedding.</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Disposable roll size</Text>
+        <Text style={[styles.helper, { color: colors.muted }]}>Choose how many locked shots each phone can take before uploading the roll.</Text>
         <View style={styles.choiceRow}>
-          {[3, 5, 10, 15].map((limit) => (
+          {[5, 10].map((limit) => (
             <FilterPill
               active={settings.maxUploads === limit}
               key={limit}

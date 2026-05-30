@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useRoute } from "wouter";
-import { Camera, ImagePlus, Loader2, RefreshCcw } from "lucide-react";
+import { Camera, ImagePlus, Link, Loader2, Lock, RefreshCcw, Send } from "lucide-react";
 import { apiFetch } from "@/lib/authFetch";
 import { getGuestPhotoDeviceId } from "@/lib/guestPhotoDevice";
 
@@ -8,68 +8,58 @@ type FacingMode = "environment" | "user";
 type CameraStatus = "starting" | "ready" | "blocked" | "unsupported" | "error";
 type FilmEffectId = "classic" | "warm" | "dream" | "mono";
 
-type PendingPhoto = {
-  file: File;
-  previewUrl: string;
-};
-
-const SHOT_LIMIT = 10;
+const DEFAULT_SHOT_LIMIT = 10;
 const DEVELOPING_DELAY_MS = 2400;
 
 const FILM_EFFECTS: Array<{
   id: FilmEffectId;
   label: string;
-  cssFilter: string;
   canvasFilter: string;
   wash: string;
 }> = [
   {
     id: "classic",
     label: "Classic film",
-    cssFilter: "contrast(1.12) saturate(1.2) sepia(0.16) brightness(1.03)",
     canvasFilter: "contrast(112%) saturate(120%) sepia(16%) brightness(103%)",
     wash: "rgba(255, 180, 120, 0.08)",
   },
   {
     id: "warm",
     label: "Golden hour",
-    cssFilter: "contrast(1.08) saturate(1.28) sepia(0.28) brightness(1.04)",
     canvasFilter: "contrast(108%) saturate(128%) sepia(28%) brightness(104%)",
     wash: "rgba(255, 145, 92, 0.13)",
   },
   {
     id: "dream",
     label: "Soft flash",
-    cssFilter: "contrast(0.96) saturate(1.08) sepia(0.12) brightness(1.12)",
     canvasFilter: "contrast(96%) saturate(108%) sepia(12%) brightness(112%)",
     wash: "rgba(248, 221, 229, 0.1)",
   },
   {
     id: "mono",
     label: "B&W keepsake",
-    cssFilter: "grayscale(1) contrast(1.18) brightness(1.04)",
     canvasFilter: "grayscale(100%) contrast(118%) brightness(104%)",
     wash: "rgba(255, 255, 255, 0.02)",
   },
 ];
 
-function sessionKey(slug: string) {
-  return `aido_disposable_shots_remaining_${slug || "default"}`;
+function sessionKey(slug: string, limit: number) {
+  return `aido_disposable_shots_remaining_${slug || "default"}_${limit}`;
 }
 
-function readShotsRemaining(slug: string) {
+function readShotsRemaining(slug: string, limit: number) {
   try {
-    const stored = window.sessionStorage.getItem(sessionKey(slug));
-    if (stored === null) return SHOT_LIMIT;
+    const stored = window.sessionStorage.getItem(sessionKey(slug, limit));
+    if (stored === null) return limit;
     const parsed = Number(stored);
-    if (Number.isInteger(parsed) && parsed >= 0 && parsed <= SHOT_LIMIT) return parsed;
+    if (Number.isInteger(parsed) && parsed >= 0 && parsed <= limit) return parsed;
   } catch {}
-  return SHOT_LIMIT;
+  return limit;
 }
 
-function saveShotsRemaining(slug: string, remaining: number) {
+function saveShotsRemaining(slug: string, remaining: number, limit: number) {
   try {
-    window.sessionStorage.setItem(sessionKey(slug), String(Math.max(0, Math.min(SHOT_LIMIT, remaining))));
+    window.sessionStorage.setItem(sessionKey(slug, limit), String(Math.max(0, Math.min(limit, remaining))));
   } catch {}
 }
 
@@ -181,11 +171,14 @@ export default function PublicDisposableCamera() {
   const [deviceId, setDeviceId] = useState("");
   const [facingMode, setFacingMode] = useState<FacingMode>("environment");
   const [status, setStatus] = useState<CameraStatus>("starting");
-  const [shotsRemaining, setShotsRemaining] = useState(() => readShotsRemaining(slug));
+  const [shotLimit, setShotLimit] = useState(DEFAULT_SHOT_LIMIT);
+  const [shotsRemaining, setShotsRemaining] = useState(() => readShotsRemaining(slug, DEFAULT_SHOT_LIMIT));
   const [flash, setFlash] = useState(false);
   const [developing, setDeveloping] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [pendingPhoto, setPendingPhoto] = useState<PendingPhoto | null>(null);
+  const [photoRoll, setPhotoRoll] = useState<File[]>([]);
+  const [showUploadPrompt, setShowUploadPrompt] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedEffect, setSelectedEffect] = useState<FilmEffectId>("classic");
   const [message, setMessage] = useState<string | null>(null);
 
@@ -195,15 +188,33 @@ export default function PublicDisposableCamera() {
 
   useEffect(() => {
     if (!slug) return;
+    let active = true;
     setDeviceId(getGuestPhotoDeviceId(slug));
-    setShotsRemaining(readShotsRemaining(slug));
-  }, [slug]);
-
-  useEffect(() => {
+    void apiFetch(`/api/website/public/${encodeURIComponent(slug)}/photo-drop`)
+      .then(async (response) => {
+        const body = await response.json().catch(() => ({}));
+        const maxUploads = Number((body as { guestPhotoDrop?: { maxUploads?: number } }).guestPhotoDrop?.maxUploads);
+        const nextLimit = Number.isFinite(maxUploads) ? Math.max(1, Math.min(10, Math.floor(maxUploads))) : DEFAULT_SHOT_LIMIT;
+        if (!active) return;
+        setShotLimit(nextLimit);
+        setShotsRemaining((current) => {
+          const savedShots = readShotsRemaining(slug, nextLimit);
+          const safeShots = savedShots === 0 && photoRoll.length === 0 ? nextLimit : Math.min(current, savedShots, nextLimit);
+          saveShotsRemaining(slug, safeShots, nextLimit);
+          return safeShots;
+        });
+      })
+      .catch(() => {
+        const savedShots = readShotsRemaining(slug, DEFAULT_SHOT_LIMIT);
+        const safeShots = savedShots === 0 && photoRoll.length === 0 ? DEFAULT_SHOT_LIMIT : savedShots;
+        if (!active) return;
+        setShotsRemaining(safeShots);
+        saveShotsRemaining(slug, safeShots, DEFAULT_SHOT_LIMIT);
+      });
     return () => {
-      if (pendingPhoto) URL.revokeObjectURL(pendingPhoto.previewUrl);
+      active = false;
     };
-  }, [pendingPhoto]);
+  }, [photoRoll.length, slug]);
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -252,49 +263,53 @@ export default function PublicDisposableCamera() {
     return stopCamera;
   }, [startCamera, stopCamera]);
 
-  function decrementShot() {
-    setShotsRemaining((current) => {
-      const next = Math.max(0, current - 1);
-      saveShotsRemaining(slug, next);
-      return next;
-    });
+  function addPhotoToLockedRoll(file: File) {
+    const nextRemaining = Math.max(0, shotsRemaining - 1);
+    setPhotoRoll((current) => [...current, file].slice(0, shotLimit));
+    setShotsRemaining(nextRemaining);
+    saveShotsRemaining(slug, nextRemaining, shotLimit);
+    setMessage(nextRemaining === 0 ? null : "Photo saved to your locked roll.");
+    if (nextRemaining === 0) setShowUploadPrompt(true);
   }
 
-  function showEffectPreview(file: File) {
-    setSelectedEffect("classic");
-    setMessage(null);
-    setPendingPhoto((current) => {
-      if (current) URL.revokeObjectURL(current.previewUrl);
-      return {
-        file,
-        previewUrl: URL.createObjectURL(file),
-      };
-    });
-  }
-
-  async function uploadDisposablePhoto(file: File) {
-    setUploading(true);
-    setDeveloping(true);
-    setMessage(null);
-
+  async function postDisposablePhoto(file: File) {
     const form = new FormData();
     form.append("guestName", "Disposable Camera Guest");
     form.append("caption", "Captured with the disposable camera");
     if (deviceId) form.append("deviceId", deviceId);
     form.append("photos", file);
 
+    const response = await apiFetch(`/api/website/public/${encodeURIComponent(slug)}/photo-drop`, {
+      method: "POST",
+      body: form,
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error((body as { error?: string })?.error || "Upload failed.");
+  }
+
+  async function uploadLockedRoll() {
+    if (!photoRoll.length || uploading) return;
+    setUploading(true);
+    setDeveloping(true);
+    setMessage(null);
+    setUploadProgress(0);
+
     try {
-      const [response] = await Promise.all([
-        apiFetch(`/api/website/public/${encodeURIComponent(slug)}/photo-drop`, {
-          method: "POST",
-          body: form,
-        }),
+      await Promise.all([
+        (async () => {
+          for (let index = 0; index < photoRoll.length; index += 1) {
+            await postDisposablePhoto(photoRoll[index]);
+            setUploadProgress(index + 1);
+          }
+        })(),
         wait(DEVELOPING_DELAY_MS),
       ]);
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error((body as { error?: string })?.error || "Upload failed.");
+      setPhotoRoll([]);
+      setShowUploadPrompt(false);
+      setMessage("Your disposable roll was sent to the couple.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Upload failed. Please try again.");
+      setShowUploadPrompt(true);
     } finally {
       setUploading(false);
       setDeveloping(false);
@@ -323,9 +338,8 @@ export default function PublicDisposableCamera() {
     setFlash(true);
     window.setTimeout(() => setFlash(false), 150);
     try {
-      const file = await captureFrame();
-      decrementShot();
-      showEffectPreview(file);
+      const file = await applyFilmEffect(await captureFrame(), selectedEffect);
+      addPhotoToLockedRoll(file);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not take this photo.");
     }
@@ -341,27 +355,37 @@ export default function PublicDisposableCamera() {
     playShutterSound();
     setFlash(true);
     window.setTimeout(() => setFlash(false), 150);
-    decrementShot();
-    showEffectPreview(file);
+    try {
+      addPhotoToLockedRoll(await applyFilmEffect(file, selectedEffect));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not save this photo.");
+    }
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  async function handleSendPhoto() {
-    if (!pendingPhoto || uploading) return;
+  async function shareDisposableLink() {
+    const link = window.location.href;
+    const title = "A.I DO disposable camera";
+    const text = "Add photos to the wedding disposable camera.";
+
     try {
-      const filteredPhoto = await applyFilmEffect(pendingPhoto.file, selectedEffect);
-      setPendingPhoto((current) => {
-        if (current) URL.revokeObjectURL(current.previewUrl);
-        return null;
-      });
-      await uploadDisposablePhoto(filteredPhoto);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not send this photo.");
+      if (navigator.share) {
+        await navigator.share({ title, text, url: link });
+        return;
+      }
+      await navigator.clipboard?.writeText(link);
+      setMessage("Camera link copied. Send it to anyone you want to invite.");
+    } catch {
+      try {
+        await navigator.clipboard?.writeText(link);
+        setMessage("Camera link copied. Send it to anyone you want to invite.");
+      } catch {
+        setMessage("Copy this page link from your browser to share the camera.");
+      }
     }
   }
 
-  const canShoot = status === "ready" && shotsRemaining > 0 && !uploading && !pendingPhoto;
-  const activeEffect = getFilmEffect(selectedEffect);
+  const canShoot = status === "ready" && shotsRemaining > 0 && !uploading && !showUploadPrompt;
 
   return (
     <main className="fixed inset-0 overflow-hidden bg-[#070203] text-white">
@@ -398,7 +422,7 @@ export default function PublicDisposableCamera() {
         </div>
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/75 to-transparent px-5 pb-20 pt-[max(1.1rem,env(safe-area-inset-top))]">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/75 to-transparent px-5 pb-28 pt-[max(1.1rem,env(safe-area-inset-top))]">
         <div className="mx-auto flex max-w-md items-center justify-between gap-3 rounded-full border border-white/14 bg-black/30 px-3 py-2 backdrop-blur-md">
           <div className="flex items-center gap-2">
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F8DDE5] text-[#8D294D]">
@@ -409,9 +433,19 @@ export default function PublicDisposableCamera() {
               <p className="text-sm font-bold leading-tight">Disposable camera</p>
             </div>
           </div>
-          <p className={`rounded-full px-3 py-2 text-xs font-black ${shotsRemaining > 0 ? "bg-white/12 text-white" : "bg-[#F8DDE5] text-[#8D294D]"}`}>
-            {shotsRemaining > 0 ? `${shotsRemaining} left` : "No shots left"}
-          </p>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void shareDisposableLink()}
+              className="pointer-events-auto flex h-9 items-center gap-1.5 rounded-full bg-white/12 px-3 text-[0.68rem] font-black uppercase tracking-[0.12em] text-white"
+            >
+              <Link className="h-3.5 w-3.5 text-[#F8DDE5]" />
+              Share
+            </button>
+            <p className={`rounded-full px-3 py-2 text-xs font-black ${shotsRemaining > 0 ? "bg-white/12 text-white" : "bg-[#F8DDE5] text-[#8D294D]"}`}>
+              {photoRoll.length}/{shotLimit}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -421,99 +455,99 @@ export default function PublicDisposableCamera() {
         </div>
       )}
 
-      <div className="absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black via-black/82 to-transparent px-6 pb-[max(1.4rem,env(safe-area-inset-bottom))] pt-24">
-        <p className="mb-4 text-center text-xs font-semibold uppercase tracking-[0.24em] text-white/55">
-          {shotsRemaining > 0 ? `${shotsRemaining} shot${shotsRemaining === 1 ? "" : "s"} remaining` : "No shots left"}
-        </p>
+      <div className="absolute inset-x-0 top-[max(5.35rem,calc(env(safe-area-inset-top)+4.4rem))] z-30 px-5">
+        <div className="mx-auto max-w-md rounded-[1.6rem] border border-white/12 bg-black/42 p-3 shadow-xl backdrop-blur-md">
+          <div className="mb-2 flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-white/65">
+            <span>Film effect</span>
+            <span>{shotsRemaining > 0 ? `${shotsRemaining} left` : "Roll full"}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {FILM_EFFECTS.map((effect) => {
+            const active = effect.id === selectedEffect;
+            return (
+              <button
+                key={effect.id}
+                type="button"
+                onClick={() => setSelectedEffect(effect.id)}
+                disabled={uploading || showUploadPrompt}
+                className={`min-h-11 rounded-2xl border px-2 py-2 text-center text-[0.7rem] font-black leading-tight transition disabled:opacity-50 ${
+                  active
+                    ? "border-[#F8DDE5] bg-[#F8DDE5] text-[#8D294D]"
+                    : "border-white/12 bg-white/[0.08] text-white"
+                }`}
+              >
+                {effect.label}
+              </button>
+            );
+          })}
+          </div>
+        </div>
+      </div>
+
+      <div className="absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black via-black/82 to-transparent px-5 pb-[max(1.4rem,env(safe-area-inset-bottom))] pt-24">
+        <div className="mb-4 flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/55">
+          <Lock className="h-3.5 w-3.5" />
+          <span>{shotsRemaining > 0 ? `${shotsRemaining} shot${shotsRemaining === 1 ? "" : "s"} remaining` : "Roll full"}</span>
+        </div>
         <div className="mx-auto flex max-w-sm items-end justify-center gap-7">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(event) => void handleCameraRoll(event.target.files)}
-        />
-        <button
-          type="button"
-          aria-label="Upload from camera roll"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={shotsRemaining <= 0 || uploading}
-          className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/12 bg-white/14 text-white shadow-lg backdrop-blur disabled:opacity-40"
-        >
-          <ImagePlus className="h-5 w-5" />
-        </button>
-        <button
-          type="button"
-          aria-label="Take photo"
-          onClick={() => void handleShutter()}
-          disabled={!canShoot}
-          className="flex h-24 w-24 items-center justify-center rounded-full border-[5px] border-[#F8DDE5] bg-white/12 shadow-[0_0_0_8px_rgba(248,221,229,0.16),0_18px_45px_rgba(141,41,77,0.35)] backdrop-blur transition active:scale-95 disabled:opacity-40"
-        >
-          <span className="h-16 w-16 rounded-full bg-gradient-to-br from-white to-[#F8DDE5]" />
-        </button>
-        <button
-          type="button"
-          aria-label="Flip camera"
-          onClick={() => setFacingMode((current) => (current === "environment" ? "user" : "environment"))}
-          disabled={uploading}
-          className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/12 bg-white/14 text-white shadow-lg backdrop-blur disabled:opacity-40"
-        >
-          <RefreshCcw className="h-5 w-5" />
-        </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(event) => void handleCameraRoll(event.target.files)}
+          />
+          <button
+            type="button"
+            aria-label="Upload from camera roll"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={shotsRemaining <= 0 || uploading || showUploadPrompt}
+            className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/12 bg-white/14 text-white shadow-lg backdrop-blur disabled:opacity-40"
+          >
+            <ImagePlus className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            aria-label="Take photo"
+            onClick={() => void handleShutter()}
+            disabled={!canShoot}
+            className="flex h-24 w-24 items-center justify-center rounded-full border-[5px] border-[#F8DDE5] bg-white/12 shadow-[0_0_0_8px_rgba(248,221,229,0.16),0_18px_45px_rgba(141,41,77,0.35)] backdrop-blur transition active:scale-95 disabled:opacity-40"
+          >
+            <span className="h-16 w-16 rounded-full bg-gradient-to-br from-white to-[#F8DDE5]" />
+          </button>
+          <button
+            type="button"
+            aria-label="Flip camera"
+            onClick={() => setFacingMode((current) => (current === "environment" ? "user" : "environment"))}
+            disabled={uploading || showUploadPrompt}
+            className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/12 bg-white/14 text-white shadow-lg backdrop-blur disabled:opacity-40"
+          >
+            <RefreshCcw className="h-5 w-5" />
+          </button>
         </div>
       </div>
 
       {flash && <div className="pointer-events-none absolute inset-0 z-40 bg-white" />}
 
-      {pendingPhoto && (
-        <div className="absolute inset-0 z-40 flex flex-col bg-[#080304] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1.2rem,env(safe-area-inset-top))] text-white">
-          <div className="mx-auto flex w-full max-w-md items-center justify-between gap-3 rounded-full border border-white/14 bg-white/[0.07] px-4 py-3 backdrop-blur">
-            <div>
-              <p className="text-[0.62rem] font-black uppercase tracking-[0.22em] text-[#F8DDE5]">Choose film</p>
-              <p className="text-sm font-bold">Pick a disposable look</p>
+      {showUploadPrompt && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-[#080304]/94 px-6 text-center text-white backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-[2rem] border border-white/12 bg-white/[0.07] px-6 py-8 shadow-2xl">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-[#F8DDE5] text-[#8D294D]">
+              <Lock className="h-8 w-8" />
             </div>
-            <p className="rounded-full bg-[#F8DDE5] px-3 py-2 text-xs font-black text-[#8D294D]">{shotsRemaining} left</p>
-          </div>
-
-          <div className="relative mx-auto mt-5 min-h-0 w-full max-w-md flex-1 overflow-hidden rounded-[2rem] border border-white/12 bg-white/[0.05] shadow-2xl">
-            <img
-              src={pendingPhoto.previewUrl}
-              alt="Captured photo preview"
-              className="h-full w-full object-cover"
-              style={{ filter: activeEffect.cssFilter }}
-            />
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_42%,rgba(45,0,18,0.42)_100%)]" />
-            <div className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-[#ff7878]/20 via-[#ffb478]/5 to-transparent" />
-          </div>
-
-          <div className="mx-auto mt-4 w-full max-w-md">
-            <div className="grid grid-cols-2 gap-2">
-              {FILM_EFFECTS.map((effect) => {
-                const active = effect.id === selectedEffect;
-                return (
-                  <button
-                    key={effect.id}
-                    type="button"
-                    onClick={() => setSelectedEffect(effect.id)}
-                    className={`rounded-2xl border px-3 py-3 text-left text-sm font-bold transition ${
-                      active
-                        ? "border-[#F8DDE5] bg-[#F8DDE5] text-[#8D294D]"
-                        : "border-white/12 bg-white/[0.07] text-white"
-                    }`}
-                  >
-                    {effect.label}
-                  </button>
-                );
-              })}
-            </div>
-
+            <p className="mt-5 text-xs font-black uppercase tracking-[0.28em] text-[#F8DDE5]">Roll complete</p>
+            <h2 className="mt-2 text-3xl font-bold">Your {shotLimit} photos are locked</h2>
+            <p className="mt-3 text-sm leading-6 text-white/70">
+              Just like a disposable camera, guests cannot view the photos. Upload the roll so the couple can develop and review them.
+            </p>
             <button
               type="button"
-              onClick={() => void handleSendPhoto()}
-              disabled={uploading}
-              className="mt-3 flex h-14 w-full items-center justify-center rounded-full bg-[#F8DDE5] text-sm font-black text-[#8D294D] shadow-[0_18px_45px_rgba(141,41,77,0.35)] disabled:opacity-60"
+              onClick={() => void uploadLockedRoll()}
+              disabled={uploading || photoRoll.length === 0}
+              className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[#F8DDE5] text-sm font-black text-[#8D294D] shadow-[0_18px_45px_rgba(141,41,77,0.35)] disabled:opacity-60"
             >
-              {uploading ? "Sending..." : "Use this effect"}
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {uploading ? "Uploading roll..." : "Upload my roll"}
             </button>
           </div>
         </div>
@@ -525,8 +559,10 @@ export default function PublicDisposableCamera() {
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-[#F8DDE5] text-[#8D294D]">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
-            <p className="mt-5 text-2xl font-bold">Developing your photo...</p>
-            <p className="mt-2 text-sm text-white/60">Sending it to the couple.</p>
+            <p className="mt-5 text-2xl font-bold">Developing your roll...</p>
+            <p className="mt-2 text-sm text-white/60">
+              {uploadProgress > 0 ? `${uploadProgress} of ${photoRoll.length} photos sent.` : "Sending it to the couple."}
+            </p>
           </div>
         </div>
       )}

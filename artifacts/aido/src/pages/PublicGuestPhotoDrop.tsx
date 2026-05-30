@@ -136,7 +136,7 @@ export default function PublicGuestPhotoDrop() {
   const [usageLoading, setUsageLoading] = useState(false);
 
   const drop = data?.guestPhotoDrop;
-  const maxUploads = drop?.maxUploads ?? 5;
+  const maxUploads = drop?.maxUploads ?? 10;
   const uploadLimitMb = drop?.uploadLimitMb ?? 5;
   const totalPhotoLimit = usage?.limit ?? 5;
   const photosLeft = usage?.remaining ?? totalPhotoLimit;

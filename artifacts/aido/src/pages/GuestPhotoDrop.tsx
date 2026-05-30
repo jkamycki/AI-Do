@@ -78,26 +78,29 @@ const statusStyles: Record<string, string> = {
   hidden: "border-[#E6A6B7]/50 bg-[#F7DDE2]/60 text-[#8D294D]",
 };
 
+const WEBSITE_GUEST_PHOTO_LIMIT = 50;
+
 const displayModeCopy: Record<GuestPhotoSettings["displayMode"], { label: string; description: string }> = {
   portal: {
     label: "Portal only",
     description: "Approved photos stay inside A.I Do for the couple to review and download.",
   },
   website: {
-    label: "Wedding website only",
-    description: "Approved photos appear for guests on the published wedding website.",
+    label: "Portal + website highlights",
+    description: "All photos route to the portal first. Up to 50 approved favorites can also appear on the wedding website.",
   },
   both: {
-    label: "Portal + website",
-    description: "Approved photos are available in the portal and on the published wedding website.",
+    label: "Portal + website highlights",
+    description: "All photos route to the portal first. Up to 50 approved favorites can also appear on the wedding website.",
   },
 };
+const DISPLAY_MODE_OPTIONS: GuestPhotoSettings["displayMode"][] = ["portal", "both"];
 
 const GENERIC_GUEST_PHOTO_INSTRUCTIONS: Record<GuestPhotoSettings["displayMode"], string> = {
   portal:
     "Share your favorite wedding day moments here. Add a caption if you'd like, and the couple will review every photo privately.",
   website:
-    "Share your favorite wedding day moments here. Add a caption if you'd like, and once the couple approves your photos, they may appear in the wedding website gallery.",
+    "Share your favorite wedding day moments here. Add a caption if you'd like, and once the couple approves your photos, they may appear in the couple's gallery.",
   both:
     "Share your favorite wedding day moments here. Add a caption if you'd like, and once the couple approves your photos, they may appear in the couple's gallery.",
 };
@@ -302,9 +305,7 @@ export default function GuestPhotoDrop() {
               "Photos always require couple approval before they appear in the gallery.",
               displayMode === "portal"
                 ? "Destination: portal only. Do not mention the wedding website or a public gallery."
-                : displayMode === "website"
-                  ? "Destination: wedding website only. It is okay to mention the wedding website gallery after approval."
-                  : "Destination: portal and wedding website. It is okay to mention the couple's gallery after approval.",
+                : "Destination: portal and wedding website. It is okay to mention the couple's gallery after approval.",
               "Do not ask guests for email addresses.",
             ].join(" "),
             prompt:
@@ -390,7 +391,26 @@ export default function GuestPhotoDrop() {
   const uploads = data.uploads;
   const pendingUploads = uploads.filter((upload) => upload.status === "pending");
   const reviewedUploads = uploads.filter((upload) => upload.status !== "pending");
-  const displayMode = settings.displayMode ?? (settings.galleryEnabled ? "both" : "portal");
+  const displayMode = settings.displayMode === "website"
+    ? "both"
+    : settings.displayMode ?? (settings.galleryEnabled ? "both" : "portal");
+  const websitePublishesGuestPhotos = displayMode === "website" || displayMode === "both";
+  const approvedWebsitePhotos = websitePublishesGuestPhotos
+    ? uploads.filter((upload) => upload.status === "approved").length
+    : 0;
+  const websiteGalleryFull = websitePublishesGuestPhotos && approvedWebsitePhotos >= WEBSITE_GUEST_PHOTO_LIMIT;
+
+  const approveUpload = (upload: GuestPhotoUpload) => {
+    if (websiteGalleryFull && upload.status !== "approved") {
+      toast({
+        title: "Website gallery limit reached",
+        description: `Only ${WEBSITE_GUEST_PHOTO_LIMIT} guest photos can be published to the wedding website. Hide or move one approved photo back to review before approving another.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    setUploadStatus.mutate({ id: upload.id, status: "approved" });
+  };
 
   return (
     <div className="min-h-screen bg-[#FFF7F2] px-4 py-8 text-[#3B1C2B] sm:px-6 lg:px-8">
@@ -403,7 +423,7 @@ export default function GuestPhotoDrop() {
             </div>
             <h1 className="font-serif text-4xl font-bold text-[#5B0F2A] sm:text-5xl">Guest Photo Drop</h1>
             <p className="mt-2 max-w-2xl text-sm leading-7 text-[#6F3E54] sm:text-base">
-              Give guests a QR code on wedding day, collect their photos privately, then choose whether approved photos live in the portal, on the wedding website, or both.
+              Give guests a QR code on wedding day, route every upload to the portal first, then choose whether up to 50 approved favorites also appear on the wedding website.
             </p>
           </div>
           <Button
@@ -447,7 +467,7 @@ export default function GuestPhotoDrop() {
                   onCheckedChange={(checked) => updateDraftAndSave({ enabled: checked })}
                 />
                 <div className="rounded-2xl border border-[#E6A6B7]/45 bg-[#FFF7F2]/70 p-4">
-                  <Label className="text-sm font-bold text-[#5B0F2A]">Where approved photos show</Label>
+                  <Label className="text-sm font-bold text-[#5B0F2A]">Photo routing</Label>
                   <Select
                     value={displayMode}
                     onValueChange={(value: GuestPhotoSettings["displayMode"]) => updateDisplayMode(value)}
@@ -456,19 +476,23 @@ export default function GuestPhotoDrop() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {(Object.keys(displayModeCopy) as GuestPhotoSettings["displayMode"][]).map((value) => (
+                      {DISPLAY_MODE_OPTIONS.map((value) => (
                         <SelectItem key={value} value={value}>{displayModeCopy[value].label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   <p className="mt-2 text-xs leading-5 text-[#6F3E54]">{displayModeCopy[displayMode].description}</p>
+                  {websitePublishesGuestPhotos && (
+                    <div className="mt-3 rounded-xl border border-[#E6A6B7]/45 bg-white/75 px-3 py-2 text-xs leading-5 text-[#6F3E54]">
+                      <span className="font-bold text-[#8D294D]">Website gallery limit:</span>{" "}
+                      {approvedWebsitePhotos}/{WEBSITE_GUEST_PHOTO_LIMIT} guest photos approved for the wedding website.
+                    </div>
+                  )}
                   <div className="mt-3 rounded-xl border border-[#D4A373]/35 bg-white/70 px-3 py-2 text-xs leading-5 text-[#6F3E54]">
-                    <span className="font-bold text-[#8D294D]">
-                      {displayMode === "portal" ? "Private portal:" : "Website placement:"}
-                    </span>{" "}
+                    <span className="font-bold text-[#8D294D]">Portal first:</span>{" "}
                     {displayMode === "portal"
-                      ? "Approved photos stay inside A.I Do for the couple to review and download. The guest upload page will not show a wedding website link."
-                      : "Approved photos appear in the published wedding website's Gallery section under Guest Uploads when this is set to Wedding website only or Portal + website."}
+                      ? "Every upload stays inside A.I Do for the couple to review and download. The guest upload page will not show a wedding website link."
+                      : "Every upload goes to the portal. Only approved favorites, capped at 50, can also appear in the published wedding website Gallery."}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-[#E6A6B7]/45 bg-[#FFF7F2]/70 p-4">
@@ -485,13 +509,13 @@ export default function GuestPhotoDrop() {
                   </div>
                 </div>
                 <div className="rounded-2xl border border-[#E6A6B7]/45 bg-[#FFF7F2]/70 p-4">
-                  <Label className="text-sm font-bold text-[#5B0F2A]">Photos per upload</Label>
+                  <Label className="text-sm font-bold text-[#5B0F2A]">Disposable roll size</Label>
                   <Select value={String(settings.maxUploads)} onValueChange={(value) => updateDraftAndSave({ maxUploads: Number(value) })}>
                     <SelectTrigger className="mt-2 rounded-xl border-[#E6A6B7]/70 bg-white">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {[1, 2, 3, 4, 5].map((value) => (
+                      {[5, 10].map((value) => (
                         <SelectItem key={value} value={String(value)}>{value} photo{value === 1 ? "" : "s"}</SelectItem>
                       ))}
                     </SelectContent>
@@ -612,7 +636,9 @@ export default function GuestPhotoDrop() {
           description="Approve only the photos you want visible in the selected destination."
           empty="No photos waiting for review."
           uploads={pendingUploads}
-          onApprove={(id) => setUploadStatus.mutate({ id, status: "approved" })}
+          approveDisabled={(upload) => websiteGalleryFull && upload.status !== "approved"}
+          approveDisabledMessage={`Website limit ${approvedWebsitePhotos}/${WEBSITE_GUEST_PHOTO_LIMIT}`}
+          onApprove={approveUpload}
           onHide={(id) => setUploadStatus.mutate({ id, status: "hidden" })}
           onDelete={(id) => deleteUpload.mutate(id)}
           onDownload={downloadUpload}
@@ -623,7 +649,9 @@ export default function GuestPhotoDrop() {
           description={`Current approved photo destination: ${displayModeCopy[displayMode].label}. Hidden photos stay private.`}
           empty="No reviewed photos yet."
           uploads={reviewedUploads}
-          onApprove={(id) => setUploadStatus.mutate({ id, status: "approved" })}
+          approveDisabled={(upload) => websiteGalleryFull && upload.status !== "approved"}
+          approveDisabledMessage={`Website limit ${approvedWebsitePhotos}/${WEBSITE_GUEST_PHOTO_LIMIT}`}
+          onApprove={approveUpload}
           onHide={(id) => setUploadStatus.mutate({ id, status: "hidden" })}
           onDelete={(id) => deleteUpload.mutate(id)}
           onDownload={downloadUpload}
@@ -660,6 +688,8 @@ function UploadQueue({
   description,
   empty,
   uploads,
+  approveDisabled,
+  approveDisabledMessage,
   onApprove,
   onHide,
   onDelete,
@@ -669,7 +699,9 @@ function UploadQueue({
   description: string;
   empty: string;
   uploads: GuestPhotoUpload[];
-  onApprove: (id: number) => void;
+  approveDisabled?: (upload: GuestPhotoUpload) => boolean;
+  approveDisabledMessage?: string;
+  onApprove: (upload: GuestPhotoUpload) => void;
   onHide: (id: number) => void;
   onDelete: (id: number) => void;
   onDownload: (upload: GuestPhotoUpload) => void;
@@ -735,14 +767,21 @@ function UploadQueue({
                     Download Photo
                   </Button>
                   <div className="grid grid-cols-3 gap-2">
+                    {(() => {
+                      const disabled = approveDisabled?.(upload) ?? false;
+                      return (
                     <Button
                       type="button"
                       size="sm"
-                      onClick={() => onApprove(upload.id)}
-                      className="rounded-full bg-emerald-600 px-3 text-white hover:bg-emerald-700"
+                      onClick={() => onApprove(upload)}
+                      disabled={disabled}
+                      title={disabled ? approveDisabledMessage : "Approve photo"}
+                      className="rounded-full bg-emerald-600 px-3 text-white hover:bg-emerald-700 disabled:bg-emerald-600/40 disabled:text-white/80"
                     >
                       <Check className="h-4 w-4" />
                     </Button>
+                      );
+                    })()}
                     <Button
                       type="button"
                       size="sm"

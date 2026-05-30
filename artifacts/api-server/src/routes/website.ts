@@ -18,6 +18,7 @@ import { sendGuestRsvpBackupEmail, sendWebsiteRsvpBackupEmail } from "../lib/rsv
 import { normalizePlusOneStatus, plusOneCountsAsGuest, plusOneNameForStatus } from "../lib/plusOneStatus";
 
 const scryptAsync = promisify(scrypt);
+const GUEST_PHOTO_WEBSITE_GALLERY_LIMIT = 50;
 
 // ─── Password hashing helpers (H-5) ─────────────────────────────────────────
 // Format: "scrypt:<salt_hex>:<hash_hex>" — distinguishable from legacy plaintext.
@@ -78,7 +79,7 @@ const guestPhotoUsageLimiter = rateLimit({
   message: { error: "Too many photo drop checks. Please wait a moment and try again." },
 });
 
-const GUEST_PHOTO_MAX_FILES = 5;
+const GUEST_PHOTO_MAX_FILES = 10;
 const GUEST_PHOTO_MAX_FILE_BYTES = 5 * 1024 * 1024;
 const GUEST_PHOTO_ALLOWED_MIMES = new Set([
   "image/jpeg",
@@ -293,7 +294,7 @@ const DEFAULT_GUEST_PHOTO_SETTINGS: GuestPhotoDropSettings = {
   galleryEnabled: true,
   displayMode: "both",
   approvalRequired: true,
-  maxUploads: 5,
+  maxUploads: 10,
   uploadLimitMb: 5,
   title: "Guest Photo Drop",
   instructions: "Share your favorite moments from the wedding day. The couple will review photos before they appear on the website.",
@@ -661,7 +662,7 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
       .from(guestPhotoUploads)
       .where(and(eq(guestPhotoUploads.websiteId, row.id), eq(guestPhotoUploads.status, "approved")))
       .orderBy(desc(guestPhotoUploads.uploadedAt))
-      .limit(120)
+      .limit(GUEST_PHOTO_WEBSITE_GALLERY_LIMIT)
     : [];
 
   return {
@@ -1093,6 +1094,29 @@ router.put("/website/photo-drop/uploads/:id", requireAuth, async (req, res) => {
       .where(eq(weddingWebsites.profileId, profile.id))
       .limit(1);
     if (!site) return res.status(404).json({ error: "Website not created yet" });
+
+    if (status === "approved") {
+      const guestPhotoSettings = guestPhotoDropSettings(site.customText as WebsiteCustomText);
+      if (guestPhotoShowsOnWebsite(guestPhotoSettings)) {
+        const [current] = await db
+          .select({ id: guestPhotoUploads.id, status: guestPhotoUploads.status })
+          .from(guestPhotoUploads)
+          .where(and(eq(guestPhotoUploads.id, id), eq(guestPhotoUploads.websiteId, site.id), eq(guestPhotoUploads.profileId, profile.id)))
+          .limit(1);
+        if (!current) return res.status(404).json({ error: "Photo not found" });
+        if (current.status !== "approved") {
+          const [{ approvedCount = 0 } = { approvedCount: 0 }] = await db
+            .select({ approvedCount: sql<number>`count(*)` })
+            .from(guestPhotoUploads)
+            .where(and(eq(guestPhotoUploads.websiteId, site.id), eq(guestPhotoUploads.profileId, profile.id), eq(guestPhotoUploads.status, "approved")));
+          if (Number(approvedCount) >= GUEST_PHOTO_WEBSITE_GALLERY_LIMIT) {
+            return res.status(409).json({
+              error: `Wedding website gallery is limited to ${GUEST_PHOTO_WEBSITE_GALLERY_LIMIT} guest photos. Hide or move an approved photo back to review before approving another.`,
+            });
+          }
+        }
+      }
+    }
 
     const [updated] = await db
       .update(guestPhotoUploads)

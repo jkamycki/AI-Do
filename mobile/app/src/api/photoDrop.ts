@@ -25,6 +25,10 @@ type ApiPhotoUpload = {
   guestName?: string | null;
 };
 
+function disposableCameraUrl(publicUploadUrl: string) {
+  return publicUploadUrl.replace(/\/photo-drop\/([^/?#]+)([?#].*)?$/, '/wedding/$1/disposable$2');
+}
+
 function toMobileUpload(upload: ApiPhotoUpload): GuestPhotoUpload {
   const status = upload.status === 'approved' ? 'Approved' : upload.status === 'hidden' ? 'Hidden' : 'Pending';
   return {
@@ -48,7 +52,7 @@ export async function listMobileGuestPhotoDrop() {
     uploads: ApiPhotoUpload[];
   }>('/api/website/photo-drop');
   return {
-    publicUploadUrl: result.publicUploadUrl ?? '',
+    publicUploadUrl: result.publicUploadUrl ? disposableCameraUrl(result.publicUploadUrl) : '',
     settings: result.settings,
     uploads: result.uploads.map(toMobileUpload),
   };
