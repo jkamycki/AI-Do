@@ -2292,17 +2292,13 @@ function VendorDirectoryTab({
 }
 
 function VendorHubMessagesTab({
-  canPreviewPartnerVendors = false,
   initialVendorId,
   onSelectVendor,
 }: {
-  canPreviewPartnerVendors?: boolean;
   initialVendorId?: number | null;
   onSelectVendor?: (vendorId: number) => void;
 }) {
-  const { toast } = useToast();
   const { data: vendors = [], isLoading: vendorsLoading } = useListVendors();
-  const { data: publishedPartnerListings = [] } = usePublishedPartnerListings(canPreviewPartnerVendors);
   const { data: conversations = [], isLoading } = useListConversations({
     query: {
       queryKey: getListConversationsQueryKey(),
@@ -2310,36 +2306,6 @@ function VendorHubMessagesTab({
     },
   });
   const [selectedVendorId, setSelectedVendorId] = useState<number | null>(initialVendorId ?? null);
-  const [selectedPartnerListing, setSelectedPartnerListing] = useState<VendorDirectoryListing | null>(null);
-  const createPartnerInquiryMutation = useMutation({
-    mutationFn: async (listing: VendorDirectoryListing) => {
-      const response = await authFetch("/api/messaging/partner-inquiries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: listing.name,
-          category: normalizeVendorCategory(listing.category),
-          email: listing.email,
-          phone: listing.phone,
-          website: listing.website,
-          primaryContact: listing.contactName,
-        }),
-      });
-      if (!response.ok) throw new Error("Could not start partner inquiry");
-      return response.json() as Promise<{ vendorId: number; conversationId: number }>;
-    },
-    onSuccess: ({ vendorId }) => {
-      setSelectedVendorId(vendorId);
-      onSelectVendor?.(vendorId);
-    },
-    onError: () => {
-      toast({
-        title: "Could not start partner message",
-        description: "Try again from the Partner Network profile.",
-        variant: "destructive",
-      });
-    },
-  });
 
   useEffect(() => {
     if (initialVendorId) setSelectedVendorId(initialVendorId);
@@ -2357,43 +2323,20 @@ function VendorHubMessagesTab({
     () => [...vendors].sort((a, b) => vendorDisplayName(a).localeCompare(vendorDisplayName(b))),
     [vendors]
   );
-  const sortedPartnerListings = useMemo(
-    () => canPreviewPartnerVendors
-      ? mergePartnerListings(publishedPartnerListings).sort((a, b) => a.name.localeCompare(b.name))
-      : [],
-    [canPreviewPartnerVendors, publishedPartnerListings]
-  );
   const selectedConversationName = typeof selectedConversation?.vendorName === "string" ? selectedConversation.vendorName.trim() : "";
-  const selectedVendorName = selectedConversationName || vendorDisplayName(selectedVendor) || selectedPartnerListing?.name || "Vendor";
-  const selectedVendorEmail = selectedConversation?.vendorEmail ?? selectedVendor?.email ?? selectedPartnerListing?.email;
+  const selectedVendorName = selectedConversationName || vendorDisplayName(selectedVendor) || "Vendor";
+  const selectedVendorEmail = selectedConversation?.vendorEmail ?? selectedVendor?.email;
   const selectedDropdownValue = selectedVendorId ? `vendor:${selectedVendorId}` : "";
 
   function selectVendorMessages(vendorId: number) {
     if (!Number.isFinite(vendorId)) return;
-    setSelectedPartnerListing(null);
     setSelectedVendorId(vendorId);
     onSelectVendor?.(vendorId);
-  }
-
-  function selectPartnerMessages(listingId: string) {
-    const listing = sortedPartnerListings.find((item) => item.id === listingId);
-    if (!listing) return;
-    const existingVendor = vendors.find((vendor) => (
-      vendor.email?.toLowerCase() === listing.email.toLowerCase() ||
-      vendor.name.toLowerCase() === listing.name.toLowerCase()
-    ));
-    if (existingVendor) {
-      selectVendorMessages(existingVendor.id);
-      return;
-    }
-    setSelectedPartnerListing(listing);
-    createPartnerInquiryMutation.mutate(listing);
   }
 
   function handleNewMessageSelect(value: string) {
     const [type, id] = value.split(":");
     if (type === "vendor") selectVendorMessages(Number(id));
-    if (type === "partner" && canPreviewPartnerVendors) selectPartnerMessages(id);
   }
 
   if (isLoading || vendorsLoading) {
@@ -2412,19 +2355,16 @@ function VendorHubMessagesTab({
       <aside className="space-y-2 rounded-2xl border border-border/70 bg-card p-3 shadow-sm lg:max-h-[680px] lg:overflow-y-auto">
         <div className="px-2 pb-2">
           <h2 className="font-serif text-xl text-foreground">Messages</h2>
-          <p className="text-xs text-muted-foreground">
-            {canPreviewPartnerVendors ? "Vendor and partner conversations in one place." : "Vendor conversations in one place."}
-          </p>
+          <p className="text-xs text-muted-foreground">Vendor conversations in one place.</p>
         </div>
         <div className="rounded-xl border border-border/70 bg-background/70 p-3">
           <Label className="text-xs font-semibold uppercase tracking-wider text-primary">New message</Label>
           <Select
             value={selectedDropdownValue}
             onValueChange={handleNewMessageSelect}
-            disabled={createPartnerInquiryMutation.isPending}
           >
             <SelectTrigger className="mt-2 bg-card" data-testid="select-message-vendor">
-              <SelectValue placeholder="Select a vendor or partner" />
+              <SelectValue placeholder="Select a current vendor" />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
@@ -2439,25 +2379,10 @@ function VendorHubMessagesTab({
                   <SelectItem value="vendor:none" disabled>No current vendors yet</SelectItem>
                 )}
               </SelectGroup>
-              {canPreviewPartnerVendors && (
-                <>
-                  <SelectSeparator />
-                  <SelectGroup>
-                    <SelectLabel>Partner Vendors</SelectLabel>
-                    {sortedPartnerListings.map((listing) => (
-                      <SelectItem key={listing.id} value={`partner:${listing.id}`}>
-                        {listing.name} ({listing.category})
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </>
-              )}
             </SelectContent>
           </Select>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">
-            {canPreviewPartnerVendors
-              ? "Pick a current vendor, or message a partner vendor while you are still deciding."
-              : "Pick one of your current vendors to start or continue a conversation."}
+            Pick one of your current vendors to start or continue a conversation.
           </p>
         </div>
         {conversations.length === 0 && (
@@ -3177,7 +3102,6 @@ export default function Vendors() {
         <TabsContent value="messages" className="mt-4">
           <VendorMessagesErrorBoundary resetKey={`hub-${selectedMessageVendorId ?? "none"}`}>
             <VendorHubMessagesTab
-              canPreviewPartnerVendors={canPreviewVendorDirectory}
               initialVendorId={selectedMessageVendorId}
               onSelectVendor={(vendorId) => {
                 setSelectedMessageVendorId(vendorId);
