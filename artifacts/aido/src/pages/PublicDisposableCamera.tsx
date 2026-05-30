@@ -80,19 +80,40 @@ function playShutterSound() {
     const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) return;
     const context = new AudioContextClass();
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = "triangle";
-    oscillator.frequency.setValueAtTime(980, context.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(240, context.currentTime + 0.08);
-    gain.gain.setValueAtTime(0.0001, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.18, context.currentTime + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.11);
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    oscillator.start();
-    oscillator.stop(context.currentTime + 0.12);
-    window.setTimeout(() => void context.close().catch(() => undefined), 180);
+    void context.resume?.();
+
+    const clickBuffer = context.createBuffer(1, Math.floor(context.sampleRate * 0.045), context.sampleRate);
+    const samples = clickBuffer.getChannelData(0);
+    for (let index = 0; index < samples.length; index += 1) {
+      const envelope = 1 - index / samples.length;
+      samples[index] = (Math.random() * 2 - 1) * envelope * 0.55;
+    }
+
+    const click = context.createBufferSource();
+    const clickGain = context.createGain();
+    click.buffer = clickBuffer;
+    clickGain.gain.setValueAtTime(0.001, context.currentTime);
+    clickGain.gain.exponentialRampToValueAtTime(0.32, context.currentTime + 0.004);
+    clickGain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.05);
+    click.connect(clickGain);
+    clickGain.connect(context.destination);
+
+    const clack = context.createOscillator();
+    const clackGain = context.createGain();
+    clack.type = "square";
+    clack.frequency.setValueAtTime(660, context.currentTime + 0.055);
+    clack.frequency.exponentialRampToValueAtTime(180, context.currentTime + 0.13);
+    clackGain.gain.setValueAtTime(0.001, context.currentTime + 0.055);
+    clackGain.gain.exponentialRampToValueAtTime(0.16, context.currentTime + 0.064);
+    clackGain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.15);
+    clack.connect(clackGain);
+    clackGain.connect(context.destination);
+
+    click.start(context.currentTime);
+    click.stop(context.currentTime + 0.055);
+    clack.start(context.currentTime + 0.055);
+    clack.stop(context.currentTime + 0.16);
+    window.setTimeout(() => void context.close().catch(() => undefined), 240);
   } catch {}
 }
 
@@ -217,6 +238,7 @@ export default function PublicDisposableCamera() {
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const flashEnabledRef = useRef(false);
+  const shutterTimeoutRef = useRef<number | null>(null);
 
   const [deviceId, setDeviceId] = useState("");
   const [facingMode, setFacingMode] = useState<FacingMode>("environment");
@@ -224,6 +246,7 @@ export default function PublicDisposableCamera() {
   const [shotLimit, setShotLimit] = useState(DEFAULT_SHOT_LIMIT);
   const [shotsRemaining, setShotsRemaining] = useState(() => readShotsRemaining(slug, DEFAULT_SHOT_LIMIT));
   const [flash, setFlash] = useState(false);
+  const [shutterAnimating, setShutterAnimating] = useState(false);
   const [developing, setDeveloping] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [photoRoll, setPhotoRoll] = useState<File[]>([]);
@@ -338,7 +361,10 @@ export default function PublicDisposableCamera() {
 
   useEffect(() => {
     void startCamera();
-    return stopCamera;
+    return () => {
+      if (shutterTimeoutRef.current !== null) window.clearTimeout(shutterTimeoutRef.current);
+      stopCamera();
+    };
   }, [startCamera, stopCamera]);
 
   function addPhotoToLockedRoll(file: File) {
@@ -416,11 +442,7 @@ export default function PublicDisposableCamera() {
 
   async function handleShutter() {
     if (shotsRemaining <= 0 || uploading) return;
-    playShutterSound();
-    if (flashEnabled) {
-      setFlash(true);
-      window.setTimeout(() => setFlash(false), 150);
-    }
+    triggerShutterEffect();
     try {
       const file = await applyFilmEffect(await captureFrame(), selectedEffect);
       addPhotoToLockedRoll(file);
@@ -436,11 +458,7 @@ export default function PublicDisposableCamera() {
       setMessage("Please choose a photo file.");
       return;
     }
-    playShutterSound();
-    if (flashEnabled) {
-      setFlash(true);
-      window.setTimeout(() => setFlash(false), 150);
-    }
+    triggerShutterEffect();
     try {
       addPhotoToLockedRoll(await applyFilmEffect(file, selectedEffect));
     } catch (error) {
@@ -483,6 +501,21 @@ export default function PublicDisposableCamera() {
     setZoom(1);
   }
 
+  function triggerShutterEffect() {
+    playShutterSound();
+    setShutterAnimating(false);
+    if (shutterTimeoutRef.current !== null) window.clearTimeout(shutterTimeoutRef.current);
+    window.requestAnimationFrame(() => {
+      setShutterAnimating(true);
+      shutterTimeoutRef.current = window.setTimeout(() => setShutterAnimating(false), 420);
+    });
+
+    if (flashEnabled) {
+      setFlash(true);
+      window.setTimeout(() => setFlash(false), 150);
+    }
+  }
+
   async function toggleFlash() {
     const nextEnabled = !flashEnabled;
     setFlashEnabled(nextEnabled);
@@ -506,6 +539,26 @@ export default function PublicDisposableCamera() {
 
   return (
     <main className="fixed inset-0 overflow-hidden bg-[#070203] text-white">
+      <style>{`
+        @keyframes aido-shutter-top {
+          0% { transform: translateY(-100%) scaleY(0.1); }
+          34% { transform: translateY(0) scaleY(1); }
+          58% { transform: translateY(0) scaleY(1); }
+          100% { transform: translateY(-100%) scaleY(0.1); }
+        }
+        @keyframes aido-shutter-bottom {
+          0% { transform: translateY(100%) scaleY(0.1); }
+          34% { transform: translateY(0) scaleY(1); }
+          58% { transform: translateY(0) scaleY(1); }
+          100% { transform: translateY(100%) scaleY(0.1); }
+        }
+        @keyframes aido-shutter-iris {
+          0% { transform: scale(1.7); opacity: 0; }
+          32% { transform: scale(0.25); opacity: 1; }
+          58% { transform: scale(0.25); opacity: 1; }
+          100% { transform: scale(1.7); opacity: 0; }
+        }
+      `}</style>
       <video
         ref={videoRef}
         autoPlay
@@ -708,6 +761,23 @@ export default function PublicDisposableCamera() {
       </div>
 
       {flash && <div className="pointer-events-none absolute inset-0 z-40 bg-white" />}
+
+      {shutterAnimating && (
+        <div className="pointer-events-none absolute inset-0 z-[45] overflow-hidden">
+          <div
+            className="absolute inset-x-0 top-0 h-1/2 origin-top bg-black"
+            style={{ animation: "aido-shutter-top 420ms cubic-bezier(0.2, 0.78, 0.18, 1) both" }}
+          />
+          <div
+            className="absolute inset-x-0 bottom-0 h-1/2 origin-bottom bg-black"
+            style={{ animation: "aido-shutter-bottom 420ms cubic-bezier(0.2, 0.78, 0.18, 1) both" }}
+          />
+          <div
+            className="absolute left-1/2 top-1/2 h-[42vmin] w-[42vmin] -translate-x-1/2 -translate-y-1/2 rounded-full border-[18vmin] border-black"
+            style={{ animation: "aido-shutter-iris 420ms cubic-bezier(0.2, 0.78, 0.18, 1) both" }}
+          />
+        </div>
+      )}
 
       {showUploadPrompt && (
         <div className="absolute inset-0 z-40 flex items-center justify-center bg-[#080304]/94 px-6 text-center text-white backdrop-blur-sm">
