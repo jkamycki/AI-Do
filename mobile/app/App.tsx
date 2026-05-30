@@ -5301,20 +5301,18 @@ function PlanSection({
       ) : plannerView === 'checklist' ? (
         <PlannerChecklistSection
           onOpenGuidedSetup={onOpenGuidedSetup}
-          openMockAction={openMockAction}
           data={data}
           onToggleTask={onToggleTask}
           progress={progress}
         />
       ) : plannerView === 'timeline' ? (
-        <PlannerTimelineSection data={data} onToggleDayOfChecklist={onToggleDayOfChecklist} openMockAction={openMockAction} />
+        <PlannerTimelineSection data={data} onToggleDayOfChecklist={onToggleDayOfChecklist} />
       ) : (
         <WeddingPartySection
           data={data}
           onAddMember={onAddWeddingPartyMember}
           onDeleteMember={onDeleteWeddingPartyMember}
           onUpdateMember={onUpdateWeddingPartyMember}
-          openMockAction={openMockAction}
         />
       )}
     </>
@@ -5325,16 +5323,16 @@ function PlannerChecklistSection({
   data,
   onToggleTask,
   onOpenGuidedSetup,
-  openMockAction,
   progress,
 }: {
   data: typeof samplePlanningData;
   onToggleTask: (taskId: string, completed: boolean) => void;
   onOpenGuidedSetup: () => void;
-  openMockAction: (action: MockAction) => void;
   progress: number;
 }) {
   const tasks = [...data.tasks].sort((a, b) => (daysFromToday(a.dueDate) ?? 999) - (daysFromToday(b.dueDate) ?? 999));
+  const [selectedTaskId, setSelectedTaskId] = useState(tasks[0]?.id ?? '');
+  const selectedTask = tasks.find((task) => task.id === selectedTaskId) ?? tasks[0] ?? null;
 
   return (
     <Section title="Checklist" subtitle="Planning tasks, due dates, and setup progress.">
@@ -5362,18 +5360,26 @@ function PlannerChecklistSection({
               completed={task.completed}
               meta={`${task.completed ? 'Complete' : formatDeadlineLabel(task.dueDate)} - ${task.category}`}
               onToggle={() => onToggleTask(task.id, !task.completed)}
-              onPress={() =>
-                openMockAction({
-                  title: task.title,
-                  detail: `${task.detail} Task details, reminders, and related planning files stay tied to this item.`,
-                  primaryLabel: task.completed ? 'Review task' : 'Open task',
-                })
-              }
+              onPress={() => setSelectedTaskId(task.id)}
             />
           )) : (
             <Text style={styles.mutedText}>No checklist tasks yet. Use Guided setup to create your first planning tasks.</Text>
           )}
         </View>
+        {selectedTask ? (
+          <View style={styles.mobileFileDetailPanel}>
+            <View style={styles.cardHeaderRow}>
+              <View style={styles.hubCopy}>
+                <Text style={styles.hubLabel}>{selectedTask.title}</Text>
+                <Text style={styles.hubDetail}>{selectedTask.category} - {selectedTask.completed ? 'Complete' : formatDeadlineLabel(selectedTask.dueDate)}</Text>
+              </View>
+              <Text style={[styles.websiteStatusPill, selectedTask.completed ? websiteStatusStyle('Published') : websiteStatusStyle('Draft')]}>
+                {selectedTask.completed ? 'Done' : 'Open'}
+              </Text>
+            </View>
+            <Text style={styles.hubDetail}>{selectedTask.detail}</Text>
+          </View>
+        ) : null}
       </Card>
     </Section>
   );
@@ -5382,12 +5388,15 @@ function PlannerChecklistSection({
 function PlannerTimelineSection({
   data,
   onToggleDayOfChecklist,
-  openMockAction,
 }: {
   data: typeof samplePlanningData;
   onToggleDayOfChecklist: (itemId: string, completed: boolean) => void;
-  openMockAction: (action: MockAction) => void;
 }) {
+  const [selectedTimelineId, setSelectedTimelineId] = useState(data.dayOf[0]?.id ?? '');
+  const [selectedChecklistId, setSelectedChecklistId] = useState(data.dayOfChecklist[0]?.id ?? '');
+  const selectedTimeline = data.dayOf.find((item) => item.id === selectedTimelineId) ?? data.dayOf[0] ?? null;
+  const selectedChecklist = data.dayOfChecklist.find((item) => item.id === selectedChecklistId) ?? data.dayOfChecklist[0] ?? null;
+
   return (
     <Section title="Timeline" subtitle="Wedding-day timing, owners, locations, and final prep.">
       <Card>
@@ -5396,14 +5405,8 @@ function PlannerTimelineSection({
           {data.dayOf.length ? data.dayOf.map((item) => (
             <Pressable
               key={item.id}
-              onPress={() =>
-                openMockAction({
-                  title: item.title,
-                  detail: `${item.time}. Owner: ${item.owner}. Location: ${item.location}. Timeline details, vendor notes, and reminders stay with this item.`,
-                  primaryLabel: 'Open timeline item',
-                })
-              }
-              style={styles.timelineRow}
+              onPress={() => setSelectedTimelineId(item.id)}
+              style={[styles.timelineRow, selectedTimeline?.id === item.id && styles.documentLibraryRowActive]}
             >
               <Text style={styles.timelineTime}>{item.time}</Text>
               <View style={styles.hubCopy}>
@@ -5416,6 +5419,18 @@ function PlannerTimelineSection({
             <Text style={styles.mutedText}>No timeline items yet. Add ceremony, reception, and vendor arrival times here.</Text>
           )}
         </View>
+        {selectedTimeline ? (
+          <View style={styles.mobileFileDetailPanel}>
+            <View style={styles.cardHeaderRow}>
+              <View style={styles.hubCopy}>
+                <Text style={styles.hubLabel}>{selectedTimeline.title}</Text>
+                <Text style={styles.hubDetail}>{selectedTimeline.time} - {selectedTimeline.location}</Text>
+              </View>
+              <Text style={styles.smallStatus}>{selectedTimeline.owner}</Text>
+            </View>
+            <Text style={styles.hubDetail}>Timeline details, vendor notes, and reminders stay with this item.</Text>
+          </View>
+        ) : null}
       </Card>
 
       <Card>
@@ -5428,18 +5443,26 @@ function PlannerTimelineSection({
               completed={item.completed}
               meta={`${item.completed ? 'Complete' : 'Open'} - ${item.category}`}
               onToggle={() => onToggleDayOfChecklist(item.id, !item.completed)}
-              onPress={() =>
-                openMockAction({
-                  title: item.title,
-                  detail: `${item.note} Day-of checklist updates save with the planning data.`,
-                  primaryLabel: 'Open item',
-                })
-              }
+              onPress={() => setSelectedChecklistId(item.id)}
             />
           )) : (
             <Text style={styles.mutedText}>No day-of checklist items yet.</Text>
           )}
         </View>
+        {selectedChecklist ? (
+          <View style={styles.mobileFileDetailPanel}>
+            <View style={styles.cardHeaderRow}>
+              <View style={styles.hubCopy}>
+                <Text style={styles.hubLabel}>{selectedChecklist.title}</Text>
+                <Text style={styles.hubDetail}>{selectedChecklist.category} - {selectedChecklist.completed ? 'Complete' : 'Open'}</Text>
+              </View>
+              <Text style={[styles.websiteStatusPill, selectedChecklist.completed ? websiteStatusStyle('Published') : websiteStatusStyle('Draft')]}>
+                {selectedChecklist.completed ? 'Done' : 'Open'}
+              </Text>
+            </View>
+            <Text style={styles.hubDetail}>{selectedChecklist.note}</Text>
+          </View>
+        ) : null}
       </Card>
     </Section>
   );
@@ -5450,15 +5473,14 @@ function WeddingPartySection({
   onAddMember,
   onDeleteMember,
   onUpdateMember,
-  openMockAction,
 }: {
   data: typeof samplePlanningData;
   onAddMember: (member: (typeof samplePlanningData.weddingParty)[number]) => void;
   onDeleteMember: (memberId: string) => void;
   onUpdateMember: (member: (typeof samplePlanningData.weddingParty)[number]) => void;
-  openMockAction: (action: MockAction) => void;
 }) {
   const [editingMember, setEditingMember] = useState<(typeof samplePlanningData.weddingParty)[number] | null>(null);
+  const [contactSheetMessage, setContactSheetMessage] = useState('');
   const openPartyTasks = data.weddingParty.reduce((sum, member) => sum + member.tasks.length, 0);
 
   return (
@@ -5533,19 +5555,14 @@ function WeddingPartySection({
             <Text style={styles.primaryActionText}>Add member</Text>
           </Pressable>
           <Pressable
-            onPress={() =>
-              openMockAction({
-                title: 'Party contact sheet',
-                detail: 'Share the contact sheet with planner, partner, and key family members for wedding-week coordination.',
-                primaryLabel: 'Share contact sheet',
-              })
-            }
+            onPress={() => setContactSheetMessage('Contact sheet prepared for planner, partner, and family sharing.')}
             style={styles.secondaryActionButton}
           >
             <Ionicons color={colors.rose} name="share-outline" size={18} />
             <Text style={styles.secondaryActionText}>Contact sheet</Text>
           </Pressable>
         </View>
+        {contactSheetMessage ? <SavedStrip label={contactSheetMessage} /> : null}
       </Card>
       <WeddingPartyEditorModal
         member={editingMember}
