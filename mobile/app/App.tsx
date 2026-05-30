@@ -2627,7 +2627,7 @@ function WebsiteSection({
             <Text style={styles.primaryActionText}>{invitationStudioOpen ? 'Close studio' : 'Open studio'}</Text>
           </Pressable>
         </View>
-        {invitationStudioOpen ? <InvitationStudioPanel data={data} openMockAction={openMockAction} /> : null}
+        {invitationStudioOpen ? <InvitationStudioPanel data={data} /> : null}
         <View style={styles.inviteStatsRow}>
           <SummaryCard label="Sent" value={String(inviteTotals.sent)} />
           <SummaryCard label="Opened" value={String(inviteTotals.opened)} />
@@ -4454,7 +4454,7 @@ function PhotoDropSettingRow({ icon, label, value }: { icon: keyof typeof Ionico
   );
 }
 
-function InvitationStudioPanel({ data, openMockAction }: { data: typeof samplePlanningData; openMockAction: (action: MockAction) => void }) {
+function InvitationStudioPanel({ data }: { data: typeof samplePlanningData }) {
   const [activeStudioTool, setActiveStudioTool] = useState<'photo' | 'message' | 'design' | 'print' | 'delivery' | 'hotel'>('design');
   const [mode, setMode] = useState<'saveTheDate' | 'rsvp'>('rsvp');
   const [channel, setChannel] = useState<'sms' | 'email' | 'both'>('both');
@@ -4475,6 +4475,7 @@ function InvitationStudioPanel({ data, openMockAction }: { data: typeof samplePl
   const [sendType, setSendType] = useState<'digital' | 'print'>('digital');
   const [showPhoto, setShowPhoto] = useState(true);
   const [studioSavedMessage, setStudioSavedMessage] = useState('');
+  const [studioPreviewMessage, setStudioPreviewMessage] = useState('');
   const [studioSaving, setStudioSaving] = useState(false);
   const [testEmail, setTestEmail] = useState('');
   const [testSending, setTestSending] = useState(false);
@@ -4506,11 +4507,8 @@ function InvitationStudioPanel({ data, openMockAction }: { data: typeof samplePl
 
   const openPhotoUpload = () => {
     setShowPhoto(true);
-    openMockAction({
-      title: `Upload ${invitationPhotoLabel}`,
-      detail: 'Open the photo picker so the couple can upload a JPG, PNG, or WebP, crop it, reposition it, then save it to this invitation design.',
-      primaryLabel: 'Choose photo',
-    });
+    setActiveStudioTool('photo');
+    setStudioPreviewMessage(`${invitationPhotoLabel} picker ready. Choose, crop, reposition, then save before sending.`);
   };
   const generateInvitationMessage = () => {
     const draft = buildInvitationMessageDraft({
@@ -4521,11 +4519,11 @@ function InvitationStudioPanel({ data, openMockAction }: { data: typeof samplePl
       weddingDate: formatShortDate(data.profile.weddingDate),
     });
     setMessage(draft);
-    openMockAction({
-      title: 'Aria generated a draft',
-      detail: 'The AI generator filled the invitation message. The couple can edit it, reset it, or save it before sending.',
-      primaryLabel: 'Use draft',
-    });
+    setStudioPreviewMessage('Aria drafted the message. Review it, adjust wording, then save before sending.');
+  };
+  const openPreviewNote = (messageText: string, tool?: typeof activeStudioTool) => {
+    if (tool) setActiveStudioTool(tool);
+    setStudioPreviewMessage(messageText);
   };
   const saveStudioToWebsite = async (messageText = 'Invitation design saved') => {
     setStudioSaving(true);
@@ -4652,13 +4650,7 @@ function InvitationStudioPanel({ data, openMockAction }: { data: typeof samplePl
                       fontFamily={previewFontFamily}
                       fontScale={previewFontScale}
                       message={message}
-                      onRsvpPress={() =>
-                        openMockAction({
-                          title: 'Guest RSVP',
-                          detail: 'Choose attendance, confirm household guests, select meals, add a note, and submit the RSVP.',
-                          primaryLabel: 'Submit RSVP',
-                        })
-                      }
+                      onRsvpPress={() => openPreviewNote('Guest RSVP preview ready: attendance, household guests, meals, notes, and submit flow.', 'delivery')}
                       paperColor={paperColor}
                       rsvpBy={rsvpBy}
                       showPhoto={showPhoto}
@@ -4674,20 +4666,8 @@ function InvitationStudioPanel({ data, openMockAction }: { data: typeof samplePl
                       fontScale={previewFontScale}
                       includeHotel={includeHotel}
                       message={message}
-                      onDownloadPress={() =>
-                        openMockAction({
-                          title: 'Save the Date',
-                          detail: 'View the guest Save-the-Date, download the PDF, copy the share link, or continue to the wedding website.',
-                          primaryLabel: 'Download PDF',
-                        })
-                      }
-                      onHotelPress={() =>
-                        openMockAction({
-                          title: 'Hotel response',
-                          detail: 'Choose whether a hotel room is needed, select a room block, and save the response to the guest profile.',
-                          primaryLabel: 'Save hotel response',
-                        })
-                      }
+                      onDownloadPress={() => openPreviewNote('Save-the-Date preview ready. Guests can view it, open the wedding website, or download when print export is prepared.', 'delivery')}
+                      onHotelPress={() => openPreviewNote('Hotel response preview ready. Guests can answer if they need a room and save it to their profile.', 'hotel')}
                       paperColor={paperColor}
                       showPhoto={showPhoto}
                       textColor={textColor}
@@ -4729,6 +4709,7 @@ function InvitationStudioPanel({ data, openMockAction }: { data: typeof samplePl
             </Text>
           </View>
         </View>
+        {studioPreviewMessage ? <SavedStrip label={studioPreviewMessage} /> : null}
       </View>
 
       {!isDigital && activeStudioTool === 'print' ? (
@@ -4871,17 +4852,14 @@ function InvitationStudioPanel({ data, openMockAction }: { data: typeof samplePl
               <Text style={styles.primaryActionText}>Generate message</Text>
             </Pressable>
             <Pressable
-              onPress={() =>
-                openMockAction({
-                  title: 'Custom AI prompt',
-                  detail: 'Ask Aria for a specific style, like romantic, short SMS, family formal, or bilingual wording.',
-                  primaryLabel: 'Write prompt',
-                })
-              }
+              onPress={() => {
+                setMessage(`${message}\n\nPlease reply by ${isRsvp ? rsvpBy : 'the date on your invitation'} so we can plan with love and care.`.trim());
+                setStudioPreviewMessage('Custom prompt helper added a reply reminder. You can edit it before saving.');
+              }}
               style={styles.secondaryActionButton}
             >
               <Ionicons color={colors.rose} name="create-outline" size={18} />
-              <Text style={styles.secondaryActionText}>Custom prompt</Text>
+              <Text style={styles.secondaryActionText}>Add reply note</Text>
             </Pressable>
           </View>
         </View>
@@ -4924,7 +4902,7 @@ function InvitationStudioPanel({ data, openMockAction }: { data: typeof samplePl
           <Pressable onPress={() => setIncludeHotel((value) => !value)} style={[styles.eventTypePill, includeHotel && styles.eventTypePillActive]}>
             <Text style={[styles.eventTypeText, includeHotel && styles.eventTypeTextActive]}>{includeHotel ? 'Hotel question shown' : 'Hotel question hidden'}</Text>
           </Pressable>
-          <Pressable style={styles.secondaryActionButton}>
+          <Pressable onPress={() => openPreviewNote('Hotel response preview ready. Guests can choose whether they need a room and save it to their guest profile.', 'hotel')} style={styles.secondaryActionButton}>
             <Ionicons color={colors.rose} name="eye-outline" size={18} />
             <Text style={styles.secondaryActionText}>Preview save hotel response</Text>
           </Pressable>
