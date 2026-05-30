@@ -373,6 +373,12 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
       workspaceInvites: [invite, ...current.workspaceInvites.filter((item) => item.email.toLowerCase() !== invite.email.toLowerCase())],
     }));
   };
+  const removeWorkspaceInvite = (inviteId: string) => {
+    setData((current) => ({
+      ...current,
+      workspaceInvites: current.workspaceInvites.filter((item) => item.id !== inviteId),
+    }));
+  };
   const addGuest = (guest: Guest) => {
     const localGuest = { ...guest, id: guest.id.startsWith('mobile-new-') ? `mobile-${Date.now()}` : guest.id };
     setData((current) => ({ ...current, guests: [localGuest, ...current.guests] }));
@@ -949,6 +955,7 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
             <FeatureHub
               data={data}
               onAddWorkspaceInvite={addWorkspaceInvite}
+              onRemoveWorkspaceInvite={removeWorkspaceInvite}
               onOpenAccount={(view) => {
                 setAccountView(view);
                 setAccountOpen(true);
@@ -6588,12 +6595,14 @@ function FinanceDocumentsPanel({
 function FeatureHub({
   data,
   onAddWorkspaceInvite,
+  onRemoveWorkspaceInvite,
   onOpenAccount,
   openMockAction,
   openTab,
 }: {
   data: typeof samplePlanningData;
   onAddWorkspaceInvite: (invite: (typeof samplePlanningData.workspaceInvites)[number]) => void;
+  onRemoveWorkspaceInvite: (inviteId: string) => void;
   onOpenAccount: (view: AccountView) => void;
   openMockAction: (action: MockAction) => void;
   openTab: (tab: TabId) => void;
@@ -6659,7 +6668,7 @@ function FeatureHub({
           ))}
         </View>
       ))}
-      <WorkspaceModal data={data} onAddInvite={onAddWorkspaceInvite} onClose={() => setWorkspaceOpen(false)} open={workspaceOpen} />
+      <WorkspaceModal data={data} onAddInvite={onAddWorkspaceInvite} onClose={() => setWorkspaceOpen(false)} onRemoveInvite={onRemoveWorkspaceInvite} open={workspaceOpen} />
     </Section>
   );
 }
@@ -6668,11 +6677,13 @@ function WorkspaceModal({
   data,
   onAddInvite,
   onClose,
+  onRemoveInvite,
   open,
 }: {
   data: typeof samplePlanningData;
   onAddInvite: (invite: (typeof samplePlanningData.workspaceInvites)[number]) => void;
   onClose: () => void;
+  onRemoveInvite: (inviteId: string) => void;
   open: boolean;
 }) {
   const [email, setEmail] = useState('');
@@ -6680,6 +6691,8 @@ function WorkspaceModal({
   const [invites, setInvites] = useState(data.workspaceInvites);
   const [syncMessage, setSyncMessage] = useState('');
   const [syncing, setSyncing] = useState(false);
+  const acceptedInviteCount = invites.filter((invite) => invite.status === 'Accepted').length;
+  const pendingInviteCount = invites.length - acceptedInviteCount;
 
   useEffect(() => {
     if (!open) return;
@@ -6735,6 +6748,11 @@ function WorkspaceModal({
       setSyncing(false);
     }
   };
+  const removeInvite = (inviteId: string) => {
+    setInvites((current) => current.filter((invite) => invite.id !== inviteId));
+    onRemoveInvite(inviteId);
+    setSyncMessage('Pending invite removed from this workspace.');
+  };
 
   return (
     <Modal animationType="slide" onRequestClose={onClose} transparent visible={open}>
@@ -6754,6 +6772,12 @@ function WorkspaceModal({
             <Pressable onPress={onClose} style={styles.closeButton}>
               <Ionicons color={colors.muted} name="close" size={22} />
             </Pressable>
+          </View>
+
+          <View style={styles.summaryGrid}>
+            <SummaryCard label="Accepted" value={String(acceptedInviteCount)} />
+            <SummaryCard label="Pending" value={String(pendingInviteCount)} />
+            <SummaryCard label="Roles" value="3" />
           </View>
 
           <View style={styles.formStack}>
@@ -6793,18 +6817,28 @@ function WorkspaceModal({
           {syncMessage ? <SavedStrip label={syncMessage} /> : null}
 
           <View style={styles.vendorInfoList}>
+            <Text style={styles.formLabel}>Current access</Text>
             {invites.map((invite) => (
-              <View key={invite.id} style={styles.vendorInfoRow}>
+              <View key={invite.id} style={styles.workspaceInviteRow}>
                 <View style={styles.financeRowIcon}>
                   <Ionicons color={colors.rose} name={invite.status === 'Accepted' ? 'checkmark-circle-outline' : 'time-outline'} size={18} />
                 </View>
                 <View style={styles.hubCopy}>
-                  <Text style={styles.hubLabel}>{invite.email}</Text>
-                  <Text style={styles.hubDetail}>{invite.role} - {invite.status}</Text>
+                  <View style={styles.websitePageTitleRow}>
+                    <Text style={styles.hubLabel}>{invite.email}</Text>
+                    <Text style={[styles.websiteStatusPill, invite.status === 'Accepted' ? websiteStatusStyle('Published') : websiteStatusStyle('Draft')]}>{invite.status}</Text>
+                  </View>
+                  <Text style={styles.hubDetail}>{invite.role}{invite.status === 'Accepted' ? ' access is active' : ' invite is waiting for acceptance'}</Text>
                 </View>
+                {invite.status !== 'Accepted' ? (
+                  <Pressable onPress={() => removeInvite(invite.id)} style={styles.deletePaymentButton}>
+                    <Ionicons color={colors.rose} name="trash-outline" size={16} />
+                  </Pressable>
+                ) : null}
               </View>
             ))}
             {invites.length === 0 ? <Text style={styles.mutedText}>No collaborators invited yet.</Text> : null}
+            <SavedStrip label="Manage accepted collaborator removal on desktop." />
           </View>
         </View>
       </View>
@@ -14211,6 +14245,16 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   settingToggleRow: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceWarm,
+    borderColor: colors.faint,
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    padding: 12,
+  },
+  workspaceInviteRow: {
     alignItems: 'center',
     backgroundColor: colors.surfaceWarm,
     borderColor: colors.faint,
