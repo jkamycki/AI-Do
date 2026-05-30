@@ -5446,9 +5446,14 @@ function WeddingPartySection({
   const [editingMember, setEditingMember] = useState<(typeof samplePlanningData.weddingParty)[number] | null>(null);
   const completeAttire = data.weddingParty.filter((member) => member.attireStatus === 'Complete').length;
   const openPartyTasks = data.weddingParty.reduce((sum, member) => sum + member.tasks.length, 0);
+  const attireStatusLabel = (status: (typeof samplePlanningData.weddingParty)[number]['attireStatus']) => {
+    if (status === 'Complete') return 'Outfit complete';
+    if (status === 'In Progress') return 'Outfit in progress';
+    return 'Outfit not started';
+  };
 
   return (
-    <Section title="Wedding Party" subtitle="Roles, contact info, attire status, and assigned responsibilities.">
+    <Section title="Wedding Party" subtitle="Roles, contact info, outfit readiness, and assigned responsibilities.">
       <LinearGradient colors={['#FFF2EA', '#F8DDE5']} style={styles.websiteHero}>
         <View style={styles.kickerRow}>
           <Text style={styles.kicker}>Planner team</Text>
@@ -5463,15 +5468,23 @@ function WeddingPartySection({
 
       <View style={styles.summaryGrid}>
         <SummaryCard label="Members" value={String(data.weddingParty.length)} />
-        <SummaryCard label="Attire done" value={`${completeAttire}/${data.weddingParty.length}`} />
+        <SummaryCard label="Outfits done" value={`${completeAttire}/${data.weddingParty.length}`} />
         <SummaryCard label="Tasks" value={String(openPartyTasks)} />
+      </View>
+
+      <View style={styles.mobileStudioGuidance}>
+        <Ionicons color={colors.rose} name="information-circle-outline" size={18} />
+        <View style={styles.hubCopy}>
+          <Text style={styles.hubLabel}>What status means</Text>
+          <Text style={styles.hubDetail}>Wedding party status only tracks whether their outfit is ready. Member details and tasks stay separate.</Text>
+        </View>
       </View>
 
       <Card>
         <View style={styles.cardHeaderRow}>
           <View>
             <Text style={styles.cardTitle}>Members</Text>
-            <Text style={styles.hubDetail}>Tap a member for responsibilities, contact details, and attire notes.</Text>
+            <Text style={styles.hubDetail}>Tap a member to edit role, side, phone, outfit status, and tasks.</Text>
           </View>
           <Text style={styles.smallStatus}>{data.weddingParty.length} people</Text>
         </View>
@@ -5489,14 +5502,15 @@ function WeddingPartySection({
                 <View style={styles.websitePageTitleRow}>
                   <Text style={styles.hubLabel}>{member.name}</Text>
                   <Text style={[styles.websiteStatusPill, member.attireStatus === 'Complete' ? websiteStatusStyle('Published') : websiteStatusStyle('Ready')]}>
-                    {member.attireStatus}
+                    {attireStatusLabel(member.attireStatus)}
                   </Text>
                 </View>
-                <Text style={styles.hubDetail}>{member.role} - {member.side} side - {member.phone}</Text>
+                <Text style={styles.hubDetail}>{member.role || 'Role not set'} - {member.side} side</Text>
+                <Text style={styles.partyContactText}>{member.phone || 'No phone added'}</Text>
                 <View style={styles.partyTaskWrap}>
-                  {member.tasks.map((task) => (
+                  {member.tasks.length ? member.tasks.map((task) => (
                     <Text key={task} style={styles.partyTaskPill}>{task}</Text>
-                  ))}
+                  )) : <Text style={styles.partyTaskPill}>No tasks yet</Text>}
                 </View>
               </View>
             </Pressable>
@@ -5604,13 +5618,15 @@ function WeddingPartyEditorModal({
               </View>
             </View>
             <View>
-              <Text style={styles.formLabel}>Attire</Text>
+              <Text style={styles.formLabel}>Outfit status</Text>
+              <Text style={styles.formHelperText}>This tracks whether their dress, suit, tux, or wedding-day outfit is handled.</Text>
               <View style={styles.eventTypeRow}>
                 {(['Not Started', 'In Progress', 'Complete'] as const).map((attireStatus) => {
                   const active = draft.attireStatus === attireStatus;
+                  const label = attireStatus === 'Complete' ? 'Complete' : attireStatus === 'In Progress' ? 'In progress' : 'Not started';
                   return (
                     <Pressable key={attireStatus} onPress={() => setDraft({ ...draft, attireStatus })} style={[styles.eventTypePill, active && styles.eventTypePillActive]}>
-                      <Text style={[styles.eventTypeText, active && styles.eventTypeTextActive]}>{attireStatus}</Text>
+                      <Text style={[styles.eventTypeText, active && styles.eventTypeTextActive]}>{label}</Text>
                     </Pressable>
                   );
                 })}
@@ -13049,6 +13065,13 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_700Bold',
     fontSize: 13,
   },
+  partyContactText: {
+    color: colors.muted,
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 11,
+    lineHeight: 15,
+    marginTop: 3,
+  },
   partyTaskWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -14935,6 +14958,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     marginBottom: 6,
     textTransform: 'uppercase',
+  },
+  formHelperText: {
+    color: colors.muted,
+    fontFamily: 'Inter_500Medium',
+    fontSize: 11,
+    lineHeight: 16,
+    marginBottom: 8,
   },
   formInput: {
     backgroundColor: colors.surface,
