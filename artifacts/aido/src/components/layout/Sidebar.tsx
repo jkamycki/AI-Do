@@ -27,6 +27,11 @@ const AvatarCropDialog = lazy(() =>
   import("@/components/AvatarCropDialog").then((mod) => ({ default: mod.AvatarCropDialog })),
 );
 
+const OWNER_EMAILS = new Set([
+  "kamyckijoseph@gmail.com",
+  "michaelgang31@gmail.com",
+]);
+
 const routePrefetchers: Record<string, () => Promise<unknown>> = {
   "/dashboard": () => import("@/pages/Dashboard"),
   "/profile": () => import("@/pages/Profile"),
@@ -310,7 +315,11 @@ export function Sidebar() {
     retry: false,
   });
 
-  const isAdmin = adminCheck?.isAdmin === true;
+  const signedInEmail = user?.primaryEmailAddress?.emailAddress
+    ?? user?.emailAddresses?.[0]?.emailAddress
+    ?? "";
+  const isKnownOwner = OWNER_EMAILS.has(signedInEmail.trim().toLowerCase());
+  const isAdmin = adminCheck?.isAdmin === true || isKnownOwner;
 
   const sidebarScrollRef = useRef<HTMLDivElement | null>(null);
 

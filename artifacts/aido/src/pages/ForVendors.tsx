@@ -122,8 +122,9 @@ const STEPS = [
 const MAX_SERVICE_PHOTOS = 3;
 const MAX_PHOTO_MB = 5;
 const MAX_PHOTO_BYTES = MAX_PHOTO_MB * 1024 * 1024;
-const VENDOR_LOGO_MAX_DIMENSION = 1200;
-const VENDOR_SERVICE_PHOTO_MAX_DIMENSION = 1800;
+const VENDOR_LOGO_MAX_DIMENSION = 700;
+const VENDOR_SERVICE_PHOTO_MAX_DIMENSION = 1200;
+const VENDOR_OPTIMIZED_IMAGE_QUALITY = 0.72;
 type VendorPartnerPage = "home" | "vendors" | "how-it-works" | "apply";
 
 function getVendorPartnerPage(path: string): VendorPartnerPage {
@@ -676,14 +677,13 @@ async function optimizeVendorImage(file: File, maxDimension: number): Promise<Fi
       image.src = imageUrl;
     });
     const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
-    if (scale >= 1 && file.size <= MAX_PHOTO_BYTES) return file;
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(image.width * scale));
     canvas.height = Math.max(1, Math.round(image.height * scale));
     const context = canvas.getContext("2d");
     if (!context) return file;
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.86));
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", VENDOR_OPTIMIZED_IMAGE_QUALITY));
     if (!blob) return file;
     const baseName = file.name.replace(/\.[^.]+$/, "");
     return new File([blob], `${baseName}-optimized.jpg`, { type: "image/jpeg" });

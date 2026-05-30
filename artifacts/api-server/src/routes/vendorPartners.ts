@@ -8,8 +8,9 @@ const router = Router();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHOTO_DATA_URL_RE = /^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/;
 const MAX_SERVICE_PHOTOS = 3;
-// 5 MB binary images become roughly 6.7 MB once base64 encoded in the intake JSON.
-const MAX_SERVICE_PHOTO_DATA_URL_LENGTH = 7_000_000;
+// Intake photos are optimized in the browser before submit. Keeping each data
+// URL under 2 MB prevents one application from exhausting the small API worker.
+const MAX_SERVICE_PHOTO_DATA_URL_LENGTH = 2_000_000;
 
 function cleanText(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";

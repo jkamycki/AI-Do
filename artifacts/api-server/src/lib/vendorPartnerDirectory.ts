@@ -26,6 +26,7 @@ export type VendorDirectoryListing = {
 };
 
 let directoryColumnsReady: Promise<void> | null = null;
+const MAX_DIRECTORY_IMAGE_DATA_URL_LENGTH = 2_000_000;
 
 export function ensureVendorPartnerDirectoryColumns() {
   directoryColumnsReady ??= db.execute(sql`
@@ -55,7 +56,7 @@ function cleanStringList(value: unknown, fallback: string[], maxItems = 8) {
 function cleanMediaUrlList(value: unknown, fallback: string[], maxItems = 6) {
   const source = Array.isArray(value) ? value : fallback;
   return source
-    .map(item => cleanText(item, "", 7_000_000))
+    .map(item => cleanText(item, "", MAX_DIRECTORY_IMAGE_DATA_URL_LENGTH))
     .filter(Boolean)
     .slice(0, maxItems);
 }
@@ -124,7 +125,7 @@ export function cleanVendorDirectoryListing(raw: unknown, application: VendorPar
     id: cleanText(value.id, fallback.id, 90).replace(/[^a-zA-Z0-9-]/g, "-"),
     instagram: cleanText(value.instagram, fallback.instagram, 120),
     location: cleanText(value.location, fallback.location, 140),
-    logoUrl: cleanText(value.logoUrl, fallback.logoUrl, 7_000_000),
+    logoUrl: cleanText(value.logoUrl, fallback.logoUrl, MAX_DIRECTORY_IMAGE_DATA_URL_LENGTH),
     logoLabel: cleanText(value.logoLabel, fallback.logoLabel, 80),
     name: cleanText(value.name, fallback.name, 140),
     phone: cleanText(value.phone, fallback.phone, 60),
