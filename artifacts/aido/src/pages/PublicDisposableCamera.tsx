@@ -47,23 +47,49 @@ const FILM_EFFECTS: Array<{
   },
 ];
 
-function sessionKey(slug: string, limit: number) {
-  return `aido_disposable_shots_remaining_${slug || "default"}_${limit}`;
+type ShotRollState = {
+  limit: number;
+  remaining: number;
+};
+
+function rollStorageKey(slug: string) {
+  return `aido_disposable_roll_${slug || "default"}`;
 }
 
 function readShotsRemaining(slug: string, limit: number) {
   try {
-    const stored = window.sessionStorage.getItem(sessionKey(slug, limit));
-    if (stored === null) return limit;
-    const parsed = Number(stored);
-    if (Number.isInteger(parsed) && parsed >= 0 && parsed <= limit) return parsed;
+    const stored = window.localStorage.getItem(rollStorageKey(slug));
+    if (stored) {
+      const parsed = JSON.parse(stored) as Partial<ShotRollState>;
+      const storedLimit = Number(parsed.limit);
+      const storedRemaining = Number(parsed.remaining);
+      if (Number.isInteger(storedLimit) && storedLimit > 0 && Number.isInteger(storedRemaining)) {
+        const usedShots = Math.max(0, storedLimit - Math.max(0, Math.min(storedRemaining, storedLimit)));
+        return Math.max(0, Math.min(limit, limit - usedShots));
+      }
+    }
+
+    const legacyStored = window.sessionStorage.getItem(`aido_disposable_shots_remaining_${slug || "default"}_${limit}`);
+    if (legacyStored !== null) {
+      const legacyRemaining = Number(legacyStored);
+      if (Number.isInteger(legacyRemaining) && legacyRemaining >= 0 && legacyRemaining <= limit) {
+        saveShotsRemaining(slug, legacyRemaining, limit);
+        return legacyRemaining;
+      }
+    }
   } catch {}
   return limit;
 }
 
 function saveShotsRemaining(slug: string, remaining: number, limit: number) {
   try {
-    window.sessionStorage.setItem(sessionKey(slug, limit), String(Math.max(0, Math.min(limit, remaining))));
+    window.localStorage.setItem(
+      rollStorageKey(slug),
+      JSON.stringify({
+        limit,
+        remaining: Math.max(0, Math.min(limit, remaining)),
+      } satisfies ShotRollState),
+    );
   } catch {}
 }
 
@@ -82,38 +108,77 @@ function playShutterSound() {
     const context = new AudioContextClass();
     void context.resume?.();
 
-    const clickBuffer = context.createBuffer(1, Math.floor(context.sampleRate * 0.045), context.sampleRate);
+    const master = context.createGain();
+    const compressor = context.createDynamicsCompressor();
+    master.gain.setValueAtTime(0.92, context.currentTime);
+    compressor.threshold.setValueAtTime(-24, context.currentTime);
+    compressor.knee.setValueAtTime(18, context.currentTime);
+    compressor.ratio.setValueAtTime(8, context.currentTime);
+    compressor.attack.setValueAtTime(0.002, context.currentTime);
+    compressor.release.setValueAtTime(0.12, context.currentTime);
+    master.connect(compressor);
+    compressor.connect(context.destination);
+
+    const clickBuffer = context.createBuffer(1, Math.floor(context.sampleRate * 0.055), context.sampleRate);
     const samples = clickBuffer.getChannelData(0);
     for (let index = 0; index < samples.length; index += 1) {
       const envelope = 1 - index / samples.length;
-      samples[index] = (Math.random() * 2 - 1) * envelope * 0.55;
+      samples[index] = (Math.random() * 2 - 1) * envelope * 0.85;
     }
 
     const click = context.createBufferSource();
+    const clickFilter = context.createBiquadFilter();
     const clickGain = context.createGain();
     click.buffer = clickBuffer;
+    clickFilter.type = "bandpass";
+    clickFilter.frequency.setValueAtTime(1800, context.currentTime);
+    clickFilter.Q.setValueAtTime(0.9, context.currentTime);
     clickGain.gain.setValueAtTime(0.001, context.currentTime);
-    clickGain.gain.exponentialRampToValueAtTime(0.32, context.currentTime + 0.004);
-    clickGain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.05);
-    click.connect(clickGain);
-    clickGain.connect(context.destination);
+    clickGain.gain.exponentialRampToValueAtTime(0.62, context.currentTime + 0.004);
+    clickGain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.065);
+    click.connect(clickFilter);
+    clickFilter.connect(clickGain);
+    clickGain.connect(master);
 
     const clack = context.createOscillator();
     const clackGain = context.createGain();
-    clack.type = "square";
-    clack.frequency.setValueAtTime(660, context.currentTime + 0.055);
-    clack.frequency.exponentialRampToValueAtTime(180, context.currentTime + 0.13);
-    clackGain.gain.setValueAtTime(0.001, context.currentTime + 0.055);
-    clackGain.gain.exponentialRampToValueAtTime(0.16, context.currentTime + 0.064);
-    clackGain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.15);
+    clack.type = "triangle";
+    clack.frequency.setValueAtTime(260, context.currentTime + 0.045);
+    clack.frequency.exponentialRampToValueAtTime(95, context.currentTime + 0.13);
+    clackGain.gain.setValueAtTime(0.001, context.currentTime + 0.045);
+    clackGain.gain.exponentialRampToValueAtTime(0.32, context.currentTime + 0.058);
+    clackGain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.16);
     clack.connect(clackGain);
-    clackGain.connect(context.destination);
+    clackGain.connect(master);
+
+    const advanceBuffer = context.createBuffer(1, Math.floor(context.sampleRate * 0.24), context.sampleRate);
+    const advanceSamples = advanceBuffer.getChannelData(0);
+    for (let index = 0; index < advanceSamples.length; index += 1) {
+      const t = index / advanceSamples.length;
+      const ratchet = Math.sin(t * Math.PI * 46) > 0.35 ? 1 : 0.18;
+      const envelope = Math.sin(Math.PI * t) * 0.45;
+      advanceSamples[index] = (Math.random() * 2 - 1) * ratchet * envelope;
+    }
+    const advance = context.createBufferSource();
+    const advanceFilter = context.createBiquadFilter();
+    const advanceGain = context.createGain();
+    advance.buffer = advanceBuffer;
+    advanceFilter.type = "highpass";
+    advanceFilter.frequency.setValueAtTime(520, context.currentTime + 0.12);
+    advanceGain.gain.setValueAtTime(0.001, context.currentTime + 0.12);
+    advanceGain.gain.linearRampToValueAtTime(0.19, context.currentTime + 0.17);
+    advanceGain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.36);
+    advance.connect(advanceFilter);
+    advanceFilter.connect(advanceGain);
+    advanceGain.connect(master);
 
     click.start(context.currentTime);
-    click.stop(context.currentTime + 0.055);
-    clack.start(context.currentTime + 0.055);
-    clack.stop(context.currentTime + 0.16);
-    window.setTimeout(() => void context.close().catch(() => undefined), 240);
+    click.stop(context.currentTime + 0.07);
+    clack.start(context.currentTime + 0.045);
+    clack.stop(context.currentTime + 0.18);
+    advance.start(context.currentTime + 0.12);
+    advance.stop(context.currentTime + 0.38);
+    window.setTimeout(() => void context.close().catch(() => undefined), 520);
   } catch {}
 }
 
@@ -503,11 +568,14 @@ export default function PublicDisposableCamera() {
 
   function triggerShutterEffect() {
     playShutterSound();
+    try {
+      navigator.vibrate?.([24, 18, 18]);
+    } catch {}
     setShutterAnimating(false);
     if (shutterTimeoutRef.current !== null) window.clearTimeout(shutterTimeoutRef.current);
     window.requestAnimationFrame(() => {
       setShutterAnimating(true);
-      shutterTimeoutRef.current = window.setTimeout(() => setShutterAnimating(false), 420);
+      shutterTimeoutRef.current = window.setTimeout(() => setShutterAnimating(false), 620);
     });
 
     if (flashEnabled) {
@@ -538,25 +606,42 @@ export default function PublicDisposableCamera() {
   const flashModeLabel = torchSupported && facingMode === "environment" ? "Camera flash" : "Screen flash";
 
   return (
-    <main className="fixed inset-0 overflow-hidden bg-[#070203] text-white">
+    <main className={`fixed inset-0 overflow-hidden bg-[#070203] text-white ${shutterAnimating ? "aido-camera-kick" : ""}`}>
       <style>{`
-        @keyframes aido-shutter-top {
-          0% { transform: translateY(-100%) scaleY(0.1); }
-          34% { transform: translateY(0) scaleY(1); }
-          58% { transform: translateY(0) scaleY(1); }
-          100% { transform: translateY(-100%) scaleY(0.1); }
+        @keyframes aido-camera-kick {
+          0% { transform: translate3d(0, 0, 0) rotate(0deg); }
+          10% { transform: translate3d(-2px, 2px, 0) rotate(-0.28deg); }
+          22% { transform: translate3d(2px, -1px, 0) rotate(0.22deg); }
+          45% { transform: translate3d(-1px, 1px, 0) rotate(-0.12deg); }
+          100% { transform: translate3d(0, 0, 0) rotate(0deg); }
         }
-        @keyframes aido-shutter-bottom {
-          0% { transform: translateY(100%) scaleY(0.1); }
-          34% { transform: translateY(0) scaleY(1); }
-          58% { transform: translateY(0) scaleY(1); }
-          100% { transform: translateY(100%) scaleY(0.1); }
+        .aido-camera-kick {
+          animation: aido-camera-kick 360ms cubic-bezier(0.18, 0.92, 0.2, 1) both;
+        }
+        @keyframes aido-viewfinder-blink {
+          0% { opacity: 0; transform: scale(1.06); }
+          9% { opacity: 1; transform: scale(1); }
+          28% { opacity: 1; transform: scale(1); }
+          100% { opacity: 0; transform: scale(1.08); }
         }
         @keyframes aido-shutter-iris {
-          0% { transform: scale(1.7); opacity: 0; }
-          32% { transform: scale(0.25); opacity: 1; }
-          58% { transform: scale(0.25); opacity: 1; }
-          100% { transform: scale(1.7); opacity: 0; }
+          0% { transform: translate(-50%, -50%) scale(1.65); opacity: 0; }
+          11% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+          24% { transform: translate(-50%, -50%) scale(0.22); opacity: 1; }
+          42% { transform: translate(-50%, -50%) scale(0.22); opacity: 1; }
+          100% { transform: translate(-50%, -50%) scale(1.75); opacity: 0; }
+        }
+        @keyframes aido-shutter-slit {
+          0% { transform: translate(-50%, -50%) scaleX(1.8) scaleY(0.08); opacity: 0; }
+          16% { transform: translate(-50%, -50%) scaleX(1) scaleY(1); opacity: 1; }
+          40% { transform: translate(-50%, -50%) scaleX(0.08) scaleY(0.08); opacity: 1; }
+          100% { transform: translate(-50%, -50%) scaleX(1.8) scaleY(0.08); opacity: 0; }
+        }
+        @keyframes aido-film-advance-pill {
+          0%, 38% { transform: translateX(-130%); opacity: 0; }
+          48% { opacity: 1; }
+          82% { transform: translateX(22%); opacity: 1; }
+          100% { transform: translateX(130%); opacity: 0; }
         }
       `}</style>
       <video
@@ -765,16 +850,29 @@ export default function PublicDisposableCamera() {
       {shutterAnimating && (
         <div className="pointer-events-none absolute inset-0 z-[45] overflow-hidden">
           <div
-            className="absolute inset-x-0 top-0 h-1/2 origin-top bg-black"
-            style={{ animation: "aido-shutter-top 420ms cubic-bezier(0.2, 0.78, 0.18, 1) both" }}
+            className="absolute inset-0 bg-black"
+            style={{ animation: "aido-viewfinder-blink 620ms cubic-bezier(0.16, 0.9, 0.18, 1) both" }}
           />
           <div
-            className="absolute inset-x-0 bottom-0 h-1/2 origin-bottom bg-black"
-            style={{ animation: "aido-shutter-bottom 420ms cubic-bezier(0.2, 0.78, 0.18, 1) both" }}
+            className="absolute left-1/2 top-1/2 h-[78vmin] w-[78vmin] rounded-full border-[36vmin] border-black shadow-[0_0_0_160vmax_rgba(0,0,0,0.88)]"
+            style={{ animation: "aido-shutter-iris 620ms cubic-bezier(0.16, 0.9, 0.18, 1) both" }}
           />
           <div
-            className="absolute left-1/2 top-1/2 h-[42vmin] w-[42vmin] -translate-x-1/2 -translate-y-1/2 rounded-full border-[18vmin] border-black"
-            style={{ animation: "aido-shutter-iris 420ms cubic-bezier(0.2, 0.78, 0.18, 1) both" }}
+            className="absolute left-1/2 top-1/2 h-12 w-[72vmin] rounded-full bg-[#070203] shadow-[0_0_32px_rgba(255,255,255,0.18)]"
+            style={{ animation: "aido-shutter-slit 620ms cubic-bezier(0.16, 0.9, 0.18, 1) both" }}
+          />
+          <div
+            className="absolute bottom-[max(7.2rem,calc(env(safe-area-inset-bottom)+6.2rem))] left-1/2 h-1.5 w-24 -translate-x-1/2 overflow-hidden rounded-full bg-white/10"
+            style={{ animation: "aido-viewfinder-blink 620ms cubic-bezier(0.16, 0.9, 0.18, 1) both" }}
+          >
+            <div
+              className="h-full w-14 rounded-full bg-[#F8DDE5]"
+              style={{ animation: "aido-film-advance-pill 620ms cubic-bezier(0.2, 0.85, 0.2, 1) both" }}
+            />
+          </div>
+          <div
+            className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.18),rgba(255,255,255,0)_34%),linear-gradient(90deg,rgba(255,255,255,0.08),rgba(255,255,255,0)_22%,rgba(255,255,255,0)_78%,rgba(255,255,255,0.08))]"
+            style={{ animation: "aido-viewfinder-blink 420ms ease-out both" }}
           />
         </div>
       )}
