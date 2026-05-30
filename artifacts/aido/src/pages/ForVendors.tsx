@@ -119,7 +119,8 @@ const STEPS = [
 ];
 
 const MAX_SERVICE_PHOTOS = 3;
-const MAX_PHOTO_BYTES = 750 * 1024;
+const MAX_PHOTO_MB = 5;
+const MAX_PHOTO_BYTES = MAX_PHOTO_MB * 1024 * 1024;
 type VendorPartnerPage = "home" | "vendors" | "how-it-works" | "apply";
 
 function getVendorPartnerPage(path: string): VendorPartnerPage {
@@ -162,7 +163,7 @@ export default function ForVendors() {
     const selectedFiles = files.slice(0, remainingSlots);
     const oversized = selectedFiles.find((file) => file.size > MAX_PHOTO_BYTES);
     if (oversized) {
-      setError("Each service photo must be under 750 KB.");
+      setError(`Each service photo must be under ${MAX_PHOTO_MB} MB.`);
       event.target.value = "";
       return;
     }
@@ -185,7 +186,7 @@ export default function ForVendors() {
     const file = event.target.files?.[0];
     if (!file) return;
     if (file.size > MAX_PHOTO_BYTES) {
-      setError("Business logo must be under 750 KB.");
+      setError(`Business logo must be under ${MAX_PHOTO_MB} MB.`);
       event.target.value = "";
       return;
     }
@@ -498,7 +499,7 @@ export default function ForVendors() {
                       </div>
                     )}
                     <p className="text-[11px] text-[#6F3E54]">
-                      JPG, PNG, or WEBP. Transparent PNG works best. Keep the logo under 750 KB.
+                      JPG, PNG, or WEBP. Transparent PNG works best. Keep the logo under {MAX_PHOTO_MB} MB.
                     </p>
                   </div>
 
@@ -541,7 +542,7 @@ export default function ForVendors() {
                       </div>
                     )}
                     <p className="text-[11px] text-[#6F3E54]">
-                      JPG, PNG, or WEBP. Keep each photo under 750 KB.
+                      JPG, PNG, or WEBP. Keep each photo under {MAX_PHOTO_MB} MB.
                     </p>
                   </div>
 

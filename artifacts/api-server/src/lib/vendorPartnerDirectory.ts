@@ -52,6 +52,14 @@ function cleanStringList(value: unknown, fallback: string[], maxItems = 8) {
     .slice(0, maxItems);
 }
 
+function cleanMediaUrlList(value: unknown, fallback: string[], maxItems = 6) {
+  const source = Array.isArray(value) ? value : fallback;
+  return source
+    .map(item => cleanText(item, "", 7_000_000))
+    .filter(Boolean)
+    .slice(0, maxItems);
+}
+
 function parsePrice(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) return Math.max(0, Math.round(value));
   if (typeof value !== "string") return 0;
@@ -112,11 +120,11 @@ export function cleanVendorDirectoryListing(raw: unknown, application: VendorPar
     contactName: cleanText(value.contactName, fallback.contactName, 120),
     email: cleanText(value.email, fallback.email, 180).toLowerCase(),
     fit: cleanText(value.fit, fallback.fit, 240),
-    gallery: cleanStringList(value.gallery, fallback.gallery, 6),
+    gallery: cleanMediaUrlList(value.gallery, fallback.gallery, 6),
     id: cleanText(value.id, fallback.id, 90).replace(/[^a-zA-Z0-9-]/g, "-"),
     instagram: cleanText(value.instagram, fallback.instagram, 120),
     location: cleanText(value.location, fallback.location, 140),
-    logoUrl: cleanText(value.logoUrl, fallback.logoUrl, 1_100_000),
+    logoUrl: cleanText(value.logoUrl, fallback.logoUrl, 7_000_000),
     logoLabel: cleanText(value.logoLabel, fallback.logoLabel, 80),
     name: cleanText(value.name, fallback.name, 140),
     phone: cleanText(value.phone, fallback.phone, 60),

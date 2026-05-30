@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useRoute } from "wouter";
-import { Camera, ImagePlus, Link, Loader2, Lock, RefreshCcw, Send } from "lucide-react";
+import { Camera, ExternalLink, ImagePlus, Link, Loader2, Lock, RefreshCw, RefreshCcw, Send, ZoomIn, ZoomOut } from "lucide-react";
 import { apiFetch } from "@/lib/authFetch";
 import { getGuestPhotoDeviceId } from "@/lib/guestPhotoDevice";
 
@@ -10,6 +10,9 @@ type FilmEffectId = "classic" | "warm" | "dream" | "mono";
 
 const DEFAULT_SHOT_LIMIT = 10;
 const DEVELOPING_DELAY_MS = 2400;
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 3;
+const ZOOM_STEP = 0.25;
 
 const FILM_EFFECTS: Array<{
   id: FilmEffectId;
@@ -96,6 +99,10 @@ function getFilmEffect(effectId: FilmEffectId) {
   return FILM_EFFECTS.find((effect) => effect.id === effectId) ?? FILM_EFFECTS[0];
 }
 
+function clampZoom(value: number) {
+  return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Number(value.toFixed(2))));
+}
+
 async function loadImage(file: File) {
   if ("createImageBitmap" in window) {
     return window.createImageBitmap(file);
@@ -180,6 +187,8 @@ export default function PublicDisposableCamera() {
   const [showUploadPrompt, setShowUploadPrompt] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedEffect, setSelectedEffect] = useState<FilmEffectId>("classic");
+  const [zoom, setZoom] = useState(1);
+  const [rollSubmitted, setRollSubmitted] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const activeEffect = getFilmEffect(selectedEffect);
 
@@ -293,6 +302,7 @@ export default function PublicDisposableCamera() {
     setUploading(true);
     setDeveloping(true);
     setMessage(null);
+    setRollSubmitted(false);
     setUploadProgress(0);
 
     try {
@@ -307,7 +317,7 @@ export default function PublicDisposableCamera() {
       ]);
       setPhotoRoll([]);
       setShowUploadPrompt(false);
-      setMessage("Your disposable roll was sent to the couple.");
+      setRollSubmitted(true);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Upload failed. Please try again.");
       setShowUploadPrompt(true);
@@ -327,7 +337,15 @@ export default function PublicDisposableCamera() {
     canvas.height = height;
     const context = canvas.getContext("2d");
     if (!context) throw new Error("Camera capture is not available in this browser.");
-    context.drawImage(video, 0, 0, width, height);
+    const sourceWidth = width / zoom;
+    const sourceHeight = height / zoom;
+    const sourceX = (width - sourceWidth) / 2;
+    const sourceY = (height - sourceHeight) / 2;
+    if (facingMode === "user") {
+      context.translate(width, 0);
+      context.scale(-1, 1);
+    }
+    context.drawImage(video, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
     if (!blob) throw new Error("Could not capture this photo.");
     return fileFromBlob(blob);
@@ -386,6 +404,18 @@ export default function PublicDisposableCamera() {
     }
   }
 
+  function zoomIn() {
+    setZoom((current) => clampZoom(current + ZOOM_STEP));
+  }
+
+  function zoomOut() {
+    setZoom((current) => clampZoom(current - ZOOM_STEP));
+  }
+
+  function resetZoom() {
+    setZoom(1);
+  }
+
   const canShoot = status === "ready" && shotsRemaining > 0 && !uploading && !showUploadPrompt;
 
   return (
@@ -395,8 +425,12 @@ export default function PublicDisposableCamera() {
         autoPlay
         muted
         playsInline
-        className={`h-full w-full object-cover ${status !== "ready" ? "opacity-0" : ""} ${facingMode === "user" ? "-scale-x-100" : ""}`}
-        style={{ filter: activeEffect.canvasFilter }}
+        className={`h-full w-full object-cover transition-transform duration-200 ${status !== "ready" ? "opacity-0" : ""}`}
+        style={{
+          filter: activeEffect.canvasFilter,
+          transform: `${facingMode === "user" ? "scaleX(-1) " : ""}scale(${zoom})`,
+          transformOrigin: "center",
+        }}
       />
 
       <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(circle_at_center,transparent_38%,rgba(0,0,0,0.18)_60%,rgba(0,0,0,0.72)_100%)]" />
@@ -467,6 +501,36 @@ export default function PublicDisposableCamera() {
         </div>
       )}
 
+      <div className="absolute right-4 top-1/2 z-30 flex -translate-y-1/2 flex-col items-center gap-2">
+        <button
+          type="button"
+          aria-label="Zoom in"
+          onClick={zoomIn}
+          disabled={uploading || showUploadPrompt || zoom >= MAX_ZOOM}
+          className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/12 bg-black/45 text-white shadow-lg backdrop-blur transition active:scale-95 disabled:opacity-40"
+        >
+          <ZoomIn className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          aria-label="Reset zoom"
+          onClick={resetZoom}
+          disabled={uploading || showUploadPrompt || zoom === 1}
+          className="min-w-12 rounded-full border border-white/12 bg-black/45 px-3 py-2 text-xs font-black text-white shadow-lg backdrop-blur transition active:scale-95 disabled:opacity-40"
+        >
+          {zoom.toFixed(zoom % 1 === 0 ? 0 : 2)}x
+        </button>
+        <button
+          type="button"
+          aria-label="Zoom out"
+          onClick={zoomOut}
+          disabled={uploading || showUploadPrompt || zoom <= MIN_ZOOM}
+          className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/12 bg-black/45 text-white shadow-lg backdrop-blur transition active:scale-95 disabled:opacity-40"
+        >
+          <ZoomOut className="h-5 w-5" />
+        </button>
+      </div>
+
       <div className="absolute inset-x-0 top-[max(5.35rem,calc(env(safe-area-inset-top)+4.4rem))] z-30 px-5">
         <div className="mx-auto max-w-md rounded-[1.6rem] border border-white/12 bg-black/42 p-3 shadow-xl backdrop-blur-md">
           <div className="mb-2 flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-white/65">
@@ -530,7 +594,10 @@ export default function PublicDisposableCamera() {
           <button
             type="button"
             aria-label="Flip camera"
-            onClick={() => setFacingMode((current) => (current === "environment" ? "user" : "environment"))}
+            onClick={() => {
+              setFacingMode((current) => (current === "environment" ? "user" : "environment"));
+              resetZoom();
+            }}
             disabled={uploading || showUploadPrompt}
             className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/12 bg-white/14 text-white shadow-lg backdrop-blur disabled:opacity-40"
           >
@@ -560,6 +627,41 @@ export default function PublicDisposableCamera() {
             >
               {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               {uploading ? "Uploading roll..." : "Upload my roll"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {rollSubmitted && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-[#FFF7F2] px-6 text-center text-[#3B1C2B]">
+          <div className="w-full max-w-sm rounded-[2rem] border border-[#E6A6B7]/50 bg-white px-6 py-8 shadow-[0_24px_70px_rgba(91,15,42,0.18)]">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-[#F8DDE5] text-[#8D294D]">
+              <Camera className="h-8 w-8" />
+            </div>
+            <p className="mt-5 text-xs font-black uppercase tracking-[0.28em] text-[#B16C8E]">Roll submitted</p>
+            <h2 className="mt-2 font-serif text-4xl font-bold text-[#8D294D]">Thanks for sharing the memories</h2>
+            <p className="mt-3 text-sm leading-6 text-[#6F3E54]">
+              Your disposable camera roll was sent to the couple for review. Planning a wedding too? Try A.I DO to build your website, manage RSVPs, organize guests, and collect photos.
+            </p>
+            <a
+              href="https://aidowedding.net/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-6 inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[#8D294D] px-5 text-sm font-black text-white shadow-[0_18px_45px_rgba(141,41,77,0.25)]"
+            >
+              Try A.I DO
+              <ExternalLink className="h-4 w-4" />
+            </a>
+            <button
+              type="button"
+              onClick={() => {
+                setRollSubmitted(false);
+                setMessage("Your disposable roll was sent to the couple.");
+              }}
+              className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-[#E6A6B7]/70 bg-white px-4 text-xs font-black text-[#8D294D]"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Back to camera
             </button>
           </div>
         </div>
