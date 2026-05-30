@@ -792,6 +792,15 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
           <ClerkAuthScreen />
         ) : (
           <AuthScreen
+            onGoogle={() => {
+              const localWebsiteSignIn = 'http://localhost:5174/sign-in';
+              const productionSignIn = 'https://aidowedding.net/sign-in';
+              const target =
+                Platform.OS === 'web' && typeof window !== 'undefined' && window.location.hostname === 'localhost'
+                  ? localWebsiteSignIn
+                  : productionSignIn;
+              void Linking.openURL(target);
+            }}
             onSignIn={(email) => {
               setAuthUser({ email, firstName: 'Stacy', isNewUser: false });
               setNeedsOnboarding(false);
@@ -1168,9 +1177,11 @@ function ClerkAuthScreen() {
 }
 
 function AuthScreen({
+  onGoogle,
   onSignIn,
   onSignUp,
 }: {
+  onGoogle: () => void;
   onSignIn: (email: string) => void;
   onSignUp: (email: string, firstName: string) => void;
 }) {
@@ -1248,6 +1259,10 @@ function AuthScreen({
           >
             <Ionicons color={colors.surface} name={isSignUp ? 'person-add-outline' : 'log-in-outline'} size={18} />
             <Text style={styles.primaryActionText}>{isSignUp ? 'Create account' : 'Sign in'}</Text>
+          </Pressable>
+          <Pressable onPress={onGoogle} style={styles.authProviderButton}>
+            <Ionicons color={colors.rose} name="logo-google" size={18} />
+            <Text style={styles.secondaryActionText}>Continue with Google</Text>
           </Pressable>
 
           <View style={styles.authNote}>
