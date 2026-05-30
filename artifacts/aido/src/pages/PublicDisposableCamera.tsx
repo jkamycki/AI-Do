@@ -104,6 +104,21 @@ function clampZoom(value: number) {
   return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Number(value.toFixed(2))));
 }
 
+async function setWidestSupportedCameraZoom(stream: MediaStream) {
+  const [track] = stream.getVideoTracks();
+  if (!track) return;
+
+  try {
+    const capabilities = track.getCapabilities() as MediaTrackCapabilities & { zoom?: { min?: number } };
+    const minZoom = capabilities.zoom?.min;
+    if (typeof minZoom === "number") {
+      await track.applyConstraints({ advanced: [{ zoom: minZoom } as MediaTrackConstraintSet] });
+    }
+  } catch {
+    // Some mobile browsers expose zoom capabilities but reject applying them.
+  }
+}
+
 async function loadImage(file: File) {
   if ("createImageBitmap" in window) {
     return window.createImageBitmap(file);
@@ -244,14 +259,26 @@ export default function PublicDisposableCamera() {
     stopCamera();
 
     try {
+      const videoConstraints: MediaTrackConstraints =
+        facingMode === "user"
+          ? {
+              facingMode: { ideal: "user" },
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              aspectRatio: { ideal: 16 / 9 },
+            }
+          : {
+              facingMode: { ideal: "environment" },
+              width: { ideal: 1440 },
+              height: { ideal: 1920 },
+            };
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
-        video: {
-          facingMode: { ideal: facingMode },
-          width: { ideal: 1440 },
-          height: { ideal: 1920 },
-        },
+        video: videoConstraints,
       });
+      if (facingMode === "user") {
+        await setWidestSupportedCameraZoom(stream);
+      }
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -421,7 +448,9 @@ export default function PublicDisposableCamera() {
         autoPlay
         muted
         playsInline
-        className={`h-full w-full object-cover transition-transform duration-200 ${status !== "ready" ? "opacity-0" : ""}`}
+        className={`h-full w-full bg-black transition-transform duration-200 ${
+          facingMode === "user" ? "object-contain" : "object-cover"
+        } ${status !== "ready" ? "opacity-0" : ""}`}
         style={{
           filter: activeEffect.canvasFilter,
           transform: `${facingMode === "user" ? "scaleX(-1) " : ""}scale(${zoom})`,
