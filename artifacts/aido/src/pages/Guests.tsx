@@ -1899,7 +1899,7 @@ export default function Guests({
   const selectedReminderEligible = reminderEligible.filter((guest) => selectedGuestIds.has(guest.id));
   const selectedGuests = allGuests.filter((guest) => selectedGuestIds.has(guest.id));
   const readyBulkButtonClass =
-    "h-12 w-full justify-between gap-4 whitespace-nowrap bg-primary px-4 text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground";
+    "min-h-12 w-full justify-between gap-3 whitespace-normal bg-primary px-3 py-2 text-left text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground sm:h-12 sm:gap-4 sm:px-4";
   const readyBulkBadgeClass = "bg-white/20 text-white border-white/30";
   const toggleGuestSelected = (guestId: number, checked: boolean) => {
     setSelectedGuestIds((current) => {
@@ -3354,6 +3354,9 @@ export default function Guests({
                 {selectedGuestIds.size} selected
               </Badge>
             </div>
+            <div className="rounded-lg border border-primary/10 bg-white/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground sm:hidden">
+              Select the guests you want, then send Save-the-Dates, RSVP invites, or reminders from here.
+            </div>
             <div className="grid gap-3 lg:grid-cols-3">
               <div className="rounded-lg border border-primary/15 bg-white/55 p-2 shadow-sm">
                 <Button
@@ -3370,7 +3373,8 @@ export default function Guests({
                     ) : (
                       <Mail className="h-4 w-4 mr-2" />
                     )}
-                    Send Save-the-Dates
+                    <span className="sm:hidden">Save-the-Dates</span>
+                    <span className="hidden sm:inline">Send Save-the-Dates</span>
                   </span>
                   <Badge variant="secondary" className={readyBulkBadgeClass}>
                     {selectedSaveTheDateEligible.length}
@@ -3403,7 +3407,8 @@ export default function Guests({
                     ) : (
                       <Send className="h-4 w-4 mr-2" />
                     )}
-                    Send RSVP Invitations
+                    <span className="sm:hidden">RSVP Invites</span>
+                    <span className="hidden sm:inline">Send RSVP Invitations</span>
                   </span>
                   <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
                     {selectedInvitationEligible.length}
@@ -3436,7 +3441,8 @@ export default function Guests({
                     ) : (
                       <Clock className="h-4 w-4 mr-2" />
                     )}
-                    Send RSVP Reminders
+                    <span className="sm:hidden">Reminders</span>
+                    <span className="hidden sm:inline">Send RSVP Reminders</span>
                   </span>
                   <Badge variant="secondary" className={readyBulkBadgeClass}>
                     {selectedReminderEligible.length}
