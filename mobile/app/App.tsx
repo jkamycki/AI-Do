@@ -50,7 +50,7 @@ const userAvatarUri =
 
 type TabId = 'today' | 'website' | 'plan' | 'guests' | 'vendors' | 'more';
 type BottomTabId = TabId | 'aria';
-type VendorHubView = 'list' | 'finance' | 'contacts' | 'messages';
+type VendorHubView = 'list' | 'finance' | 'files' | 'contacts' | 'messages';
 type GuestHubView = 'guests' | 'seating' | 'invites' | 'travel' | 'website' | 'photoDrop';
 
 type MobileSeatingTable = {
@@ -5661,7 +5661,7 @@ function VendorsSection({
           </View>
         </View>
         <Text style={styles.vendorHeroTitle}>Your vendor command center.</Text>
-        <Text style={styles.vendorHeroText}>Vendor list, budget summary, contacts, contracts, and messages are grouped here so the app does not feel like a spreadsheet.</Text>
+        <Text style={styles.vendorHeroText}>Vendor list, budget summary, files, contacts, and messages are grouped here so the app does not feel like a spreadsheet.</Text>
         <View style={styles.websiteActions}>
           <Pressable
             onPress={() =>
@@ -5700,10 +5700,11 @@ function VendorsSection({
 
       <View style={styles.vendorHubSwitch}>
         {[
-          ['list', 'Vendor List', 'storefront-outline'],
-          ['finance', 'Budget Summary', 'wallet-outline'],
+          ['list', 'List', 'storefront-outline'],
+          ['finance', 'Budget', 'wallet-outline'],
+          ['files', 'Files', 'folder-open-outline'],
           ['contacts', 'Contacts', 'people-outline'],
-          ['messages', 'Messages', 'chatbubbles-outline'],
+          ['messages', 'Msgs', 'chatbubbles-outline'],
         ].map(([id, label, icon]) => {
           const active = activeView === id;
           return (
@@ -5746,11 +5747,7 @@ function VendorsSection({
                 key={vendor.id}
                 data={data}
                 onContract={() =>
-                  openMockAction({
-                    title: `${vendor.name} contract`,
-                    detail: 'Open the contract file, signature status, risk notes, and upload controls for this vendor.',
-                    primaryLabel: 'Open contract',
-                  })
+                  onChangeView('files')
                 }
                 onMessage={() => setMessageVendor(vendor)}
                 onOpen={() => openVendor(vendor)}
@@ -5763,6 +5760,13 @@ function VendorsSection({
 
       {activeView === 'finance' ? (
         <MoneySection data={data} embedded openMockAction={openMockAction} paid={totalPaid} refreshFromWebsite={refreshFromWebsite} total={totalCommitted} />
+      ) : null}
+
+      {activeView === 'files' ? (
+        <View style={styles.vendorFilesStack}>
+          <FinanceContractsPanel data={data} openMockAction={openMockAction} />
+          <FinanceDocumentsPanel data={data} openMockAction={openMockAction} />
+        </View>
       ) : null}
 
       {activeView === 'contacts' ? (
@@ -6124,7 +6128,7 @@ function MoneySection({
       </LinearGradient>
 
       <DesktopStudioNotice
-        detail="Use the app for payments, balances, contracts, receipts, and quick updates. Use A.I DO on desktop for deep reports, exports, and larger budget review views."
+        detail={embedded ? 'Use Budget Summary here for payments and balances. Contracts and documents now live in the Vendors Files tab.' : 'Use the app for payments, balances, contracts, receipts, and quick updates. Use A.I DO on desktop for deep reports, exports, and larger budget review views.'}
         title="Deep budget reports are desktop-first"
       />
 
@@ -6146,8 +6150,12 @@ function MoneySection({
           ['payments', 'Payments', 'card-outline'],
           ['vendors', 'Costs', 'cash-outline'],
           ['misc', 'Misc', 'receipt-outline'],
-          ['contracts', 'Contracts', 'document-text-outline'],
-          ['docs', 'Docs', 'folder-open-outline'],
+          ...(!embedded
+            ? [
+                ['contracts', 'Contracts', 'document-text-outline'],
+                ['docs', 'Docs', 'folder-open-outline'],
+              ]
+            : []),
         ].map(([id, label, icon]) => {
           const active = financeView === id;
           return (
@@ -12649,6 +12657,9 @@ const styles = StyleSheet.create({
   },
   vendorHubSwitchTextActive: {
     color: colors.surface,
+  },
+  vendorFilesStack: {
+    gap: 14,
   },
   registryPreview: {
     alignItems: 'center',
