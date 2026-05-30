@@ -140,10 +140,11 @@ export default function Landing() {
     <div className="min-h-screen bg-[#FFF7F2] text-[#8D294D]">
       <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-2 border-b border-[#E6A6B7]/70 bg-[#FFF7F2]/[0.92] px-3 shadow-[0_1px_0_rgba(141,41,77,0.06)] backdrop-blur-md sm:h-[72px] sm:px-8">
         <LandingLanguagePicker />
-        <nav className="flex min-w-0 items-center gap-2 sm:gap-10">
+        <nav className="flex min-w-0 items-center gap-1.5 sm:gap-10">
           <Link href="/for-vendors">
-            <Button variant="ghost" className="hidden h-10 px-1 text-sm font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E] sm:inline-flex sm:px-2 sm:text-base">
-              Partner With Us
+            <Button variant="ghost" className="h-10 px-1.5 text-sm font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E] sm:px-2 sm:text-base">
+              <span className="sm:hidden">Partners</span>
+              <span className="hidden sm:inline">Partner With Us</span>
             </Button>
           </Link>
           <Link href="/sign-in">

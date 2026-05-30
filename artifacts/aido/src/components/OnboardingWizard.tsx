@@ -13,10 +13,9 @@ import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { authFetch } from "@/lib/authFetch";
-import { VenueWizard, emptyVenueDiscoveryData, type VenueDiscoveryData } from "@/components/Profile/VenueWizard";
+import { emptyVenueDiscoveryData, type VenueDiscoveryData } from "@/components/Profile/VenueWizard";
 import {
   ArrowLeft,
   ArrowRight,
@@ -26,29 +25,12 @@ import {
   MapPin,
   MessageCircle,
   Search,
-  Sparkles,
 } from "lucide-react";
-import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
+import { getCurrentLanguageName } from "@/lib/languagePreference";
 
 const ONBOARDING_KEY_PREFIX = "aido_onboarding_dismissed";
+const ONBOARDING_DRAFT_PREFIX = "aido_onboarding_draft";
 export const ARIA_ONBOARDING_PROMPT_KEY = "aido_aria_initial_prompt";
-
-const LANGUAGES = [
-  "English",
-  "Spanish",
-  "French",
-  "German",
-  "Italian",
-  "Portuguese",
-  "Chinese (Simplified)",
-  "Japanese",
-  "Korean",
-  "Arabic",
-  "Hindi",
-  "Russian",
-  "Dutch",
-  "Polish",
-];
 
 const VENDOR_OPTIONS = [
   "Photographer",
@@ -76,7 +58,7 @@ const STEPS = [
   "Aria",
 ] as const;
 
-type VenueChoice = "booked" | "looking" | "non_traditional";
+type VenueChoice = "booked" | "looking";
 
 const emptyPlanningPriorities = {
   mustHaves: [] as string[],
@@ -92,13 +74,12 @@ const schema = z.object({
   weddingDate: z.string().default(""),
   ceremonyTime: z.string().default("16:00"),
   receptionTime: z.string().default("18:00"),
-  venueChoice: z.enum(["booked", "looking", "non_traditional"]).default("looking"),
+  venueChoice: z.enum(["booked", "looking"]).default("looking"),
   venue: z.string().default(""),
   location: z.string().default(""),
   guestCount: z.coerce.number().default(100),
   totalBudget: z.coerce.number().default(20000),
   weddingVibe: z.string().default("Warm, elegant, and organized"),
-  preferredLanguage: z.string().default("English"),
   venueDiscovery: z.custom<VenueDiscoveryData>().default(emptyVenueDiscoveryData),
   bookedVendors: z.array(z.string()).default([]),
   partnerEmail: z.string().default(""),
@@ -171,10 +152,7 @@ function venueDiscoveryForSave(values: WizardValues) {
     guestCount: values.venueDiscovery.guestCount || String(normalizeGuests(values.guestCount)),
     budgetRange: values.venueDiscovery.budgetRange || (normalizeMoney(values.totalBudget) ? `$${normalizeMoney(values.totalBudget).toLocaleString()}` : ""),
     location: values.venueDiscovery.location || values.location,
-    notes: [
-      values.venueDiscovery.notes,
-      values.venueChoice === "non_traditional" ? "The couple may use a non-traditional venue or private location." : "",
-    ].filter(Boolean).join("\n"),
+    notes: values.venueDiscovery.notes,
   };
 
   return {
@@ -183,6 +161,31 @@ function venueDiscoveryForSave(values: WizardValues) {
     shortlist: Array.isArray(discovery.shortlist) ? discovery.shortlist : [],
     screenshots: Array.isArray(discovery.screenshots) ? discovery.screenshots : [],
   };
+}
+
+function buildOnboardingAriaPrompt(values: WizardValues) {
+  const customPrompt = values.ariaPrompt.trim();
+  if (customPrompt) return customPrompt;
+
+  const names = coupleDisplay(values);
+  const budget = normalizeMoney(values.totalBudget);
+  const guests = normalizeGuests(values.guestCount);
+  const venueLine = values.venueChoice === "booked"
+    ? `Our venue is booked${values.venue.trim() ? ` at ${values.venue.trim()}` : ""}${values.location.trim() ? ` in ${values.location.trim()}` : ""}.`
+    : `We are still searching for a venue${values.location.trim() ? ` around ${values.location.trim()}` : ""}.`;
+  const vendors = values.bookedVendors.length
+    ? `Already handled or in motion: ${values.bookedVendors.join(", ")}.`
+    : "We are starting fresh with vendors.";
+
+  return [
+    `What's our next move for planning ${names}' wedding?`,
+    values.weddingDate.trim() ? `Wedding date: ${values.weddingDate.trim()}.` : "Wedding date is still flexible.",
+    `Estimated guests: ${guests}.`,
+    budget ? `Working budget: $${budget.toLocaleString()}.` : "Budget is still flexible.",
+    venueLine,
+    vendors,
+    "Please give us a clear first-week action plan with the top priorities, what to do next, and anything A.I DO can help automate.",
+  ].join("\n");
 }
 
 function ChoiceCard({
@@ -283,6 +286,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
   const [step, setStep] = useState(0);
   const [skippedSteps, setSkippedSteps] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
+  const [draftLoaded, setDraftLoaded] = useState(false);
   const queryClient = useQueryClient();
   const saveProfile = useSaveProfile();
 
@@ -302,7 +306,6 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
       guestCount: 100,
       totalBudget: 20000,
       weddingVibe: "Warm, elegant, and organized",
-      preferredLanguage: "English",
       venueDiscovery: freshVenueDiscovery(),
       bookedVendors: [],
       partnerEmail: "",
@@ -317,6 +320,59 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
   const bookedVendors = form.watch("bookedVendors") ?? [];
   const finalPrompt = form.watch("ariaPrompt");
   const progressPercent = Math.round(((step + 1) / STEPS.length) * 100);
+
+  useEffect(() => {
+    if (!user?.id || !open) {
+      setDraftLoaded(true);
+      return;
+    }
+
+    try {
+      const raw = localStorage.getItem(`${ONBOARDING_DRAFT_PREFIX}:${user.id}`);
+      if (raw) {
+        const draft = JSON.parse(raw) as Partial<{
+          step: number;
+          skippedSteps: number[];
+          values: Partial<WizardValues>;
+        }>;
+        if (draft.values && typeof draft.values === "object") {
+          form.reset({
+            ...form.getValues(),
+            ...draft.values,
+            venueChoice: draft.values.venueChoice === "booked" ? "booked" : "looking",
+            venueDiscovery: {
+              ...freshVenueDiscovery(),
+              ...(draft.values.venueDiscovery ?? {}),
+            },
+            bookedVendors: Array.isArray(draft.values.bookedVendors) ? draft.values.bookedVendors : [],
+          });
+        }
+        if (typeof draft.step === "number") {
+          setStep(Math.max(0, Math.min(STEPS.length - 1, draft.step)));
+        }
+        if (Array.isArray(draft.skippedSteps)) {
+          setSkippedSteps(draft.skippedSteps.filter((item) => Number.isInteger(item) && item > 0 && item < STEPS.length));
+        }
+      }
+    } catch {
+      // Ignore malformed drafts; the wizard can still start cleanly.
+    } finally {
+      setDraftLoaded(true);
+    }
+  }, [form, open, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || !open || !draftLoaded || saving) return;
+    try {
+      localStorage.setItem(`${ONBOARDING_DRAFT_PREFIX}:${user.id}`, JSON.stringify({
+        step,
+        skippedSteps,
+        values,
+      }));
+    } catch {
+      // Draft persistence is helpful but not required for setup to continue.
+    }
+  }, [draftLoaded, open, saving, skippedSteps, step, user?.id, values]);
 
   function markDismissed() {
     if (user?.id) {
@@ -367,6 +423,8 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
       if (current.venueChoice === "booked") {
         requireField("venue", "Add the venue name.");
         requireField("location", "Add the city or location.");
+      } else {
+        requireField("location", "Add the city or area where you are searching.");
       }
     }
 
@@ -450,7 +508,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
     const venueStatus = saveValues.venueChoice === "booked" ? "booked" : "not_yet";
     const venueDiscovery = venueStatus === "not_yet" ? venueDiscoveryForSave(saveValues) : null;
     const location = saveValues.location || saveValues.venueDiscovery.location || (venueStatus === "not_yet" ? "Location TBD" : "");
-    const prompt = saveValues.ariaPrompt.trim();
+    const prompt = buildOnboardingAriaPrompt(saveValues);
 
     setSaving(true);
     try {
@@ -468,7 +526,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
           guestCount: normalizeGuests(saveValues.guestCount),
           totalBudget: normalizeMoney(saveValues.totalBudget),
           weddingVibe: saveValues.weddingVibe.trim() || "Warm, elegant, and organized",
-          preferredLanguage: saveValues.preferredLanguage,
+          preferredLanguage: getCurrentLanguageName(),
         },
       });
 
@@ -482,8 +540,6 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
         });
       }
 
-      const code = LANG_NAME_TO_CODE[saveValues.preferredLanguage] ?? "en";
-      i18n.changeLanguage(code);
       queryClient.invalidateQueries({ queryKey: getGetProfileQueryKey() });
       queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
       queryClient.invalidateQueries({ queryKey: ["my-workspaces"] });
@@ -492,7 +548,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
         try {
           sessionStorage.setItem(`${ONBOARDING_KEY_PREFIX}:${user.id}`, "true");
           sessionStorage.removeItem("aido_signup_account_type");
-          localStorage.setItem(`aido_language_${user.id}`, code);
+          localStorage.removeItem(`${ONBOARDING_DRAFT_PREFIX}:${user.id}`);
           localStorage.setItem(`aido_onboarding_booked_vendors_${user.id}`, JSON.stringify(saveValues.bookedVendors));
         } catch {}
       }
@@ -743,25 +799,6 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                       )}
                     />
                   </div>
-                  <FormField
-                    control={form.control}
-                    name="preferredLanguage"
-                    render={({ field }) => (
-                      <FormItem className="mt-5">
-                        <FormLabel>Preferred language for Aria</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="h-14 rounded-2xl border-[#e8cfc5] bg-white text-base">
-                              <SelectValue placeholder="Select language" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {LANGUAGES.map((language) => <SelectItem key={language} value={language}>{language}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </FormItem>
-                    )}
-                  />
                 </StepShell>
               )}
 
@@ -769,7 +806,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                 <StepShell
                   eyebrow="Step 4 of 7"
                   title="Set the venue direction."
-                  description="Tell A.I Do whether the location is locked, still in progress, or intentionally unconventional. The next questions adapt to your answer."
+                  description="Tell A.I Do whether the venue is locked or still in progress. The next questions adapt to your answer."
                 >
                   <div className="grid gap-4">
                     <ChoiceCard
@@ -785,13 +822,6 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                       description="Open the discovery flow to organize location, style, must-haves, and outreach notes."
                       icon={Search}
                       onClick={() => form.setValue("venueChoice", "looking", { shouldDirty: true })}
-                    />
-                    <ChoiceCard
-                      active={venueChoice === "non_traditional"}
-                      title="Private, pop-up, or non-traditional"
-                      description="Capture the area and constraints so Aria can help turn the idea into a workable plan."
-                      icon={Sparkles}
-                      onClick={() => form.setValue("venueChoice", "non_traditional", { shouldDirty: true })}
                     />
                   </div>
 
@@ -829,7 +859,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                           <FormItem>
                             <FormLabel>Where are you planning?</FormLabel>
                             <FormControl><Input className="h-14 rounded-2xl border-[#e8cfc5] bg-white text-base" placeholder="e.g. Austin, TX or Hudson Valley, NY" {...field} /></FormControl>
-                            <p className="text-sm text-[#835f66]">This gives the venue wizard and Aria a useful search area.</p>
+                            <p className="text-sm text-[#835f66]">This gives Aria a useful search area without opening the full venue workflow during setup.</p>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -839,17 +869,23 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                         name="venueDiscovery"
                         render={({ field }) => (
                           <FormItem>
-                            <VenueWizard
-                              value={{
-                                ...freshVenueDiscovery(),
-                                ...field.value,
-                                guestCount: field.value.guestCount || String(normalizeGuests(values.guestCount)),
-                                budgetRange: field.value.budgetRange || (normalizeMoney(values.totalBudget) ? `$${normalizeMoney(values.totalBudget).toLocaleString()}` : ""),
-                                location: field.value.location || values.location,
-                              }}
-                              onChange={(nextValue) => field.onChange(nextValue)}
-                              coupleNames={coupleNames}
-                            />
+                            <FormLabel>Venue search notes</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                className="min-h-28 rounded-3xl border-[#e8cfc5] bg-white p-5 text-base"
+                                placeholder="Indoor/outdoor preferences, guest needs, budget notes, neighborhoods, must-haves..."
+                                value={field.value.notes ?? ""}
+                                onChange={(event) => field.onChange({
+                                  ...freshVenueDiscovery(),
+                                  ...field.value,
+                                  guestCount: field.value.guestCount || String(normalizeGuests(values.guestCount)),
+                                  budgetRange: field.value.budgetRange || (normalizeMoney(values.totalBudget) ? `$${normalizeMoney(values.totalBudget).toLocaleString()}` : ""),
+                                  location: values.location,
+                                  notes: event.target.value,
+                                })}
+                              />
+                            </FormControl>
+                            <p className="text-sm text-[#835f66]">You can open the full venue search tools later from Wedding Profile.</p>
                           </FormItem>
                         )}
                       />
@@ -943,6 +979,9 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                           ? `With ${values.venue || "your venue"} in place, I can help keep payments, guests, and timeline details moving.`
                           : "With the venue path still open, I can help compare options, prepare outreach, and turn the search into practical next steps."}
                       </p>
+                      <p className="mt-4 text-sm leading-6 text-[#835f66]">
+                        Leave the box blank and I will still send Aria a complete first-week planning prompt from your setup details.
+                      </p>
                     </div>
                   </div>
 
@@ -954,7 +993,7 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                         <FormControl>
                           <Textarea
                             className="min-h-24 rounded-3xl border-[#e8cfc5] bg-white p-5 text-base"
-                            placeholder="Ask Aria for your first next move, or leave this blank and open the dashboard..."
+                            placeholder="Optional: ask Aria something specific, like 'what should we do next?'"
                             {...field}
                           />
                         </FormControl>
@@ -963,8 +1002,8 @@ export function OnboardingWizard({ open, onDismiss }: { open: boolean; onDismiss
                   />
 
                   <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                    <PrimaryButton type="button" disabled={saving} onClick={() => complete({ openAria: Boolean(finalPrompt?.trim()) })}>
-                      {saving ? "Saving..." : finalPrompt?.trim() ? "Ask Aria" : "Open my dashboard"}
+                    <PrimaryButton type="button" disabled={saving} onClick={() => complete({ openAria: true })}>
+                      {saving ? "Saving..." : finalPrompt?.trim() ? "Ask Aria" : "Ask Aria my next move"}
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </PrimaryButton>
                     <SecondaryButton type="button" disabled={saving} onClick={() => complete({ openAria: false })}>

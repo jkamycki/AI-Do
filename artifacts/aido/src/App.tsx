@@ -1897,8 +1897,8 @@ function Router() {
         <Route path="/save-the-date/:token" component={SaveTheDate} />
         <Route path="/photo-drop/:slug" component={PublicGuestPhotoDrop} />
         <Route path="/wedding/:slug/disposable" component={PublicDisposableCamera} />
-        <Route path="/w/:slug" component={PublicWebsite} />
         <Route path="/w/:slug/:section" component={PublicWebsite} />
+        <Route path="/w/:slug" component={PublicWebsite} />
         <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} maintenanceSection="portal-dashboard" />} />
         <Route path="/profile" component={() => <ProtectedRoute component={Profile} maintenanceSection="portal-profile" />} />
         <Route path="/calendar" component={() => <ProtectedRoute component={Calendar} />} />

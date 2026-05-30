@@ -2551,9 +2551,12 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
     venueCityStateZip,
   ].filter(Boolean);
   const selectedHotelBlockId =
-    data.customText._rsvpHotelBlockId && data.customText._rsvpHotelBlockId !== "all"
-      ? data.customText._rsvpHotelBlockId
-      : "";
+    (data.customText._travelHotelBlockId && data.customText._travelHotelBlockId !== "all"
+      ? data.customText._travelHotelBlockId
+      : data.customText._rsvpHotelBlockId && data.customText._rsvpHotelBlockId !== "all"
+        ? data.customText._rsvpHotelBlockId
+        : "")
+      .trim();
   const syncedHotel =
     (selectedHotelBlockId
       ? data.hotelOptions?.find((hotel) => String(hotel.id) === selectedHotelBlockId)
@@ -2561,9 +2564,16 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const syncedHotelAddress = syncedHotel ? websiteHotelAddressLine(syncedHotel) : "";
   const hotelName = (syncedHotel?.hotelName || data.customText._hotelName || "").trim();
   const hotelAddress = (syncedHotelAddress || data.customText._hotelAddress || "").trim();
+  const hotelBookingLink = (syncedHotel?.bookingLink || data.customText._hotelBookingLink || "").trim();
+  const hotelBookingLabel = (data.customText._hotelBookingLinkLabel || "Book hotel room").trim();
   const hasHotel = !!hotelName;
   if (!text && !data.couple.venue && !hasHotel && !ctx.editable) return null;
   const labelColor = sectionTextColor(data, "travel");
+
+  const safeHotelBookingLink =
+    hotelBookingLink && /^https?:\/\//i.test(hotelBookingLink)
+      ? hotelBookingLink
+      : "";
 
   const venueQuery = encodeURIComponent(
     [
@@ -2722,17 +2732,38 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   )}
                 </div>
               </div>
-              {hasHotel && (
-                <a
-                  href={`https://www.google.com/maps/search/${hotelQuery}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs font-medium transition-opacity hover:opacity-70"
-                  style={{ color: data.colorPalette.primary }}
-                >
-                  <Navigation className="h-3.5 w-3.5" />
-                  {data.customText._openInGoogleMaps || "Open in Google Maps"}
-                </a>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                {hasHotel && (
+                  <a
+                    href={`https://www.google.com/maps/search/${hotelQuery}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium transition-opacity hover:opacity-70"
+                    style={{ color: data.colorPalette.primary }}
+                  >
+                    <Navigation className="h-3.5 w-3.5" />
+                    {data.customText._openInGoogleMaps || "Open in Google Maps"}
+                  </a>
+                )}
+                {safeHotelBookingLink && (
+                  <a
+                    href={safeHotelBookingLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-85"
+                    style={{ background: data.colorPalette.primary }}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    {hotelBookingLabel}
+                  </a>
+                )}
+              </div>
+              {(syncedHotel?.groupName || syncedHotel?.discountCode || syncedHotel?.cutoffDate) && (
+                <div className="mt-3 space-y-1 rounded-lg px-3 py-2 text-xs" style={{ background: `${data.colorPalette.primary}10`, color: labelColor }}>
+                  {syncedHotel.groupName && <p><span className="font-semibold">Wedding block:</span> {syncedHotel.groupName}</p>}
+                  {syncedHotel.discountCode && <p><span className="font-semibold">Group code:</span> <span className="font-mono font-semibold">{syncedHotel.discountCode}</span></p>}
+                  {syncedHotel.cutoffDate && <p><span className="font-semibold">Book by:</span> {websiteHotelCutoffDate(syncedHotel.cutoffDate)}</p>}
+                </div>
               )}
             </div>
           )}
@@ -4413,7 +4444,7 @@ function TopNav({
     );
   };
 
-  const homeHref = slug && !onSectionChange ? `/w/${slug}` : undefined;
+  const homeHref = slug && !onSectionChange ? `/w/${slug}/home` : undefined;
   // Show the Share button only on the real public site (not editor preview / live preview)
   const showShare = !!slug && !onSectionChange;
 

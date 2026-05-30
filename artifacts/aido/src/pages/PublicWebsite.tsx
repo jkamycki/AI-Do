@@ -199,6 +199,11 @@ export default function PublicWebsite() {
     window.scrollTo(0, 0);
   }, [sectionSeg]);
 
+  useEffect(() => {
+    if (!slug || sectionSeg) return;
+    window.history.replaceState(null, "", `/w/${slug}/home`);
+  }, [sectionSeg, slug]);
+
   // Once the site data first loads, force the page to the very top so
   // /w/:slug (no section) always lands on Home — even if the browser
   // restored a prior scroll position from a cached tab.

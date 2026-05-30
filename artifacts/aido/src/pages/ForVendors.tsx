@@ -1,21 +1,26 @@
-import { ChangeEvent, FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   BadgeCheck,
   BriefcaseBusiness,
   CheckCircle,
   ChevronDown,
+  Globe2,
   HeartHandshake,
   ImagePlus,
+  Instagram,
   Loader2,
   Mail,
   MapPin,
+  MessageCircle,
   Search,
   Share2,
   Sparkles,
+  Star,
   Store,
   Users,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { apiFetch } from "@/lib/authFetch";
 import { Button } from "@/components/ui/button";
@@ -293,9 +298,9 @@ export default function ForVendors() {
   return (
     <div className="min-h-screen bg-[#FFF7F2] text-[#3B1C2B]">
       <header className="sticky top-0 z-20 border-b border-[#E8DDE8] bg-white/95 px-4 py-3 shadow-sm backdrop-blur sm:px-8">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
           <Link href="/" className="flex items-center gap-3">
-            <img src="/logo.png" alt="A.I DO" className="h-14 w-auto object-contain" />
+            <img src="/logo.png" alt="A.I DO" className="h-12 w-auto object-contain sm:h-14" />
           </Link>
           <nav className="hidden items-center gap-2 text-sm font-bold md:flex">
             <Link href="/" className={vendorPartnerNavClass(false)}>Home</Link>
@@ -304,7 +309,7 @@ export default function ForVendors() {
             <Link href="/for-vendors/apply" className={vendorPartnerNavClass(page === "apply")}>Apply</Link>
           </nav>
           <div className="flex items-center gap-2">
-            <Button asChild className="rounded-lg bg-[#8D294D] px-5 text-white hover:bg-[#762140]">
+            <Button asChild className="h-10 rounded-lg bg-[#8D294D] px-3 text-sm text-white hover:bg-[#762140] sm:px-5">
               <Link href="/for-vendors/apply">Partner With Us</Link>
             </Button>
             <Link href="/sign-in">
@@ -314,27 +319,33 @@ export default function ForVendors() {
             </Link>
           </div>
         </div>
+        <nav className="mx-auto mt-3 flex max-w-6xl gap-2 overflow-x-auto text-sm font-bold md:hidden" aria-label="Vendor partner sections">
+          <Link href="/" className={vendorPartnerNavClass(false)}>Home</Link>
+          <Link href="/for-vendors/vendors" className={vendorPartnerNavClass(page === "vendors")}>Benefits</Link>
+          <Link href="/for-vendors/how-it-works" className={vendorPartnerNavClass(page === "how-it-works")}>How It Works</Link>
+          <Link href="/for-vendors/apply" className={vendorPartnerNavClass(page === "apply")}>Apply</Link>
+        </nav>
       </header>
 
       <main>
         {page === "home" && (
-        <section className="relative min-h-[560px] overflow-hidden">
+        <section className="relative min-h-[620px] overflow-hidden sm:min-h-[560px]">
           <img
             src="/images/default-wedding-couple.jpg"
             alt="Wedding couple"
             className="absolute inset-0 h-full w-full object-cover"
           />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,247,242,0.96)_0%,rgba(255,247,242,0.86)_43%,rgba(255,247,242,0.18)_100%)]" />
-          <div className="relative mx-auto flex min-h-[560px] max-w-6xl items-center px-4 py-16 sm:px-8">
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,247,242,0.98)_0%,rgba(255,247,242,0.9)_54%,rgba(255,247,242,0.32)_100%)] sm:bg-[linear-gradient(90deg,rgba(255,247,242,0.96)_0%,rgba(255,247,242,0.86)_43%,rgba(255,247,242,0.18)_100%)]" />
+          <div className="relative mx-auto flex min-h-[620px] max-w-6xl items-center px-4 py-12 sm:min-h-[560px] sm:px-8 sm:py-16">
             <div className="max-w-xl">
               <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#E6C7D0] bg-white/75 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-[#B16C8E]">
                 <Sparkles className="h-4 w-4" />
                 Partner With Us
               </p>
-              <h1 className="font-serif text-5xl font-bold leading-tight text-[#8D294D] sm:text-6xl">
+              <h1 className="font-serif text-4xl font-bold leading-tight text-[#8D294D] sm:text-6xl">
                 Partner with A.I DO
               </h1>
-              <p className="mt-5 max-w-lg text-lg leading-8 text-[#3B1C2B]">
+              <p className="mt-5 max-w-lg text-base leading-7 text-[#3B1C2B] sm:text-lg sm:leading-8">
                 Get listed with A.I DO, reach couples as they plan, and share a trusted badge on your site or socials.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -397,6 +408,7 @@ export default function ForVendors() {
                 );
               })}
             </div>
+            <MockDirectoryPreview />
           </div>
         </section>
         )}
@@ -704,6 +716,161 @@ function VendorBadge({ size = "default" }: { size?: "default" | "large" }) {
           <p className="font-serif text-4xl leading-tight text-[#8D294D]">A.I DO</p>
           <p className="text-xs font-semibold text-[#6F3E54]">AI Wedding Planner Assistant</p>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function MockDirectoryPreview() {
+  const services = [
+    "Full wedding day coverage",
+    "Engagement session",
+    "Second photographer",
+    "Online gallery delivery",
+    "Timeline planning support",
+    "Soft editorial direction",
+  ];
+
+  return (
+    <div className="mt-14 text-left">
+      <div className="mx-auto max-w-3xl text-center">
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#B16C8E]">Directory preview</p>
+        <h3 className="mt-2 font-serif text-3xl font-bold text-[#8D294D] sm:text-4xl">
+          What your partner profile can look like
+        </h3>
+        <p className="mt-3 text-sm leading-6 text-[#6F3E54] sm:text-base sm:leading-7">
+          Vendors fill out the intake once, upload their logo and service photos, and A.I DO turns it into a clean profile couples can understand quickly.
+        </p>
+      </div>
+
+      <div className="mt-8 rounded-[1.25rem] border border-[#E8DDE8] bg-[#FFF7F2] p-4 shadow-[0_24px_55px_rgba(90,80,124,0.12)] sm:p-6">
+        <div className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-[#8D294D]">
+          <span aria-hidden="true">&lt;-</span>
+          Back to partner network
+        </div>
+
+        <div className="grid gap-5 lg:grid-cols-[1fr_18rem]">
+          <div className="space-y-5">
+            <section className="rounded-lg border border-[#E6C7D0] bg-white/60 p-4 shadow-sm sm:p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <div className="flex h-24 w-full items-center justify-center rounded-lg border border-[#E6C7D0] bg-white sm:w-32">
+                  <div className="text-center">
+                    <p className="font-serif text-2xl leading-none text-[#8D294D]">Everly</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-[#B16C8E]">Studio</p>
+                  </div>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-serif text-3xl font-bold text-[#24171D]">Everly Rose Photo</h4>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-[#3B1C2B]">
+                    <span className="inline-flex text-[#F59E0B]" aria-label="Five star rating">
+                      {Array.from({ length: 5 }).map((_, index) => (
+                        <Star key={index} className="h-4 w-4 fill-current" />
+                      ))}
+                    </span>
+                    <strong>New</strong>
+                    <span>(0 reviews)</span>
+                  </div>
+                  <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+                    <ProfileStat label="Category" value="Photography" />
+                    <ProfileStat label="Starting Price" value="From $3,200" />
+                    <ProfileStat label="Service Area" value="Florida" />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <div className="grid grid-cols-3 gap-3">
+              <img src="/images/default-wedding-couple.jpg" alt="Mock vendor ceremony example" className="aspect-[4/3] rounded-lg border border-[#E6C7D0] object-cover shadow-sm" />
+              <img src="/images/floral-bg.png" alt="Mock vendor detail example" className="aspect-[4/3] rounded-lg border border-[#E6C7D0] object-cover shadow-sm" />
+              <img src="/images/bokeh-bg.png" alt="Mock vendor reception example" className="aspect-[4/3] rounded-lg border border-[#E6C7D0] object-cover shadow-sm" />
+            </div>
+
+            <PreviewPanel title="About Us">
+              <p className="text-sm leading-7 text-[#3B1C2B]">
+                Everly Rose Photo creates warm, true-to-color wedding imagery with calm direction, documentary moments, and polished portraits that feel natural from getting ready through the final dance.
+              </p>
+            </PreviewPanel>
+
+            <PreviewPanel title="Services">
+              <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+                {services.map((service) => (
+                  <div key={service} className="flex items-start gap-2 text-sm text-[#3B1C2B]">
+                    <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#8D294D]" />
+                    <span>{service}</span>
+                  </div>
+                ))}
+              </div>
+            </PreviewPanel>
+          </div>
+
+          <aside className="space-y-4">
+            <section className="rounded-lg border border-[#E6C7D0] bg-white/70 p-4 shadow-sm">
+              <h4 className="font-serif text-xl font-bold text-[#24171D]">Contact Us</h4>
+              <Button className="mt-4 h-11 w-full rounded-lg bg-[linear-gradient(110deg,#D98290,#A75ED6)] text-white hover:opacity-95">
+                <MessageCircle className="mr-2 h-4 w-4" />
+                Message Partner
+              </Button>
+              <p className="mt-4 text-xs leading-5 text-[#6F3E54]">
+                Couples can start a discovery message without adding the partner to their vendor list.
+              </p>
+              <div className="mt-5 space-y-4 text-sm text-[#3B1C2B]">
+                <ContactLine icon={Mail} label="Email" value="hello@everlyrose.example" />
+                <ContactLine icon={Instagram} label="Instagram" value="@everlyrosephoto" />
+                <ContactLine icon={Globe2} label="Website" value="everlyrose.example" />
+              </div>
+            </section>
+
+            <section className="overflow-hidden rounded-lg border border-[#E6C7D0] bg-white/70 shadow-sm">
+              <div className="flex items-center gap-3 p-4">
+                <img src="/logo.png" alt="A.I DO logo" className="h-10 w-10 object-contain" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-[#8D294D]">Proud Partner of</p>
+                  <p className="font-serif text-2xl leading-none text-[#8D294D]">A.I DO</p>
+                  <p className="text-[10px] text-[#6F3E54]">AI Wedding Planner Assistant</p>
+                </div>
+                <div className="grid h-16 w-16 shrink-0 grid-cols-4 grid-rows-4 gap-0.5 rounded bg-white p-1 shadow-sm" aria-hidden="true">
+                  {Array.from({ length: 16 }).map((_, index) => (
+                    <span key={index} className={(index + Math.floor(index / 4)) % 3 === 0 ? "bg-[#24171D]" : "bg-[#F5E1EC]"} />
+                  ))}
+                </div>
+              </div>
+              <div className="border-t border-[#E6C7D0] bg-[#FFF7F2] px-4 py-3 text-center text-sm font-medium text-[#6F3E54]">
+                Scan to view this profile
+              </div>
+            </section>
+          </aside>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProfileStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#B16C8E]">{label}</p>
+      <p className="mt-1 font-semibold text-[#24171D]">{value}</p>
+    </div>
+  );
+}
+
+function PreviewPanel({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="rounded-lg border border-[#E6C7D0] bg-white/60 p-4 shadow-sm sm:p-5">
+      <h4 className="font-serif text-xl font-bold text-[#24171D]">{title}</h4>
+      <div className="my-3 h-px bg-[#E6C7D0]" />
+      {children}
+    </section>
+  );
+}
+
+function ContactLine({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-[#8D294D]" />
+      <div className="min-w-0">
+        <p className="font-bold">{label}</p>
+        <p className="break-words text-[#6F3E54]">{value}</p>
       </div>
     </div>
   );

@@ -13,7 +13,7 @@ export function publicAppOrigin() {
   return DEFAULT_PUBLIC_ORIGIN;
 }
 
-export function publishedWebsiteUrl(slug: string, section?: string) {
+export function publishedWebsiteUrl(slug: string, section = "home") {
   const cleanSlug = slug.trim().replace(/^\/+|\/+$/g, "");
   const cleanSection = section?.trim().replace(/^\/+|\/+$/g, "");
   return `${publicAppOrigin()}/w/${cleanSlug}${cleanSection ? `/${cleanSection}` : ""}`;

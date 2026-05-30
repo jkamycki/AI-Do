@@ -2277,7 +2277,7 @@ export default function WebsiteEditor() {
 
         {/* Schedule event toggles */}
         {inTab("sections") && editingRecord.sectionsEnabled.travel && <Section icon={<MapPin className="h-4 w-4" />} title="Travel & Venue Items">
-          <div className="space-y-2.5">
+          <div className="space-y-4">
             {[
               { key: "_travelVenueHidden",  label: "Venue" },
               { key: "_travelHotelHidden",  label: "Hotel" },
@@ -2300,6 +2300,70 @@ export default function WebsiteEditor() {
                 </div>
               );
             })}
+            <div className="rounded-md border bg-muted/30 p-3 space-y-3">
+              <div>
+                <p className="text-sm font-medium">Hotel booking details</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  Add the booking URL, group code, and cutoff date in the Hotels tab. The website Travel card will show the booking button and block details automatically.
+                </p>
+              </div>
+              {hotelBlocks.length > 0 ? (
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground block">Hotel shown on Travel page</Label>
+                  <Select
+                    value={editingRecord.customText._travelHotelBlockId || "first"}
+                    onValueChange={(value) => {
+                      update({
+                        customText: {
+                          ...editingRecord.customText,
+                          _travelHotelBlockId: value === "first" ? "" : value,
+                        },
+                      });
+                      setEditorSection("travel");
+                      previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Choose hotel block" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="first">Use first hotel block</SelectItem>
+                      {hotelBlocks.map((hotel) => (
+                        <SelectItem key={hotel.id} value={String(hotel.id)}>
+                          {hotel.hotelName || "Unnamed Hotel"}{hotel.bookingLink ? " - booking link" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Booking button label</Label>
+                    <Input
+                      value={editingRecord.customText._hotelBookingLinkLabel ?? ""}
+                      onChange={(event) =>
+                        update({
+                          customText: {
+                            ...editingRecord.customText,
+                            _hotelBookingLinkLabel: event.target.value,
+                          },
+                        })
+                      }
+                      placeholder="Book hotel room"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  No hotel blocks yet. Go to Hotels to add the hotel name, address, booking link, group code, and cutoff date.
+                </p>
+              )}
+              <Button asChild variant="outline" size="sm" className="w-full">
+                <a href="/hotels">
+                  <Link2 className="mr-1.5 h-3.5 w-3.5" />
+                  Open Hotels
+                </a>
+              </Button>
+            </div>
           </div>
         </Section>}
 
@@ -3788,7 +3852,8 @@ function QrCodeSection({ publicUrl, published }: { publicUrl: string; published:
   const [selectedSize, setSelectedSize] = useState(800);
   const [destination, setDestination] = useState<QrDestination>("website");
   const cleanPublicUrl = useMemo(() => publicUrl.replace(/\/+$/, ""), [publicUrl]);
-  const destinationUrl = destination === "rsvp" ? `${cleanPublicUrl}/rsvp` : cleanPublicUrl;
+  const publicWebsiteBaseUrl = useMemo(() => cleanPublicUrl.replace(/\/(?:home|rsvp)$/, ""), [cleanPublicUrl]);
+  const destinationUrl = destination === "rsvp" ? `${publicWebsiteBaseUrl}/rsvp` : `${publicWebsiteBaseUrl}/home`;
   const selectedDestination = QR_DESTINATIONS.find((item) => item.id === destination) ?? QR_DESTINATIONS[0];
 
   const qrUrl = useMemo(

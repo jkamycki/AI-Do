@@ -411,6 +411,20 @@ export default function Aria() {
     const trimmed = text.trim();
     if (!trimmed || streaming || sendingRef.current) return;
     sendingRef.current = true;
+    const onboardingFallback =
+      trimmed.includes("first-week action plan") || trimmed.includes("What's our next move")
+        ? [
+            "Here is a strong first move from your setup:",
+            "",
+            "1. Lock the planning foundation: confirm your guest estimate, budget comfort zone, wedding date, and venue direction in Wedding Profile.",
+            "2. Build the first vendor pass: add any booked vendors, then prioritize the biggest open categories first: venue, catering, photo/video, music, and florals.",
+            "3. Start the guest system early: add immediate family and wedding party first, then import or collect the rest of the list before sending invites.",
+            "4. Create the first-week checklist: choose 3 tasks you can finish this week, 3 decisions that need research, and 1 thing to ask a vendor.",
+            "5. Use A.I DO next: generate your checklist, draft vendor outreach, and review your website/RSVP setup before guests see it.",
+            "",
+            "Once the live Aria connection responds, I can turn this into tasks and drafts directly inside your workspace.",
+          ].join("\n")
+        : "";
 
     // Ensure there's an active conversation
     let convoId = activeId;
@@ -528,7 +542,7 @@ export default function Aria() {
             // makes Aria look like she "ghosted" the user. Showing the
             // message inline lets the user read what went wrong and try
             // again with context.
-            const errMsg = (parsed.error as string) || t("aria.error_generic", { defaultValue: "Aria encountered an error. Please try again." });
+            const errMsg = onboardingFallback || (parsed.error as string) || t("aria.error_generic", { defaultValue: "Aria encountered an error. Please try again." });
             accumulated = errMsg;
             updatePlaceholder({ content: errMsg, streaming: false });
             // Skip the rest of the stream cleanly
@@ -546,7 +560,7 @@ export default function Aria() {
         // Replace the placeholder with the timeout message inline so the
         // user keeps their question visible above and can retry.
         updatePlaceholder({
-          content: t("aria.error_timeout", { defaultValue: "Aria's reply took too long. The server may just be warming up — please try again." }),
+          content: onboardingFallback || t("aria.error_timeout", { defaultValue: "Aria's reply took too long. The server may just be warming up - please try again." }),
           streaming: false,
         });
         return;
@@ -554,9 +568,9 @@ export default function Aria() {
       // Network or transport failure — show inline so the user can read
       // and retry. Bubble stays visible above their original question.
       updatePlaceholder({
-        content: err instanceof Error && err.message
+        content: onboardingFallback || (err instanceof Error && err.message
           ? t("aria.error_with_detail", { detail: err.message, defaultValue: "Aria couldn't respond: {{detail}}. Please try again." })
-          : t("aria.error_no_response", { defaultValue: "Aria couldn't respond right now. Please try again." }),
+          : t("aria.error_no_response", { defaultValue: "Aria couldn't respond right now. Please try again." })),
         streaming: false,
       });
     } finally {
