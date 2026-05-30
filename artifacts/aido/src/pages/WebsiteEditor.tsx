@@ -1753,6 +1753,20 @@ export default function WebsiteEditor() {
               Previewing {previewDevice === "mobile" ? "mobile" : "desktop"} layout. Edits stay synced.
             </span>
           </div>
+          <div className="mb-3 flex gap-2 rounded-xl border border-[#E6D2D8] bg-[#FFF8F4] p-3 text-[#5B0F2A] lg:hidden">
+            <Smartphone className="mt-0.5 h-4 w-4 shrink-0 text-[#8D294D]" />
+            <div className="space-y-1">
+              <p className="text-sm font-bold">
+                {t("website_editor.mobile_control_center_title", { defaultValue: "Mobile website control center" })}
+              </p>
+              <p className="text-xs leading-relaxed text-[#6F3E54]">
+                {t("website_editor.mobile_control_center_copy", {
+                  defaultValue:
+                    "Use the app for previewing, publishing, quick copy changes, section toggles, and photo updates. Full layout design, drag ordering, and theme polish are best on desktop.",
+                })}
+              </p>
+            </div>
+          </div>
           {/* Action toolbar — 2x2 grid. Brand gold backgrounds for the
               affirmative actions (Preview, Publish, Save), green when
               Save lands or site is Published, red for Undo / Unpublish.

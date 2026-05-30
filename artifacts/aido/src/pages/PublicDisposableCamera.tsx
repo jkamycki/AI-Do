@@ -113,64 +113,6 @@ function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-function playShutterSound() {
-  try {
-    const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextClass) return;
-    const context = new AudioContextClass();
-    void context.resume?.();
-
-    const master = context.createGain();
-    master.gain.setValueAtTime(0.78, context.currentTime);
-    master.connect(context.destination);
-
-    function playNoiseClick(start: number, duration: number, frequency: number, volume: number) {
-      const buffer = context.createBuffer(1, Math.floor(context.sampleRate * duration), context.sampleRate);
-      const samples = buffer.getChannelData(0);
-      for (let index = 0; index < samples.length; index += 1) {
-        const envelope = Math.pow(1 - index / samples.length, 2.4);
-        samples[index] = (Math.random() * 2 - 1) * envelope;
-      }
-
-      const source = context.createBufferSource();
-      const filter = context.createBiquadFilter();
-      const gain = context.createGain();
-      source.buffer = buffer;
-      filter.type = "bandpass";
-      filter.frequency.setValueAtTime(frequency, context.currentTime + start);
-      filter.Q.setValueAtTime(1.8, context.currentTime + start);
-      gain.gain.setValueAtTime(0.001, context.currentTime + start);
-      gain.gain.exponentialRampToValueAtTime(volume, context.currentTime + start + 0.004);
-      gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + start + duration);
-      source.connect(filter);
-      filter.connect(gain);
-      gain.connect(master);
-      source.start(context.currentTime + start);
-      source.stop(context.currentTime + start + duration);
-    }
-
-    function playTone(start: number, duration: number, from: number, to: number, volume: number) {
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-      oscillator.type = "triangle";
-      oscillator.frequency.setValueAtTime(from, context.currentTime + start);
-      oscillator.frequency.exponentialRampToValueAtTime(to, context.currentTime + start + duration);
-      gain.gain.setValueAtTime(0.001, context.currentTime + start);
-      gain.gain.exponentialRampToValueAtTime(volume, context.currentTime + start + 0.006);
-      gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + start + duration);
-      oscillator.connect(gain);
-      gain.connect(master);
-      oscillator.start(context.currentTime + start);
-      oscillator.stop(context.currentTime + start + duration);
-    }
-
-    playNoiseClick(0, 0.035, 2600, 0.42);
-    playTone(0.026, 0.07, 310, 150, 0.18);
-    playNoiseClick(0.082, 0.04, 1850, 0.32);
-    window.setTimeout(() => void context.close().catch(() => undefined), 220);
-  } catch {}
-}
-
 function getFilmEffect(effectId: FilmEffectId) {
   return FILM_EFFECTS.find((effect) => effect.id === effectId) ?? FILM_EFFECTS[0];
 }
@@ -573,7 +515,6 @@ export default function PublicDisposableCamera() {
   }
 
   function triggerShutterEffect() {
-    playShutterSound();
     try {
       navigator.vibrate?.([24, 18, 18]);
     } catch {}

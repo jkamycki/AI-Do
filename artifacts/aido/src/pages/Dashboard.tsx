@@ -224,6 +224,86 @@ function StatChip({
   );
 }
 
+function MobileCommandCenter({ t }: { t: (key: string, options?: Record<string, unknown>) => string }) {
+  const actions: Array<{
+    href: string;
+    label: string;
+    helper: string;
+    icon: React.ElementType;
+  }> = [
+    {
+      href: "/guests",
+      label: t("dashboard.mobile_guest_hub", { defaultValue: "Guest Hub" }),
+      helper: t("dashboard.mobile_guest_hub_helper", { defaultValue: "Guests, RSVPs, invites" }),
+      icon: Users,
+    },
+    {
+      href: "/guest-photo-drop",
+      label: t("dashboard.mobile_photo_drop", { defaultValue: "Photo Drop" }),
+      helper: t("dashboard.mobile_photo_drop_helper", { defaultValue: "QR camera + approvals" }),
+      icon: Camera,
+    },
+    {
+      href: "/vendors?management=vendors",
+      label: t("dashboard.mobile_vendors", { defaultValue: "Vendors" }),
+      helper: t("dashboard.mobile_vendors_helper", { defaultValue: "List, contacts, messages" }),
+      icon: Building2,
+    },
+    {
+      href: "/budget",
+      label: t("dashboard.mobile_budget", { defaultValue: "Budget Summary" }),
+      helper: t("dashboard.mobile_budget_helper", { defaultValue: "Payments + totals" }),
+      icon: DollarSign,
+    },
+    {
+      href: "/website-editor",
+      label: t("dashboard.mobile_website", { defaultValue: "Website" }),
+      helper: t("dashboard.mobile_website_helper", { defaultValue: "Preview, publish, quick edits" }),
+      icon: LayoutGrid,
+    },
+    {
+      href: "/aria",
+      label: t("dashboard.mobile_aria", { defaultValue: "Ask Aria" }),
+      helper: t("dashboard.mobile_aria_helper", { defaultValue: "Messages + quick prompts" }),
+      icon: Sparkles,
+    },
+  ];
+
+  return (
+    <section className="md:hidden rounded-2xl border border-primary/15 bg-card p-4 shadow-sm">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+            {t("dashboard.mobile_command_center", { defaultValue: "Mobile Command Center" })}
+          </p>
+          <h2 className="mt-0.5 font-serif text-xl text-foreground">
+            {t("dashboard.mobile_command_center_title", { defaultValue: "Plan on the go" })}
+          </h2>
+        </div>
+        <span className="rounded-full border border-primary/15 bg-primary/8 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">
+          {t("dashboard.mobile_app_label", { defaultValue: "App" })}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {actions.map((action) => {
+          const Icon = action.icon;
+          return (
+            <Link key={action.href} href={action.href}>
+              <div className="min-h-[92px] rounded-xl border border-border/60 bg-background/70 p-3 transition active:scale-[0.98]">
+                <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Icon className="h-4 w-4" />
+                </div>
+                <p className="text-sm font-bold leading-tight text-foreground">{action.label}</p>
+                <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{action.helper}</p>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function FeatureCard({
   icon: Icon,
   title,
@@ -905,6 +985,8 @@ function DashboardContent() {
           </Link>
         </div>
       )}
+
+      <MobileCommandCenter t={t} />
 
       {/* Wedding Profile Overview */}
       {summary.hasProfile && summary.profile ? (
