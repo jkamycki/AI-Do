@@ -53,6 +53,17 @@ type BottomTabId = TabId | 'aria';
 type VendorHubView = 'list' | 'finance' | 'files' | 'contacts' | 'messages';
 type GuestHubView = 'guests' | 'seating' | 'invites' | 'travel' | 'website' | 'photoDrop';
 type AccountView = 'profile' | 'notifications' | 'privacy';
+type NotificationPrefs = {
+  budget: boolean;
+  guests: boolean;
+  planning: boolean;
+  vendors: boolean;
+};
+type PrivacyPrefs = {
+  ariaMemory: boolean;
+  dataExport: boolean;
+  securityAlerts: boolean;
+};
 
 type MobileSeatingTable = {
   guests: string[];
@@ -189,9 +200,24 @@ const storageKeys = {
   completedAgendaIds: 'aido.mobile.completedAgendaIds',
   calendarEvents: 'aido.mobile.calendarEvents',
   needsOnboarding: 'aido.mobile.needsOnboarding',
+  notificationPrefs: 'aido.mobile.notificationPrefs',
   planningData: 'aido.mobile.planningData',
+  privacyPrefs: 'aido.mobile.privacyPrefs',
   registryConnected: 'aido.mobile.registryConnected',
   registryUrl: 'aido.mobile.registryUrl',
+};
+
+const defaultNotificationPrefs: NotificationPrefs = {
+  budget: true,
+  guests: true,
+  planning: true,
+  vendors: true,
+};
+
+const defaultPrivacyPrefs: PrivacyPrefs = {
+  ariaMemory: true,
+  dataExport: true,
+  securityAlerts: true,
 };
 
 const colors = {
@@ -6995,10 +7021,41 @@ function AccountModal({
   user: AuthUser;
 }) {
   const [activeView, setActiveView] = useState<AccountView>(initialView);
+  const [notificationPrefs, setNotificationPrefs] = useState<NotificationPrefs>(defaultNotificationPrefs);
+  const [privacyPrefs, setPrivacyPrefs] = useState<PrivacyPrefs>(defaultPrivacyPrefs);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   useEffect(() => {
     if (open) setActiveView(initialView);
   }, [initialView, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    setSettingsLoaded(false);
+    Promise.all([
+      readStoredJson<NotificationPrefs>(storageKeys.notificationPrefs),
+      readStoredJson<PrivacyPrefs>(storageKeys.privacyPrefs),
+    ]).then(([storedNotifications, storedPrivacy]) => {
+      if (!alive) return;
+      setNotificationPrefs({ ...defaultNotificationPrefs, ...(storedNotifications ?? {}) });
+      setPrivacyPrefs({ ...defaultPrivacyPrefs, ...(storedPrivacy ?? {}) });
+      setSettingsLoaded(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !settingsLoaded) return;
+    void AsyncStorage.setItem(storageKeys.notificationPrefs, JSON.stringify(notificationPrefs));
+  }, [notificationPrefs, open, settingsLoaded]);
+
+  useEffect(() => {
+    if (!open || !settingsLoaded) return;
+    void AsyncStorage.setItem(storageKeys.privacyPrefs, JSON.stringify(privacyPrefs));
+  }, [open, privacyPrefs, settingsLoaded]);
 
   return (
     <Modal animationType="slide" onRequestClose={onClose} transparent visible={open}>
@@ -7045,19 +7102,63 @@ function AccountModal({
 
             {activeView === 'notifications' ? (
               <>
-                <VendorInfoRow icon="mail-unread-outline" label="Guest alerts" value="RSVP replies, plus-one updates, and meal changes" />
-                <VendorInfoRow icon="card-outline" label="Budget alerts" value="Upcoming payments and vendor balances" />
-                <VendorInfoRow icon="chatbubbles-outline" label="Vendor messages" value="Replies and delivery status updates" />
-                <VendorInfoRow icon="calendar-outline" label="Planning reminders" value="Checklist, timeline, and wedding-week reminders" />
+                <SettingToggleRow
+                  detail="RSVP replies, plus-one updates, and meal changes"
+                  icon="mail-unread-outline"
+                  label="Guest alerts"
+                  onToggle={() => setNotificationPrefs((current) => ({ ...current, guests: !current.guests }))}
+                  value={notificationPrefs.guests}
+                />
+                <SettingToggleRow
+                  detail="Upcoming payments and vendor balances"
+                  icon="card-outline"
+                  label="Budget alerts"
+                  onToggle={() => setNotificationPrefs((current) => ({ ...current, budget: !current.budget }))}
+                  value={notificationPrefs.budget}
+                />
+                <SettingToggleRow
+                  detail="Replies and delivery status updates"
+                  icon="chatbubbles-outline"
+                  label="Vendor messages"
+                  onToggle={() => setNotificationPrefs((current) => ({ ...current, vendors: !current.vendors }))}
+                  value={notificationPrefs.vendors}
+                />
+                <SettingToggleRow
+                  detail="Checklist, timeline, and wedding-week reminders"
+                  icon="calendar-outline"
+                  label="Planning reminders"
+                  onToggle={() => setNotificationPrefs((current) => ({ ...current, planning: !current.planning }))}
+                  value={notificationPrefs.planning}
+                />
+                <SavedStrip label="Notification choices save on this device." />
               </>
             ) : null}
 
             {activeView === 'privacy' ? (
               <>
-                <VendorInfoRow icon="sparkles-outline" label="Aria memory" value="Planning context is used to help answer wedding questions" />
-                <VendorInfoRow icon="download-outline" label="Data export" value="Use desktop for full export and account records" />
-                <VendorInfoRow icon="shield-checkmark-outline" label="Security" value="Account access is tied to your A.I DO sign-in" />
+                <SettingToggleRow
+                  detail="Planning context is used to help answer wedding questions"
+                  icon="sparkles-outline"
+                  label="Aria memory"
+                  onToggle={() => setPrivacyPrefs((current) => ({ ...current, ariaMemory: !current.ariaMemory }))}
+                  value={privacyPrefs.ariaMemory}
+                />
+                <SettingToggleRow
+                  detail="Keep full account export available from desktop"
+                  icon="download-outline"
+                  label="Data export"
+                  onToggle={() => setPrivacyPrefs((current) => ({ ...current, dataExport: !current.dataExport }))}
+                  value={privacyPrefs.dataExport}
+                />
+                <SettingToggleRow
+                  detail="Account access and important security changes"
+                  icon="shield-checkmark-outline"
+                  label="Security alerts"
+                  onToggle={() => setPrivacyPrefs((current) => ({ ...current, securityAlerts: !current.securityAlerts }))}
+                  value={privacyPrefs.securityAlerts}
+                />
                 <VendorInfoRow icon="trash-outline" label="Delete data" value="Use desktop for irreversible account and workspace deletion" />
+                <SavedStrip label="Privacy choices save on this device." />
               </>
             ) : null}
           </View>
@@ -8895,6 +8996,35 @@ function VendorInfoRow({ icon, label, value }: { icon: keyof typeof Ionicons.gly
         <Text style={styles.hubLabel}>{value}</Text>
       </View>
     </View>
+  );
+}
+
+function SettingToggleRow({
+  detail,
+  icon,
+  label,
+  onToggle,
+  value,
+}: {
+  detail: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onToggle: () => void;
+  value: boolean;
+}) {
+  return (
+    <Pressable onPress={onToggle} style={styles.settingToggleRow}>
+      <View style={styles.financeRowIcon}>
+        <Ionicons color={colors.rose} name={icon} size={18} />
+      </View>
+      <View style={styles.hubCopy}>
+        <Text style={styles.hubLabel}>{label}</Text>
+        <Text style={styles.hubDetail}>{detail}</Text>
+      </View>
+      <View style={[styles.mockSwitch, value && styles.mockSwitchActive]}>
+        <View style={[styles.mockSwitchThumb, value && styles.mockSwitchThumbActive]} />
+      </View>
+    </Pressable>
   );
 }
 
@@ -14074,6 +14204,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     padding: 16,
+  },
+  settingToggleRow: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceWarm,
+    borderColor: colors.faint,
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    padding: 12,
   },
   hubIcon: {
     alignItems: 'center',
