@@ -2512,20 +2512,6 @@ function WebsiteSection({
       {activeView === 'website' ? (
         <WebsiteMobilePreview
           data={data}
-          onOpenEditor={(sectionTitle) =>
-            openMockAction({
-              title: `${sectionTitle} editor`,
-              detail: `Edit ${sectionTitle} while keeping the guest-facing website preview visible, so couples can see the page as they edit.`,
-              primaryLabel: 'Edit section',
-            })
-          }
-          onPreview={() =>
-            openMockAction({
-              title: 'Website preview',
-              detail: 'This is the guest-facing wedding website preview with mobile and desktop views for RSVP, schedule, travel, registry, and photo sections.',
-              primaryLabel: 'Preview website',
-            })
-          }
           registryConnected={registryConnected}
         />
       ) : null}
@@ -3489,13 +3475,9 @@ function GuestDetailModal({
 
 function WebsiteMobilePreview({
   data,
-  onOpenEditor,
-  onPreview,
   registryConnected,
 }: {
   data: typeof samplePlanningData;
-  onOpenEditor: (sectionTitle: string) => void;
-  onPreview: () => void;
   registryConnected: boolean;
 }) {
   const [editorTab, setEditorTab] = useState<'setup' | 'copy' | 'design' | 'sections' | 'rsvp' | 'publish'>('setup');
@@ -3514,6 +3496,7 @@ function WebsiteMobilePreview({
   const [websiteRecord, setWebsiteRecord] = useState<MobileWebsiteRecord | null>(null);
   const [websiteSaving, setWebsiteSaving] = useState(false);
   const [websiteSyncMessage, setWebsiteSyncMessage] = useState('');
+  const [websitePreviewMessage, setWebsitePreviewMessage] = useState('');
   const [sectionState, setSectionState] = useState({
     story: true,
     schedule: true,
@@ -3618,6 +3601,39 @@ function WebsiteMobilePreview({
       setWebsiteSaving(false);
     }
   };
+  const openWebsitePreview = (message = 'Guest preview is live below. Switch between mobile and desktop to inspect the current quick-edit version.') => {
+    setWebsitePreviewMessage(message);
+  };
+  const openMobileWebsiteTool = (sectionTitle: string) => {
+    const lowerTitle = sectionTitle.toLowerCase();
+    if (lowerTitle.includes('photo') || lowerTitle.includes('gallery')) {
+      setEditorTab('design');
+      setWebsitePreviewMessage(`${sectionTitle} is handled in Photos on mobile. Use desktop for full crop, layout, and gallery ordering.`);
+      return;
+    }
+    if (lowerTitle.includes('schedule')) {
+      setEditorTab('sections');
+      setWebsitePreviewMessage('Schedule can be toggled here. Detailed event ordering stays desktop-first.');
+      return;
+    }
+    if (lowerTitle.includes('hotel') || lowerTitle.includes('travel')) {
+      setEditorTab('sections');
+      setWebsitePreviewMessage('Travel and hotel visibility is controlled here. Edit hotel blocks from Guest Hub > Travel.');
+      return;
+    }
+    if (lowerTitle.includes('registry')) {
+      setEditorTab('rsvp');
+      setWebsitePreviewMessage('Registry URL can be updated in the RSVP tab and saved to the guest website.');
+      return;
+    }
+    if (lowerTitle.includes('rsvp')) {
+      setEditorTab('rsvp');
+      setWebsitePreviewMessage('RSVP copy, deadline, hotel question, and thank-you message live here on mobile.');
+      return;
+    }
+    setEditorTab('copy');
+    setWebsitePreviewMessage(`${sectionTitle} quick copy can be updated here. Use desktop for full layout editing.`);
+  };
 
   useEffect(() => {
     let alive = true;
@@ -3642,7 +3658,7 @@ function WebsiteMobilePreview({
           <Text style={styles.cardTitle}>Website preview</Text>
           <Text style={styles.hubDetail}>Use the app for quick website updates, preview, publishing, and guest activity.</Text>
         </View>
-        <Pressable onPress={onPreview} style={styles.previewMiniButton}>
+        <Pressable onPress={() => openWebsitePreview()} style={styles.previewMiniButton}>
           <Ionicons color={colors.rose} name="eye-outline" size={15} />
           <Text style={styles.previewMiniButtonText}>Preview</Text>
         </Pressable>
@@ -3666,6 +3682,7 @@ function WebsiteMobilePreview({
         </Pressable>
       </View>
       {websiteSyncMessage ? <SavedStrip label={websiteSyncMessage} /> : null}
+      {websitePreviewMessage ? <SavedStrip label={websitePreviewMessage} /> : null}
 
       <View style={styles.websiteEditorTabRow}>
         {[
@@ -3692,9 +3709,9 @@ function WebsiteMobilePreview({
             <FormInput label="Couple name" onChangeText={setSiteTitle} placeholder="Couple name" value={siteTitle} />
             <FormInput label="Venue" onChangeText={() => undefined} placeholder="Venue" value={data.profile.venue} />
             <View style={styles.websiteEditorToolGrid}>
-              <EditorToolButton icon="image-outline" label="Upload hero photo" onPress={() => onOpenEditor('Home Page Photos')} />
-              <EditorToolButton icon="scan-outline" label="Reposition photo" onPress={() => onOpenEditor('Photo position')} />
-              <EditorToolButton icon="calendar-outline" label="Add to calendar" onPress={() => onOpenEditor('Add to Calendar')} />
+              <EditorToolButton icon="image-outline" label="Upload hero photo" onPress={() => openMobileWebsiteTool('Home Page Photos')} />
+              <EditorToolButton icon="scan-outline" label="Reposition photo" onPress={() => openMobileWebsiteTool('Photo position')} />
+              <EditorToolButton icon="calendar-outline" label="Add to calendar" onPress={() => openMobileWebsiteTool('Add to Calendar')} />
             </View>
           </>
         ) : null}
@@ -3708,7 +3725,7 @@ function WebsiteMobilePreview({
             <FormInput label="Navigation label" onChangeText={() => undefined} placeholder="Our Story" value="Our Story" />
             <View style={styles.websiteEditorToolGrid}>
               <EditorToolButton icon="sparkles-outline" label="Aria rewrite" onPress={() => setWelcomeCopy('We are so excited to celebrate with you. Find the schedule, travel details, registry, and RSVP here.')} />
-              <EditorToolButton icon="text-outline" label="Edit inline text" onPress={() => onOpenEditor('Inline Text')} />
+              <EditorToolButton icon="text-outline" label="Edit inline text" onPress={() => openMobileWebsiteTool('Inline Text')} />
             </View>
           </>
         ) : null}
@@ -3734,9 +3751,9 @@ function WebsiteMobilePreview({
               </View>
             </View>
             <View style={styles.websiteEditorToolGrid}>
-              <EditorToolButton icon="image-outline" label="Upload hero photo" onPress={() => onOpenEditor('Home Page Photos')} />
-              <EditorToolButton icon="images-outline" label="Gallery photos" onPress={() => onOpenEditor('Gallery')} />
-              <EditorToolButton icon="scan-outline" label="Reposition photo" onPress={() => onOpenEditor('Photo position')} />
+              <EditorToolButton icon="image-outline" label="Upload hero photo" onPress={() => openMobileWebsiteTool('Home Page Photos')} />
+              <EditorToolButton icon="images-outline" label="Gallery photos" onPress={() => openMobileWebsiteTool('Gallery')} />
+              <EditorToolButton icon="scan-outline" label="Reposition photo" onPress={() => openMobileWebsiteTool('Photo position')} />
             </View>
             <DesktopStudioNotice detail="Use the website editor on desktop for themes, templates, layout, section order, animation, and detailed design polish." />
           </>
@@ -3759,9 +3776,9 @@ function WebsiteMobilePreview({
               />
             ))}
             <View style={styles.websiteEditorToolGrid}>
-              <EditorToolButton icon="time-outline" label="Schedule events" onPress={() => onOpenEditor('Schedule Events')} />
-              <EditorToolButton icon="bed-outline" label="Hotel blocks" onPress={() => onOpenEditor('Travel & Venue Items')} />
-              <EditorToolButton icon="gift-outline" label="Registry links" onPress={() => onOpenEditor('Registry Links')} />
+              <EditorToolButton icon="time-outline" label="Schedule events" onPress={() => openMobileWebsiteTool('Schedule Events')} />
+              <EditorToolButton icon="bed-outline" label="Hotel blocks" onPress={() => openMobileWebsiteTool('Travel & Venue Items')} />
+              <EditorToolButton icon="gift-outline" label="Registry links" onPress={() => openMobileWebsiteTool('Registry Links')} />
             </View>
             <DesktopStudioNotice
               detail="The app can toggle sections on or off. Use A.I DO on desktop for drag-and-drop section ordering and full page layout edits."
@@ -3777,8 +3794,8 @@ function WebsiteMobilePreview({
             <FormInput label="Thank-you message" onChangeText={setThankYouMessage} placeholder="Thanks for RSVPing" value={thankYouMessage} />
             <FormInput label="Registry URL" onChangeText={setRegistryUrl} placeholder="https://..." value={registryUrl} />
             <View style={styles.websiteEditorToolGrid}>
-              <EditorToolButton icon="restaurant-outline" label="Meal options" onPress={() => onOpenEditor('RSVP Meal Options')} />
-              <EditorToolButton icon="bed-outline" label="Ask hotel needs" onPress={() => onOpenEditor('RSVP Hotel Questions')} />
+              <EditorToolButton icon="restaurant-outline" label="Meal options" onPress={() => openMobileWebsiteTool('RSVP Meal Options')} />
+              <EditorToolButton icon="bed-outline" label="Ask hotel needs" onPress={() => openMobileWebsiteTool('RSVP Hotel Questions')} />
             </View>
           </>
         ) : null}
@@ -3789,7 +3806,7 @@ function WebsiteMobilePreview({
             <EditorToggleRow label="Password protection" onPress={() => setPasswordEnabled((current) => !current)} value={passwordEnabled} />
             {passwordEnabled ? <FormInput label="Password" onChangeText={() => undefined} placeholder="Enter password" value="familyonly" /> : null}
             <View style={styles.websiteActions}>
-              <Pressable onPress={onPreview} style={styles.secondaryActionButton}>
+              <Pressable onPress={() => openWebsitePreview()} style={styles.secondaryActionButton}>
                 <Ionicons color={colors.rose} name="eye-outline" size={18} />
                 <Text style={styles.secondaryActionText}>Preview</Text>
               </Pressable>
@@ -3805,7 +3822,7 @@ function WebsiteMobilePreview({
       <View style={styles.websiteEditorPreviewGrid}>
         <View style={styles.websiteEditorRail}>
           {data.websiteSections.map((section) => (
-            <Pressable key={section.id} onPress={() => onOpenEditor(section.title)} style={styles.websiteEditorRailItem}>
+            <Pressable key={section.id} onPress={() => openMobileWebsiteTool(section.title)} style={styles.websiteEditorRailItem}>
               <View style={[styles.websiteEditorRailDot, section.status === 'Published' && styles.websiteEditorRailDotLive]} />
               <View style={styles.hubCopy}>
                 <Text style={styles.websiteEditorRailTitle}>{section.title}</Text>
@@ -3905,7 +3922,7 @@ function WebsiteMobilePreview({
                           </View>
                         ))}
                       </View>
-                      <Pressable onPress={onPreview} style={styles.websiteLiveCalendarButton}>
+                      <Pressable onPress={() => openWebsitePreview()} style={styles.websiteLiveCalendarButton}>
                         <Ionicons color={colors.surface} name="calendar-clear-outline" size={13} />
                         <Text style={styles.websiteLiveCalendarButtonText}>Add to Calendar</Text>
                       </Pressable>
@@ -3916,7 +3933,7 @@ function WebsiteMobilePreview({
                   <Text style={styles.websiteLiveHeroMeta}>{formatLongDate(data.profile.weddingDate)} - {data.profile.venue}</Text>
                   <Text style={styles.websiteLiveHeroMeta}>{data.profile.location}</Text>
                   {sectionState.rsvp ? (
-                    <Pressable onPress={onPreview} style={[styles.websiteLiveHeroButton, { backgroundColor: accentColor }]}>
+                    <Pressable onPress={() => openWebsitePreview()} style={[styles.websiteLiveHeroButton, { backgroundColor: accentColor }]}>
                       <Text style={styles.websiteLiveHeroButtonText}>RSVP</Text>
                     </Pressable>
                   ) : null}
