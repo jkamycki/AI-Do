@@ -182,8 +182,8 @@ export default function GuestPhotoDrop() {
   const settings = draft ?? data?.settings ?? null;
   const publicUrl = useMemo(() => {
     if (!data?.website.slug) return "";
-    return data.publicUploadUrl || `${publicAppOrigin()}/photo-drop/${data.website.slug}`;
-  }, [data?.publicUploadUrl, data?.website.slug]);
+    return `${publicAppOrigin()}/wedding/${data.website.slug}/disposable`;
+  }, [data?.website.slug]);
   const qrUrl = useMemo(() => publicUrl ? qrSvgDataUrl(publicUrl, 10, 4) : "", [publicUrl]);
 
   const saveSettings = useMutation({

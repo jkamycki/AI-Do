@@ -41,6 +41,7 @@ import { daysFromToday, formatCurrency, formatDeadlineLabel, formatLongDate, for
 
 const logo = require('./assets/aido-logo.png');
 const ariaAvatar = require('./assets/aria-avatar.png');
+const homeHeroPhoto = require('./assets/home-hero.jpg');
 const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? '';
 const couplePhotoUri =
   'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=640&q=90';
@@ -1390,16 +1391,17 @@ function Hero({
   const budgetPaid = data.budget.reduce((sum, item) => sum + item.paid, 0);
   const budgetTotal = data.budget.reduce((sum, item) => sum + item.total, 0);
   const budgetPercent = budgetTotal ? Math.round((budgetPaid / budgetTotal) * 100) : 0;
-  const homePhotoUri = profile.coverPhotoUrl || couplePhotoUri;
+  const syncedCoverPhotoUrl = profile.coverPhotoUrl?.includes('images.unsplash.com') ? undefined : profile.coverPhotoUrl;
+  const homePhotoSource = syncedCoverPhotoUrl ? { uri: syncedCoverPhotoUrl } : homeHeroPhoto;
 
   return (
     <LinearGradient colors={['#FFF8F4', '#FFE8DE']} style={styles.hero}>
       <View style={styles.homeHeroTop}>
-        <Image resizeMode="cover" source={{ uri: homePhotoUri }} style={styles.homeHeroPhoto} />
+        <Image resizeMode="cover" source={homePhotoSource} style={styles.homeHeroPhoto} />
         <LinearGradient
-          colors={['rgba(255,248,244,0.98)', 'rgba(255,248,244,0.62)', 'rgba(255,248,244,0)']}
-          end={{ x: 0.68, y: 0.56 }}
-          start={{ x: 0, y: 0 }}
+          colors={['rgba(42,18,27,0.12)', 'rgba(42,18,27,0.44)', 'rgba(42,18,27,0.76)']}
+          end={{ x: 0.75, y: 1 }}
+          start={{ x: 0.25, y: 0 }}
           style={styles.homeHeroPhotoWash}
         />
         <View style={styles.homeHeroCopy}>
@@ -10156,46 +10158,49 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   homeHeroTop: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.ink,
     borderColor: colors.faint,
     borderRadius: 18,
     borderWidth: 1,
-    height: 184,
+    height: 224,
     overflow: 'hidden',
     position: 'relative',
   },
   homeHeroCopy: {
+    bottom: 18,
     left: 0,
     minWidth: 0,
     paddingLeft: 16,
-    paddingTop: 18,
     position: 'absolute',
-    top: 0,
-    width: '62%',
+    paddingRight: 18,
+    width: '100%',
     zIndex: 2,
   },
   homeHeroTitle: {
-    color: colors.ink,
+    color: '#FFF8F4',
     fontFamily: 'PlayfairDisplay_700Bold',
-    fontSize: 24,
-    lineHeight: 27,
+    fontSize: 30,
+    lineHeight: 34,
+    textShadowColor: 'rgba(38,15,25,0.32)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 10,
   },
   homeHeroMeta: {
-    color: colors.rose,
+    color: '#FFE5DC',
     fontFamily: 'Inter_700Bold',
     fontSize: 12,
-    marginTop: 2,
+    marginTop: 4,
   },
   homeHeroVenue: {
-    color: colors.muted,
+    color: '#FFF8F4',
     fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    lineHeight: 13,
-    marginTop: 2,
+    fontSize: 11,
+    lineHeight: 14,
+    marginTop: 4,
     textTransform: 'uppercase',
   },
   homeHeroLocation: {
-    color: colors.muted,
+    color: '#FFE5DC',
     fontFamily: 'Inter_700Bold',
     fontSize: 9,
     letterSpacing: 0.5,
@@ -10206,9 +10211,9 @@ const styles = StyleSheet.create({
   homeHeroPhoto: {
     height: '100%',
     position: 'absolute',
-    right: 0,
+    left: 0,
     top: 0,
-    width: '68%',
+    width: '100%',
   },
   homeHeroPhotoWash: {
     bottom: 0,
