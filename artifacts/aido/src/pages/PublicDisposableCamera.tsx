@@ -181,6 +181,7 @@ export default function PublicDisposableCamera() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedEffect, setSelectedEffect] = useState<FilmEffectId>("classic");
   const [message, setMessage] = useState<string | null>(null);
+  const activeEffect = getFilmEffect(selectedEffect);
 
   useEffect(() => {
     document.title = "Disposable Camera | A.I DO";
@@ -395,9 +396,20 @@ export default function PublicDisposableCamera() {
         muted
         playsInline
         className={`h-full w-full object-cover ${status !== "ready" ? "opacity-0" : ""} ${facingMode === "user" ? "-scale-x-100" : ""}`}
+        style={{ filter: activeEffect.canvasFilter }}
       />
 
       <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(circle_at_center,transparent_38%,rgba(0,0,0,0.18)_60%,rgba(0,0,0,0.72)_100%)]" />
+      <div
+        className="pointer-events-none absolute inset-0 z-[1]"
+        style={{
+          background: `
+            linear-gradient(120deg, ${activeEffect.wash}, rgba(255,255,255,0) 48%),
+            radial-gradient(circle at 50% 48%, rgba(255,255,255,0) 42%, rgba(30,0,12,0.32) 100%)
+          `,
+          mixBlendMode: selectedEffect === "mono" ? "screen" : "soft-light",
+        }}
+      />
       <div className="pointer-events-none absolute inset-x-5 top-[max(5.5rem,calc(env(safe-area-inset-top)+4.25rem))] z-[2] h-[calc(100%-15rem)] rounded-[2rem] border border-white/18 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" />
 
       {status !== "ready" && (

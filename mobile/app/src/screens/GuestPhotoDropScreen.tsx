@@ -84,7 +84,7 @@ export function GuestPhotoDropScreen() {
   return (
     <Screen>
       <SectionHeader
-        subtitle="Wedding-day QR uploads, per-phone limits, approval queue, captions, and guest-facing destination controls."
+        subtitle="Turn guests' phones into disposable cameras with QR access, film effects, locked rolls, and portal review."
         title="Guest Photo Drop"
       />
 
@@ -99,7 +99,7 @@ export function GuestPhotoDropScreen() {
         </View>
         <View style={styles.heroCopy}>
           <Text style={[styles.heroTitle, { color: colors.text }]}>Disposable camera</Text>
-          <Text style={[styles.heroText, { color: colors.muted }]}>Guests scan, pick a film effect, take 10 locked shots, then upload the roll for approval.</Text>
+          <Text style={[styles.heroText, { color: colors.muted }]}>Guests scan your QR code, pick a film effect, take a locked roll of shots, then upload everything to your portal for approval.</Text>
         </View>
         <Switch
           onValueChange={(enabled) => updateGuestPhotoDropSettings({ enabled })}
@@ -113,7 +113,7 @@ export function GuestPhotoDropScreen() {
         <View style={styles.qrTop}>
           <View>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Print-ready QR</Text>
-            <Text style={[styles.helper, { color: colors.muted }]}>Use this for signs, invitations, or a card at the reception.</Text>
+            <Text style={[styles.helper, { color: colors.muted }]}>Use this for signs, invitations, or a card at the reception so guests can open the disposable camera.</Text>
           </View>
           <View style={[styles.qrBox, { borderColor: colors.border, backgroundColor: colors.cardStrong }]}>
             <MaterialCommunityIcons color={colors.primary} name="qrcode" size={58} />

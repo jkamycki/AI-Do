@@ -422,6 +422,53 @@ function imageUrl(url: string): string {
   return resolveMediaUrl(url) ?? url;
 }
 
+function objectMediaTail(rawSrc: string | null | undefined): string | null {
+  if (!rawSrc || /^(blob:|data:)/i.test(rawSrc)) return null;
+  const objectPrefix = "/objects/";
+  const storagePrefix = "/storage/objects/";
+  const apiStoragePrefix = "/api/storage/objects/";
+  const websiteMediaPrefix = "/api/website/media/";
+  const pathFrom = (value: string) => {
+    try {
+      return new URL(value).pathname;
+    } catch {
+      return value;
+    }
+  };
+  const path = pathFrom(rawSrc);
+  if (path.startsWith(apiStoragePrefix)) return path.slice(apiStoragePrefix.length).split(/[?#]/)[0] || null;
+  if (path.startsWith(storagePrefix)) return path.slice(storagePrefix.length).split(/[?#]/)[0] || null;
+  if (path.startsWith(websiteMediaPrefix)) return path.slice(websiteMediaPrefix.length).split(/[?#]/)[0] || null;
+  if (path.startsWith(objectPrefix)) return path.slice(objectPrefix.length).split(/[?#]/)[0] || null;
+  const publicMediaMatch = path.match(/\/api\/website\/public\/[^/]+\/media\/(.+)$/);
+  if (publicMediaMatch) return publicMediaMatch[1].split(/[?#]/)[0] || null;
+  return null;
+}
+
+function encodeMediaTail(tail: string): string {
+  return tail
+    .split("/")
+    .filter(Boolean)
+    .map((part) => {
+      try {
+        return encodeURIComponent(decodeURIComponent(part));
+      } catch {
+        return encodeURIComponent(part);
+      }
+    })
+    .join("/");
+}
+
+function authBackgroundCandidates(rawSrc: string | null | undefined, resolvedSrc: string): string[] {
+  const candidates = [resolvedSrc];
+  const tail = objectMediaTail(rawSrc) ?? objectMediaTail(resolvedSrc);
+  if (tail) {
+    const websiteMedia = resolveMediaUrl(`/api/website/media/${encodeMediaTail(tail)}`);
+    if (websiteMedia && !candidates.includes(websiteMedia)) candidates.push(websiteMedia);
+  }
+  return candidates;
+}
+
 // Fetches a protected media URL as a blob so CSS background-image can use it.
 // Falls back to the resolved URL when auth isn't required or fetch fails.
 function useAuthBlobUrl(url: string | null | undefined): string | null {
@@ -438,16 +485,19 @@ function useAuthBlobUrl(url: string | null | undefined): string | null {
     if (!resolved || !isMediaAuthRequired(url)) return;
     let cancelled = false;
     (async () => {
-      try {
-        const res = await authFetch(resolved);
-        if (!res.ok || cancelled) return;
-        const blob = await res.blob();
-        if (cancelled) return;
-        const next = URL.createObjectURL(blob);
-        blobRef.current = next;
-        setBlobSrc(next);
-      } catch {
-        /* fall back to direct URL */
+      for (const candidate of authBackgroundCandidates(url, resolved)) {
+        try {
+          const res = await authFetch(candidate);
+          if (!res.ok || cancelled) continue;
+          const blob = await res.blob();
+          if (cancelled) return;
+          const next = URL.createObjectURL(blob);
+          blobRef.current = next;
+          setBlobSrc(next);
+          return;
+        } catch {
+          /* try the next candidate */
+        }
       }
     })();
     return () => {
@@ -1662,6 +1712,17 @@ function photoFilterCss(key: string | undefined | null): string {
   return PHOTO_FILTERS[(key || "none") as keyof typeof PHOTO_FILTERS] ?? "none";
 }
 
+const DEFAULT_WEBSITE_HERO_IMAGE = "/images/default-wedding-couple.jpg";
+
+function isDefaultWebsiteHeroImage(url: string | null | undefined): boolean {
+  if (!url) return false;
+  try {
+    return new URL(url).pathname === DEFAULT_WEBSITE_HERO_IMAGE;
+  } catch {
+    return url === DEFAULT_WEBSITE_HERO_IMAGE;
+  }
+}
+
 // Single slide/tile that resolves auth for its background URL via a hook.
 function AuthBgSlide({
   url,
@@ -1750,12 +1811,15 @@ function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
   // so the bars match the rest of the site instead of showing black.
   const backdrop = fit === "contain" ? data.colorPalette.background : undefined;
 
+  const sortedHeroImages = (data.heroImages ?? [])
+    .slice()
+    .sort((a, b) => a.order - b.order)
+    .map((g) => g.url);
+  const shouldUseDefaultHero =
+    !isDefaultWebsiteHeroImage(data.heroImage) || sortedHeroImages.length === 0;
   const heroAndGallery: string[] = [
-    ...(data.heroImage ? [data.heroImage] : []),
-    ...(data.heroImages ?? [])
-      .slice()
-      .sort((a, b) => a.order - b.order)
-      .map((g) => g.url),
+    ...(shouldUseDefaultHero && data.heroImage ? [data.heroImage] : []),
+    ...sortedHeroImages,
   ];
 
   // ---- Marquee: continuously scrolls a strip of photos left-to-right ----

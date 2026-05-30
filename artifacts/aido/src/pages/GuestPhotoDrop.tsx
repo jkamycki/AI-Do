@@ -423,7 +423,7 @@ export default function GuestPhotoDrop() {
             </div>
             <h1 className="font-serif text-4xl font-bold text-[#5B0F2A] sm:text-5xl">Guest Photo Drop</h1>
             <p className="mt-2 max-w-2xl text-sm leading-7 text-[#6F3E54] sm:text-base">
-              Give guests a QR code on wedding day, route every upload to the portal first, then choose whether up to 50 approved favorites also appear on the wedding website.
+              Turn your guests&apos; phones into disposable cameras. They scan your QR code, take a limited roll of locked photos, and every upload lands in your portal first for review.
             </p>
           </div>
           <Button
@@ -456,13 +456,28 @@ export default function GuestPhotoDrop() {
           <Card className="border-[#E6A6B7]/40 bg-white/90 shadow-[0_24px_70px_rgba(91,15,42,0.10)]">
             <CardHeader>
               <CardTitle className="font-serif text-2xl text-[#5B0F2A]">Photo Drop Settings</CardTitle>
-              <CardDescription>Public access only works when your wedding website is published and this feature is turned on.</CardDescription>
+              <CardDescription>
+                Guests get a disposable-camera experience from their own phone. Public access only works when your wedding website is published and this feature is turned on.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
+              <div className="rounded-3xl border border-[#D4A373]/40 bg-[#F2E2C6]/35 p-4">
+                <div className="flex items-start gap-3">
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#8D294D] shadow-sm">
+                    <Camera className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="font-serif text-xl font-bold text-[#5B0F2A]">Phones become disposable cameras</p>
+                    <p className="mt-1 text-sm leading-6 text-[#6F3E54]">
+                      Guests scan the QR code or open the shared link, choose a film effect, take their disposable roll, and submit it to your private portal.
+                    </p>
+                  </div>
+                </div>
+              </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <SettingSwitch
                   title="Turn on Guest Photo Drop"
-                  description="Guests can open the QR link and upload photos."
+                  description="Guests can open the QR link and use their phone like a disposable camera."
                   checked={settings.enabled}
                   onCheckedChange={(checked) => updateDraftAndSave({ enabled: checked })}
                 />
@@ -592,7 +607,7 @@ export default function GuestPhotoDrop() {
                 <QrCode className="h-5 w-5 text-[#D4A373]" />
                 QR Sign Link
               </CardTitle>
-              <CardDescription>Print this on a reception sign or table card.</CardDescription>
+              <CardDescription>Print this on a reception sign or table card so guests can open the disposable camera.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {!data.website.published && (

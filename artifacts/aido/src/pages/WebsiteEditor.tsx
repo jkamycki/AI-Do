@@ -93,6 +93,17 @@ const sanitizeWebsiteSlug = (value: string) =>
     .replace(/-{2,}/g, "-")
     .slice(0, 60);
 
+const DEFAULT_WEBSITE_HERO_IMAGE = "/images/default-wedding-couple.jpg";
+
+function isDefaultWebsiteHeroImage(url: string | null | undefined): boolean {
+  if (!url) return true;
+  try {
+    return new URL(url).pathname === DEFAULT_WEBSITE_HERO_IMAGE;
+  } catch {
+    return url === DEFAULT_WEBSITE_HERO_IMAGE;
+  }
+}
+
 function editorMediaSrc(url: string | null | undefined): string | null {
   if (!url) return null;
   if (/^(blob:|data:)/i.test(url)) return url;
@@ -1516,6 +1527,10 @@ export default function WebsiteEditor() {
       if (!result) return;
       const cur = recordRef.current;
       if (!cur) return;
+      if (isDefaultWebsiteHeroImage(cur.heroImage)) {
+        update({ heroImage: result.objectPath });
+        return;
+      }
       const next = [
         ...(cur.heroImages ?? []),
         { url: result.objectPath, order: cur.heroImages?.length ?? 0 },

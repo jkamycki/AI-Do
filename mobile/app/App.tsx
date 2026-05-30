@@ -4068,7 +4068,11 @@ function PhotoDropMobilePanel({
           </View>
           <View style={styles.hubCopy}>
             <Text style={styles.cardTitle}>Photo drop</Text>
-            <Text style={styles.hubDetail}>{data.guestPhotoDrop.enabled ? 'Guest uploads are on' : 'Guest uploads are off'}</Text>
+            <Text style={styles.hubDetail}>
+              {data.guestPhotoDrop.enabled
+                ? 'Guests can use their phones like disposable cameras.'
+                : 'Turn guests phones into disposable cameras.'}
+            </Text>
           </View>
         </View>
         <Text style={[styles.websiteStatusPill, data.guestPhotoDrop.enabled ? websiteStatusStyle('Published') : websiteStatusStyle('Draft')]}>
@@ -4106,7 +4110,9 @@ function PhotoDropMobilePanel({
             </View>
             <View style={styles.hubCopy}>
               <Text style={styles.hubLabel}>{data.guestPhotoDrop.title}</Text>
-              <Text style={styles.hubDetail}>{data.guestPhotoDrop.instructions}</Text>
+              <Text style={styles.hubDetail}>
+                Guests scan the QR code or shared link, take a locked disposable roll, and upload it to your portal for review.
+              </Text>
             </View>
           </LinearGradient>
           <View style={styles.photoDropGuestFlowCard}>
