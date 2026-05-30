@@ -2713,7 +2713,6 @@ function WebsiteSection({
           onHydrate={onHydrateGuestPhotoDrop}
           onUpdateSettings={onUpdateGuestPhotoDropSettings}
           onUpdateUploadStatus={onUpdateGuestPhotoUploadStatus}
-          openMockAction={openMockAction}
         />
       ) : null}
     </Section>
@@ -4069,7 +4068,6 @@ function PhotoDropMobilePanel({
   onHydrate,
   onUpdateSettings,
   onUpdateUploadStatus,
-  openMockAction,
 }: {
   activeTab: 'share' | 'queue' | 'settings';
   data: typeof samplePlanningData;
@@ -4078,7 +4076,6 @@ function PhotoDropMobilePanel({
   onHydrate: (settings: GuestPhotoDropSettings, uploads: GuestPhotoUpload[]) => void;
   onUpdateSettings: (patch: Partial<GuestPhotoDropSettings>) => void;
   onUpdateUploadStatus: (uploadId: string, status: GuestPhotoUpload['status']) => void;
-  openMockAction: (action: MockAction) => void;
 }) {
   const [publicUploadUrl, setPublicUploadUrl] = useState('');
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
@@ -4121,21 +4118,13 @@ function PhotoDropMobilePanel({
 
   const copyUploadLink = () => {
     if (!publicUploadUrl) {
-      openMockAction({
-        title: 'Photo Drop link unavailable',
-        detail: 'Create or publish the wedding website first, then the disposable camera link will appear here.',
-        primaryLabel: 'Close',
-      });
+      setSyncMessage('Create or publish the wedding website first, then the disposable camera link will appear here.');
       return;
     }
     if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
       void navigator.clipboard.writeText(publicUploadUrl);
     }
-    openMockAction({
-      title: 'Disposable camera link copied',
-      detail: publicUploadUrl,
-      primaryLabel: 'Done',
-    });
+    setSyncMessage('Disposable camera link copied.');
   };
 
   const shareUploadLink = () => {
@@ -4144,33 +4133,21 @@ function PhotoDropMobilePanel({
       return;
     }
     void Share.share({ message: `${data.guestPhotoDrop.title}: ${publicUploadUrl}`, url: publicUploadUrl }).catch(() => {
-      openMockAction({
-        title: 'Share did not open',
-        detail: 'Copy the disposable camera link and send it by text, email, or printed signage.',
-        primaryLabel: 'Close',
-      });
+      setSyncMessage('Share did not open. Copy the disposable camera link and send it by text, email, or printed signage.');
     });
   };
 
   const sharePhotoUpload = (upload: GuestPhotoUpload) => {
     const imageUrl = upload.publicImageUrl || upload.imageUrl;
     if (!imageUrl) {
-      openMockAction({
-        title: 'Photo link unavailable',
-        detail: 'This upload does not have a downloadable image URL yet.',
-        primaryLabel: 'Close',
-      });
+      setSyncMessage('This upload does not have a downloadable image URL yet.');
       return;
     }
     void Share.share({
       message: `${upload.guestName} photo upload from A.I DO Photo Drop: ${imageUrl}`,
       url: imageUrl,
     }).catch(() => {
-      openMockAction({
-        title: 'Share did not open',
-        detail: 'Open the website Photo Drop portal to download this image directly.',
-        primaryLabel: 'Close',
-      });
+      setSyncMessage('Share did not open. Open the website Photo Drop portal to download this image directly.');
     });
   };
 
@@ -4210,15 +4187,15 @@ function PhotoDropMobilePanel({
           );
         })}
       </View>
+      {syncMessage ? (
+        <View style={styles.inlineNotice}>
+          <Ionicons color={colors.rose} name="alert-circle-outline" size={16} />
+          <Text style={styles.inlineNoticeText}>{syncMessage}</Text>
+        </View>
+      ) : null}
 
       {activeTab === 'share' ? (
         <View style={styles.photoDropPanel}>
-          {syncMessage ? (
-            <View style={styles.inlineNotice}>
-              <Ionicons color={colors.rose} name="alert-circle-outline" size={16} />
-              <Text style={styles.inlineNoticeText}>{syncMessage}</Text>
-            </View>
-          ) : null}
           <LinearGradient colors={['#FFF2EA', '#F8DDE5']} style={styles.photoDropShareCard}>
             <View style={styles.photoDropQrBox}>
               <PhotoDropQrPreview />
