@@ -9,6 +9,7 @@ import { rm } from "node:fs/promises";
 globalThis.require = createRequire(import.meta.url);
 
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
+const isProductionBuild = process.env.NODE_ENV === "production";
 
 async function buildAll() {
   const distDir = path.resolve(artifactDir, "dist");
@@ -103,7 +104,7 @@ async function buildAll() {
       "electron",
     ],
     sourcemap: false,
-    plugins: [
+    plugins: isProductionBuild ? [] : [
       // pino relies on workers to handle logging, instead of externalizing it we use a plugin to handle it
       esbuildPluginPino({ transports: ["pino-pretty"] })
     ],

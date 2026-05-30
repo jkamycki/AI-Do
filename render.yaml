@@ -3,7 +3,7 @@ services:
     name: ai-do-api
     runtime: node
     region: oregon
-    plan: free
+    plan: standard
     rootDir: .
     buildCommand: pnpm install --filter '@workspace/api-server...' --frozen-lockfile=false --prod=false && pnpm --filter @workspace/api-server run build
     startCommand: pnpm --filter @workspace/api-server run start
