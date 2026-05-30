@@ -129,4 +129,28 @@ router.get("/vendor-partners/directory", async (req, res) => {
   }
 });
 
+router.get("/vendor-partners/directory/:id", async (req, res) => {
+  try {
+    await ensureVendorPartnerDirectoryColumns();
+    const requestedId = String(req.params.id ?? "").trim();
+    if (!requestedId) return res.status(404).json({ error: "Vendor partner profile not found." });
+
+    const applications = await db
+      .select()
+      .from(vendorPartnerApplications)
+      .where(eq(vendorPartnerApplications.directoryStatus, "published"))
+      .orderBy(desc(vendorPartnerApplications.directoryPublishedAt), desc(vendorPartnerApplications.updatedAt));
+
+    const listing = applications
+      .map((application) => cleanVendorDirectoryListing(application.directoryListing, application))
+      .find((item) => item.id === requestedId);
+
+    if (!listing) return res.status(404).json({ error: "Vendor partner profile not found." });
+    res.json({ listing });
+  } catch (err) {
+    req.log.error({ err }, "Vendor partner profile load error");
+    res.status(500).json({ error: "Could not load vendor partner profile." });
+  }
+});
+
 export default router;

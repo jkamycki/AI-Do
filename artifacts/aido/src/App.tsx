@@ -17,6 +17,7 @@ import { MaintenanceNotice } from "@/components/MaintenanceNotice";
 
 const Landing = lazy(() => import("@/pages/Landing"));
 const ForVendors = lazy(() => import("@/pages/ForVendors"));
+const PublicVendorProfile = lazy(() => import("@/pages/PublicVendorProfile"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const Calendar = lazy(() => import("@/pages/Calendar"));
@@ -1879,6 +1880,7 @@ function Router() {
     <Suspense fallback={<RouteLoading />}>
       <Switch>
         <Route path="/" component={HomeRedirect} />
+        <Route path="/vendors/:partnerId" component={PublicVendorProfile} />
         <Route path="/for-vendors/:section" component={ForVendors} />
         <Route path="/for-vendors" component={ForVendors} />
         <Route path="/sign-in/*?" component={SignInPage} />
