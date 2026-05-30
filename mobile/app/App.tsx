@@ -7179,6 +7179,12 @@ function MockActionModal({ action, data, onClose }: { action: MockAction | null;
   const [saved, setSaved] = useState(false);
   const [sending, setSending] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
+  const actionTitle = action?.title.toLowerCase() ?? '';
+  const isSupportAction = actionTitle.includes('help & support');
+  const isDesktopGuidanceAction = actionTitle.includes('desktop tools');
+  const isSendAction = actionTitle.includes('send') || actionTitle.includes('rsvp reminders');
+  const savedButtonLabel = isSupportAction ? 'Email opened' : isDesktopGuidanceAction ? 'Understood' : 'Done';
+  const defaultButtonLabel = action?.primaryLabel ?? 'Save';
 
   useEffect(() => {
     setSaved(false);
@@ -7188,7 +7194,6 @@ function MockActionModal({ action, data, onClose }: { action: MockAction | null;
 
   const sendAction = async () => {
     if (!action || sending) return;
-    const actionTitle = action.title.toLowerCase();
     if (actionTitle.includes('help & support')) {
       setSending(true);
       setStatusMessage('');
@@ -7251,8 +7256,8 @@ function MockActionModal({ action, data, onClose }: { action: MockAction | null;
           {statusMessage ? <SavedStrip label={statusMessage} /> : null}
           <View style={styles.websiteActions}>
             <Pressable disabled={sending} onPress={sendAction} style={[styles.primaryActionButton, sending && styles.disabledActionButton]}>
-              <Ionicons color={colors.surface} name={saved ? 'checkmark-circle-outline' : action?.title.toLowerCase().includes('send') || action?.title.toLowerCase().includes('rsvp reminders') ? 'mail-outline' : 'save-outline'} size={18} />
-              <Text style={styles.primaryActionText}>{sending ? 'Sending...' : saved ? 'Sent' : action?.primaryLabel ?? 'Save'}</Text>
+              <Ionicons color={colors.surface} name={saved ? 'checkmark-circle-outline' : isSendAction || isSupportAction ? 'mail-outline' : isDesktopGuidanceAction ? 'desktop-outline' : 'save-outline'} size={18} />
+              <Text style={styles.primaryActionText}>{sending ? (isSupportAction ? 'Opening...' : 'Sending...') : saved ? savedButtonLabel : defaultButtonLabel}</Text>
             </Pressable>
             <Pressable onPress={onClose} style={styles.secondaryActionButton}>
               <Text style={styles.secondaryActionText}>Close</Text>
@@ -10147,7 +10152,7 @@ function openFeatureMock(openMockAction: (action: MockAction) => void, label: st
     openMockAction({
       title: 'Desktop tools',
       detail: 'Use A.I DO on desktop for full website design editing, section ordering, advanced invitation polish, exports, and admin-level workflows.',
-      primaryLabel: 'Got it',
+      primaryLabel: 'I understand',
     });
     return;
   }
