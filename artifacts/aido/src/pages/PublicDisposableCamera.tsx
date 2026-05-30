@@ -3,6 +3,7 @@ import { useLocation, useRoute } from "wouter";
 import { Camera, ExternalLink, ImagePlus, Link, Loader2, Lock, RefreshCw, RefreshCcw, Send, ZoomIn, ZoomOut } from "lucide-react";
 import { apiFetch } from "@/lib/authFetch";
 import { getGuestPhotoDeviceId } from "@/lib/guestPhotoDevice";
+import { uploadGuestPhoto } from "@/lib/guestPhotoUpload";
 
 type FacingMode = "environment" | "user";
 type CameraStatus = "starting" | "ready" | "blocked" | "unsupported" | "error";
@@ -283,18 +284,13 @@ export default function PublicDisposableCamera() {
   }
 
   async function postDisposablePhoto(file: File) {
-    const form = new FormData();
-    form.append("guestName", "Disposable Camera Guest");
-    form.append("caption", "Captured with the disposable camera");
-    if (deviceId) form.append("deviceId", deviceId);
-    form.append("photos", file);
-
-    const response = await apiFetch(`/api/website/public/${encodeURIComponent(slug)}/photo-drop`, {
-      method: "POST",
-      body: form,
+    await uploadGuestPhoto({
+      slug,
+      file,
+      guestName: "Disposable Camera Guest",
+      caption: "Captured with the disposable camera",
+      deviceId,
     });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error((body as { error?: string })?.error || "Upload failed.");
   }
 
   async function uploadLockedRoll() {

@@ -63,7 +63,7 @@ const websiteUnlockLimiter = rateLimit({
 
 const guestPhotoPublicLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
-  limit: 12,
+  limit: 300,
   standardHeaders: "draft-8",
   legacyHeaders: false,
   validate: { xForwardedForHeader: false },
@@ -459,6 +459,37 @@ function guestPhotoUsage(uploadedCount: number, totalLimit: number) {
     uploadedCount: used,
     remaining: Math.max(0, limit - used),
   };
+}
+
+function cleanGuestPhotoName(raw: unknown): string {
+  return String(raw ?? "").trim().replace(/\s+/g, " ").slice(0, 120);
+}
+
+function cleanGuestPhotoEmail(raw: unknown): string {
+  return String(raw ?? "").trim().toLowerCase().slice(0, 200);
+}
+
+function isValidGuestPhotoEmail(email: string): boolean {
+  return !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function cleanGuestPhotoCaption(raw: unknown): string {
+  return String(raw ?? "").trim().slice(0, 500);
+}
+
+function cleanGuestPhotoContentType(raw: unknown): string {
+  const contentType = String(raw ?? "").trim().toLowerCase();
+  return GUEST_PHOTO_ALLOWED_MIMES.has(contentType) ? contentType : "image/jpeg";
+}
+
+function validateGuestPhotoFileDetails(fileName: string, contentType: string, fileSize: number): string | null {
+  const extensionOk = /\.(jpe?g|png|webp|heic|heif)$/i.test(fileName);
+  if (!GUEST_PHOTO_ALLOWED_MIMES.has(contentType) && !extensionOk) {
+    return "Please upload JPG, PNG, WEBP, or HEIC photos only.";
+  }
+  if (!Number.isFinite(fileSize) || fileSize <= 0) return "Photo file size is required.";
+  if (fileSize > GUEST_PHOTO_MAX_FILE_BYTES) return "Each photo must be 5 MB or smaller.";
+  return null;
 }
 
 function serializeGuestPhotoUpload(
@@ -1940,6 +1971,144 @@ router.post("/website/public/:slug/photo-drop/usage", guestPhotoUsageLimiter, as
     });
   } catch (err) {
     req.log.error(err, "guestPhotoDropUsage failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/website/public/:slug/photo-drop/upload-url
+// Creates a short-lived R2 signed URL so guest photos upload straight to
+// object storage instead of being buffered through the API process.
+router.post("/website/public/:slug/photo-drop/upload-url", guestPhotoPublicLimiter, async (req, res) => {
+  try {
+    if (await sendMaintenanceIfActive(res, "wedding-website")) return;
+    const slug = String(req.params.slug ?? "").toLowerCase();
+    const r = await resolveGuestPhotoDropSite(slug);
+    if (!r.ok) return res.status(r.status).json({ error: "Photo drop not found" });
+
+    const settings = r.settings;
+    if (!settings.enabled) return res.status(404).json({ error: "Guest photo sharing is not available for this wedding." });
+
+    const cleanName = cleanGuestPhotoName(req.body?.guestName);
+    if (!cleanName) return res.status(400).json({ error: "Please enter your name before uploading." });
+    const cleanEmail = cleanGuestPhotoEmail(req.body?.guestEmail);
+    if (!isValidGuestPhotoEmail(cleanEmail)) return res.status(400).json({ error: "Email address looks invalid." });
+
+    const originalName = cleanGuestPhotoFileName(String(req.body?.fileName ?? "guest-photo.jpg"));
+    const contentType = cleanGuestPhotoContentType(req.body?.contentType);
+    const fileSize = Number(req.body?.fileSize ?? 0);
+    const detailError = validateGuestPhotoFileDetails(originalName, contentType, fileSize);
+    if (detailError) return res.status(detailError.includes("5 MB") ? 413 : 400).json({ error: detailError });
+
+    const uploaderKey = guestPhotoUploadKey(req, r.site, req.body?.deviceId);
+    const uploadedCount = await countGuestPhotoUploadsForKey(r.site.id, uploaderKey);
+    const usageBeforeUpload = guestPhotoUsage(uploadedCount, settings.maxUploads);
+    if (usageBeforeUpload.remaining <= 0) {
+      return res.status(409).json({
+        error: `This phone has already uploaded ${usageBeforeUpload.limit} photos for this wedding.`,
+        usage: usageBeforeUpload,
+      });
+    }
+
+    const { uploadUrl, objectPath } = await objectStorageService.createObjectEntityUploadURL(originalName, contentType);
+    res.json({
+      uploadUrl,
+      objectPath,
+      originalName,
+      contentType,
+      maxBytes: GUEST_PHOTO_MAX_FILE_BYTES,
+      usage: usageBeforeUpload,
+    });
+  } catch (err) {
+    req.log.error(err, "guestPhotoDropCreateUploadUrl failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/website/public/:slug/photo-drop/complete
+// Records a photo after the browser has uploaded it directly to storage.
+router.post("/website/public/:slug/photo-drop/complete", guestPhotoPublicLimiter, async (req, res) => {
+  try {
+    if (await sendMaintenanceIfActive(res, "wedding-website")) return;
+    const slug = String(req.params.slug ?? "").toLowerCase();
+    const r = await resolveGuestPhotoDropSite(slug);
+    if (!r.ok) return res.status(r.status).json({ error: "Photo drop not found" });
+
+    const settings = r.settings;
+    if (!settings.enabled) return res.status(404).json({ error: "Guest photo sharing is not available for this wedding." });
+
+    const cleanName = cleanGuestPhotoName(req.body?.guestName);
+    if (!cleanName) return res.status(400).json({ error: "Please enter your name before uploading." });
+    const cleanEmail = cleanGuestPhotoEmail(req.body?.guestEmail);
+    if (!isValidGuestPhotoEmail(cleanEmail)) return res.status(400).json({ error: "Email address looks invalid." });
+    const caption = cleanGuestPhotoCaption(req.body?.caption ?? req.body?.note);
+    const originalName = cleanGuestPhotoFileName(String(req.body?.originalName ?? req.body?.fileName ?? "guest-photo.jpg"));
+    const contentType = cleanGuestPhotoContentType(req.body?.contentType);
+    const fileSize = Number(req.body?.fileSize ?? 0);
+    const detailError = validateGuestPhotoFileDetails(originalName, contentType, fileSize);
+    if (detailError) return res.status(detailError.includes("5 MB") ? 413 : 400).json({ error: detailError });
+
+    const rawObjectPath = String(req.body?.objectPath ?? "");
+    const normalizedPath = objectStorageService.normalizeObjectEntityPath(rawObjectPath);
+    if (!normalizedPath.startsWith("/objects/uploads/")) {
+      return res.status(400).json({ error: "Invalid uploaded photo path." });
+    }
+
+    const uploaderKey = guestPhotoUploadKey(req, r.site, req.body?.deviceId);
+    const uploadedCount = await countGuestPhotoUploadsForKey(r.site.id, uploaderKey);
+    const usageBeforeUpload = guestPhotoUsage(uploadedCount, settings.maxUploads);
+    if (usageBeforeUpload.remaining <= 0) {
+      return res.status(409).json({
+        error: `This phone has already uploaded ${usageBeforeUpload.limit} photos for this wedding.`,
+        usage: usageBeforeUpload,
+      });
+    }
+
+    const [profile] = await db
+      .select({ id: weddingProfiles.id, userId: weddingProfiles.userId })
+      .from(weddingProfiles)
+      .where(eq(weddingProfiles.id, r.site.profileId))
+      .limit(1);
+    if (!profile) return res.status(404).json({ error: "Wedding profile not found" });
+
+    const file = await objectStorageService.getObjectEntityFile(normalizedPath);
+    const [metadata] = await file.getMetadata();
+    const storedSize = Number(metadata.size || fileSize);
+    if (Number.isFinite(storedSize) && storedSize > GUEST_PHOTO_MAX_FILE_BYTES) {
+      return res.status(413).json({ error: "Each photo must be 5 MB or smaller." });
+    }
+    await objectStorageService.trySetObjectEntityAclPolicy(normalizedPath, {
+      owner: profile.userId,
+      visibility: "private",
+    });
+
+    const status = "pending";
+    const [created] = await db
+      .insert(guestPhotoUploads)
+      .values({
+        websiteId: r.site.id,
+        profileId: r.site.profileId,
+        guestName: cleanName,
+        guestEmail: cleanEmail || null,
+        note: caption || null,
+        imageUrl: normalizedPath,
+        originalName,
+        contentType,
+        fileSize: Math.max(1, Math.min(GUEST_PHOTO_MAX_FILE_BYTES, Math.floor(storedSize || fileSize))),
+        uploaderKey,
+        status,
+        approvedAt: null,
+      })
+      .returning();
+
+    res.status(201).json({
+      success: true,
+      status,
+      upload: serializeGuestPhotoUpload(created, r.site, false, false),
+      usage: guestPhotoUsage(uploadedCount + 1, settings.maxUploads),
+      message: "Thanks! Your photos were uploaded and are waiting for the couple to approve.",
+    });
+  } catch (err) {
+    req.log.error(err, "guestPhotoDropCompleteDirectUpload failed");
     res.status(500).json({ error: "Internal server error" });
   }
 });

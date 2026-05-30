@@ -4,6 +4,7 @@ import { useRoute } from "wouter";
 import { Camera, CheckCircle2, Heart, ImagePlus, Loader2, Lock, UploadCloud, X } from "lucide-react";
 import { apiFetch } from "@/lib/authFetch";
 import { getGuestPhotoDeviceId } from "@/lib/guestPhotoDevice";
+import { uploadGuestPhoto } from "@/lib/guestPhotoUpload";
 import { publishedWebsiteUrl } from "@/lib/publicUrls";
 
 type PublicPhotoDropPayload = {
@@ -300,21 +301,21 @@ export default function PublicGuestPhotoDrop() {
     setSubmitting(true);
     setSubmitError(null);
     setSuccess(null);
-    const form = new FormData();
-    form.append("guestName", guestName.trim());
-    if (caption.trim()) form.append("caption", caption.trim());
-    if (deviceId) form.append("deviceId", deviceId);
-    files.forEach((file) => form.append("photos", file));
     try {
-      const response = await apiFetch(`/api/website/public/${encodeURIComponent(slug)}/photo-drop`, {
-        method: "POST",
-        headers: password ? { "X-Site-Password": password } : undefined,
-        body: form,
-      });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error((body as { error?: string })?.error || "Upload failed.");
-      setSuccess((body as { message?: string })?.message || "Your photos were sent. Thank you!");
-      if ((body as { usage?: PhotoDropUsage }).usage) setUsage((body as { usage: PhotoDropUsage }).usage);
+      let latestUsage: PhotoDropUsage | undefined;
+      for (const file of files) {
+        const body = await uploadGuestPhoto({
+          slug,
+          file,
+          guestName: guestName.trim(),
+          caption: caption.trim() || undefined,
+          deviceId,
+          password: password || undefined,
+        });
+        if (body.usage) latestUsage = body.usage as PhotoDropUsage;
+      }
+      setSuccess("Your photos were sent. Thank you!");
+      if (latestUsage) setUsage(latestUsage);
       setFiles([]);
       setCaption("");
       if (cameraInputRef.current) cameraInputRef.current.value = "";
