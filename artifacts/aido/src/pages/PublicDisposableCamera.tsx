@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useRoute } from "wouter";
-import { Camera, ExternalLink, ImagePlus, Link, Loader2, Lock, RefreshCw, RefreshCcw, Send, ZoomIn, ZoomOut } from "lucide-react";
+import { Camera, ExternalLink, ImagePlus, Link, Loader2, Lock, RefreshCw, RefreshCcw, Send, Zap, ZapOff, ZoomIn, ZoomOut } from "lucide-react";
 import { apiFetch } from "@/lib/authFetch";
 import { getGuestPhotoDeviceId } from "@/lib/guestPhotoDevice";
 import { uploadGuestPhoto } from "@/lib/guestPhotoUpload";
@@ -119,6 +119,32 @@ async function setWidestSupportedCameraZoom(stream: MediaStream) {
   }
 }
 
+function supportsTorch(stream: MediaStream) {
+  const [track] = stream.getVideoTracks();
+  if (!track) return false;
+
+  try {
+    const capabilities = track.getCapabilities() as MediaTrackCapabilities & { torch?: boolean };
+    return capabilities.torch === true;
+  } catch {
+    return false;
+  }
+}
+
+async function applyTorch(stream: MediaStream | null, enabled: boolean) {
+  const [track] = stream?.getVideoTracks() ?? [];
+  if (!track) return false;
+
+  try {
+    const capabilities = track.getCapabilities() as MediaTrackCapabilities & { torch?: boolean };
+    if (capabilities.torch !== true) return false;
+    await track.applyConstraints({ advanced: [{ torch: enabled } as MediaTrackConstraintSet] });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function loadImage(file: File) {
   if ("createImageBitmap" in window) {
     return window.createImageBitmap(file);
@@ -190,6 +216,7 @@ export default function PublicDisposableCamera() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const flashEnabledRef = useRef(false);
 
   const [deviceId, setDeviceId] = useState("");
   const [facingMode, setFacingMode] = useState<FacingMode>("environment");
@@ -204,6 +231,8 @@ export default function PublicDisposableCamera() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedEffect, setSelectedEffect] = useState<FilmEffectId>("classic");
   const [zoom, setZoom] = useState(1);
+  const [flashEnabled, setFlashEnabled] = useState(false);
+  const [torchSupported, setTorchSupported] = useState(false);
   const [rollSubmitted, setRollSubmitted] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const activeEffect = getFilmEffect(selectedEffect);
@@ -211,6 +240,10 @@ export default function PublicDisposableCamera() {
   useEffect(() => {
     document.title = "Disposable Camera | A.I DO";
   }, []);
+
+  useEffect(() => {
+    flashEnabledRef.current = flashEnabled;
+  }, [flashEnabled]);
 
   useEffect(() => {
     if (!slug) return;
@@ -243,8 +276,10 @@ export default function PublicDisposableCamera() {
   }, [photoRoll.length, slug]);
 
   const stopCamera = useCallback(() => {
+    void applyTorch(streamRef.current, false);
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
+    setTorchSupported(false);
   }, []);
 
   const startCamera = useCallback(async () => {
@@ -280,6 +315,11 @@ export default function PublicDisposableCamera() {
         await setWidestSupportedCameraZoom(stream);
       }
       streamRef.current = stream;
+      const canUseTorch = facingMode === "environment" && supportsTorch(stream);
+      setTorchSupported(canUseTorch);
+      if (canUseTorch && flashEnabledRef.current) {
+        await applyTorch(stream, true);
+      }
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
@@ -377,8 +417,10 @@ export default function PublicDisposableCamera() {
   async function handleShutter() {
     if (shotsRemaining <= 0 || uploading) return;
     playShutterSound();
-    setFlash(true);
-    window.setTimeout(() => setFlash(false), 150);
+    if (flashEnabled) {
+      setFlash(true);
+      window.setTimeout(() => setFlash(false), 150);
+    }
     try {
       const file = await applyFilmEffect(await captureFrame(), selectedEffect);
       addPhotoToLockedRoll(file);
@@ -395,8 +437,10 @@ export default function PublicDisposableCamera() {
       return;
     }
     playShutterSound();
-    setFlash(true);
-    window.setTimeout(() => setFlash(false), 150);
+    if (flashEnabled) {
+      setFlash(true);
+      window.setTimeout(() => setFlash(false), 150);
+    }
     try {
       addPhotoToLockedRoll(await applyFilmEffect(file, selectedEffect));
     } catch (error) {
@@ -439,7 +483,26 @@ export default function PublicDisposableCamera() {
     setZoom(1);
   }
 
+  async function toggleFlash() {
+    const nextEnabled = !flashEnabled;
+    setFlashEnabled(nextEnabled);
+    flashEnabledRef.current = nextEnabled;
+
+    if (facingMode === "environment") {
+      const torchApplied = await applyTorch(streamRef.current, nextEnabled);
+      if (nextEnabled && !torchApplied) {
+        setMessage("Flash is on. This browser will use a screen flash when you take the photo.");
+      } else if (torchApplied) {
+        setMessage(nextEnabled ? "Flash is on." : "Flash is off.");
+      }
+      return;
+    }
+
+    setMessage(nextEnabled ? "Selfie flash is on. The screen will flash when you take the photo." : "Flash is off.");
+  }
+
   const canShoot = status === "ready" && shotsRemaining > 0 && !uploading && !showUploadPrompt;
+  const flashModeLabel = torchSupported && facingMode === "environment" ? "Camera flash" : "Screen flash";
 
   return (
     <main className="fixed inset-0 overflow-hidden bg-[#070203] text-white">
@@ -527,6 +590,18 @@ export default function PublicDisposableCamera() {
       )}
 
       <div className="absolute right-4 top-1/2 z-30 flex -translate-y-1/2 flex-col items-center gap-2">
+        <button
+          type="button"
+          aria-label={flashEnabled ? "Turn flash off" : "Turn flash on"}
+          title={`${flashModeLabel} ${flashEnabled ? "on" : "off"}`}
+          onClick={() => void toggleFlash()}
+          disabled={uploading || showUploadPrompt || status !== "ready"}
+          className={`flex h-12 w-12 items-center justify-center rounded-2xl border shadow-lg backdrop-blur transition active:scale-95 disabled:opacity-40 ${
+            flashEnabled ? "border-[#F8DDE5] bg-[#F8DDE5] text-[#8D294D]" : "border-white/12 bg-black/45 text-white"
+          }`}
+        >
+          {flashEnabled ? <Zap className="h-5 w-5" /> : <ZapOff className="h-5 w-5" />}
+        </button>
         <button
           type="button"
           aria-label="Zoom in"
@@ -621,6 +696,7 @@ export default function PublicDisposableCamera() {
             aria-label="Flip camera"
             onClick={() => {
               setFacingMode((current) => (current === "environment" ? "user" : "environment"));
+              void applyTorch(streamRef.current, false);
               resetZoom();
             }}
             disabled={uploading || showUploadPrompt}
