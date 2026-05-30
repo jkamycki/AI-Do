@@ -8,10 +8,9 @@ import { getAuth, clerkClient } from "@clerk/express";
 import { db, supportTickets, contactMessages } from "@workspace/db";
 import { sendEmail, FROM_EMAIL } from "../lib/resend";
 import { getRequestLanguage } from "../lib/language";
+import { OWNER_EMAILS } from "../lib/adminOwners";
 
 const router = Router();
-
-const OWNER_EMAILS = [process.env.ADMIN_EMAIL ?? "kamyckijoseph@gmail.com"];
 
 // Stricter per-IP rate limit for the public support bot endpoint (C-3).
 const supportBotLimiter = rateLimit({

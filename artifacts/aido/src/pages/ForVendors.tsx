@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { apiFetch } from "@/lib/authFetch";
 import { Button } from "@/components/ui/button";
+import { ImageCropDialog, type CropQueueItem } from "@/components/ImageCropDialog";
 
 const CATEGORIES = [
   "Venue",
@@ -121,6 +122,8 @@ const STEPS = [
 const MAX_SERVICE_PHOTOS = 3;
 const MAX_PHOTO_MB = 5;
 const MAX_PHOTO_BYTES = MAX_PHOTO_MB * 1024 * 1024;
+const VENDOR_LOGO_MAX_DIMENSION = 1200;
+const VENDOR_SERVICE_PHOTO_MAX_DIMENSION = 1800;
 type VendorPartnerPage = "home" | "vendors" | "how-it-works" | "apply";
 
 function getVendorPartnerPage(path: string): VendorPartnerPage {
@@ -145,10 +148,68 @@ export default function ForVendors() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [cropMode, setCropMode] = useState<"logo" | "service" | null>(null);
+  const [cropQueue, setCropQueue] = useState<File[]>([]);
+  const [cropTotal, setCropTotal] = useState(0);
 
   const updateField = (field: VendorPartnerTextField, value: string) => {
     setForm(current => ({ ...current, [field]: value }));
     setError("");
+  };
+
+  const cropItem: CropQueueItem | null = cropQueue.length > 0 && cropQueue[0]
+    ? {
+      file: cropQueue[0],
+      index: cropTotal - cropQueue.length,
+      total: cropTotal,
+    }
+    : null;
+
+  const clearCropQueue = () => {
+    setCropMode(null);
+    setCropQueue([]);
+    setCropTotal(0);
+  };
+
+  const advanceCropQueue = () => {
+    setCropQueue((current) => {
+      const next = current.slice(1);
+      if (next.length === 0) {
+        setCropMode(null);
+        setCropTotal(0);
+      }
+      return next;
+    });
+  };
+
+  const addCroppedPhoto = async (file: File) => {
+    try {
+      if (cropMode === "logo") {
+        const photo = await readPhotoFile(await optimizeVendorImage(file, VENDOR_LOGO_MAX_DIMENSION));
+        setForm(current => ({ ...current, businessLogo: photo }));
+      } else if (cropMode === "service") {
+        const photo = await readPhotoFile(await optimizeVendorImage(file, VENDOR_SERVICE_PHOTO_MAX_DIMENSION));
+        setForm(current => ({
+          ...current,
+          servicePhotos: [...current.servicePhotos, photo].slice(0, MAX_SERVICE_PHOTOS),
+        }));
+      }
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not read photo.");
+    } finally {
+      advanceCropQueue();
+    }
+  };
+
+  const onCropComplete = (croppedFile: File) => {
+    void addCroppedPhoto(croppedFile);
+  };
+
+  const onCropSkip = () => {
+    const original = cropQueue[0];
+    if (original) void addCroppedPhoto(original);
+    else advanceCropQueue();
   };
 
   const handlePhotoUpload = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -173,11 +234,9 @@ export default function ForVendors() {
       event.target.value = "";
       return;
     }
-    const photos = await Promise.all(selectedFiles.map(readPhotoFile));
-    setForm(current => ({
-      ...current,
-      servicePhotos: [...current.servicePhotos, ...photos].slice(0, MAX_SERVICE_PHOTOS),
-    }));
+    setCropMode("service");
+    setCropQueue(selectedFiles);
+    setCropTotal(selectedFiles.length);
     setError("");
     event.target.value = "";
   };
@@ -195,8 +254,9 @@ export default function ForVendors() {
       event.target.value = "";
       return;
     }
-    const logo = await readPhotoFile(file);
-    setForm(current => ({ ...current, businessLogo: logo }));
+    setCropMode("logo");
+    setCropQueue([file]);
+    setCropTotal(1);
     setError("");
     event.target.value = "";
   };
@@ -464,7 +524,7 @@ export default function ForVendors() {
                       <div>
                         <p className="text-sm font-semibold text-[#8D294D]">Business logo</p>
                         <p className="text-xs leading-5 text-[#6F3E54]">
-                          Upload your logo so your partner profile can show your real branding.
+                          Upload your logo, then crop and position it for your partner profile.
                         </p>
                       </div>
                       <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-[#E6A6B7] bg-[#FFF7F2] px-4 text-sm font-semibold text-[#8D294D] hover:border-[#8D294D]">
@@ -508,7 +568,7 @@ export default function ForVendors() {
                       <div>
                         <p className="text-sm font-semibold text-[#8D294D]">Service photos</p>
                         <p className="text-xs leading-5 text-[#6F3E54]">
-                          Upload up to 3 examples for your future vendor profile.
+                          Upload up to 3 examples, then crop and position each one for your future vendor profile.
                         </p>
                       </div>
                       <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-[#E6A6B7] bg-white px-4 text-sm font-semibold text-[#8D294D] hover:border-[#8D294D]">
@@ -575,6 +635,13 @@ export default function ForVendors() {
         </section>
         )}
       </main>
+      <ImageCropDialog
+        item={cropItem}
+        onComplete={onCropComplete}
+        onSkip={onCropSkip}
+        onCancelAll={clearCropQueue}
+        initialAspect={cropMode === "logo" ? "square" : "wide"}
+      />
     </div>
   );
 }
@@ -596,6 +663,33 @@ function readPhotoFile(file: File): Promise<VendorServicePhoto> {
     reader.onerror = () => reject(new Error("Could not read photo."));
     reader.readAsDataURL(file);
   });
+}
+
+async function optimizeVendorImage(file: File, maxDimension: number): Promise<File> {
+  if (!file.type.startsWith("image/")) return file;
+  const imageUrl = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("Could not prepare image."));
+      image.src = imageUrl;
+    });
+    const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+    if (scale >= 1 && file.size <= MAX_PHOTO_BYTES) return file;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.width * scale));
+    canvas.height = Math.max(1, Math.round(image.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) return file;
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.86));
+    if (!blob) return file;
+    const baseName = file.name.replace(/\.[^.]+$/, "");
+    return new File([blob], `${baseName}-optimized.jpg`, { type: "image/jpeg" });
+  } finally {
+    URL.revokeObjectURL(imageUrl);
+  }
 }
 
 function VendorBadge({ size = "default" }: { size?: "default" | "large" }) {

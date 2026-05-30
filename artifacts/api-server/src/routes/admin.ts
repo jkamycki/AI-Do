@@ -21,6 +21,7 @@ import {
 } from "../lib/backup";
 import { sendEmail, FROM_EMAIL } from "../lib/resend";
 import { trackEvent } from "../lib/trackEvent";
+import { OWNER_EMAILS, isOwnerEmail } from "../lib/adminOwners";
 import { openai, getModel, supportsCustomTemperature } from "@workspace/integrations-openai-ai-server";
 import {
   DEFAULT_MAINTENANCE_MESSAGE,
@@ -36,11 +37,6 @@ import {
 } from "../lib/vendorPartnerDirectory";
 
 const router = Router();
-
-const OWNER_EMAILS = [
-  process.env.ADMIN_EMAIL ?? "kamyckijoseph@gmail.com",
-  "michaelgang31@gmail.com",
-];
 
 const LAUNCH_PLAN_ASSIGNEES = ["kamyckijoseph@gmail.com", "michaelgang31@gmail.com"] as const;
 const LAUNCH_PLAN_BOTH_ASSIGNEES = "michaelgang31@gmail.com,kamyckijoseph@gmail.com";
@@ -77,8 +73,7 @@ function isAllowedLaunchPlanRecipient(email: string) {
 async function isAdmin(userId: string): Promise<boolean> {
   try {
     const user = await clerkClient.users.getUser(userId);
-    const userEmails = user.emailAddresses.map(e => e.emailAddress.toLowerCase());
-    return OWNER_EMAILS.some(e => userEmails.includes(e));
+    return user.emailAddresses.some(e => isOwnerEmail(e.emailAddress));
   } catch {
     return false;
   }

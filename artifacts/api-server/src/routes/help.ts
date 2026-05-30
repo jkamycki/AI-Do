@@ -6,9 +6,9 @@ import { randomUUID } from "crypto";
 import { clerkClient } from "@clerk/express";
 import { sendEmail, FROM_EMAIL } from "../lib/resend";
 import { getSupportInboxAddresses, buildSupportThreadAddress, ensureContactThreadToken } from "../lib/supportInbox";
+import { OWNER_EMAILS, isOwnerEmail } from "../lib/adminOwners";
 import { publicFormLimiter } from "../middlewares/rateLimiter";
 
-const OWNER_EMAILS = [process.env.ADMIN_EMAIL ?? "kamyckijoseph@gmail.com"];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const router = Router();
@@ -184,8 +184,7 @@ router.post("/help/suggestion", publicFormLimiter, async (req, res) => {
 async function isAdmin(userId: string): Promise<boolean> {
   try {
     const user = await clerkClient.users.getUser(userId);
-    const userEmails = user.emailAddresses.map(e => e.emailAddress.toLowerCase());
-    return OWNER_EMAILS.some(e => userEmails.includes(e));
+    return user.emailAddresses.some(e => isOwnerEmail(e.emailAddress));
   } catch {
     return false;
   }

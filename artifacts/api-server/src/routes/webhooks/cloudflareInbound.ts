@@ -15,18 +15,14 @@ import {
 import { logger } from "../../lib/logger";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { clerkClient } from "@clerk/express";
+import { isOwnerEmail } from "../../lib/adminOwners";
 
 const router = Router();
-const OWNER_EMAILS = [
-  process.env.ADMIN_EMAIL ?? "kamyckijoseph@gmail.com",
-  "michaelgang31@gmail.com",
-];
 
 async function isAdmin(userId: string): Promise<boolean> {
   try {
     const user = await clerkClient.users.getUser(userId);
-    const userEmails = user.emailAddresses.map(e => e.emailAddress.toLowerCase());
-    return OWNER_EMAILS.some(email => userEmails.includes(email));
+    return user.emailAddresses.some(email => isOwnerEmail(email.emailAddress));
   } catch {
     return false;
   }

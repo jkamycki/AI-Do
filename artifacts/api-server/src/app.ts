@@ -397,13 +397,13 @@ import clerkWebhookRouter from "./routes/webhooks/clerkWebhook";
 app.use("/api", clerkWebhookRouter);
 
 // ─── Body size limits ─────────────────────────────────────────────────────────
-// 25 MB cap covers vendor partner applications that submit a logo plus up to
+// 50 MB cap covers vendor partner applications that submit a logo plus up to
 // three service photos as data URLs. File uploads (contracts, mood-board
 // images) flow through dedicated multer/signed-URL paths with their own caps.
 // Webhooks (Clerk, Resend, Cloudflare) use their own express.raw() handlers
 // before this point, so their inbound-email allowance is unaffected.
-app.use(express.json({ limit: "25mb" }));
-app.use(express.urlencoded({ extended: true, limit: "25mb" }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // Convert "PayloadTooLargeError" from body-parser into a clean 413 instead
 // of leaking a stack trace.
@@ -412,7 +412,7 @@ app.use((err: unknown, _req: express.Request, res: express.Response, next: expre
     err && typeof err === "object" &&
     (err as { type?: string }).type === "entity.too.large"
   ) {
-    res.status(413).json({ error: "Request body too large. Maximum is 25 MB." });
+    res.status(413).json({ error: "Request body too large. Maximum is 50 MB." });
     return;
   }
   next(err);
