@@ -5721,7 +5721,7 @@ function VendorsSection({
           <View style={styles.cardHeaderRow}>
             <View>
               <Text style={styles.cardTitle}>Vendor List</Text>
-              <Text style={styles.hubDetail}>A contact-first view for vendor status, balances, contracts, and quick actions.</Text>
+              <Text style={styles.hubDetail}>A contact-first view for vendor status, balances, files, and quick actions.</Text>
             </View>
             <Text style={styles.smallStatus}>{vendors.length} vendors</Text>
           </View>
@@ -5837,7 +5837,7 @@ function MoneySection({
 }) {
   const [addPaymentOpen, setAddPaymentOpen] = useState(false);
   const [addMiscOpen, setAddMiscOpen] = useState(false);
-  const [financeView, setFinanceView] = useState<'payments' | 'vendors' | 'misc' | 'contracts' | 'docs'>('payments');
+  const [financeView, setFinanceView] = useState<'payments' | 'vendors' | 'misc'>('payments');
   const [paymentView, setPaymentView] = useState<'upcoming' | 'all' | 'paid'>('upcoming');
   const [scheduleItemId, setScheduleItemId] = useState<string | null>(null);
   const [miscForm, setMiscForm] = useState({
@@ -6128,7 +6128,7 @@ function MoneySection({
       </LinearGradient>
 
       <DesktopStudioNotice
-        detail={embedded ? 'Use Budget Summary here for payments and balances. Contracts and documents now live in the Vendors Files tab.' : 'Use the app for payments, balances, contracts, receipts, and quick updates. Use A.I DO on desktop for deep reports, exports, and larger budget review views.'}
+        detail="Use Budget Summary here for payments and balances. Contracts and documents now live in Vendors > Files."
         title="Deep budget reports are desktop-first"
       />
 
@@ -6150,16 +6150,10 @@ function MoneySection({
           ['payments', 'Payments', 'card-outline'],
           ['vendors', 'Costs', 'cash-outline'],
           ['misc', 'Misc', 'receipt-outline'],
-          ...(!embedded
-            ? [
-                ['contracts', 'Contracts', 'document-text-outline'],
-                ['docs', 'Docs', 'folder-open-outline'],
-              ]
-            : []),
         ].map(([id, label, icon]) => {
           const active = financeView === id;
           return (
-            <Pressable key={id} onPress={() => setFinanceView(id as 'payments' | 'vendors' | 'misc' | 'contracts' | 'docs')} style={[styles.financeSwitchButton, active && styles.financeSwitchButtonActive]}>
+            <Pressable key={id} onPress={() => setFinanceView(id as 'payments' | 'vendors' | 'misc')} style={[styles.financeSwitchButton, active && styles.financeSwitchButtonActive]}>
               <Ionicons color={active ? colors.surface : colors.rose} name={icon as keyof typeof Ionicons.glyphMap} size={16} />
               <Text style={[styles.financeSwitchText, active && styles.financeSwitchTextActive]}>{label}</Text>
             </Pressable>
@@ -6242,14 +6236,6 @@ function MoneySection({
         </>
       ) : null}
 
-      {financeView === 'contracts' ? (
-        <FinanceContractsPanel data={data} openMockAction={openMockAction} />
-      ) : null}
-
-      {financeView === 'docs' ? (
-        <FinanceDocumentsPanel data={data} openMockAction={openMockAction} />
-      ) : null}
-
       {financeView === 'misc' ? (
         <Card>
           <View style={styles.cardHeaderRow}>
@@ -6311,7 +6297,7 @@ function MoneySection({
   }
 
   return (
-    <Section title="Budget Summary" subtitle="Budget, vendors, payments, contracts, and files tied together.">
+    <Section title="Budget Summary" subtitle="Budget, vendor costs, payments, and misc expenses tied together.">
       {content}
     </Section>
   );
@@ -9097,7 +9083,7 @@ function VendorTrackerCard({
           <Ionicons color={colors.rose} name="document-attach-outline" size={17} />
           <View style={styles.hubCopy}>
             <Text style={styles.noContractTitle}>No contract uploaded</Text>
-            <Text style={styles.hubDetail}>Upload it under Contract so Aria can track terms and payment dates.</Text>
+            <Text style={styles.hubDetail}>Upload it under Files so Aria can track terms and payment dates.</Text>
           </View>
           <Ionicons color={colors.rose} name="cloud-upload-outline" size={18} />
         </Pressable>
