@@ -3,8 +3,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import app from "./app";
 import { logger } from "./lib/logger";
-import { scheduleBackups } from "./lib/backup";
-import { scheduleTaskDeadlineReminders } from "./lib/taskReminders";
 import { pool } from "@workspace/db";
 
 // Neon free-tier computes auto-suspend after a few minutes of idle, and the
@@ -78,8 +76,7 @@ runMigrations()
       if (process.env["CLERK_DISABLE_BREACHED_PASSWORD_CHECK"] === "true") {
         void disableClerkBreachedPasswordCheck();
       }
-      scheduleBackups();
-      scheduleTaskDeadlineReminders();
+      void startBackgroundJobs();
 
       // SSE connections stay open for the duration of an AI response.
       // Render (and most proxies) close idle TCP connections after ~75s by
@@ -121,5 +118,23 @@ async function disableClerkBreachedPasswordCheck(): Promise<void> {
     );
   } catch (err) {
     logger.warn({ err }, "Clerk: failed to request breach-check disable");
+  }
+}
+
+async function startBackgroundJobs(): Promise<void> {
+  try {
+    if (process.env["DISABLE_SCHEDULED_BACKUPS"] !== "true") {
+      const { scheduleBackups } = await import("./lib/backup");
+      scheduleBackups();
+    }
+  } catch (err) {
+    logger.warn({ err }, "Failed to start scheduled backups");
+  }
+
+  try {
+    const { scheduleTaskDeadlineReminders } = await import("./lib/taskReminders");
+    scheduleTaskDeadlineReminders();
+  } catch (err) {
+    logger.warn({ err }, "Failed to start task deadline reminders");
   }
 }

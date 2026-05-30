@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type RequestHandler } from "express";
 import healthRouter from "./health";
 import profileRouter from "./wedding/profile";
 import timelineRouter from "./wedding/timeline";
@@ -10,7 +10,6 @@ import checklistRouter from "./wedding/checklist";
 import dayofRouter from "./wedding/dayof";
 import dashboardRouter from "./wedding/dashboard";
 import storageRouter from "./storage";
-import pdfRouter from "./pdf";
 import adminRouter from "./admin";
 import collaboratorsRouter from "./collaborators";
 import workspaceRouter from "./workspace";
@@ -22,8 +21,6 @@ import seatingRouter from "./seating";
 import guestsRouter from "./guests";
 import hotelsRouter from "./wedding/hotels";
 import weddingPartyRouter from "./wedding/weddingParty";
-import contractsRouter from "./contracts";
-import documentsRouter from "./documents";
 import accountRouter from "./account";
 import guestCollectRouter from "./guestCollect";
 import messagingRouter from "./wedding/messaging";
@@ -31,7 +28,6 @@ import ttsRouter from "./tts";
 import authRouter from "./auth";
 import rsvpRouter from "./rsvp";
 import moodboardRouter from "./moodboard";
-import invitationCustomizationsRouter from "./invitationCustomizations";
 import websiteRouter from "./website";
 import trackRouter from "./track";
 import maintenanceRouter from "./maintenance";
@@ -39,6 +35,23 @@ import mobileRouter from "./mobile";
 import vendorPartnersRouter from "./vendorPartners";
 
 const router: IRouter = Router();
+
+function lazyRouter(loader: () => Promise<{ default: IRouter }>): IRouter {
+  const lazy = Router();
+  let loaded: Promise<IRouter> | null = null;
+  const handle: RequestHandler = async (req, res, next) => {
+    try {
+      loaded ??= loader().then((mod) => mod.default);
+      const resolved = await loaded;
+      resolved(req, res, next);
+    } catch (err) {
+      loaded = null;
+      next(err);
+    }
+  };
+  lazy.use(handle);
+  return lazy;
+}
 
 router.use(healthRouter);
 router.use(profileRouter);
@@ -51,7 +64,7 @@ router.use(checklistRouter);
 router.use(dayofRouter);
 router.use(dashboardRouter);
 router.use(storageRouter);
-router.use(pdfRouter);
+router.use(lazyRouter(() => import("./pdf")));
 router.use(adminRouter);
 router.use(collaboratorsRouter);
 router.use(workspaceRouter);
@@ -63,8 +76,8 @@ router.use(seatingRouter);
 router.use(guestsRouter);
 router.use(hotelsRouter);
 router.use(weddingPartyRouter);
-router.use(contractsRouter);
-router.use(documentsRouter);
+router.use(lazyRouter(() => import("./contracts")));
+router.use(lazyRouter(() => import("./documents")));
 router.use(accountRouter);
 router.use(guestCollectRouter);
 router.use(messagingRouter);
@@ -72,7 +85,7 @@ router.use(ttsRouter);
 router.use(authRouter);
 router.use(rsvpRouter);
 router.use(moodboardRouter);
-router.use(invitationCustomizationsRouter);
+router.use(lazyRouter(() => import("./invitationCustomizations")));
 router.use(websiteRouter);
 router.use(trackRouter);
 router.use(maintenanceRouter);
