@@ -960,7 +960,6 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
                 setAccountView(view);
                 setAccountOpen(true);
               }}
-              openMockAction={setMockAction}
               openTab={setActiveTab}
             />
           ) : null}
@@ -6621,17 +6620,16 @@ function FeatureHub({
   onAddWorkspaceInvite,
   onRemoveWorkspaceInvite,
   onOpenAccount,
-  openMockAction,
   openTab,
 }: {
   data: typeof samplePlanningData;
   onAddWorkspaceInvite: (invite: (typeof samplePlanningData.workspaceInvites)[number]) => void;
   onRemoveWorkspaceInvite: (inviteId: string) => void;
   onOpenAccount: (view: AccountView) => void;
-  openMockAction: (action: MockAction) => void;
   openTab: (tab: TabId) => void;
 }) {
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [moreMessage, setMoreMessage] = useState('');
   const pendingInvites = data.workspaceInvites.filter((invite) => invite.status !== 'Accepted').length;
   const acceptedInvites = data.workspaceInvites.length - pendingInvites;
 
@@ -6686,10 +6684,19 @@ function FeatureHub({
                   openTab(target);
                   return;
                 }
-                openFeatureMock(openMockAction, label);
+                if (label === 'Help & support') {
+                  setMoreMessage('Support is ready: email support@aidowedding.net for account access, guest sending, vendor files, sync, or publishing help.');
+                  return;
+                }
+                if (label === 'Desktop tools') {
+                  setMoreMessage('Use A.I DO on desktop for full website design editing, section ordering, invitation polish, exports, and admin-level workflows.');
+                  return;
+                }
+                setMoreMessage(`${label} is available from the matching app section.`);
               }}
             />
           ))}
+          {moreMessage && group.title === 'Support' ? <SavedStrip label={moreMessage} /> : null}
         </View>
       ))}
       <WorkspaceModal data={data} onAddInvite={onAddWorkspaceInvite} onClose={() => setWorkspaceOpen(false)} onRemoveInvite={onRemoveWorkspaceInvite} open={workspaceOpen} />
@@ -10195,30 +10202,6 @@ function targetTabForFeature(label: string): TabId | null {
   if (vendors.has(label)) return 'vendors';
   if (finance.has(label)) return 'vendors';
   return null;
-}
-
-function openFeatureMock(openMockAction: (action: MockAction) => void, label: string) {
-  if (label === 'Help & support') {
-    openMockAction({
-      title: 'Help & support',
-      detail: 'Get help with mobile app sync, account access, guest sending, vendor files, and wedding website publishing.',
-      primaryLabel: 'Contact support',
-    });
-    return;
-  }
-  if (label === 'Desktop tools') {
-    openMockAction({
-      title: 'Desktop tools',
-      detail: 'Use A.I DO on desktop for full website design editing, section ordering, advanced invitation polish, exports, and admin-level workflows.',
-      primaryLabel: 'I understand',
-    });
-    return;
-  }
-  openMockAction({
-    title: label,
-    detail: `${label} includes editable details, saved changes, and related planning data.`,
-    primaryLabel: 'Save details',
-  });
 }
 
 function Progress({ value }: { value: number }) {
