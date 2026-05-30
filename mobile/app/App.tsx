@@ -52,6 +52,7 @@ type TabId = 'today' | 'website' | 'plan' | 'guests' | 'vendors' | 'more';
 type BottomTabId = TabId | 'aria';
 type VendorHubView = 'list' | 'finance' | 'files' | 'contacts' | 'messages';
 type GuestHubView = 'guests' | 'seating' | 'invites' | 'travel' | 'website' | 'photoDrop';
+type AccountView = 'profile' | 'notifications' | 'privacy';
 
 type MobileSeatingTable = {
   guests: string[];
@@ -279,6 +280,7 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
   const [planningDataLoaded, setPlanningDataLoaded] = useState(false);
   const [ariaOpen, setAriaOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [accountView, setAccountView] = useState<AccountView>('profile');
   const [mockAction, setMockAction] = useState<MockAction | null>(null);
   const [selectedVendor, setSelectedVendor] = useState<VendorRecord | null>(null);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
@@ -847,7 +849,10 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
         <ScrollView contentContainerStyle={[styles.scrollContent, { maxWidth }]} showsVerticalScrollIndicator={false}>
           <Header
             firstName={authUser.firstName}
-            onOpenAccount={() => setAccountOpen(true)}
+            onOpenAccount={() => {
+              setAccountView('profile');
+              setAccountOpen(true);
+            }}
           />
           {activeTab === 'today' ? (
             <>
@@ -918,7 +923,10 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
             <FeatureHub
               data={data}
               onAddWorkspaceInvite={addWorkspaceInvite}
-              onOpenAccount={() => setAccountOpen(true)}
+              onOpenAccount={(view) => {
+                setAccountView(view);
+                setAccountOpen(true);
+              }}
               openMockAction={setMockAction}
               openTab={setActiveTab}
             />
@@ -936,6 +944,7 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
         <AriaModal contained={showPhonePreview} data={data} open={ariaOpen} onClose={() => setAriaOpen(false)} />
         <AccountModal
           clerkConnected={Boolean(clerkSession)}
+          initialView={accountView}
           onClose={() => setAccountOpen(false)}
           onSignOut={() => {
             setAccountOpen(false);
@@ -6559,7 +6568,7 @@ function FeatureHub({
 }: {
   data: typeof samplePlanningData;
   onAddWorkspaceInvite: (invite: (typeof samplePlanningData.workspaceInvites)[number]) => void;
-  onOpenAccount: () => void;
+  onOpenAccount: (view: AccountView) => void;
   openMockAction: (action: MockAction) => void;
   openTab: (tab: TabId) => void;
 }) {
@@ -6597,8 +6606,16 @@ function FeatureHub({
               label={label}
               detail={detail}
               onPress={() => {
-                if (label === 'Account settings' || label === 'Notifications' || label === 'Privacy & data') {
-                  onOpenAccount();
+                if (label === 'Account settings') {
+                  onOpenAccount('profile');
+                  return;
+                }
+                if (label === 'Notifications') {
+                  onOpenAccount('notifications');
+                  return;
+                }
+                if (label === 'Privacy & data') {
+                  onOpenAccount('privacy');
                   return;
                 }
                 if (label === 'Workspace') {
@@ -6964,17 +6981,25 @@ function AriaModal({
 
 function AccountModal({
   clerkConnected,
+  initialView,
   onClose,
   onSignOut,
   open,
   user,
 }: {
   clerkConnected: boolean;
+  initialView: AccountView;
   onClose: () => void;
   onSignOut: () => void;
   open: boolean;
   user: AuthUser;
 }) {
+  const [activeView, setActiveView] = useState<AccountView>(initialView);
+
+  useEffect(() => {
+    if (open) setActiveView(initialView);
+  }, [initialView, open]);
+
   return (
     <Modal animationType="slide" onRequestClose={onClose} transparent visible={open}>
       <View style={styles.modalBackdrop}>
@@ -6993,11 +7018,48 @@ function AccountModal({
             </Pressable>
           </View>
 
+          <View style={styles.eventTypeRow}>
+            {[
+              ['profile', 'Profile'],
+              ['notifications', 'Notifications'],
+              ['privacy', 'Privacy'],
+            ].map(([id, label]) => {
+              const active = activeView === id;
+              return (
+                <Pressable key={id} onPress={() => setActiveView(id as AccountView)} style={[styles.eventTypePill, active && styles.eventTypePillActive]}>
+                  <Text style={[styles.eventTypeText, active && styles.eventTypeTextActive]}>{label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
           <View style={styles.vendorInfoList}>
-            <VendorInfoRow icon="person-circle-outline" label="Profile" value={`${user.firstName} - Couple account`} />
-            <VendorInfoRow icon="notifications-outline" label="Notifications" value="RSVP, vendor, payment, and deadline alerts" />
-            <VendorInfoRow icon="shield-checkmark-outline" label="Privacy" value="Aria memory, data export, and security" />
-            <VendorInfoRow icon="cloud-done-outline" label="Website sync" value={hasMobileApiBase() && clerkConnected ? 'Automatic with your A.I DO account' : 'Active after sign-in'} />
+            {activeView === 'profile' ? (
+              <>
+                <VendorInfoRow icon="person-circle-outline" label="Name" value={user.firstName || 'Couple account'} />
+                <VendorInfoRow icon="mail-outline" label="Email" value={user.email} />
+                <VendorInfoRow icon="cloud-done-outline" label="Website sync" value={hasMobileApiBase() && clerkConnected ? 'Automatic with your A.I DO account' : 'Active after sign-in'} />
+                <VendorInfoRow icon="phone-portrait-outline" label="Mobile app" value="Quick planning controls and live website sync" />
+              </>
+            ) : null}
+
+            {activeView === 'notifications' ? (
+              <>
+                <VendorInfoRow icon="mail-unread-outline" label="Guest alerts" value="RSVP replies, plus-one updates, and meal changes" />
+                <VendorInfoRow icon="card-outline" label="Budget alerts" value="Upcoming payments and vendor balances" />
+                <VendorInfoRow icon="chatbubbles-outline" label="Vendor messages" value="Replies and delivery status updates" />
+                <VendorInfoRow icon="calendar-outline" label="Planning reminders" value="Checklist, timeline, and wedding-week reminders" />
+              </>
+            ) : null}
+
+            {activeView === 'privacy' ? (
+              <>
+                <VendorInfoRow icon="sparkles-outline" label="Aria memory" value="Planning context is used to help answer wedding questions" />
+                <VendorInfoRow icon="download-outline" label="Data export" value="Use desktop for full export and account records" />
+                <VendorInfoRow icon="shield-checkmark-outline" label="Security" value="Account access is tied to your A.I DO sign-in" />
+                <VendorInfoRow icon="trash-outline" label="Delete data" value="Use desktop for irreversible account and workspace deletion" />
+              </>
+            ) : null}
           </View>
 
           <View style={styles.websiteActions}>
