@@ -664,6 +664,7 @@ export default function OperationsCenterPage() {
   const [vendorReplyText, setVendorReplyText] = useState<Record<number, string>>({});
   const [vendorDirectoryEditorId, setVendorDirectoryEditorId] = useState<number | null>(null);
   const [vendorDirectoryDrafts, setVendorDirectoryDrafts] = useState<Record<number, VendorDirectoryListingDraft>>({});
+  const [vendorIntakeFilter, setVendorIntakeFilter] = useState<"all" | "new" | "reviewing" | "approved" | "declined" | "published">("all");
   const [launchPlanItems, setLaunchPlanItems] = useState<LaunchPlanItem[]>(() => {
     if (typeof window === "undefined") return fallbackLaunchPlanItems;
     try {
@@ -736,6 +737,19 @@ export default function OperationsCenterPage() {
   });
   const vendorApplications = vendorApplicationsData?.applications ?? [];
   const newVendorApplicationCount = vendorApplications.filter(application => application.status === "new").length;
+  const vendorIntakeCounts = {
+    total: vendorApplications.length,
+    new: vendorApplications.filter(application => application.status === "new").length,
+    reviewing: vendorApplications.filter(application => application.status === "reviewing").length,
+    approved: vendorApplications.filter(application => application.status === "approved").length,
+    declined: vendorApplications.filter(application => application.status === "declined").length,
+    published: vendorApplications.filter(application => application.directoryStatus === "published").length,
+  };
+  const filteredVendorApplications = vendorApplications.filter(application => {
+    if (vendorIntakeFilter === "all") return true;
+    if (vendorIntakeFilter === "published") return application.directoryStatus === "published";
+    return application.status === vendorIntakeFilter;
+  });
 
   const updateVendorApplicationMutation = useMutation({
     mutationFn: async ({ id, notes, status }: { id: number; notes?: string; status: string }) => {
@@ -1772,19 +1786,46 @@ export default function OperationsCenterPage() {
               </p>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
                 {[
-                  { label: "Total", value: vendorApplications.length },
-                  { label: "New", value: vendorApplications.filter(application => application.status === "new").length },
-                  { label: "Reviewing", value: vendorApplications.filter(application => application.status === "reviewing").length },
-                  { label: "Approved", value: vendorApplications.filter(application => application.status === "approved").length },
-                  { label: "Published", value: vendorApplications.filter(application => application.directoryStatus === "published").length },
+                  { key: "all" as const, label: "Total", value: vendorIntakeCounts.total },
+                  { key: "new" as const, label: "New", value: vendorIntakeCounts.new },
+                  { key: "reviewing" as const, label: "Reviewing", value: vendorIntakeCounts.reviewing },
+                  { key: "approved" as const, label: "Approved", value: vendorIntakeCounts.approved },
+                  { key: "declined" as const, label: "Not approved", value: vendorIntakeCounts.declined },
+                  { key: "published" as const, label: "Published", value: vendorIntakeCounts.published },
                 ].map(item => (
-                  <div key={item.label} className="rounded-lg border border-[#E6D2D8] bg-[#FFF8F4] p-4">
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => setVendorIntakeFilter(item.key)}
+                    className={`rounded-lg border p-4 text-left transition ${
+                      vendorIntakeFilter === item.key
+                        ? "border-[#8D294D] bg-[#F7DDE2]/70 shadow-sm"
+                        : "border-[#E6D2D8] bg-[#FFF8F4] hover:border-[#B16C8E]"
+                    }`}
+                  >
                     <p className="text-xs font-semibold uppercase tracking-wider text-[#8D294D]/70">{item.label}</p>
                     <p className="mt-1 text-2xl font-serif font-bold text-[#24171D]">{item.value}</p>
-                  </div>
+                  </button>
                 ))}
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-[#8D294D]/70">Showing</span>
+                <Badge variant="outline" className="border-[#E6D2D8] bg-white text-[#6F3E54]">
+                  {vendorIntakeFilter === "all"
+                    ? "All intake"
+                    : vendorIntakeFilter === "declined"
+                      ? "Not approved"
+                      : vendorIntakeFilter === "published"
+                        ? "Published directory listings"
+                        : vendorIntakeFilter}
+                </Badge>
+                {vendorIntakeFilter !== "all" && (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setVendorIntakeFilter("all")}>
+                    Clear filter
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -1801,9 +1842,17 @@ export default function OperationsCenterPage() {
                 <p className="mt-1 text-sm text-[#4A3941]">When vendors fill out the website intake form, they will show up here.</p>
               </CardContent>
             </Card>
+          ) : filteredVendorApplications.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Store className="mx-auto h-10 w-10 text-[#8D294D]/60" />
+                <h2 className="mt-3 font-serif text-xl font-semibold text-[#24171D]">No vendors in this bucket</h2>
+                <p className="mt-1 text-sm text-[#4A3941]">Choose another intake status or clear the filter.</p>
+              </CardContent>
+            </Card>
           ) : (
             <div className="grid gap-4">
-              {vendorApplications.map(application => {
+              {filteredVendorApplications.map(application => {
                 const statusClass =
                   application.status === "approved"
                     ? "bg-emerald-50 text-emerald-700 border-emerald-200"
@@ -1829,7 +1878,9 @@ export default function OperationsCenterPage() {
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
                             <h2 className="font-serif text-2xl font-semibold text-[#24171D]">{application.businessName}</h2>
-                            <Badge className={`border ${statusClass}`}>{application.status}</Badge>
+                            <Badge className={`border ${statusClass}`}>
+                              {application.status === "declined" ? "not approved" : application.status}
+                            </Badge>
                             <Badge variant="outline" className={`border ${directoryStatusClass}`}>
                               Directory: {directoryStatus.replace("_", " ")}
                             </Badge>
@@ -1857,7 +1908,7 @@ export default function OperationsCenterPage() {
                               <SelectItem value="new">New</SelectItem>
                               <SelectItem value="reviewing">Reviewing</SelectItem>
                               <SelectItem value="approved">Approved</SelectItem>
-                              <SelectItem value="declined">Declined</SelectItem>
+                              <SelectItem value="declined">Not approved</SelectItem>
                             </SelectContent>
                           </Select>
                           <Button
