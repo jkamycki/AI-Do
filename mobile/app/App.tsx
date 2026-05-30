@@ -5779,8 +5779,8 @@ function VendorsSection({
 
       {activeView === 'files' ? (
         <View style={styles.vendorFilesStack}>
-          <FinanceContractsPanel data={data} openMockAction={openMockAction} />
-          <FinanceDocumentsPanel data={data} openMockAction={openMockAction} />
+          <FinanceContractsPanel data={data} />
+          <FinanceDocumentsPanel data={data} />
         </View>
       ) : null}
 
@@ -6320,14 +6320,13 @@ function MoneySection({
 
 function FinanceContractsPanel({
   data,
-  openMockAction,
 }: {
   data: typeof samplePlanningData;
-  openMockAction: (action: MockAction) => void;
 }) {
   const [apiContracts, setApiContracts] = useState<MobileContractRecord[] | null>(null);
   const [contractUploadStatus, setContractUploadStatus] = useState('');
   const [contractUploading, setContractUploading] = useState(false);
+  const [selectedContractId, setSelectedContractId] = useState<string | null>(null);
   const refreshContracts = async () => {
     const contracts = await listMobileContracts();
     setApiContracts(contracts);
@@ -6381,13 +6380,14 @@ function FinanceContractsPanel({
     : data.contracts;
   const signed = contracts.filter((contract) => contract.status === 'Signed').length;
   const needsReview = contracts.filter((contract) => contract.status !== 'Signed').length;
+  const selectedContract = contracts.find((contract) => contract.id === selectedContractId) ?? contracts[0] ?? null;
 
   return (
     <>
       <View style={styles.summaryGrid}>
-        <SummaryCard label="Signed" value={`${signed}/${data.contracts.length}`} />
+        <SummaryCard label="Signed" value={`${signed}/${contracts.length}`} />
         <SummaryCard label="Review" value={String(needsReview)} />
-        <SummaryCard label="Value" value={formatCurrency(data.contracts.reduce((sum, contract) => sum + contract.value, 0))} />
+        <SummaryCard label="Value" value={formatCurrency(contracts.reduce((sum, contract) => sum + contract.value, 0))} />
       </View>
       <Card>
         <View style={styles.cardHeaderRow}>
@@ -6401,14 +6401,8 @@ function FinanceContractsPanel({
           {contracts.map((contract) => (
             <Pressable
               key={contract.id}
-              onPress={() =>
-                openMockAction({
-                  title: contract.title,
-                  detail: `${contract.vendorName}. ${formatCurrency(contract.value)}. Risk: ${contract.riskLevel}. Next action: ${contract.nextAction}. Clauses: ${contract.clauses.join(', ')}.`,
-                  primaryLabel: contract.status === 'Signed' ? 'Open contract' : 'Review contract',
-                })
-              }
-              style={styles.contractReviewRow}
+              onPress={() => setSelectedContractId(contract.id)}
+              style={[styles.contractReviewRow, selectedContract?.id === contract.id && styles.documentLibraryRowActive]}
             >
               <View style={[styles.contractRiskIcon, contract.riskLevel === 'High' ? styles.contractRiskHigh : contract.riskLevel === 'Medium' ? styles.contractRiskMedium : styles.contractRiskLow]}>
                 <Ionicons color={contract.riskLevel === 'Low' ? colors.green : colors.rose} name="document-text-outline" size={20} />
@@ -6427,6 +6421,29 @@ function FinanceContractsPanel({
             </Pressable>
           ))}
         </View>
+        {selectedContract ? (
+          <View style={styles.mobileFileDetailPanel}>
+            <View style={styles.cardHeaderRow}>
+              <View style={styles.hubCopy}>
+                <Text style={styles.hubLabel}>{selectedContract.title}</Text>
+                <Text style={styles.hubDetail}>{selectedContract.vendorName} - {formatCurrency(selectedContract.value)}</Text>
+              </View>
+              <Text style={[styles.websiteStatusPill, selectedContract.riskLevel === 'Low' ? websiteStatusStyle('Published') : websiteStatusStyle('Draft')]}>
+                {selectedContract.riskLevel} risk
+              </Text>
+            </View>
+            <Text style={styles.hubDetail}>{selectedContract.nextAction}</Text>
+            {selectedContract.clauses.length ? (
+              <View style={styles.eventTypeRow}>
+                {selectedContract.clauses.slice(0, 4).map((clause) => (
+                  <View key={clause} style={styles.eventTypePill}>
+                    <Text style={styles.eventTypeText}>{clause}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </View>
+        ) : null}
         <View style={styles.websiteActions}>
           <Pressable
             disabled={contractUploading}
@@ -6445,14 +6462,13 @@ function FinanceContractsPanel({
 
 function FinanceDocumentsPanel({
   data,
-  openMockAction,
 }: {
   data: typeof samplePlanningData;
-  openMockAction: (action: MockAction) => void;
 }) {
   const [apiDocuments, setApiDocuments] = useState<MobileDocumentRecord[] | null>(null);
   const [documentUploadStatus, setDocumentUploadStatus] = useState('');
   const [documentUploading, setDocumentUploading] = useState(false);
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
   const refreshDocuments = async () => {
     const documents = await listMobileDocuments();
     setApiDocuments(documents);
@@ -6504,6 +6520,7 @@ function FinanceDocumentsPanel({
         updatedAt: document.updatedAt || dateKey(new Date()),
       }))
     : data.documents;
+  const selectedDocument = documents.find((document) => document.id === selectedDocumentId) ?? documents[0] ?? null;
 
   return (
     <Card>
@@ -6518,14 +6535,8 @@ function FinanceDocumentsPanel({
         {documents.map((document) => (
           <Pressable
             key={document.id}
-            onPress={() =>
-              openMockAction({
-                title: document.title,
-                detail: `${document.type} linked to ${document.linkedTo}. Status: ${document.status}. ${document.summary}`,
-                primaryLabel: 'Open document',
-              })
-            }
-            style={styles.documentLibraryRow}
+            onPress={() => setSelectedDocumentId(document.id)}
+            style={[styles.documentLibraryRow, selectedDocument?.id === document.id && styles.documentLibraryRowActive]}
           >
             <View style={styles.documentIcon}>
               <Ionicons color={colors.rose} name={documentIcon(document.type)} size={20} />
@@ -6543,6 +6554,21 @@ function FinanceDocumentsPanel({
           </Pressable>
         ))}
       </View>
+      {selectedDocument ? (
+        <View style={styles.mobileFileDetailPanel}>
+          <View style={styles.cardHeaderRow}>
+            <View style={styles.hubCopy}>
+              <Text style={styles.hubLabel}>{selectedDocument.title}</Text>
+              <Text style={styles.hubDetail}>{selectedDocument.type} - {selectedDocument.linkedTo}</Text>
+            </View>
+            <Text style={[styles.websiteStatusPill, selectedDocument.status === 'Signed' || selectedDocument.status === 'Approved' ? websiteStatusStyle('Published') : websiteStatusStyle('Ready')]}>
+              {selectedDocument.status}
+            </Text>
+          </View>
+          <Text style={styles.hubDetail}>{selectedDocument.summary}</Text>
+          <Text style={styles.hubDetail}>Updated {formatShortDate(selectedDocument.updatedAt)}</Text>
+        </View>
+      ) : null}
       <View style={styles.websiteActions}>
         <Pressable
           disabled={documentUploading}
@@ -13551,6 +13577,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     padding: 12,
+  },
+  documentLibraryRowActive: {
+    backgroundColor: colors.roseSoft,
+    borderColor: colors.rose,
+  },
+  mobileFileDetailPanel: {
+    backgroundColor: colors.surface,
+    borderColor: colors.roseSoft,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 10,
+    padding: 14,
   },
   documentIcon: {
     alignItems: 'center',
