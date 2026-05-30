@@ -5260,9 +5260,9 @@ function PlanSection({
     <>
       <View style={styles.plannerSwitch}>
         {[
-          ['calendar', 'Calendar', 'calendar-outline'],
-          ['checklist', 'Checklist', 'checkbox-outline'],
-          ['timeline', 'Timeline', 'time-outline'],
+          ['calendar', 'Cal', 'calendar-outline'],
+          ['checklist', 'Tasks', 'checkbox-outline'],
+          ['timeline', 'Time', 'time-outline'],
           ['party', 'Party', 'person-add-outline'],
         ].map(([id, label, icon]) => {
           const active = plannerView === id;
@@ -12602,22 +12602,23 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     backgroundColor: colors.surface,
     borderColor: colors.faint,
-    borderRadius: 999,
+    borderRadius: 20,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 4,
+    gap: 5,
     marginTop: 8,
-    padding: 5,
+    padding: 4,
     width: '100%',
   },
   plannerSwitchButton: {
     alignItems: 'center',
-    borderRadius: 999,
+    borderRadius: 16,
     flex: 1,
-    flexDirection: 'row',
-    gap: 7,
+    gap: 3,
     justifyContent: 'center',
-    paddingVertical: 10,
+    minHeight: 48,
+    paddingHorizontal: 4,
+    paddingVertical: 7,
   },
   plannerSwitchButtonActive: {
     backgroundColor: colors.rose,
@@ -12625,7 +12626,8 @@ const styles = StyleSheet.create({
   plannerSwitchText: {
     color: colors.rose,
     fontFamily: 'Inter_700Bold',
-    fontSize: 12,
+    fontSize: 10,
+    lineHeight: 12,
   },
   plannerSwitchTextActive: {
     color: colors.surface,
