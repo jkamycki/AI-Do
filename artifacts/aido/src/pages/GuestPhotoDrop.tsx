@@ -13,6 +13,7 @@ import {
   QrCode,
   RefreshCw,
   RotateCcw,
+  Share2,
   Sparkles,
   Trash2,
   UploadCloud,
@@ -397,6 +398,23 @@ export default function GuestPhotoDrop() {
     setTimeout(() => setCopied(false), 1600);
   };
 
+  const sharePublicUrl = async () => {
+    if (!publicUrl) return;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "A.I Do Guest Photo Drop",
+          text: "Open the disposable camera for our wedding photos.",
+          url: publicUrl,
+        });
+        return;
+      } catch {
+        // If the share sheet is dismissed or unsupported, copying is the fallback.
+      }
+    }
+    await copyPublicUrl();
+  };
+
   const downloadUpload = async (upload: GuestPhotoUpload) => {
     try {
       await downloadMediaFile(
@@ -477,15 +495,15 @@ export default function GuestPhotoDrop() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFF7F2] px-4 py-8 text-[#3B1C2B] sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl space-y-6">
+    <div className="min-h-screen bg-[#FFF7F2] px-3 py-5 text-[#3B1C2B] sm:px-6 sm:py-8 lg:px-8">
+      <div className="mx-auto max-w-6xl space-y-5 sm:space-y-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#D4A373]/50 bg-white/70 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-[#8D294D]">
               <Camera className="h-3.5 w-3.5 text-[#D4A373]" />
               Guest Experience
             </div>
-            <h1 className="font-serif text-4xl font-bold text-[#5B0F2A] sm:text-5xl">Guest Photo Drop</h1>
+            <h1 className="font-serif text-3xl font-bold text-[#5B0F2A] sm:text-5xl">Guest Photo Drop</h1>
             <p className="mt-2 max-w-2xl text-sm leading-7 text-[#6F3E54] sm:text-base">
               Turn your guests&apos; phones into disposable cameras. They scan your QR code, take a limited roll of locked photos, and every upload lands in your portal first for review.
             </p>
@@ -501,23 +519,23 @@ export default function GuestPhotoDrop() {
           </Button>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
           {[
             { label: "Pending review", value: data.summary.pending },
             { label: "Approved", value: data.summary.approved },
             { label: "Hidden", value: data.summary.hidden },
           ].map((stat) => (
             <Card key={stat.label} className="border-[#E6A6B7]/40 bg-white/85 shadow-[0_18px_50px_rgba(91,15,42,0.08)]">
-              <CardContent className="p-5">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#8D294D]">{stat.label}</p>
-                <p className="mt-2 font-serif text-4xl font-bold text-[#5B0F2A]">{stat.value}</p>
+              <CardContent className="p-3 sm:p-5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#8D294D] sm:text-xs sm:tracking-[0.16em]">{stat.label}</p>
+                <p className="mt-1 font-serif text-2xl font-bold text-[#5B0F2A] sm:mt-2 sm:text-4xl">{stat.value}</p>
               </CardContent>
             </Card>
           ))}
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-          <Card className="border-[#E6A6B7]/40 bg-white/90 shadow-[0_24px_70px_rgba(91,15,42,0.10)]">
+          <Card className="order-2 border-[#E6A6B7]/40 bg-white/90 shadow-[0_24px_70px_rgba(91,15,42,0.10)] lg:order-1">
             <CardHeader>
               <CardTitle className="font-serif text-2xl text-[#5B0F2A]">Photo Drop Settings</CardTitle>
               <CardDescription>
@@ -536,6 +554,20 @@ export default function GuestPhotoDrop() {
                       Guests scan the QR code or open the shared link, choose a film effect, take their disposable roll, and submit it to your private portal.
                     </p>
                   </div>
+                </div>
+              </div>
+              <div className="grid gap-2 rounded-2xl border border-[#E6A6B7]/45 bg-[#FFF7F2]/70 p-3 text-xs leading-5 text-[#6F3E54] sm:grid-cols-3">
+                <div>
+                  <span className="block font-bold text-[#8D294D]">1. Share</span>
+                  Guests scan the QR code or open the link.
+                </div>
+                <div>
+                  <span className="block font-bold text-[#8D294D]">2. Snap</span>
+                  They use a locked disposable roll.
+                </div>
+                <div>
+                  <span className="block font-bold text-[#8D294D]">3. Review</span>
+                  Photos land in your portal first.
                 </div>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -665,13 +697,13 @@ export default function GuestPhotoDrop() {
             </CardContent>
           </Card>
 
-          <Card className="border-[#E6A6B7]/40 bg-white/90 shadow-[0_24px_70px_rgba(91,15,42,0.10)]">
+          <Card className="order-1 border-[#E6A6B7]/40 bg-white/90 shadow-[0_24px_70px_rgba(91,15,42,0.10)] lg:order-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 font-serif text-2xl text-[#5B0F2A]">
                 <QrCode className="h-5 w-5 text-[#D4A373]" />
                 QR Sign Link
               </CardTitle>
-              <CardDescription>Print this on a reception sign or table card so guests can open the disposable camera.</CardDescription>
+              <CardDescription>Share this link or print the QR code so guests open the same disposable camera.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {!data.website.published && (
@@ -691,7 +723,21 @@ export default function GuestPhotoDrop() {
                   {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </button>
               </div>
+              {websitePublishesGuestPhotos && (
+                <div className="rounded-2xl border border-[#D4A373]/40 bg-[#F2E2C6]/35 p-3 text-xs leading-5 text-[#6F3E54]">
+                  <span className="font-bold text-[#8D294D]">Website highlights:</span>{" "}
+                  {approvedWebsitePhotos}/{WEBSITE_GUEST_PHOTO_LIMIT} approved. All photos still stay available in the portal.
+                </div>
+              )}
               <div className="grid gap-2">
+                <Button
+                  type="button"
+                  onClick={sharePublicUrl}
+                  className="min-h-10 rounded-full bg-[#8D294D] px-4 text-white hover:bg-[#762140]"
+                >
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Share guest link
+                </Button>
                 <a
                   href={qrUrl}
                   download="aido-guest-photo-drop-qr.svg"
@@ -829,7 +875,7 @@ function UploadQueue({
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {uploads.map((upload) => (
-              <div key={upload.id} className="overflow-hidden rounded-3xl border border-[#E6A6B7]/45 bg-white shadow-sm">
+              <div key={upload.id} className="overflow-hidden rounded-2xl border border-[#E6A6B7]/45 bg-white shadow-sm sm:rounded-3xl">
                 {(() => {
                   const caption = upload.caption ?? upload.note;
                   return (
@@ -897,9 +943,11 @@ function UploadQueue({
                       onClick={() => onApprove(upload)}
                       disabled={disabled}
                       title={disabled ? approveDisabledMessage : "Approve photo"}
-                      className="rounded-full bg-emerald-600 px-3 text-white hover:bg-emerald-700 disabled:bg-emerald-600/40 disabled:text-white/80"
+                      aria-label="Approve photo"
+                      className="rounded-full bg-emerald-600 px-2 text-xs text-white hover:bg-emerald-700 disabled:bg-emerald-600/40 disabled:text-white/80"
                     >
-                      <Check className="h-4 w-4" />
+                      <Check className="mr-1 h-4 w-4" />
+                      Approve
                     </Button>
                       );
                     })()}
@@ -908,18 +956,22 @@ function UploadQueue({
                       size="sm"
                       variant="outline"
                       onClick={() => onHide(upload.id)}
-                      className="rounded-full border-[#E6A6B7]/70 text-[#8D294D] hover:bg-[#F7DDE2]/50"
+                      aria-label="Hide photo"
+                      className="rounded-full border-[#E6A6B7]/70 px-2 text-xs text-[#8D294D] hover:bg-[#F7DDE2]/50"
                     >
-                      <EyeOff className="h-4 w-4" />
+                      <EyeOff className="mr-1 h-4 w-4" />
+                      Hide
                     </Button>
                     <Button
                       type="button"
                       size="sm"
                       variant="outline"
                       onClick={() => onDelete(upload.id)}
-                      className="rounded-full border-red-200 text-red-600 hover:bg-red-50"
+                      aria-label="Delete photo"
+                      className="rounded-full border-red-200 px-2 text-xs text-red-600 hover:bg-red-50"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="mr-1 h-4 w-4" />
+                      Delete
                     </Button>
                   </div>
                 </div>
