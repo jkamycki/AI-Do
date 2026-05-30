@@ -66,3 +66,9 @@ export async function updateMobileGuestPhotoUploadStatus(uploadId: string, statu
   });
   return toMobileUpload(result.upload);
 }
+
+export async function deleteMobileGuestPhotoUpload(uploadId: string) {
+  await mobileAuthJson<{ ok?: boolean }>(`/api/website/photo-drop/uploads/${uploadId}`, {
+    method: 'DELETE',
+  });
+}

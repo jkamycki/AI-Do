@@ -20,7 +20,7 @@ import { getGuestCampaignPreview, sendPendingRsvpReminders, sendRsvpInvitations,
 import { createMobileHotel, deleteMobileHotel, updateMobileHotel } from './src/api/hotels';
 import { saveMobileInvitationStudio, sendMobileInvitationTest } from './src/api/invitationStudio';
 import { hasMobileApiBase, mobileAuthFetch, saveMobileAuthToken, setMobileAuthTokenGetter } from './src/api/mobileAuth';
-import { listMobileGuestPhotoDrop, saveMobileGuestPhotoDropSettings, updateMobileGuestPhotoUploadStatus } from './src/api/photoDrop';
+import { deleteMobileGuestPhotoUpload, listMobileGuestPhotoDrop, saveMobileGuestPhotoDropSettings, updateMobileGuestPhotoUploadStatus } from './src/api/photoDrop';
 import { saveMobileProfile } from './src/api/profile';
 import { applySeatingChart, generateSeatingChart, saveSeatingChart, updateSeatingChart, type SeatingGuestPayload } from './src/api/seating';
 import {
@@ -563,6 +563,21 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
           primaryLabel: 'Close',
         });
       });
+  };
+  const deleteGuestPhotoUpload = (uploadId: string) => {
+    const previousUploads = data.guestPhotoUploads;
+    setData((current) => ({
+      ...current,
+      guestPhotoUploads: current.guestPhotoUploads.filter((upload) => upload.id !== uploadId),
+    }));
+    void deleteMobileGuestPhotoUpload(uploadId).catch((error) => {
+      setData((current) => ({ ...current, guestPhotoUploads: previousUploads }));
+      setMockAction({
+        title: 'Photo not deleted',
+        detail: error instanceof Error ? error.message : 'The upload could not be deleted. Please try again.',
+        primaryLabel: 'Close',
+      });
+    });
   };
   const addWeddingPartyMember = (member: (typeof samplePlanningData.weddingParty)[number]) => {
     const localMember = { ...member, id: `party-new-${Date.now()}` };
@@ -2644,6 +2659,7 @@ function WebsiteSection({
           activeTab={photoDropTab}
           data={data}
           onChangeTab={setPhotoDropTab}
+          onDeleteUpload={deleteGuestPhotoUpload}
           onHydrate={onHydrateGuestPhotoDrop}
           onUpdateSettings={onUpdateGuestPhotoDropSettings}
           onUpdateUploadStatus={onUpdateGuestPhotoUploadStatus}
@@ -3974,6 +3990,7 @@ function PhotoDropMobilePanel({
   activeTab,
   data,
   onChangeTab,
+  onDeleteUpload,
   onHydrate,
   onUpdateSettings,
   onUpdateUploadStatus,
@@ -3982,6 +3999,7 @@ function PhotoDropMobilePanel({
   activeTab: 'share' | 'queue' | 'settings';
   data: typeof samplePlanningData;
   onChangeTab: (tab: 'share' | 'queue' | 'settings') => void;
+  onDeleteUpload: (uploadId: string) => void;
   onHydrate: (settings: GuestPhotoDropSettings, uploads: GuestPhotoUpload[]) => void;
   onUpdateSettings: (patch: Partial<GuestPhotoDropSettings>) => void;
   onUpdateUploadStatus: (uploadId: string, status: GuestPhotoUpload['status']) => void;
@@ -4059,6 +4077,28 @@ function PhotoDropMobilePanel({
     });
   };
 
+  const sharePhotoUpload = (upload: GuestPhotoUpload) => {
+    const imageUrl = upload.publicImageUrl || upload.imageUrl;
+    if (!imageUrl) {
+      openMockAction({
+        title: 'Photo link unavailable',
+        detail: 'This upload does not have a downloadable image URL yet.',
+        primaryLabel: 'Close',
+      });
+      return;
+    }
+    void Share.share({
+      message: `${upload.guestName} photo upload from A.I DO Photo Drop: ${imageUrl}`,
+      url: imageUrl,
+    }).catch(() => {
+      openMockAction({
+        title: 'Share did not open',
+        detail: 'Open the website Photo Drop portal to download this image directly.',
+        primaryLabel: 'Close',
+      });
+    });
+  };
+
   return (
     <Card style={styles.photoDropMobileCard}>
       <View style={styles.photoDropTopRow}>
@@ -4067,11 +4107,11 @@ function PhotoDropMobilePanel({
             <Ionicons color={colors.rose} name="camera-outline" size={22} />
           </View>
           <View style={styles.hubCopy}>
-            <Text style={styles.cardTitle}>Photo drop</Text>
+            <Text style={styles.cardTitle}>Photo Drop</Text>
             <Text style={styles.hubDetail}>
               {data.guestPhotoDrop.enabled
                 ? 'Guests can use their phones like disposable cameras.'
-                : 'Turn guests phones into disposable cameras.'}
+                : 'Turn guest phones into disposable cameras.'}
             </Text>
           </View>
         </View>
@@ -4123,7 +4163,7 @@ function PhotoDropMobilePanel({
             <Ionicons color={colors.muted} name="chevron-forward" size={14} />
             <View style={styles.photoDropGuestFlowStep}>
               <Ionicons color={colors.rose} name="cloud-upload-outline" size={16} />
-              <Text style={styles.photoDropGuestFlowText}>Takes 10 shots</Text>
+              <Text style={styles.photoDropGuestFlowText}>Takes {data.guestPhotoDrop.maxUploads} shots</Text>
             </View>
             <Ionicons color={colors.muted} name="chevron-forward" size={14} />
             <View style={styles.photoDropGuestFlowStep}>
@@ -4132,7 +4172,7 @@ function PhotoDropMobilePanel({
             </View>
           </View>
           <View style={styles.photoDropQuickStats}>
-            <PhotoDropMiniStat label="Target" value={data.guestPhotoDrop.selectedQrTarget === 'website' ? 'Website' : 'Portal'} />
+            <PhotoDropMiniStat label="Route" value="Portal first" />
             <PhotoDropMiniStat label="Mode" value={photoDropModeLabel(photoDropDisplayMode)} />
             <PhotoDropMiniStat label="Website cap" value={websitePublishesGuestPhotos ? `${approvedUploads}/${websiteGuestPhotoLimit}` : 'Portal only'} />
           </View>
@@ -4167,7 +4207,14 @@ function PhotoDropMobilePanel({
                 Wedding website gallery limit: {approvedUploads}/{websiteGuestPhotoLimit} approved guest photos.
               </Text>
             </View>
-          ) : null}
+          ) : (
+            <View style={styles.inlineNotice}>
+              <Ionicons color={colors.rose} name="lock-closed-outline" size={16} />
+              <Text style={styles.inlineNoticeText}>
+                Portal only mode is on. Photos stay in the app and website portal for review, download, and cleanup.
+              </Text>
+            </View>
+          )}
           <View style={styles.photoDropFilterRow}>
             {([
               ['Pending', pendingUploads],
@@ -4234,6 +4281,14 @@ function PhotoDropMobilePanel({
                             <Text style={styles.photoDropStatusButtonText}>Review</Text>
                           </Pressable>
                         ) : null}
+                        <Pressable onPress={() => sharePhotoUpload(upload)} style={styles.photoDropStatusButton}>
+                          <Ionicons color={colors.rose} name="download-outline" size={13} />
+                          <Text style={styles.photoDropStatusButtonText}>Download</Text>
+                        </Pressable>
+                        <Pressable onPress={() => onDeleteUpload(upload.id)} style={[styles.photoDropStatusButton, styles.photoDropDeleteButton]}>
+                          <Ionicons color={colors.rose} name="trash-outline" size={13} />
+                          <Text style={styles.photoDropStatusButtonText}>Delete</Text>
+                        </Pressable>
                       </View>
                     </View>
                   </View>
@@ -4268,22 +4323,8 @@ function PhotoDropMobilePanel({
               );
             })}
           </View>
-          <PhotoDropSettingRow icon="qr-code-outline" label="QR target" value={data.guestPhotoDrop.selectedQrTarget === 'website' ? 'Website' : 'RSVP'} />
-          <Text style={styles.hubDetail}>Website QR sends guests to your wedding website. RSVP QR starts from the RSVP flow.</Text>
-          <View style={styles.eventTypeRow}>
-            {(['website', 'rsvp'] as const).map((target) => {
-              const active = data.guestPhotoDrop.selectedQrTarget === target;
-              return (
-                <Pressable
-                  key={target}
-                  onPress={() => onUpdateSettings({ selectedQrTarget: target })}
-                  style={[styles.eventTypePill, active && styles.eventTypePillActive]}
-                >
-                  <Text style={[styles.eventTypeText, active && styles.eventTypeTextActive]}>{target === 'website' ? 'Website QR' : 'RSVP QR'}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <PhotoDropSettingRow icon="qr-code-outline" label="QR behavior" value="Disposable camera" />
+          <Text style={styles.hubDetail}>The QR code and shared link both open the disposable camera directly, then route every submitted roll to the portal.</Text>
           <PhotoDropSettingRow icon="cloud-upload-outline" label="Disposable roll size" value={`${data.guestPhotoDrop.maxUploads} photos per guest`} />
           <View style={styles.fontStepperRow}>
             <Pressable
@@ -12914,6 +12955,10 @@ const styles = StyleSheet.create({
   },
   photoDropStatusButtonDisabled: {
     opacity: 0.45,
+  },
+  photoDropDeleteButton: {
+    borderColor: colors.roseSoft,
+    backgroundColor: colors.surfaceWarm,
   },
   photoDropStatusButtonText: {
     color: colors.rose,
