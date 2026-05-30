@@ -50,6 +50,7 @@ const FILM_EFFECTS: Array<{
 type ShotRollState = {
   limit: number;
   remaining: number;
+  submitted?: boolean;
 };
 
 function rollStorageKey(slug: string) {
@@ -81,13 +82,24 @@ function readShotsRemaining(slug: string, limit: number) {
   return limit;
 }
 
-function saveShotsRemaining(slug: string, remaining: number, limit: number) {
+function readRollSubmitted(slug: string) {
+  try {
+    const stored = window.localStorage.getItem(rollStorageKey(slug));
+    if (!stored) return false;
+    const parsed = JSON.parse(stored) as Partial<ShotRollState>;
+    return parsed.submitted === true;
+  } catch {}
+  return false;
+}
+
+function saveShotsRemaining(slug: string, remaining: number, limit: number, submitted = false) {
   try {
     window.localStorage.setItem(
       rollStorageKey(slug),
       JSON.stringify({
         limit,
         remaining: Math.max(0, Math.min(limit, remaining)),
+        submitted,
       } satisfies ShotRollState),
     );
   } catch {}
@@ -109,76 +121,53 @@ function playShutterSound() {
     void context.resume?.();
 
     const master = context.createGain();
-    const compressor = context.createDynamicsCompressor();
-    master.gain.setValueAtTime(0.92, context.currentTime);
-    compressor.threshold.setValueAtTime(-24, context.currentTime);
-    compressor.knee.setValueAtTime(18, context.currentTime);
-    compressor.ratio.setValueAtTime(8, context.currentTime);
-    compressor.attack.setValueAtTime(0.002, context.currentTime);
-    compressor.release.setValueAtTime(0.12, context.currentTime);
-    master.connect(compressor);
-    compressor.connect(context.destination);
+    master.gain.setValueAtTime(0.78, context.currentTime);
+    master.connect(context.destination);
 
-    const clickBuffer = context.createBuffer(1, Math.floor(context.sampleRate * 0.055), context.sampleRate);
-    const samples = clickBuffer.getChannelData(0);
-    for (let index = 0; index < samples.length; index += 1) {
-      const envelope = 1 - index / samples.length;
-      samples[index] = (Math.random() * 2 - 1) * envelope * 0.85;
+    function playNoiseClick(start: number, duration: number, frequency: number, volume: number) {
+      const buffer = context.createBuffer(1, Math.floor(context.sampleRate * duration), context.sampleRate);
+      const samples = buffer.getChannelData(0);
+      for (let index = 0; index < samples.length; index += 1) {
+        const envelope = Math.pow(1 - index / samples.length, 2.4);
+        samples[index] = (Math.random() * 2 - 1) * envelope;
+      }
+
+      const source = context.createBufferSource();
+      const filter = context.createBiquadFilter();
+      const gain = context.createGain();
+      source.buffer = buffer;
+      filter.type = "bandpass";
+      filter.frequency.setValueAtTime(frequency, context.currentTime + start);
+      filter.Q.setValueAtTime(1.8, context.currentTime + start);
+      gain.gain.setValueAtTime(0.001, context.currentTime + start);
+      gain.gain.exponentialRampToValueAtTime(volume, context.currentTime + start + 0.004);
+      gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + start + duration);
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(master);
+      source.start(context.currentTime + start);
+      source.stop(context.currentTime + start + duration);
     }
 
-    const click = context.createBufferSource();
-    const clickFilter = context.createBiquadFilter();
-    const clickGain = context.createGain();
-    click.buffer = clickBuffer;
-    clickFilter.type = "bandpass";
-    clickFilter.frequency.setValueAtTime(1800, context.currentTime);
-    clickFilter.Q.setValueAtTime(0.9, context.currentTime);
-    clickGain.gain.setValueAtTime(0.001, context.currentTime);
-    clickGain.gain.exponentialRampToValueAtTime(0.62, context.currentTime + 0.004);
-    clickGain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.065);
-    click.connect(clickFilter);
-    clickFilter.connect(clickGain);
-    clickGain.connect(master);
-
-    const clack = context.createOscillator();
-    const clackGain = context.createGain();
-    clack.type = "triangle";
-    clack.frequency.setValueAtTime(260, context.currentTime + 0.045);
-    clack.frequency.exponentialRampToValueAtTime(95, context.currentTime + 0.13);
-    clackGain.gain.setValueAtTime(0.001, context.currentTime + 0.045);
-    clackGain.gain.exponentialRampToValueAtTime(0.32, context.currentTime + 0.058);
-    clackGain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.16);
-    clack.connect(clackGain);
-    clackGain.connect(master);
-
-    const advanceBuffer = context.createBuffer(1, Math.floor(context.sampleRate * 0.24), context.sampleRate);
-    const advanceSamples = advanceBuffer.getChannelData(0);
-    for (let index = 0; index < advanceSamples.length; index += 1) {
-      const t = index / advanceSamples.length;
-      const ratchet = Math.sin(t * Math.PI * 46) > 0.35 ? 1 : 0.18;
-      const envelope = Math.sin(Math.PI * t) * 0.45;
-      advanceSamples[index] = (Math.random() * 2 - 1) * ratchet * envelope;
+    function playTone(start: number, duration: number, from: number, to: number, volume: number) {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = "triangle";
+      oscillator.frequency.setValueAtTime(from, context.currentTime + start);
+      oscillator.frequency.exponentialRampToValueAtTime(to, context.currentTime + start + duration);
+      gain.gain.setValueAtTime(0.001, context.currentTime + start);
+      gain.gain.exponentialRampToValueAtTime(volume, context.currentTime + start + 0.006);
+      gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + start + duration);
+      oscillator.connect(gain);
+      gain.connect(master);
+      oscillator.start(context.currentTime + start);
+      oscillator.stop(context.currentTime + start + duration);
     }
-    const advance = context.createBufferSource();
-    const advanceFilter = context.createBiquadFilter();
-    const advanceGain = context.createGain();
-    advance.buffer = advanceBuffer;
-    advanceFilter.type = "highpass";
-    advanceFilter.frequency.setValueAtTime(520, context.currentTime + 0.12);
-    advanceGain.gain.setValueAtTime(0.001, context.currentTime + 0.12);
-    advanceGain.gain.linearRampToValueAtTime(0.19, context.currentTime + 0.17);
-    advanceGain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.36);
-    advance.connect(advanceFilter);
-    advanceFilter.connect(advanceGain);
-    advanceGain.connect(master);
 
-    click.start(context.currentTime);
-    click.stop(context.currentTime + 0.07);
-    clack.start(context.currentTime + 0.045);
-    clack.stop(context.currentTime + 0.18);
-    advance.start(context.currentTime + 0.12);
-    advance.stop(context.currentTime + 0.38);
-    window.setTimeout(() => void context.close().catch(() => undefined), 520);
+    playNoiseClick(0, 0.035, 2600, 0.42);
+    playTone(0.026, 0.07, 310, 150, 0.18);
+    playNoiseClick(0.082, 0.04, 1850, 0.32);
+    window.setTimeout(() => void context.close().catch(() => undefined), 220);
   } catch {}
 }
 
@@ -321,7 +310,8 @@ export default function PublicDisposableCamera() {
   const [zoom, setZoom] = useState(1);
   const [flashEnabled, setFlashEnabled] = useState(false);
   const [torchSupported, setTorchSupported] = useState(false);
-  const [rollSubmitted, setRollSubmitted] = useState(false);
+  const [rollSubmitted, setRollSubmitted] = useState(() => readRollSubmitted(slug));
+  const [submittedThisVisit, setSubmittedThisVisit] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const activeEffect = getFilmEffect(selectedEffect);
 
@@ -346,17 +336,23 @@ export default function PublicDisposableCamera() {
         setShotLimit(nextLimit);
         setShotsRemaining((current) => {
           const savedShots = readShotsRemaining(slug, nextLimit);
-          const safeShots = savedShots === 0 && photoRoll.length === 0 ? nextLimit : Math.min(current, savedShots, nextLimit);
-          saveShotsRemaining(slug, safeShots, nextLimit);
+          const alreadySubmitted = readRollSubmitted(slug);
+          const safeShots = Math.min(current, savedShots, nextLimit);
+          setRollSubmitted(alreadySubmitted);
+          setShowUploadPrompt(!alreadySubmitted && safeShots === 0 && photoRoll.length > 0);
+          saveShotsRemaining(slug, safeShots, nextLimit, alreadySubmitted);
           return safeShots;
         });
       })
       .catch(() => {
         const savedShots = readShotsRemaining(slug, DEFAULT_SHOT_LIMIT);
-        const safeShots = savedShots === 0 && photoRoll.length === 0 ? DEFAULT_SHOT_LIMIT : savedShots;
+        const alreadySubmitted = readRollSubmitted(slug);
+        const safeShots = savedShots;
         if (!active) return;
+        setRollSubmitted(alreadySubmitted);
         setShotsRemaining(safeShots);
-        saveShotsRemaining(slug, safeShots, DEFAULT_SHOT_LIMIT);
+        setShowUploadPrompt(!alreadySubmitted && safeShots === 0 && photoRoll.length > 0);
+        saveShotsRemaining(slug, safeShots, DEFAULT_SHOT_LIMIT, alreadySubmitted);
       });
     return () => {
       active = false;
@@ -425,12 +421,19 @@ export default function PublicDisposableCamera() {
   }, [facingMode, stopCamera]);
 
   useEffect(() => {
+    if (rollSubmitted) {
+      stopCamera();
+      return () => {
+        if (shutterTimeoutRef.current !== null) window.clearTimeout(shutterTimeoutRef.current);
+        stopCamera();
+      };
+    }
     void startCamera();
     return () => {
       if (shutterTimeoutRef.current !== null) window.clearTimeout(shutterTimeoutRef.current);
       stopCamera();
     };
-  }, [startCamera, stopCamera]);
+  }, [rollSubmitted, startCamera, stopCamera]);
 
   function addPhotoToLockedRoll(file: File) {
     const nextRemaining = Math.max(0, shotsRemaining - 1);
@@ -471,6 +474,9 @@ export default function PublicDisposableCamera() {
       ]);
       setPhotoRoll([]);
       setShowUploadPrompt(false);
+      setShotsRemaining(0);
+      saveShotsRemaining(slug, 0, shotLimit, true);
+      setSubmittedThisVisit(true);
       setRollSubmitted(true);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Upload failed. Please try again.");
@@ -602,7 +608,7 @@ export default function PublicDisposableCamera() {
     setMessage(nextEnabled ? "Selfie flash is on. The screen will flash when you take the photo." : "Flash is off.");
   }
 
-  const canShoot = status === "ready" && shotsRemaining > 0 && !uploading && !showUploadPrompt;
+  const canShoot = status === "ready" && shotsRemaining > 0 && !uploading && !showUploadPrompt && !rollSubmitted;
   const flashModeLabel = torchSupported && facingMode === "environment" ? "Camera flash" : "Screen flash";
 
   return (
@@ -908,9 +914,13 @@ export default function PublicDisposableCamera() {
               <Camera className="h-8 w-8" />
             </div>
             <p className="mt-5 text-xs font-black uppercase tracking-[0.28em] text-[#B16C8E]">Roll submitted</p>
-            <h2 className="mt-2 font-serif text-4xl font-bold text-[#8D294D]">Thanks for sharing the memories</h2>
+            <h2 className="mt-2 font-serif text-4xl font-bold text-[#8D294D]">
+              {submittedThisVisit ? "Thanks for sharing the memories" : "You already submitted your roll"}
+            </h2>
             <p className="mt-3 text-sm leading-6 text-[#6F3E54]">
-              Your disposable camera roll was sent to the couple for review. Planning a wedding too? Try A.I DO to build your website, manage RSVPs, organize guests, and collect photos.
+              {submittedThisVisit
+                ? "Your disposable camera roll was sent to the couple for review. Planning a wedding too? Try A.I DO to build your website, manage RSVPs, organize guests, and collect photos."
+                : `This phone has already submitted its ${shotLimit}-photo disposable camera roll for this wedding. To keep it fair, scanning the same QR code will not unlock more shots.`}
             </p>
             <a
               href="https://aidowedding.net/"
@@ -924,13 +934,12 @@ export default function PublicDisposableCamera() {
             <button
               type="button"
               onClick={() => {
-                setRollSubmitted(false);
-                setMessage("Your disposable roll was sent to the couple.");
+                setMessage("This phone already submitted its disposable roll.");
               }}
               className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-[#E6A6B7]/70 bg-white px-4 text-xs font-black text-[#8D294D]"
             >
               <RefreshCw className="h-4 w-4" />
-              Back to camera
+              Roll already submitted
             </button>
           </div>
         </div>
