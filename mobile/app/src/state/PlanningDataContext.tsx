@@ -2,6 +2,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { getPlanningData, getRemotePlanningData, mergePlanningData } from '../api/client';
+import { createMobileGuest, deleteMobileGuest, updateMobileGuest } from '../api/guests';
+import { sendSingleRsvpReminder } from '../api/guestMessaging';
+import { updateMobileHotel } from '../api/hotels';
+import { saveMobileGuestPhotoDropSettings, updateMobileGuestPhotoUploadStatus } from '../api/photoDrop';
+import { saveMobileProfile } from '../api/profile';
+import { createMobileVendor, createMobileVendorPayment, deleteMobileVendor, updateMobileVendor } from '../api/vendors';
+import { publishMobileWebsite, saveMobileWebsiteQuickUpdate } from '../api/website';
 import { samplePlanningData } from '../data/sampleData';
 import {
   BudgetExpense,
@@ -131,6 +138,10 @@ function rebalanceBudgetExpense(expense: BudgetExpense): BudgetExpense {
   };
 }
 
+function syncQuietly(action: Promise<unknown>) {
+  void action.catch(() => undefined);
+}
+
 export function PlanningDataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<PlanningData>(samplePlanningData);
   const [hydrated, setHydrated] = useState(false);
@@ -232,17 +243,23 @@ export function PlanningDataProvider({ children }: { children: ReactNode }) {
 
   const updateProfile = useCallback((profile: Partial<CoupleProfile>) => {
     setData((current) =>
-      withActivity(
-        {
-          ...current,
-          profile: {
-            ...current.profile,
-            ...profile,
+      {
+        const nextProfile = {
+          ...current.profile,
+          ...profile,
+        };
+
+        syncQuietly(saveMobileProfile(nextProfile));
+
+        return withActivity(
+          {
+            ...current,
+            profile: nextProfile,
           },
-        },
         'Updated wedding profile',
         'Couple details, date, venue, or planning preferences changed.',
-      ),
+        );
+      },
     );
   }, []);
 
@@ -331,7 +348,7 @@ export function PlanningDataProvider({ children }: { children: ReactNode }) {
         ...vendor,
       });
 
-      return withActivity(
+      const nextData = withActivity(
         {
           ...current,
           vendors: [nextVendor, ...current.vendors],
@@ -340,16 +357,33 @@ export function PlanningDataProvider({ children }: { children: ReactNode }) {
         `${nextVendor.name} was added to My Vendors.`,
         'create',
       );
+
+      syncQuietly(
+        createMobileVendor(nextVendor).then((result) => {
+          if (!result.vendor) return;
+          setData((latest) => ({
+            ...latest,
+            vendors: latest.vendors.map((item) => (item.id === nextVendor.id ? result.vendor! : item)),
+          }));
+        }),
+      );
+
+      return nextData;
     });
   }, []);
 
   const updateVendor = useCallback((vendorId: string, patch: Partial<Vendor>) => {
     setData((current) => {
       const vendor = current.vendors.find((item) => item.id === vendorId);
+      const nextVendor = vendor ? rebalanceVendor({ ...vendor, ...patch }) : null;
+      if (nextVendor) {
+        syncQuietly(updateMobileVendor(nextVendor));
+      }
+
       return withActivity(
         {
           ...current,
-          vendors: current.vendors.map((item) => (item.id === vendorId ? rebalanceVendor({ ...item, ...patch }) : item)),
+          vendors: current.vendors.map((item) => (item.id === vendorId && nextVendor ? nextVendor : item)),
         },
         'Updated vendor',
         `${vendor?.name ?? 'Vendor'} details changed.`,
@@ -360,6 +394,7 @@ export function PlanningDataProvider({ children }: { children: ReactNode }) {
   const deleteVendor = useCallback((vendorId: string) => {
     setData((current) => {
       const vendor = current.vendors.find((item) => item.id === vendorId);
+      syncQuietly(deleteMobileVendor(vendorId));
       return withActivity(
         {
           ...current,
@@ -378,9 +413,12 @@ export function PlanningDataProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    setData((current) => ({
-      ...current,
-      vendors: current.vendors.map((vendor) => {
+    setData((current) => {
+      syncQuietly(createMobileVendorPayment(vendorId, { amount, date: cleanDate, isPaid: true, note }));
+
+      return {
+        ...current,
+        vendors: current.vendors.map((vendor) => {
         if (vendor.id !== vendorId) {
           return vendor;
         }
@@ -399,16 +437,20 @@ export function PlanningDataProvider({ children }: { children: ReactNode }) {
           ],
         });
       }),
-      activityLog: [
-        createActivity('Recorded vendor payment', `${formatPaymentAmount(amount)} was recorded for vendor tracking.`),
-        ...current.activityLog,
-      ].slice(0, 40),
-    }));
+        activityLog: [
+          createActivity('Recorded vendor payment', `${formatPaymentAmount(amount)} was recorded for vendor tracking.`),
+          ...current.activityLog,
+        ].slice(0, 40),
+      };
+    });
   }, []);
 
   const scheduleVendorPayment = useCallback((vendorId: string, date: string) => {
     setData((current) => {
       const vendor = current.vendors.find((item) => item.id === vendorId);
+      if (vendor) {
+        syncQuietly(updateMobileVendor({ ...vendor, nextPaymentDate: date }));
+      }
       return withActivity(
         {
           ...current,
@@ -490,20 +532,43 @@ export function PlanningDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addGuest = useCallback((guest: Omit<Guest, 'id'>) => {
-    setData((current) => ({
-      ...current,
-      guests: [{ id: createId('guest'), ...guest }, ...current.guests],
-    }));
+    setData((current) => {
+      const nextGuest = { id: createId('guest'), ...guest };
+
+      syncQuietly(
+        createMobileGuest(nextGuest).then((result) => {
+          if (!result.guest) return;
+          setData((latest) => ({
+            ...latest,
+            guests: latest.guests.map((item) => (item.id === nextGuest.id ? result.guest! : item)),
+          }));
+        }),
+      );
+
+      return {
+        ...current,
+        guests: [nextGuest, ...current.guests],
+      };
+    });
   }, []);
 
   const updateGuest = useCallback((guestId: string, patch: Partial<Guest>) => {
-    setData((current) => ({
-      ...current,
-      guests: current.guests.map((guest) => (guest.id === guestId ? { ...guest, ...patch } : guest)),
-    }));
+    setData((current) => {
+      const guest = current.guests.find((item) => item.id === guestId);
+      const nextGuest = guest ? { ...guest, ...patch } : null;
+      if (nextGuest) {
+        syncQuietly(updateMobileGuest(nextGuest));
+      }
+
+      return {
+        ...current,
+        guests: current.guests.map((guest) => (guest.id === guestId && nextGuest ? nextGuest : guest)),
+      };
+    });
   }, []);
 
   const deleteGuest = useCallback((guestId: string) => {
+    syncQuietly(deleteMobileGuest(guestId));
     setData((current) => ({
       ...current,
       guests: current.guests.filter((guest) => guest.id !== guestId),
@@ -517,8 +582,13 @@ export function PlanningDataProvider({ children }: { children: ReactNode }) {
         return current;
       }
 
+      if (/^\d+$/.test(guest.id)) {
+        syncQuietly(sendSingleRsvpReminder(Number(guest.id)));
+      }
+
       return {
         ...current,
+        guests: current.guests.map((item) => (item.id === guestId ? { ...item, rsvpReminderStatus: 'sent' } : item)),
         tasks: [
           {
             id: createId('task'),
@@ -578,10 +648,18 @@ export function PlanningDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateRsvp = useCallback((guestId: string, rsvp: RsvpStatus) => {
-    setData((current) => ({
-      ...current,
-      guests: current.guests.map((guest) => (guest.id === guestId ? { ...guest, rsvp } : guest)),
-    }));
+    setData((current) => {
+      const guest = current.guests.find((item) => item.id === guestId);
+      const nextGuest = guest ? { ...guest, rsvp } : null;
+      if (nextGuest) {
+        syncQuietly(updateMobileGuest(nextGuest));
+      }
+
+      return {
+        ...current,
+        guests: current.guests.map((guest) => (guest.id === guestId && nextGuest ? nextGuest : guest)),
+      };
+    });
   }, []);
 
   const addDocument = useCallback((document: Omit<DocumentItem, 'id' | 'updatedAt'> & Partial<Pick<DocumentItem, 'updatedAt'>>) => {
@@ -620,38 +698,69 @@ export function PlanningDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateHotelBlock = useCallback((hotelId: string, patch: Partial<HotelBlock>) => {
-    setData((current) => ({
-      ...current,
-      hotels: current.hotels.map((hotel) => (hotel.id === hotelId ? { ...hotel, ...patch } : hotel)),
-    }));
+    setData((current) => {
+      const hotel = current.hotels.find((item) => item.id === hotelId);
+      const nextHotel = hotel ? { ...hotel, ...patch } : null;
+      if (nextHotel) {
+        syncQuietly(updateMobileHotel(nextHotel));
+      }
+
+      return {
+        ...current,
+        hotels: current.hotels.map((hotel) => (hotel.id === hotelId && nextHotel ? nextHotel : hotel)),
+      };
+    });
   }, []);
 
   const updateWebsiteSectionStatus = useCallback((sectionId: string, status: WebsiteSection['status']) => {
-    setData((current) => ({
-      ...current,
-      websiteSections: current.websiteSections.map((section) => (section.id === sectionId ? { ...section, status } : section)),
-    }));
+    setData((current) => {
+      const nextSections = current.websiteSections.map((section) => (section.id === sectionId ? { ...section, status } : section));
+      const sectionsEnabled = Object.fromEntries(nextSections.map((section) => [section.id, section.status !== 'Draft']));
+
+      syncQuietly(saveMobileWebsiteQuickUpdate({ sectionsEnabled }));
+      if (status === 'Published') {
+        syncQuietly(publishMobileWebsite(true));
+      }
+
+      return {
+        ...current,
+        websiteSections: nextSections,
+      };
+    });
   }, []);
 
   const updateGuestPhotoDropSettings = useCallback((settings: Partial<GuestPhotoDropSettings>) => {
-    setData((current) =>
-      withActivity(
+    setData((current) => {
+      const nextSettings = {
+        ...current.guestPhotoDrop,
+        ...settings,
+      };
+
+      syncQuietly(saveMobileGuestPhotoDropSettings(nextSettings));
+
+      return withActivity(
         {
           ...current,
-          guestPhotoDrop: {
-            ...current.guestPhotoDrop,
-            ...settings,
-          },
+          guestPhotoDrop: nextSettings,
         },
         'Updated guest photo drop',
         'Guest upload QR settings, instructions, or photo destination changed.',
-      ),
-    );
+      );
+    });
   }, []);
 
   const updateGuestPhotoUploadStatus = useCallback((uploadId: string, status: GuestPhotoUpload['status']) => {
     setData((current) => {
       const upload = current.guestPhotoUploads.find((item) => item.id === uploadId);
+      syncQuietly(
+        updateMobileGuestPhotoUploadStatus(uploadId, status).then((result) => {
+          setData((latest) => ({
+            ...latest,
+            guestPhotoUploads: latest.guestPhotoUploads.map((item) => (item.id === uploadId ? result : item)),
+          }));
+        }),
+      );
+
       return withActivity(
         {
           ...current,

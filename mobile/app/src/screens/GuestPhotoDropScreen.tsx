@@ -1,6 +1,6 @@
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useState } from 'react';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useState } from 'react';
+import { Image, Pressable, Share, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Card } from '../components/Card';
 import { FilterPill } from '../components/FilterPill';
@@ -14,6 +14,9 @@ import { usePlanningData } from '../state/PlanningDataContext';
 import { fonts, radii, spacing, useAppTheme } from '../theme';
 import { GuestPhotoDisplayMode } from '../types';
 import { slugifyCoupleName } from '../utils/format';
+
+const WEBSITE_HIGHLIGHT_LIMIT = 50;
+const DISPOSABLE_ROLL_LIMIT = 10;
 
 const destinationCopy: Record<GuestPhotoDisplayMode, { label: string; detail: string; preview: string }> = {
   portal: {
@@ -47,13 +50,22 @@ export function GuestPhotoDropScreen() {
   const settings = data.guestPhotoDrop;
   const [title, setTitle] = useState(settings.title);
   const [instructions, setInstructions] = useState(settings.instructions);
+  const [shareMessage, setShareMessage] = useState('');
   const pending = data.guestPhotoUploads.filter((upload) => upload.status === 'Pending').length;
   const approved = data.guestPhotoUploads.filter((upload) => upload.status === 'Approved').length;
   const displayMode = settings.displayMode === 'website' ? 'both' : settings.displayMode;
   const websiteEnabled = displayMode === 'both';
+  const websiteHighlightSlotsLeft = Math.max(WEBSITE_HIGHLIGHT_LIMIT - approved, 0);
   const coupleSlug = slugifyCoupleName(data.profile.coupleName);
-  const publicUrl = `aidowedding.net/wedding/${coupleSlug}/disposable`;
-  const weddingUrl = `aidowedding.net/w/${coupleSlug}`;
+  const publicUrl = `https://aidowedding.net/wedding/${coupleSlug}/disposable`;
+  const weddingUrl = `https://aidowedding.net/w/${coupleSlug}/home`;
+  const qrImageUrl = `https://quickchart.io/qr?size=260&margin=1&text=${encodeURIComponent(publicUrl)}`;
+
+  useEffect(() => {
+    if (settings.maxUploads !== DISPOSABLE_ROLL_LIMIT) {
+      updateGuestPhotoDropSettings({ maxUploads: DISPOSABLE_ROLL_LIMIT });
+    }
+  }, [settings.maxUploads, updateGuestPhotoDropSettings]);
 
   function setDestination(displayMode: GuestPhotoDisplayMode) {
     const shouldReplaceInstructions = !instructions.trim() || instructions.toLowerCase().includes('website') || instructions.toLowerCase().includes('gallery');
@@ -79,6 +91,21 @@ export function GuestPhotoDropScreen() {
         : 'Add your favorite wedding day photos here. After the couple approves them, your memories may appear in the wedding gallery.';
     setInstructions(generated);
     updateGuestPhotoDropSettings({ instructions: generated });
+  }
+
+  function shareUpload(upload: (typeof data.guestPhotoUploads)[number]) {
+    const imageUrl = upload.publicImageUrl || upload.imageUrl;
+    if (!imageUrl) {
+      setShareMessage('This upload does not have a shareable image link yet.');
+      return;
+    }
+
+    void Share.share({
+      message: `${upload.guestName} photo upload from A.I DO Photo Drop: ${imageUrl}`,
+      url: imageUrl,
+    })
+      .then(() => setShareMessage(`${upload.guestName}'s photo is ready to share or save.`))
+      .catch(() => setShareMessage('Share did not open. Try again from the Photo Drop portal.'));
   }
 
   return (
@@ -116,13 +143,20 @@ export function GuestPhotoDropScreen() {
             <Text style={[styles.helper, { color: colors.muted }]}>Use this for signs, invitations, or a card at the reception so guests can open the disposable camera.</Text>
           </View>
           <View style={[styles.qrBox, { borderColor: colors.border, backgroundColor: colors.cardStrong }]}>
-            <MaterialCommunityIcons color={colors.primary} name="qrcode" size={58} />
+            <Image accessibilityLabel="Disposable camera QR code" source={{ uri: qrImageUrl }} style={styles.qrImage} />
           </View>
         </View>
         <Text style={[styles.qrUrl, { backgroundColor: colors.primarySoft, color: colors.text }]}>{publicUrl}</Text>
         <Text style={[styles.helper, { color: colors.muted }]}>
           This QR always opens the disposable camera page. Shared links open the same camera experience as the QR code.
         </Text>
+        <View style={styles.actions}>
+          <PrimaryButton
+            icon="share-social-outline"
+            label="Share link"
+            onPress={() => void Share.share({ message: `Open our disposable wedding camera: ${publicUrl}`, url: publicUrl })}
+          />
+        </View>
       </Card>
 
       <Card style={styles.cardGap}>
@@ -140,6 +174,14 @@ export function GuestPhotoDropScreen() {
             {websiteEnabled ? ` Gallery link shown after upload: ${weddingUrl}` : ''}
           </Text>
         </View>
+        {websiteEnabled ? (
+          <View style={[styles.limitNote, { backgroundColor: colors.primarySoft }]}>
+            <Text style={[styles.limitValue, { color: colors.primary }]}>{websiteHighlightSlotsLeft}</Text>
+            <Text style={[styles.limitText, { color: colors.text }]}>
+              website highlight slot{websiteHighlightSlotsLeft === 1 ? '' : 's'} left. All uploads still stay in the portal, but only {WEBSITE_HIGHLIGHT_LIMIT} approved favorites can publish to the wedding website.
+            </Text>
+          </View>
+        ) : null}
       </Card>
 
       <Card style={styles.cardGap}>
@@ -155,9 +197,9 @@ export function GuestPhotoDropScreen() {
 
       <Card style={styles.cardGap}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Disposable roll size</Text>
-        <Text style={[styles.helper, { color: colors.muted }]}>Choose how many locked shots each phone can take before uploading the roll.</Text>
+        <Text style={[styles.helper, { color: colors.muted }]}>Each guest phone gets one locked disposable roll. The app and QR camera use {DISPOSABLE_ROLL_LIMIT} shots, and the same phone cannot restart the roll after uploading.</Text>
         <View style={styles.choiceRow}>
-          {[5, 10].map((limit) => (
+          {[DISPOSABLE_ROLL_LIMIT].map((limit) => (
             <FilterPill
               active={settings.maxUploads === limit}
               key={limit}
@@ -169,28 +211,37 @@ export function GuestPhotoDropScreen() {
       </Card>
 
       <Text style={[styles.queueTitle, { color: colors.text }]}>Approval Queue</Text>
-      {data.guestPhotoUploads.map((upload) => (
-        <Card key={upload.id} style={styles.uploadCard}>
-          <View style={styles.uploadHeader}>
-            <View style={[styles.thumbnail, { backgroundColor: colors.primarySoft }]}>
-              <Ionicons color={colors.primary} name="images-outline" size={24} />
+      {shareMessage ? <Text style={[styles.helper, { color: colors.primary }]}>{shareMessage}</Text> : null}
+      {data.guestPhotoUploads.map((upload) => {
+        const websiteCapReached = websiteEnabled && upload.status !== 'Approved' && approved >= WEBSITE_HIGHLIGHT_LIMIT;
+        return (
+          <Card key={upload.id} style={styles.uploadCard}>
+            <View style={styles.uploadHeader}>
+              <View style={[styles.thumbnail, { backgroundColor: colors.primarySoft }]}>
+                <Ionicons color={colors.primary} name="images-outline" size={24} />
+              </View>
+              <View style={styles.uploadCopy}>
+                <Text style={[styles.uploadName, { color: colors.text }]}>{upload.guestName}</Text>
+                <Text style={[styles.uploadMeta, { color: colors.muted }]}>
+                  {upload.photoCount} photo{upload.photoCount === 1 ? '' : 's'} - {new Date(upload.uploadedAt).toLocaleString()}
+                </Text>
+              </View>
+              <StatusPill status={upload.status} />
             </View>
-            <View style={styles.uploadCopy}>
-              <Text style={[styles.uploadName, { color: colors.text }]}>{upload.guestName}</Text>
-              <Text style={[styles.uploadMeta, { color: colors.muted }]}>
-                {upload.photoCount} photo{upload.photoCount === 1 ? '' : 's'} - {new Date(upload.uploadedAt).toLocaleString()}
-              </Text>
+            <Text style={[styles.caption, { color: colors.muted }]}>{upload.caption || 'No caption added.'}</Text>
+            <View style={styles.actions}>
+              <PrimaryButton
+                icon={websiteCapReached ? 'lock-closed-outline' : 'checkmark-outline'}
+                label={websiteCapReached ? 'Website cap reached' : 'Approve'}
+                onPress={websiteCapReached ? undefined : () => updateGuestPhotoUploadStatus(upload.id, 'Approved')}
+                variant={websiteCapReached ? 'ghost' : 'primary'}
+              />
+              <PrimaryButton icon="eye-off-outline" label="Hide" onPress={() => updateGuestPhotoUploadStatus(upload.id, 'Hidden')} variant="ghost" />
+              <PrimaryButton icon="share-outline" label="Share / Save" onPress={() => shareUpload(upload)} variant="gold" />
             </View>
-            <StatusPill status={upload.status} />
-          </View>
-          <Text style={[styles.caption, { color: colors.muted }]}>{upload.caption || 'No caption added.'}</Text>
-          <View style={styles.actions}>
-            <PrimaryButton icon="checkmark-outline" label="Approve" onPress={() => updateGuestPhotoUploadStatus(upload.id, 'Approved')} />
-            <PrimaryButton icon="eye-off-outline" label="Hide" onPress={() => updateGuestPhotoUploadStatus(upload.id, 'Hidden')} variant="ghost" />
-            <PrimaryButton icon="download-outline" label="Download" variant="gold" />
-          </View>
-        </Card>
-      ))}
+          </Card>
+        );
+      })}
     </Screen>
   );
 }
@@ -246,6 +297,23 @@ const styles = StyleSheet.create({
     fontFamily: fonts.headingSemi,
     fontSize: 22,
   },
+  limitNote: {
+    alignItems: 'center',
+    borderRadius: radii.md,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    padding: spacing.md,
+  },
+  limitText: {
+    flex: 1,
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  limitValue: {
+    fontFamily: fonts.heading,
+    fontSize: 28,
+  },
   metricRow: {
     flexDirection: 'row',
     gap: spacing.md,
@@ -272,6 +340,11 @@ const styles = StyleSheet.create({
     height: 96,
     justifyContent: 'center',
     width: 96,
+  },
+  qrImage: {
+    borderRadius: radii.sm,
+    height: 82,
+    width: 82,
   },
   qrCard: {
     gap: spacing.md,

@@ -20,6 +20,10 @@ type PlanningTab = 'All' | 'Overdue' | 'Due Soon' | TaskCategory;
 const tabs: PlanningTab[] = ['All', 'Overdue', 'Due Soon', 'Guests', 'Budget', 'Files', 'Vendors', 'Timeline', 'Website', 'Day Of'];
 const taskCategories: TaskCategory[] = ['Guests', 'Budget', 'Files', 'Vendors', 'Checklist', 'Timeline', 'Day Of', 'Website'];
 
+function taskCategoryLabel(category: PlanningTab | TaskCategory) {
+  return category === 'Files' ? 'Documents' : category;
+}
+
 type TaskMonthGroup = {
   key: string;
   label: string;
@@ -194,7 +198,7 @@ export function ChecklistScreen() {
 
       <View style={styles.tabs}>
         {tabs.map((item) => (
-          <FilterPill active={tab === item} key={item} label={item} onPress={() => setTab(item)} />
+          <FilterPill active={tab === item} key={item} label={taskCategoryLabel(item)} onPress={() => setTab(item)} />
         ))}
       </View>
 
@@ -220,7 +224,7 @@ export function ChecklistScreen() {
                   <View style={styles.taskCopy}>
                     <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
                     <Text style={[styles.taskMeta, { color: colors.muted }]}>
-                      {task.category} - {task.dueDate ? formatShortDate(task.dueDate) : 'No deadline set'}
+                      {taskCategoryLabel(task.category)} - {task.dueDate ? formatShortDate(task.dueDate) : 'No deadline set'}
                     </Text>
                     <Text style={[styles.taskDetail, { color: colors.muted }]}>{task.detail}</Text>
                     <Text
@@ -294,7 +298,7 @@ export function ChecklistScreen() {
         </View>
         <View style={styles.categoryChoices}>
           {taskCategories.map((category) => (
-            <FilterPill active={taskForm.category === category} key={category} label={category} onPress={() => setTaskForm((current) => ({ ...current, category }))} />
+            <FilterPill active={taskForm.category === category} key={category} label={taskCategoryLabel(category)} onPress={() => setTaskForm((current) => ({ ...current, category }))} />
           ))}
         </View>
         {taskError ? <Text style={[styles.errorText, { color: colors.danger }]}>{taskError}</Text> : null}

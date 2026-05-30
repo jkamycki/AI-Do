@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { KeyboardTypeOptions, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { KeyboardTypeOptions, Linking, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import { Card } from '../components/Card';
 import { PrimaryButton } from '../components/PrimaryButton';
@@ -34,6 +34,7 @@ export function ProfileSettingsScreen() {
   const profile = data.profile;
   const [notifications, setNotifications] = useState(data.profile.notificationsEnabled);
   const [editing, setEditing] = useState(false);
+  const [accountMessage, setAccountMessage] = useState('');
   const [form, setForm] = useState({
     guestTarget: String(profile.guestTarget),
     location: profile.location,
@@ -97,6 +98,13 @@ export function ProfileSettingsScreen() {
   const toggleNotifications = (enabled: boolean) => {
     setNotifications(enabled);
     updateProfile({ notificationsEnabled: enabled });
+  };
+
+  const openAccountPage = () => {
+    setAccountMessage('');
+    void Linking.openURL('https://aidowedding.net/dashboard')
+      .then(() => setAccountMessage('Account page opened in your browser.'))
+      .catch(() => setAccountMessage('Could not open account settings. Go to aidowedding.net/dashboard from your browser.'));
   };
 
   const togglePriority = (option: string) => {
@@ -246,11 +254,12 @@ export function ProfileSettingsScreen() {
         <View style={styles.accountRow}>
           <MaterialCommunityIcons color={colors.accent} name="shield-check-outline" size={23} />
           <View style={styles.accountCopy}>
-            <Text style={[styles.accountTitle, { color: colors.text }]}>Website profile API</Text>
-            <Text style={[styles.accountMeta, { color: colors.muted }]}>Ready for secure login and account sync when the endpoint is connected.</Text>
+            <Text style={[styles.accountTitle, { color: colors.text }]}>Account sync</Text>
+            <Text style={[styles.accountMeta, { color: colors.muted }]}>Your wedding profile stays connected with the website when you are signed in.</Text>
           </View>
         </View>
-        <PrimaryButton icon="log-out-outline" label="Manage Account" variant="ghost" />
+        {accountMessage ? <Text style={[styles.accountMeta, { color: colors.primary }]}>{accountMessage}</Text> : null}
+        <PrimaryButton icon="person-circle-outline" label="Manage Account" onPress={openAccountPage} variant="ghost" />
       </Card>
     </Screen>
   );

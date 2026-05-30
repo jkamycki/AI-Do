@@ -28,7 +28,9 @@ function parseAriaStream(text: string) {
       } else if (parsed.type === 'status') {
         reply += `\n\n${parsed.message ?? ''}`.trimEnd();
       } else if (parsed.type === 'error') {
-        error = parsed.error || 'Aria could not respond right now.';
+        error = typeof parsed.error === 'string' && parsed.error.trim()
+          ? parsed.error
+          : 'Aria could not respond right now.';
       }
     } catch {
       // Ignore non-JSON stream lines.

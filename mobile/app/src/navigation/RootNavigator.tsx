@@ -1,4 +1,4 @@
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -33,6 +33,7 @@ import { fonts, radii, shadow, spacing, useAppTheme } from '../theme';
 
 export type RootStackParamList = {
   Aria: undefined;
+  Budget: undefined;
   Contracts: undefined;
   DayOf: undefined;
   MainTabs: undefined;
@@ -47,7 +48,6 @@ export type RootStackParamList = {
   SeatingChart: undefined;
   Settings: undefined;
   Timeline: undefined;
-  Vendors: undefined;
   WebPortal: undefined;
   WebsiteEditor: undefined;
   WeddingParty: undefined;
@@ -57,7 +57,6 @@ export type RootStackParamList = {
 export type TabParamList = {
   Home: undefined;
   Vendors: undefined;
-  Budget: undefined;
   Checklist: undefined;
   Guests: undefined;
   More: undefined;
@@ -85,10 +84,10 @@ function TabIcon({ color, focused, routeName }: { color: string; focused: boolea
     );
   }
 
-  if (routeName === 'Budget') {
+  if (routeName === 'Vendors') {
     return (
       <View style={wrapStyle}>
-        <MaterialCommunityIcons color={iconColor} name={focused ? 'cash-multiple' : 'cash'} size={23} />
+        <Ionicons color={iconColor} name={focused ? 'storefront' : 'storefront-outline'} size={23} />
       </View>
     );
   }
@@ -149,9 +148,9 @@ function MainTabs() {
       })}
     >
       <Tab.Screen component={HomeScreen} name="Home" />
-      <Tab.Screen component={ChecklistScreen} name="Checklist" />
       <Tab.Screen component={GuestsScreen} name="Guests" />
-      <Tab.Screen component={BudgetScreen} name="Budget" />
+      <Tab.Screen component={VendorsScreen} name="Vendors" />
+      <Tab.Screen component={ChecklistScreen} name="Checklist" />
       <Tab.Screen component={MoreScreen} name="More" />
     </Tab.Navigator>
   );
@@ -169,12 +168,12 @@ export function RootNavigator() {
     >
       <Stack.Screen component={MainTabs} name="MainTabs" options={{ headerShown: false }} />
       <Stack.Screen component={ProfileSettingsScreen} name="ProfileSettings" options={{ title: 'Profile' }} />
-      <Stack.Screen component={VendorsScreen} name="Vendors" options={{ title: 'Vendors' }} />
+      <Stack.Screen component={BudgetScreen} name="Budget" options={{ title: 'Budget Summary' }} />
       <Stack.Screen component={SettingsScreen} name="Settings" options={{ title: 'Settings' }} />
       <Stack.Screen component={OnboardingScreen} name="Onboarding" options={{ title: 'Setup' }} />
       <Stack.Screen component={MoodBoardScreen} name="MoodBoard" options={{ title: 'Mood Board' }} />
       <Stack.Screen component={TimelineScreen} name="Timeline" options={{ title: 'Timeline' }} />
-      <Stack.Screen component={FilesScreen} name="Files" options={{ title: 'Files' }} />
+      <Stack.Screen component={FilesScreen} name="Files" options={{ title: 'Documents' }} />
       <Stack.Screen component={ContractsScreen} name="Contracts" options={{ title: 'Contracts' }} />
       <Stack.Screen component={WeddingPartyScreen} name="WeddingParty" options={{ title: 'Wedding Party' }} />
       <Stack.Screen component={SeatingChartScreen} name="SeatingChart" options={{ title: 'Seating Chart' }} />
@@ -182,7 +181,7 @@ export function RootNavigator() {
       <Stack.Screen component={GuestPhotoDropScreen} name="GuestPhotoDrop" options={{ title: 'Guest Photo Drop' }} />
       <Stack.Screen component={AriaScreen} name="Aria" options={{ title: 'Aria' }} />
       <Stack.Screen component={DayOfScreen} name="DayOf" options={{ title: 'Day-Of Coordinator' }} />
-      <Stack.Screen component={WebsiteEditorScreen} name="WebsiteEditor" options={{ title: 'Website Editor' }} />
+      <Stack.Screen component={WebsiteEditorScreen} name="WebsiteEditor" options={{ title: 'Website Control' }} />
       <Stack.Screen component={InvitationsScreen} name="Invitations" options={{ title: 'Invitations' }} />
       <Stack.Screen component={WorkspaceScreen} name="Workspace" options={{ title: 'Workspace' }} />
       <Stack.Screen component={HelpScreen} name="Help" options={{ title: 'Help' }} />

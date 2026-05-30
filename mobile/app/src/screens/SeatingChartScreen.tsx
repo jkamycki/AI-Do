@@ -27,6 +27,12 @@ export function SeatingChartScreen() {
   const { data, respondAsAria } = usePlanningData();
   const assigned = data.seating.reduce((sum, table) => sum + table.assigned, 0);
   const capacity = data.seating.reduce((sum, table) => sum + table.capacity, 0);
+  const requestAdjustment = (table: SeatingTable) => {
+    respondAsAria(`Help me adjust ${table.name}. Current notes: ${table.notes}`);
+  };
+  const applyPlan = (table: SeatingTable) => {
+    respondAsAria(`Apply and review the seating plan for ${table.name} with ${table.assigned} assigned seats.`);
+  };
 
   return (
     <Screen>
@@ -78,8 +84,8 @@ export function SeatingChartScreen() {
             <ProgressBar value={progress} />
             <Text style={[styles.notes, { color: colors.muted }]}>{table.notes}</Text>
             <View style={styles.actions}>
-              <PrimaryButton icon="create-outline" label="Adjust" variant="ghost" />
-              <PrimaryButton icon="checkmark-outline" label="Apply Plan" />
+              <PrimaryButton icon="create-outline" label="Adjust" onPress={() => requestAdjustment(table)} variant="ghost" />
+              <PrimaryButton icon="checkmark-outline" label="Apply Plan" onPress={() => applyPlan(table)} />
             </View>
           </Card>
         );

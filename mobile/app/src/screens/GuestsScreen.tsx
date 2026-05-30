@@ -138,8 +138,8 @@ export function GuestsScreen() {
           <View style={[styles.actionRow, { borderTopColor: colors.border }]}>
             {guest.rsvp === 'Declined' ? (
               <>
-                <PrimaryButton icon="archive-outline" label="Archive" variant="ghost" />
                 <PrimaryButton icon="arrow-undo-outline" label="Undo" onPress={() => updateRsvp(guest.id, 'Pending')} variant="ghost" />
+                <PrimaryButton icon="create-outline" label="Edit Details" onPress={() => openGuestForm(guest.id)} variant="ghost" />
               </>
             ) : (
               <>

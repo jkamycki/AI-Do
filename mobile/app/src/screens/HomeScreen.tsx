@@ -142,7 +142,7 @@ export function HomeScreen() {
         <View style={styles.pulseGrid}>
           <PulseItem icon="wallet-outline" label="Paid" value={formatCurrency(totalPaid)} />
           <PulseItem icon="cash-outline" label="Budget" value={formatCurrency(totalBudget)} />
-          <PulseItem icon="document-text-outline" label="Files" value={String(data.documents.length)} />
+          <PulseItem icon="document-text-outline" label="Docs" value={String(data.documents.length)} />
         </View>
       </Card>
 
@@ -159,7 +159,7 @@ export function HomeScreen() {
       <View style={styles.shortcutGrid}>
         <Shortcut icon="globe-outline" label="Website" meta={`${websiteDrafts} drafts`} onPress={() => go('WebsiteEditor')} />
         <Shortcut icon="mail-open-outline" label="Invites" meta={`${data.invitations.length} suites`} onPress={() => go('Invitations')} />
-        <Shortcut icon="storefront-outline" label="Vendors" meta={`${data.vendors.length} booked`} onPress={() => go('Vendors')} />
+        <Shortcut icon="storefront-outline" label="Vendor Hub" meta={`${data.vendors.length} booked`} onPress={() => go('Vendors')} />
         <Shortcut icon="grid-outline" label="Seating" meta={`${data.seating.length} tables`} onPress={() => go('SeatingChart')} />
         <Shortcut icon="camera-outline" label="Photo Drop" meta={data.guestPhotoDrop.enabled ? 'Live' : 'Off'} onPress={() => go('GuestPhotoDrop')} />
         <Shortcut icon="people-outline" label="Workspace" meta={`${data.workspaceInvites.length} invites`} onPress={() => go('Workspace')} />

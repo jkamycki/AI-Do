@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AccordionCard } from '../components/AccordionCard';
 import { Card } from '../components/Card';
@@ -15,12 +16,13 @@ import { SectionHeader } from '../components/SectionHeader';
 import { StatusPill } from '../components/StatusPill';
 import { usePlanningData } from '../state/PlanningDataContext';
 import { fonts, spacing, useAppTheme } from '../theme';
-import { VendorStatus } from '../types';
+import { Vendor, VendorStatus } from '../types';
 import { formatCurrency, formatShortDate, isDateInputValid } from '../utils/format';
 
 const vendorStatuses: VendorStatus[] = ['Pending', 'Signed', 'Ongoing', 'Completed'];
 
 export function VendorsScreen() {
+  const navigation = useNavigation<any>();
   const { colors } = useAppTheme();
   const { addDocument, addVendor, data, loading, recordVendorPayment, refresh, scheduleVendorPayment, updateVendor } = usePlanningData();
   const [addOpen, setAddOpen] = useState(false);
@@ -144,14 +146,50 @@ export function VendorsScreen() {
     setScheduleVendorId(null);
   }
 
+  function openVendorUrl(url: string) {
+    void Linking.openURL(url).catch(() => undefined);
+  }
+
+  function formatPhoneHref(phone?: string) {
+    const cleaned = phone?.replace(/[^\d+]/g, '');
+    return cleaned ? cleaned : '';
+  }
+
+  function messageVendor(vendor: Vendor) {
+    const phoneHref = formatPhoneHref(vendor.phone);
+    if (phoneHref) {
+      openVendorUrl(`sms:${phoneHref}`);
+      return;
+    }
+
+    if (vendor.email) {
+      openVendorUrl(`mailto:${vendor.email}?subject=${encodeURIComponent(`Wedding planning - ${vendor.name}`)}`);
+    }
+  }
+
+  function emailVendor(vendor: Vendor) {
+    if (!vendor.email) {
+      return;
+    }
+
+    openVendorUrl(`mailto:${vendor.email}?subject=${encodeURIComponent(`Wedding planning - ${vendor.name}`)}`);
+  }
+
+  function callVendor(vendor: Vendor) {
+    const phoneHref = formatPhoneHref(vendor.phone);
+    if (phoneHref) {
+      openVendorUrl(`tel:${phoneHref}`);
+    }
+  }
+
   return (
     <Screen onRefresh={refresh} refreshing={loading}>
-      <SectionHeader centered subtitle="Track contracts, deposits, balances, and next payments." title="Vendors" />
+      <SectionHeader centered subtitle="Vendor list, contacts, contracts, documents, messages, and budget summary in one place." title="Vendor Hub" />
 
       <Card style={styles.quickAddCard}>
         <View style={styles.quickAddCopy}>
-          <Text style={[styles.quickAddTitle, { color: colors.text }]}>Vendor Workspace</Text>
-          <Text style={[styles.quickAddMeta, { color: colors.muted }]}>Add vendors, track payments, and create receipts without leaving the app.</Text>
+          <Text style={[styles.quickAddTitle, { color: colors.text }]}>Vendor List</Text>
+          <Text style={[styles.quickAddMeta, { color: colors.muted }]}>Add vendors, track contacts, payments, contracts, documents, and next actions.</Text>
         </View>
         <PrimaryButton
           icon="add"
@@ -161,6 +199,16 @@ export function VendorsScreen() {
             setAddOpen(true);
           }}
         />
+      </Card>
+
+      <Card style={styles.hubNavCard}>
+        <Text style={[styles.hubNavTitle, { color: colors.text }]}>Vendor tools</Text>
+        <View style={styles.hubNavGrid}>
+          <PrimaryButton icon="wallet-outline" label="Budget Summary" onPress={() => navigation.navigate('Budget')} variant="ghost" />
+          <PrimaryButton icon="document-text-outline" label="Contracts" onPress={() => navigation.navigate('Contracts')} variant="ghost" />
+          <PrimaryButton icon="folder-open-outline" label="Documents" onPress={() => navigation.navigate('Files')} variant="ghost" />
+        </View>
+        <Text style={[styles.quickAddMeta, { color: colors.muted }]}>Call, message, and email shortcuts live directly on each vendor card so booked vendors stay organized.</Text>
       </Card>
 
       <View style={styles.metricRow}>
@@ -184,6 +232,33 @@ export function VendorsScreen() {
           subtitle={`${vendor.category} - next payment ${formatShortDate(vendor.nextPaymentDate)}`}
           title={vendor.name}
         >
+          <View style={[styles.contactPanel, { backgroundColor: colors.backgroundAlt, borderColor: colors.border }]}>
+            <View style={styles.contactHeader}>
+              <View style={[styles.contactIcon, { backgroundColor: colors.card }]}>
+                <MaterialCommunityIcons color={colors.primary} name="account-heart-outline" size={20} />
+              </View>
+              <View style={styles.contactCopy}>
+                <Text style={[styles.contactName, { color: colors.text }]}>{vendor.contactName || 'Contact details needed'}</Text>
+                <Text style={[styles.contactMeta, { color: colors.muted }]}>
+                  {vendor.arrivalTime ? `Arrival ${vendor.arrivalTime}` : 'Add arrival time for wedding-day tracking'}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.contactDetails}>
+              <Text style={[styles.contactLine, { color: vendor.phone ? colors.text : colors.muted }]}>
+                {vendor.phone || 'No phone added'}
+              </Text>
+              <Text style={[styles.contactLine, { color: vendor.email ? colors.text : colors.muted }]}>
+                {vendor.email || 'No email added'}
+              </Text>
+            </View>
+            <View style={styles.contactActions}>
+              <ContactAction disabled={!vendor.phone} icon="phone-outline" label="Call" onPress={() => callVendor(vendor)} />
+              <ContactAction disabled={!vendor.phone && !vendor.email} icon="message-text-outline" label="Message" onPress={() => messageVendor(vendor)} />
+              <ContactAction disabled={!vendor.email} icon="email-outline" label="Email" onPress={() => emailVendor(vendor)} />
+            </View>
+          </View>
+
           <View style={styles.paymentGrid}>
             <View>
               <Text style={[styles.label, { color: colors.muted }]}>Committed</Text>
@@ -289,11 +364,54 @@ export function VendorsScreen() {
   );
 }
 
+function ContactAction({
+  disabled,
+  icon,
+  label,
+  onPress,
+}: {
+  disabled: boolean;
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  label: string;
+  onPress: () => void;
+}) {
+  const { colors } = useAppTheme();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled}
+      onPress={onPress}
+      style={[
+        styles.contactAction,
+        { backgroundColor: colors.card, borderColor: colors.border },
+        disabled ? styles.contactActionDisabled : null,
+      ]}
+    >
+      <MaterialCommunityIcons color={disabled ? colors.muted : colors.primary} name={icon} size={17} />
+      <Text style={[styles.contactActionLabel, { color: disabled ? colors.muted : colors.primary }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   metricRow: {
     flexDirection: 'row',
     gap: spacing.md,
     marginBottom: spacing.lg,
+  },
+  hubNavCard: {
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  hubNavGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  hubNavTitle: {
+    fontFamily: fonts.headingSemi,
+    fontSize: 20,
   },
   quickAddCard: {
     alignItems: 'center',
@@ -340,6 +458,67 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: spacing.md,
+  },
+  contactPanel: {
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+  },
+  contactHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  contactIcon: {
+    alignItems: 'center',
+    borderRadius: 16,
+    height: 38,
+    justifyContent: 'center',
+    width: 38,
+  },
+  contactCopy: {
+    flex: 1,
+  },
+  contactName: {
+    fontFamily: fonts.headingSemi,
+    fontSize: 18,
+  },
+  contactMeta: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 1,
+  },
+  contactDetails: {
+    gap: 2,
+  },
+  contactLine: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+  },
+  contactActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  contactAction: {
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 5,
+    justifyContent: 'center',
+    minHeight: 40,
+    paddingHorizontal: spacing.sm,
+  },
+  contactActionDisabled: {
+    opacity: 0.55,
+  },
+  contactActionLabel: {
+    fontFamily: fonts.semibold,
+    fontSize: 12,
   },
   errorText: {
     fontFamily: fonts.semibold,

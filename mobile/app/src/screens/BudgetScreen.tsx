@@ -107,7 +107,7 @@ export function BudgetScreen() {
 
   return (
     <Screen onRefresh={refresh} refreshing={loading}>
-      <SectionHeader centered subtitle="Know what is paid, what is due, and what needs attention." title="Budget" />
+      <SectionHeader centered subtitle="Know what is paid, what is due, and what needs attention." title="Budget Summary" />
 
       <Card style={styles.quickAddCard}>
         <View style={styles.quickAddCopy}>

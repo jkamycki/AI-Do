@@ -2,6 +2,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { ClerkProvider, useAuth, useSSO, useSignIn, useSignUp, useUser } from '@clerk/clerk-expo';
 import { tokenCache } from '@clerk/clerk-expo/token-cache';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Clipboard from 'expo-clipboard';
 import * as DocumentPicker from 'expo-document-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts } from 'expo-font';
@@ -43,6 +44,7 @@ const logo = require('./assets/aido-logo.png');
 const ariaAvatar = require('./assets/aria-avatar.png');
 const homeHeroPhoto = require('./assets/home-hero.jpg');
 const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? '';
+const publicWebsiteOrigin = (process.env.EXPO_PUBLIC_AIDO_WEB_URL?.trim() || 'https://aidowedding.net').replace(/\/+$/, '');
 const couplePhotoUri =
   'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=640&q=90';
 const userAvatarUri =
@@ -78,6 +80,19 @@ type MobileSeatingResult = {
   totalSeated: number;
   warnings: string[];
 };
+
+function buildGuestWebsiteHomeUrl(slug: string) {
+  const cleanSlug = slug.trim().replace(/^\/+|\/+$/g, '');
+  return cleanSlug ? `${publicWebsiteOrigin}/w/${cleanSlug}/home` : '';
+}
+
+function slugifyWeddingLabel(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '') || 'our-wedding';
+}
 
 type CalendarEvent = {
   id: string;
@@ -237,9 +252,9 @@ const colors = {
 
 const tabs: Array<{ id: BottomTabId; label: string; icon: keyof typeof Ionicons.glyphMap }> = [
   { id: 'today', label: 'Home', icon: 'home-outline' },
-  { id: 'plan', label: 'Planner', icon: 'calendar-clear-outline' },
   { id: 'website', label: 'Guest Hub', icon: 'globe-outline' },
   { id: 'vendors', label: 'Vendors', icon: 'storefront-outline' },
+  { id: 'plan', label: 'Plan', icon: 'calendar-clear-outline' },
   { id: 'aria', label: 'Aria', icon: 'sparkles-outline' },
   { id: 'more', label: 'More', icon: 'grid-outline' },
 ];
@@ -263,7 +278,7 @@ const featureGroups = [
     title: 'Support',
     items: [
       ['Help & support', 'Contact A.I DO support and view app guidance.', 'help-circle-outline'],
-      ['Desktop tools', 'Full design editing, exports, admin, and advanced setup live on desktop.', 'desktop-outline'],
+      ['Best on desktop', 'Full design editing, print polish, exports, and advanced setup live on desktop.', 'desktop-outline'],
     ],
   },
 ];
@@ -304,6 +319,8 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
   const [authLoaded, setAuthLoaded] = useState(false);
   const [data, setData] = useState<typeof samplePlanningData>(samplePlanningData);
   const [planningDataLoaded, setPlanningDataLoaded] = useState(false);
+  const [lastWebsiteSyncAt, setLastWebsiteSyncAt] = useState<Date | null>(null);
+  const [websiteSyncStatus, setWebsiteSyncStatus] = useState<'local' | 'synced' | 'syncing' | 'error'>('local');
   const [ariaOpen, setAriaOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [accountView, setAccountView] = useState<AccountView>('profile');
@@ -684,11 +701,19 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
   };
 
   const refreshPlanningDataFromWebsite = useCallback(async () => {
-    if (!authUser || !hasMobileApiBase() || remoteRefreshInFlight.current) return;
+    if (!authUser || !hasMobileApiBase() || remoteRefreshInFlight.current) {
+      setWebsiteSyncStatus('local');
+      return;
+    }
     remoteRefreshInFlight.current = true;
+    setWebsiteSyncStatus('syncing');
     try {
       const remoteData = await getPlanningData();
       setData(remoteData);
+      setLastWebsiteSyncAt(new Date());
+      setWebsiteSyncStatus('synced');
+    } catch {
+      setWebsiteSyncStatus('error');
     } finally {
       remoteRefreshInFlight.current = false;
     }
@@ -764,8 +789,12 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
     async function hydratePlanningData() {
       try {
         if (authUser && hasMobileApiBase()) {
+          setWebsiteSyncStatus('syncing');
           setData(await getPlanningData());
+          setLastWebsiteSyncAt(new Date());
+          setWebsiteSyncStatus('synced');
         } else {
+          setWebsiteSyncStatus('local');
           const stored = await AsyncStorage.getItem(storageKeys.planningData);
           if (!alive) return;
           if (stored) {
@@ -775,7 +804,10 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
           }
         }
       } catch {
-        if (alive) setData(samplePlanningData);
+        if (alive) {
+          setData(samplePlanningData);
+          setWebsiteSyncStatus('error');
+        }
       } finally {
         if (alive) setPlanningDataLoaded(true);
       }
@@ -843,7 +875,7 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
               void Linking.openURL(target);
             }}
             onSignIn={(email) => {
-              setAuthUser({ email, firstName: 'Stacy', isNewUser: false });
+              setAuthUser({ email, firstName: email.split('@')[0] || 'Planner', isNewUser: false });
               setNeedsOnboarding(false);
             }}
             onSignUp={(email, firstName) => {
@@ -913,8 +945,10 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
               onChangeView={setGuestHubView}
               onDeleteGuest={removeGuest}
               onDeleteHotel={removeHotel}
+              onDeletePhotoUpload={deleteGuestPhotoUpload}
               onUpdateHotel={updateHotel}
               onUpdateGuest={updateGuest}
+              onUpdateGuests={(guests) => setData((current) => ({ ...current, guests }))}
               onUpdateGuestPhotoDropSettings={updateGuestPhotoDropSettings}
               onUpdateGuestPhotoUploadStatus={updateGuestPhotoUploadStatus}
               onHydrateGuestPhotoDrop={hydrateGuestPhotoDrop}
@@ -961,6 +995,9 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
                 setAccountOpen(true);
               }}
               openTab={setActiveTab}
+              lastWebsiteSyncAt={lastWebsiteSyncAt}
+              onRefreshWebsite={refreshPlanningDataFromWebsite}
+              websiteSyncStatus={websiteSyncStatus}
             />
           ) : null}
         </ScrollView>
@@ -1490,7 +1527,7 @@ function Hero({
         </View>
       </View>
       <View style={styles.heroStats}>
-        <CountdownStat />
+        <CountdownStat weddingDate={profile.weddingDate} />
         <StatCard label="Planned" value={`${progress}%`} />
         <StatCard label="Guests" value={`${profile.guestTarget}`} />
       </View>
@@ -1506,21 +1543,29 @@ function Hero({
       <View style={styles.homeTileGrid}>
         <HomeTile color="#A93D5B" icon="people-outline" label="Guests" tint="#FBE7ED" value={`${confirmed}/${profile.guestTarget}`} onPress={() => onOpenGuestHub('guests')} />
         <HomeTile color="#496D89" icon="mail-open-outline" label="Invites" tint="#E7F0F7" value={`${inviteTotals.responses}/${inviteTotals.sent} replies`} onPress={() => onOpenGuestHub('invites')} />
-        <HomeTile color="#2F7F7A" icon="calendar-clear-outline" label="Planner" tint="#E0F2EF" value={`${openTasks} tasks`} onPress={onContinue} />
+        <HomeTile color="#2F7F7A" icon="calendar-clear-outline" label="Plan" tint="#E0F2EF" value={`${openTasks} tasks`} onPress={onContinue} />
         <HomeTile color="#B98343" icon="storefront-outline" label="Vendors" tint="#F7EBD8" value={`${data.vendors.length} booked`} onPress={onOpenVendors} />
         <HomeTile color="#637B59" icon="wallet-outline" label="Budget Summary" tint="#E9F0E3" value={`${budgetPercent}% paid`} onPress={onOpenFinance} />
-        <HomeTile color="#7D5BA6" icon="globe-outline" label="Website" tint="#EFE7F7" value="Editor" onPress={() => onOpenGuestHub('website')} />
+        <HomeTile color="#7D5BA6" icon="globe-outline" label="Website" tint="#EFE7F7" value="Control" onPress={() => onOpenGuestHub('website')} />
       </View>
 
     </LinearGradient>
   );
 }
 
-function CountdownStat() {
+function CountdownStat({ weddingDate }: { weddingDate: string }) {
+  const parsedWeddingDate = parseDate(weddingDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = parsedWeddingDate ? new Date(parsedWeddingDate) : null;
+  target?.setHours(0, 0, 0, 0);
+  const daysUntil = target ? Math.max(0, Math.ceil((target.getTime() - today.getTime()) / 86400000)) : 0;
+  const label = daysUntil === 1 ? 'DAY UNTIL I DO' : 'DAYS UNTIL I DO';
+
   return (
     <View style={styles.statCard}>
-      <Text style={styles.statValue}>3712</Text>
-      <Text style={styles.statLabel}>DAYS UNTIL I DO</Text>
+      <Text style={styles.statValue}>{daysUntil}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
 }
@@ -1986,8 +2031,10 @@ function WebsiteSection({
   onChangeView,
   onDeleteGuest,
   onDeleteHotel,
+  onDeletePhotoUpload,
   onUpdateHotel,
   onUpdateGuest,
+  onUpdateGuests,
   onUpdateGuestPhotoDropSettings,
   onUpdateGuestPhotoUploadStatus,
   onHydrateGuestPhotoDrop,
@@ -2000,8 +2047,10 @@ function WebsiteSection({
   onChangeView: (view: GuestHubView) => void;
   onDeleteGuest: (guestId: string) => void;
   onDeleteHotel: (hotelId: string) => void;
+  onDeletePhotoUpload: (uploadId: string) => void;
   onUpdateHotel: (hotel: (typeof samplePlanningData.hotels)[number]) => void;
   onUpdateGuest: (guest: Guest) => void;
+  onUpdateGuests: (guests: Guest[]) => void;
   onUpdateGuestPhotoDropSettings: (patch: Partial<GuestPhotoDropSettings>) => void;
   onUpdateGuestPhotoUploadStatus: (uploadId: string, status: GuestPhotoUpload['status']) => void;
   onHydrateGuestPhotoDrop: (settings: GuestPhotoDropSettings, uploads: GuestPhotoUpload[]) => void;
@@ -2124,15 +2173,14 @@ function WebsiteSection({
         setGuestCampaignMessage(`No eligible guests for ${campaignLabel.toLowerCase()} right now.`);
         return;
       }
-      setData((current) => ({
-        ...current,
-        guests: current.guests.map((guest) => {
+      onUpdateGuests(
+        data.guests.map((guest) => {
           if (!localEligibleIds.has(guest.id)) return guest;
           if (campaign === 'save-the-dates') return { ...guest, saveTheDateStatus: 'sent' };
           if (campaign === 'rsvp-invites') return { ...guest, invitationStatus: 'sent' };
           return { ...guest, rsvpReminderStatus: 'sent' };
         }),
-      }));
+      );
       setGuestCampaignMessage(
         `${campaignLabel} sent: ${result.delivered} emailed, ${result.markedSent} ready for manual share, ${result.attempted} total processed.`,
       );
@@ -2296,7 +2344,7 @@ function WebsiteSection({
     setRegistryMessage(trimmedUrl ? 'Registry link saved for the wedding website and guest flow.' : 'Add a registry URL when it is ready.');
   };
   const setPresetRegistry = (provider: string) => {
-    const url = `https://${provider.toLowerCase().replace(/\s+/g, '')}.com/registry/stacy-rick`;
+    const url = `https://${provider.toLowerCase().replace(/\s+/g, '')}.com/registry/${slugifyWeddingLabel(data.profile.coupleName)}`;
     setRegistryConnected(true);
     setRegistryUrl(url);
     setRegistryMessage(`${provider} registry link added. Update the URL anytime.`);
@@ -2369,6 +2417,9 @@ function WebsiteSection({
             generating={seatingGenerating}
             notes={seatingNotes}
             onApply={applyMobileSeating}
+            onAdjust={() => {
+              setSeatingSyncMessage('Tap a guest in the table view, then choose the table to move them to.');
+            }}
             onGenerate={generateMobileSeating}
             onMoveGuest={moveSeatingGuest}
             onNotesChange={(value) => {
@@ -2709,7 +2760,7 @@ function WebsiteSection({
           activeTab={photoDropTab}
           data={data}
           onChangeTab={setPhotoDropTab}
-          onDeleteUpload={deleteGuestPhotoUpload}
+          onDeleteUpload={onDeletePhotoUpload}
           onHydrate={onHydrateGuestPhotoDrop}
           onUpdateSettings={onUpdateGuestPhotoDropSettings}
           onUpdateUploadStatus={onUpdateGuestPhotoUploadStatus}
@@ -2911,6 +2962,7 @@ function MobileSeatingGenerator({
   generating,
   notes,
   onApply,
+  onAdjust,
   onGenerate,
   onMoveGuest,
   onNotesChange,
@@ -2928,6 +2980,7 @@ function MobileSeatingGenerator({
   generating: boolean;
   notes: string;
   onApply: () => Promise<void>;
+  onAdjust: () => void;
   onGenerate: () => Promise<void>;
   onMoveGuest: (fromTableNumber: number, toTableNumber: number, guestName: string) => void;
   onNotesChange: (value: string) => void;
@@ -3052,7 +3105,7 @@ function MobileSeatingGenerator({
               <Ionicons color={colors.surface} name="checkmark-outline" size={18} />
               <Text style={styles.primaryActionText}>{saving ? 'Applying...' : 'Apply Plan'}</Text>
             </Pressable>
-            <Pressable style={styles.secondaryActionButton}>
+            <Pressable onPress={onAdjust} style={styles.secondaryActionButton}>
               <Ionicons color={colors.rose} name="create-outline" size={17} />
               <Text style={styles.secondaryActionText}>Adjust</Text>
             </Pressable>
@@ -3484,7 +3537,7 @@ function WebsiteMobilePreview({
   const [welcomeCopy, setWelcomeCopy] = useState('We cannot wait to celebrate with you under the sun.');
   const [rsvpDeadline, setRsvpDeadline] = useState('October 1, 2035');
   const [thankYouMessage, setThankYouMessage] = useState("We'll send you more details closer to the day.");
-  const [slug, setSlug] = useState('stacy-rick');
+  const [slug, setSlug] = useState(() => slugifyWeddingLabel(data.profile.coupleName));
   const [passwordEnabled, setPasswordEnabled] = useState(false);
   const [published, setPublished] = useState(false);
   const [accentColor] = useState(colors.rose);
@@ -3503,12 +3556,13 @@ function WebsiteMobilePreview({
     rsvp: true,
     photoDrop: true,
   });
-  const [registryUrl, setRegistryUrl] = useState(registryConnected ? 'https://registry.example/stacy-rick' : '');
+  const [registryUrl, setRegistryUrl] = useState('');
   const coupleFont = fontStyle === 'script' ? 'GreatVibes_400Regular' : fontStyle === 'classic' ? 'PlayfairDisplay_700Bold' : 'Inter_700Bold';
   const weddingDateLong = formatInvitationDate(data.profile.weddingDate);
   const parsedWeddingDate = parseDate(data.profile.weddingDate);
   const countdownDays = parsedWeddingDate ? Math.max(0, Math.ceil((parsedWeddingDate.getTime() - Date.now()) / 86400000)) : 0;
   const venueLine = [data.profile.venue, data.profile.location].filter(Boolean).join(', ');
+  const guestWebsiteHomeUrl = buildGuestWebsiteHomeUrl(slug);
   const mobileWebsiteSections = () => ({
     faq: Boolean(websiteRecord?.sectionsEnabled?.faq),
     gallery: Boolean(websiteRecord?.sectionsEnabled?.gallery),
@@ -3557,6 +3611,14 @@ function WebsiteMobilePreview({
       if (!record) {
         record = await createMobileWebsite();
         setWebsiteRecord(record);
+      }
+      const nextSlug = slug.trim();
+      if (nextSlug && nextSlug !== record.slug && !record.published) {
+        record = await saveMobileWebsiteSlug(nextSlug);
+        setWebsiteRecord(record);
+      } else if (nextSlug && nextSlug !== record.slug && record.published) {
+        setSlug(record.slug || nextSlug);
+        setWebsitePreviewMessage('Unpublish the website before changing the guest URL, then publish it again when ready.');
       }
       const updated = await saveMobileWebsiteQuickUpdate({
         customText: mobileWebsiteCustomText(),
@@ -3632,6 +3694,33 @@ function WebsiteMobilePreview({
     setEditorTab('copy');
     setWebsitePreviewMessage(`${sectionTitle} quick copy can be updated here. Use desktop for full layout editing.`);
   };
+  const copyGuestWebsiteLink = async () => {
+    if (!guestWebsiteHomeUrl) {
+      setWebsiteSyncMessage('Add a website URL first, then you can share the guest link.');
+      return;
+    }
+    try {
+      await Clipboard.setStringAsync(guestWebsiteHomeUrl);
+      setWebsiteSyncMessage('Guest website Home link copied.');
+      return;
+    } catch {
+      void Share.share({
+        message: `Open our wedding website: ${guestWebsiteHomeUrl}`,
+        url: guestWebsiteHomeUrl,
+      }).then(() => setWebsiteSyncMessage('Guest website Home link ready to share.')).catch(() => {
+        setWebsiteSyncMessage('Share did not open. You can still open the guest site and copy the link from there.');
+      });
+    }
+  };
+  const openGuestWebsiteLink = () => {
+    if (!guestWebsiteHomeUrl) {
+      setWebsiteSyncMessage('Add a website URL first, then you can open the guest site.');
+      return;
+    }
+    void Linking.openURL(guestWebsiteHomeUrl).catch(() => {
+      setWebsiteSyncMessage('Could not open the guest website link from the app.');
+    });
+  };
 
   useEffect(() => {
     let alive = true;
@@ -3705,7 +3794,13 @@ function WebsiteMobilePreview({
         {editorTab === 'setup' ? (
           <>
             <FormInput label="Couple name" onChangeText={setSiteTitle} placeholder="Couple name" value={siteTitle} />
-            <FormInput label="Venue" onChangeText={() => undefined} placeholder="Venue" value={data.profile.venue} />
+            <View style={styles.workspaceRow}>
+              <Ionicons color={colors.rose} name="location-outline" size={18} />
+              <View style={styles.hubCopy}>
+                <Text style={styles.hubLabel}>Venue</Text>
+                <Text style={styles.hubDetail}>{data.profile.venue || 'Add your venue from Wedding Profile so it stays synced everywhere.'}</Text>
+              </View>
+            </View>
             <View style={styles.websiteEditorToolGrid}>
               <EditorToolButton icon="image-outline" label="Upload hero photo" onPress={() => openMobileWebsiteTool('Home Page Photos')} />
               <EditorToolButton icon="scan-outline" label="Reposition photo" onPress={() => openMobileWebsiteTool('Photo position')} />
@@ -3720,7 +3815,10 @@ function WebsiteMobilePreview({
               <Text style={styles.formLabel}>Welcome message</Text>
               <TextInput multiline onChangeText={setWelcomeCopy} placeholder="Welcome copy" placeholderTextColor={colors.muted} style={[styles.formInput, styles.messageInput]} value={welcomeCopy} />
             </View>
-            <FormInput label="Navigation label" onChangeText={() => undefined} placeholder="Our Story" value="Our Story" />
+            <DesktopStudioNotice
+              detail="Use A.I DO on desktop to rename navigation items, reorder pages, and polish the full site menu."
+              title="Menu labels are desktop-first"
+            />
             <View style={styles.websiteEditorToolGrid}>
               <EditorToolButton icon="sparkles-outline" label="Aria rewrite" onPress={() => setWelcomeCopy('We are so excited to celebrate with you. Find the schedule, travel details, registry, and RSVP here.')} />
               <EditorToolButton icon="text-outline" label="Edit inline text" onPress={() => openMobileWebsiteTool('Inline Text')} />
@@ -3800,17 +3898,36 @@ function WebsiteMobilePreview({
 
         {editorTab === 'publish' ? (
           <>
-            <FormInput label="Website URL" onChangeText={setSlug} placeholder="stacy-rick" value={slug} />
-            <EditorToggleRow label="Password protection" onPress={() => setPasswordEnabled((current) => !current)} value={passwordEnabled} />
-            {passwordEnabled ? <FormInput label="Password" onChangeText={() => undefined} placeholder="Enter password" value="familyonly" /> : null}
+            <FormInput label="Website URL" onChangeText={setSlug} placeholder={slugifyWeddingLabel(data.profile.coupleName)} value={slug} />
+            <View style={styles.photoDropLinkBox}>
+              <Text style={styles.photoDropControlLabel}>Guest website Home link</Text>
+              <Text style={styles.photoDropLinkText}>{guestWebsiteHomeUrl || 'Add a website URL to create the guest Home link.'}</Text>
+            </View>
+            <View style={styles.workspaceRow}>
+              <Ionicons color={colors.rose} name={passwordEnabled ? 'lock-closed-outline' : 'lock-open-outline'} size={18} />
+              <View style={styles.hubCopy}>
+                <Text style={styles.hubLabel}>Password protection</Text>
+                <Text style={styles.hubDetail}>
+                  {passwordEnabled ? 'Password protection is on. Edit the password from desktop to avoid locking guests out.' : 'Password protection is off. Turn it on from desktop when you need a private guest site.'}
+                </Text>
+              </View>
+            </View>
             <View style={styles.websiteActions}>
               <Pressable onPress={() => openWebsitePreview()} style={styles.secondaryActionButton}>
                 <Ionicons color={colors.rose} name="eye-outline" size={18} />
                 <Text style={styles.secondaryActionText}>Preview</Text>
               </Pressable>
+              <Pressable onPress={openGuestWebsiteLink} style={styles.secondaryActionButton}>
+                <Ionicons color={colors.rose} name="open-outline" size={18} />
+                <Text style={styles.secondaryActionText}>Open link</Text>
+              </Pressable>
+              <Pressable onPress={() => void copyGuestWebsiteLink()} style={styles.secondaryActionButton}>
+                <Ionicons color={colors.rose} name="copy-outline" size={18} />
+                <Text style={styles.secondaryActionText}>Copy link</Text>
+              </Pressable>
               <Pressable disabled={websiteSaving} onPress={toggleMobileWebsitePublish} style={[styles.primaryActionButton, websiteSaving && styles.disabledActionButton]}>
-                <Ionicons color={colors.surface} name={websiteSaving ? 'sync-outline' : published ? 'checkmark-circle-outline' : 'cloud-upload-outline'} size={18} />
-                <Text style={styles.primaryActionText}>{websiteSaving ? 'Saving...' : published ? 'Published' : 'Publish'}</Text>
+                <Ionicons color={colors.surface} name={websiteSaving ? 'sync-outline' : published ? 'cloud-offline-outline' : 'cloud-upload-outline'} size={18} />
+                <Text style={styles.primaryActionText}>{websiteSaving ? 'Saving...' : published ? 'Unpublish' : 'Publish'}</Text>
               </Pressable>
             </View>
           </>
@@ -3856,7 +3973,7 @@ function WebsiteMobilePreview({
                   <View style={styles.websiteDesktopDot} />
                   <View style={styles.websiteDesktopDot} />
                 </View>
-                <Text numberOfLines={1} style={styles.websiteDesktopUrl}>aidowedding.net/{slug || 'wedding'}</Text>
+                <Text numberOfLines={1} style={styles.websiteDesktopUrl}>{guestWebsiteHomeUrl.replace(/^https?:\/\//, '') || 'aidowedding.net/w/our-wedding/home'}</Text>
               </View>
             ) : null}
             <ScrollView
@@ -3866,7 +3983,7 @@ function WebsiteMobilePreview({
               style={[styles.websiteLivePreviewPage, previewDevice === 'desktop' ? styles.websiteLivePreviewPageDesktop : styles.websiteLivePreviewPageMobile, { backgroundColor: paperColor }]}
             >
               <View style={[styles.websiteLiveAnnouncement, { backgroundColor: accentColor }]}>
-                <Text style={styles.websiteLiveAnnouncementText}>Stacy & Rick are getting married</Text>
+                <Text style={styles.websiteLiveAnnouncementText}>{siteTitle} are getting married</Text>
               </View>
               <View style={[styles.websiteLiveNav, previewDevice === 'desktop' && styles.websiteLiveNavDesktop, { borderColor: `${accentColor}33`, backgroundColor: paperColor }]}>
                 <Text style={[styles.websiteLiveNavCouple, previewDevice === 'desktop' && styles.websiteLiveNavCoupleDesktop, { color: accentColor, fontFamily: coupleFont }]}>{siteTitle}</Text>
@@ -4085,6 +4202,7 @@ function PhotoDropMobilePanel({
   const approvedUploads = data.guestPhotoUploads.filter((upload) => upload.status === 'Approved').length;
   const hiddenUploads = data.guestPhotoUploads.filter((upload) => upload.status === 'Hidden').length;
   const websiteGuestPhotoLimit = 50;
+  const disposableRollLimit = 10;
   const photoDropDisplayMode = data.guestPhotoDrop.displayMode === 'website' ? 'both' : data.guestPhotoDrop.displayMode;
   const websitePublishesGuestPhotos = photoDropDisplayMode === 'both';
   const websiteGalleryFull = websitePublishesGuestPhotos && approvedUploads >= websiteGuestPhotoLimit;
@@ -4116,25 +4234,37 @@ function PhotoDropMobilePanel({
     };
   }, []);
 
-  const copyUploadLink = () => {
+  useEffect(() => {
+    if (data.guestPhotoDrop.maxUploads !== disposableRollLimit) {
+      onUpdateSettings({ maxUploads: disposableRollLimit });
+    }
+  }, [data.guestPhotoDrop.maxUploads, onUpdateSettings]);
+
+  const copyUploadLink = async () => {
     if (!publicUploadUrl) {
       setSyncMessage('Create or publish the wedding website first, then the disposable camera link will appear here.');
       return;
     }
-    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
-      void navigator.clipboard.writeText(publicUploadUrl);
+    try {
+      await Clipboard.setStringAsync(publicUploadUrl);
+      setSyncMessage('Disposable camera link copied.');
+    } catch {
+      void Share.share({ message: `${data.guestPhotoDrop.title}: ${publicUploadUrl}`, url: publicUploadUrl }).catch(() => {
+        setSyncMessage('Share did not open. Copy the disposable camera link from the wedding website portal.');
+      });
     }
-    setSyncMessage('Disposable camera link copied.');
   };
 
   const shareUploadLink = () => {
     if (!publicUploadUrl) {
-      copyUploadLink();
+      void copyUploadLink();
       return;
     }
-    void Share.share({ message: `${data.guestPhotoDrop.title}: ${publicUploadUrl}`, url: publicUploadUrl }).catch(() => {
-      setSyncMessage('Share did not open. Copy the disposable camera link and send it by text, email, or printed signage.');
-    });
+    void Share.share({ message: `${data.guestPhotoDrop.title}: ${publicUploadUrl}`, url: publicUploadUrl })
+      .then(() => setSyncMessage('Disposable camera link ready to share.'))
+      .catch(() => {
+        setSyncMessage('Share did not open. Copy the disposable camera link and send it by text, email, or printed signage.');
+      });
   };
 
   const sharePhotoUpload = (upload: GuestPhotoUpload) => {
@@ -4146,9 +4276,11 @@ function PhotoDropMobilePanel({
     void Share.share({
       message: `${upload.guestName} photo upload from A.I DO Photo Drop: ${imageUrl}`,
       url: imageUrl,
-    }).catch(() => {
-      setSyncMessage('Share did not open. Open the website Photo Drop portal to download this image directly.');
-    });
+    })
+      .then(() => setSyncMessage(`${upload.guestName}'s photo is ready to share or save.`))
+      .catch(() => {
+        setSyncMessage('Share did not open. Open the website Photo Drop portal to download this image directly.');
+      });
   };
 
   return (
@@ -4198,7 +4330,7 @@ function PhotoDropMobilePanel({
         <View style={styles.photoDropPanel}>
           <LinearGradient colors={['#FFF2EA', '#F8DDE5']} style={styles.photoDropShareCard}>
             <View style={styles.photoDropQrBox}>
-              <PhotoDropQrPreview />
+              <PhotoDropQrPreview url={publicUploadUrl} />
             </View>
             <View style={styles.hubCopy}>
               <Text style={styles.hubLabel}>{data.guestPhotoDrop.title}</Text>
@@ -4215,7 +4347,7 @@ function PhotoDropMobilePanel({
             <Ionicons color={colors.muted} name="chevron-forward" size={14} />
             <View style={styles.photoDropGuestFlowStep}>
               <Ionicons color={colors.rose} name="cloud-upload-outline" size={16} />
-              <Text style={styles.photoDropGuestFlowText}>Takes {data.guestPhotoDrop.maxUploads} shots</Text>
+              <Text style={styles.photoDropGuestFlowText}>Takes {disposableRollLimit} shots</Text>
             </View>
             <Ionicons color={colors.muted} name="chevron-forward" size={14} />
             <View style={styles.photoDropGuestFlowStep}>
@@ -4237,7 +4369,7 @@ function PhotoDropMobilePanel({
               <Ionicons color={colors.surface} name="share-social-outline" size={18} />
               <Text style={styles.primaryActionText}>Share link</Text>
             </Pressable>
-            <Pressable onPress={copyUploadLink} style={styles.secondaryActionButton}>
+            <Pressable onPress={() => void copyUploadLink()} style={styles.secondaryActionButton}>
               <Ionicons color={colors.rose} name="link-outline" size={18} />
               <Text style={styles.secondaryActionText}>Copy link</Text>
             </Pressable>
@@ -4287,7 +4419,9 @@ function PhotoDropMobilePanel({
             {visibleUploads.length ? (
               visibleUploads.map((upload) => {
                 const imageUri = upload.publicImageUrl || upload.imageUrl;
-                const approveDisabled = upload.status === 'Approved' || (websiteGalleryFull && upload.status !== 'Approved');
+                const uploadStatus = upload.status as GuestPhotoUpload['status'];
+                const isApprovedUpload = uploadStatus === 'Approved';
+                const approveDisabled = isApprovedUpload || (websiteGalleryFull && !isApprovedUpload);
                 return (
                   <View key={upload.id} style={styles.photoDropUploadRow}>
                     <View style={styles.photoDropThumb}>
@@ -4310,13 +4444,13 @@ function PhotoDropMobilePanel({
                           onPress={() => onUpdateUploadStatus(upload.id, 'Approved')}
                           style={[
                             styles.photoDropStatusButton,
-                            upload.status === 'Approved' && styles.photoDropStatusButtonActive,
-                            approveDisabled && upload.status !== 'Approved' && styles.photoDropStatusButtonDisabled,
+                            isApprovedUpload && styles.photoDropStatusButtonActive,
+                            approveDisabled && !isApprovedUpload && styles.photoDropStatusButtonDisabled,
                           ]}
                         >
-                          <Ionicons color={upload.status === 'Approved' ? colors.surface : colors.rose} name="checkmark-outline" size={13} />
-                          <Text style={[styles.photoDropStatusButtonText, upload.status === 'Approved' && styles.photoDropStatusButtonTextActive]}>
-                            {websiteGalleryFull && upload.status !== 'Approved' ? 'Limit' : 'Approve'}
+                          <Ionicons color={isApprovedUpload ? colors.surface : colors.rose} name="checkmark-outline" size={13} />
+                          <Text style={[styles.photoDropStatusButtonText, isApprovedUpload && styles.photoDropStatusButtonTextActive]}>
+                            {websiteGalleryFull && !isApprovedUpload ? 'Limit' : 'Approve'}
                           </Text>
                         </Pressable>
                         <Pressable
@@ -4334,8 +4468,8 @@ function PhotoDropMobilePanel({
                           </Pressable>
                         ) : null}
                         <Pressable onPress={() => sharePhotoUpload(upload)} style={styles.photoDropStatusButton}>
-                          <Ionicons color={colors.rose} name="download-outline" size={13} />
-                          <Text style={styles.photoDropStatusButtonText}>Download</Text>
+                          <Ionicons color={colors.rose} name="share-outline" size={13} />
+                          <Text style={styles.photoDropStatusButtonText}>Share</Text>
                         </Pressable>
                         <Pressable onPress={() => onDeleteUpload(upload.id)} style={[styles.photoDropStatusButton, styles.photoDropDeleteButton]}>
                           <Ionicons color={colors.rose} name="trash-outline" size={13} />
@@ -4377,27 +4511,12 @@ function PhotoDropMobilePanel({
           </View>
           <PhotoDropSettingRow icon="qr-code-outline" label="QR behavior" value="Disposable camera" />
           <Text style={styles.hubDetail}>The QR code and shared link both open the disposable camera directly, then route every submitted roll to the portal.</Text>
-          <PhotoDropSettingRow icon="cloud-upload-outline" label="Disposable roll size" value={`${data.guestPhotoDrop.maxUploads} photos per guest`} />
-          <View style={styles.fontStepperRow}>
-            <Pressable
-              accessibilityLabel="Decrease photo upload limit"
-              accessibilityRole="button"
-              onPress={() => onUpdateSettings({ maxUploads: Math.max(5, data.guestPhotoDrop.maxUploads - 5) })}
-              style={styles.iconMiniButton}
-            >
-              <Ionicons color={colors.rose} name="remove" size={15} />
-            </Pressable>
-            <View style={styles.fontSizeValueBox}>
-              <Text style={styles.fontSizeValue}>{data.guestPhotoDrop.maxUploads}</Text>
-            </View>
-            <Pressable
-              accessibilityLabel="Increase photo upload limit"
-              accessibilityRole="button"
-              onPress={() => onUpdateSettings({ maxUploads: Math.min(10, data.guestPhotoDrop.maxUploads + 5) })}
-              style={styles.iconMiniButton}
-            >
-              <Ionicons color={colors.rose} name="add" size={15} />
-            </Pressable>
+          <PhotoDropSettingRow icon="cloud-upload-outline" label="Disposable roll size" value={`${disposableRollLimit} photos per guest`} />
+          <View style={styles.inlineNotice}>
+            <Ionicons color={colors.rose} name="lock-closed-outline" size={16} />
+            <Text style={styles.inlineNoticeText}>
+              The disposable camera is locked to one 10-shot roll per guest phone. If they scan again after submitting, the same phone stays blocked.
+            </Text>
           </View>
           <Pressable
             onPress={() => onUpdateSettings({ enabled: !data.guestPhotoDrop.enabled })}
@@ -4421,21 +4540,15 @@ function PhotoDropMiniStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function PhotoDropQrPreview() {
-  const cells = [
-    0, 1, 2, 4, 5, 6,
-    8, 10, 12, 14,
-    16, 17, 18, 20, 22,
-    24, 27, 29, 30,
-    32, 34, 35, 37, 38,
-    40, 42, 44, 46, 47,
-    48, 49, 50, 52, 53, 54,
-  ];
+function PhotoDropQrPreview({ url }: { url: string }) {
+  if (url) {
+    const qrUrl = `https://quickchart.io/qr?size=220&margin=1&text=${encodeURIComponent(url)}`;
+    return <Image accessibilityLabel="Disposable camera QR code" source={{ uri: qrUrl }} style={styles.photoDropQrImage} />;
+  }
   return (
-    <View style={styles.photoDropQrGrid}>
-      {Array.from({ length: 56 }, (_, index) => (
-        <View key={`qr-${index}`} style={[styles.photoDropQrCell, cells.includes(index) && styles.photoDropQrCellFilled]} />
-      ))}
+    <View style={styles.photoDropQrPlaceholder}>
+      <Ionicons color={colors.rose} name="qr-code-outline" size={30} />
+      <Text style={styles.photoDropQrPlaceholderText}>QR loads after sync</Text>
     </View>
   );
 }
@@ -4621,13 +4734,13 @@ function InvitationStudioPanel({ data }: { data: typeof samplePlanningData }) {
         <View style={styles.studioFinishGroup}>
           <Text style={styles.formLabel}>Finish</Text>
           <Pressable
-            accessibilityLabel={isDigital ? 'Send From Guest List' : 'Download Print PDF'}
+            accessibilityLabel={isDigital ? 'Send From Guest List' : 'Prepare Print PDF'}
             accessibilityRole="button"
-            onPress={() => void saveStudioToWebsite(isDigital ? 'Invitation design saved. Guest list send flow ready.' : 'Print PDF prepared')}
+            onPress={() => void saveStudioToWebsite(isDigital ? 'Invitation design saved. Guest list send flow ready.' : 'Print PDF prepared for desktop export.')}
             style={styles.studioSendButton}
           >
-            <Ionicons color={colors.surface} name={isDigital ? 'paper-plane-outline' : 'download-outline'} size={16} />
-            <Text style={styles.primaryActionText}>{isDigital ? 'Send From Guest List' : 'Download Print PDF'}</Text>
+            <Ionicons color={colors.surface} name={isDigital ? 'paper-plane-outline' : 'print-outline'} size={16} />
+            <Text style={styles.primaryActionText}>{isDigital ? 'Send From Guest List' : 'Prepare Print PDF'}</Text>
           </Pressable>
         </View>
       </View>
@@ -4655,6 +4768,7 @@ function InvitationStudioPanel({ data }: { data: typeof samplePlanningData }) {
                       rsvpBy={rsvpBy}
                       showPhoto={showPhoto}
                       textColor={textColor}
+                      location={data.profile.location}
                       venue={data.profile.venue}
                       weddingDate={data.profile.weddingDate}
                     />
@@ -4666,7 +4780,7 @@ function InvitationStudioPanel({ data }: { data: typeof samplePlanningData }) {
                       fontScale={previewFontScale}
                       includeHotel={includeHotel}
                       message={message}
-                      onDownloadPress={() => openPreviewNote('Save-the-Date preview ready. Guests can view it, open the wedding website, or download when print export is prepared.', 'delivery')}
+                      onDownloadPress={() => openPreviewNote('Save-the-Date preview ready. Guests can view it or open the wedding website here. Use desktop for final print download.', 'delivery')}
                       onHotelPress={() => openPreviewNote('Hotel response preview ready. Guests can answer if they need a room and save it to their profile.', 'hotel')}
                       paperColor={paperColor}
                       showPhoto={showPhoto}
@@ -4821,7 +4935,7 @@ function InvitationStudioPanel({ data }: { data: typeof samplePlanningData }) {
 
       {activeStudioTool === 'message' ? <View style={styles.studioSettingsCard}>
         <Text style={styles.cardTitle}>{isRsvp ? 'Invitation Message' : 'Save the Date Message'}</Text>
-        <FormInput label="Couple names" onChangeText={setCoupleNames} placeholder="Stacy & Rick" value={coupleNames} />
+        <FormInput label="Couple names" onChangeText={setCoupleNames} placeholder={data.profile.coupleName || 'Couple names'} value={coupleNames} />
         <View style={styles.aiMessageBox}>
           <View style={styles.aiMessageHeader}>
             <View style={styles.aiMessageAvatar}>
@@ -5134,8 +5248,8 @@ function SaveDateWebsitePreview({
           </View>
         ) : null}
         <Text style={[styles.websiteSaveDateFormal, { color: mutedColor, fontFamily, fontSize: 13 * fontScale }]}>Formal invitation to follow</Text>
-        <Pressable accessibilityLabel="View and download Save the Date" accessibilityRole="button" onPress={onDownloadPress}>
-          <Text style={[styles.websiteSaveDateDownload, { borderColor: `${accent}55`, color: mutedColor, fontFamily, fontSize: 9 * fontScale }]}>View & Download</Text>
+        <Pressable accessibilityLabel="View Save the Date print preview" accessibilityRole="button" onPress={onDownloadPress}>
+          <Text style={[styles.websiteSaveDateDownload, { borderColor: `${accent}55`, color: mutedColor, fontFamily, fontSize: 9 * fontScale }]}>View Print</Text>
         </Pressable>
         <View style={styles.websiteSaveDateFooter}>
           <Image resizeMode="contain" source={logo} style={styles.websiteSaveDateLogo} />
@@ -5152,6 +5266,7 @@ function RsvpWebsitePreview({
   coupleNames,
   fontFamily,
   fontScale,
+  location,
   message,
   onRsvpPress,
   paperColor,
@@ -5165,6 +5280,7 @@ function RsvpWebsitePreview({
   coupleNames: string;
   fontFamily: string;
   fontScale: number;
+  location: string;
   message: string;
   onRsvpPress: () => void;
   paperColor: string;
@@ -5196,8 +5312,7 @@ function RsvpWebsitePreview({
             <Ionicons color={accent} name="location-outline" size={13} />
             <Text style={[styles.websiteRsvpVenue, { color: accent, fontFamily, fontSize: 17 * fontScale, lineHeight: 22 * fontScale }]}>{venue}</Text>
           </View>
-          <Text style={[styles.websiteRsvpAddress, { color: textColor, fontFamily, fontSize: 10 * fontScale }]}>123 Rose Garden Lane</Text>
-          <Text style={[styles.websiteRsvpCity, { color: mutedColor, fontFamily, fontSize: 10 * fontScale }]}>Babylon, NY</Text>
+          <Text style={[styles.websiteRsvpAddress, { color: textColor, fontFamily, fontSize: 10 * fontScale }]}>{location || venue}</Text>
           <View style={styles.websiteRsvpTimeRow}>
             <Text style={[styles.websiteRsvpTimePill, { borderColor: `${accent}55`, color: accent, fontFamily, fontSize: 8 * fontScale }]}>Ceremony 5:00 PM</Text>
             <Text style={[styles.websiteRsvpTimePill, { borderColor: `${accent}55`, color: accent, fontFamily, fontSize: 8 * fontScale }]}>Reception 6:00 PM</Text>
@@ -5275,9 +5390,9 @@ function PlanSection({
     <>
       <View style={styles.plannerSwitch}>
         {[
-          ['calendar', 'Cal', 'calendar-outline'],
-          ['checklist', 'Tasks', 'checkbox-outline'],
-          ['timeline', 'Time', 'time-outline'],
+          ['calendar', 'Calendar', 'calendar-outline'],
+          ['checklist', 'Checklist', 'checkbox-outline'],
+          ['timeline', 'Timeline', 'time-outline'],
           ['party', 'Party', 'person-add-outline'],
         ].map(([id, label, icon]) => {
           const active = plannerView === id;
@@ -5481,6 +5596,19 @@ function WeddingPartySection({
   const [editingMember, setEditingMember] = useState<(typeof samplePlanningData.weddingParty)[number] | null>(null);
   const [contactSheetMessage, setContactSheetMessage] = useState('');
   const openPartyTasks = data.weddingParty.reduce((sum, member) => sum + member.tasks.length, 0);
+  const shareContactSheet = async () => {
+    const lines = data.weddingParty.map((member) => {
+      const tasks = member.tasks.length ? `\nTasks: ${member.tasks.join(', ')}` : '';
+      return `${member.name || 'Unnamed member'}\n${member.role || 'Role not set'} - ${member.side} side\n${member.phone || 'No phone added'}${tasks}`;
+    });
+    const message = [`${data.profile.coupleName} Wedding Party`, '', ...lines].join('\n\n');
+    try {
+      await Share.share({ message, title: `${data.profile.coupleName} Wedding Party` });
+      setContactSheetMessage('Contact sheet ready to share.');
+    } catch {
+      setContactSheetMessage('Contact sheet could not be opened. Try again from the app.');
+    }
+  };
 
   return (
     <Section title="Wedding Party" subtitle="Roles, contact info, and assigned responsibilities.">
@@ -5554,7 +5682,7 @@ function WeddingPartySection({
             <Text style={styles.primaryActionText}>Add member</Text>
           </Pressable>
           <Pressable
-            onPress={() => setContactSheetMessage('Contact sheet prepared for planner, partner, and family sharing.')}
+            onPress={() => void shareContactSheet()}
             style={styles.secondaryActionButton}
           >
             <Ionicons color={colors.rose} name="share-outline" size={18} />
@@ -5682,7 +5810,7 @@ function VendorsSection({
   const upcomingPaymentCount = vendors.filter((vendor) => vendor.nextPaymentDate && vendor.remaining > 0).length;
 
   return (
-    <Section title="Vendors" subtitle="Track vendor contacts, contracts, payment status, files, and messages.">
+    <Section title="Vendors" subtitle="Track vendor contacts, contracts, payment status, documents, and messages.">
       <LinearGradient colors={['#FFF2EA', '#F4DEBE']} style={styles.vendorHero}>
         <View style={styles.kickerRow}>
           <Text style={styles.kicker}>Vendor Tracking</Text>
@@ -5692,7 +5820,7 @@ function VendorsSection({
           </View>
         </View>
         <Text style={styles.vendorHeroTitle}>Your vendor command center.</Text>
-        <Text style={styles.vendorHeroText}>Vendor list, budget summary, files, contacts, and messages are grouped here so the app does not feel like a spreadsheet.</Text>
+        <Text style={styles.vendorHeroText}>Vendor list, budget summary, contracts, documents, contacts, and messages are grouped here so the app does not feel like a spreadsheet.</Text>
         <View style={styles.websiteActions}>
           <Pressable
             onPress={() =>
@@ -5733,9 +5861,9 @@ function VendorsSection({
         {[
           ['list', 'List', 'storefront-outline'],
           ['finance', 'Budget', 'wallet-outline'],
-          ['files', 'Files', 'folder-open-outline'],
+          ['files', 'Docs', 'folder-open-outline'],
           ['contacts', 'Contacts', 'people-outline'],
-          ['messages', 'Msgs', 'chatbubbles-outline'],
+          ['messages', 'Inbox', 'chatbubbles-outline'],
         ].map(([id, label, icon]) => {
           const active = activeView === id;
           return (
@@ -5752,7 +5880,7 @@ function VendorsSection({
           <View style={styles.cardHeaderRow}>
             <View>
               <Text style={styles.cardTitle}>Vendor List</Text>
-              <Text style={styles.hubDetail}>A contact-first view for vendor status, balances, files, and quick actions.</Text>
+              <Text style={styles.hubDetail}>A contact-first view for vendor status, balances, documents, and quick actions.</Text>
             </View>
             <Text style={styles.smallStatus}>{vendors.length} vendors</Text>
           </View>
@@ -5795,6 +5923,15 @@ function VendorsSection({
 
       {activeView === 'files' ? (
         <View style={styles.vendorFilesStack}>
+          <Card>
+            <View style={styles.cardHeaderRow}>
+              <View>
+                <Text style={styles.cardTitle}>Contracts & Docs</Text>
+                <Text style={styles.hubDetail}>Contracts, receipts, timelines, and shared vendor documents live together here.</Text>
+              </View>
+              <Text style={styles.smallStatus}>Vendor docs</Text>
+            </View>
+          </Card>
           <FinanceContractsPanel data={data} />
           <FinanceDocumentsPanel data={data} />
         </View>
@@ -5839,7 +5976,12 @@ function VendorsSection({
         </Card>
       ) : null}
 
-      <VendorMessageModal onClose={() => setMessageVendor(null)} vendor={messageVendor} />
+      <VendorMessageModal
+        coupleName={data.profile.coupleName}
+        onClose={() => setMessageVendor(null)}
+        senderName={data.profile.partnerOne || data.profile.coupleName.split('&')[0]?.trim() || 'the couple'}
+        vendor={messageVendor}
+      />
       <VendorEditorModal
         onClose={() => setAddingVendor(null)}
         onDelete={() => setAddingVendor(null)}
@@ -6157,7 +6299,7 @@ function MoneySection({
       </LinearGradient>
 
       <DesktopStudioNotice
-        detail="Use Budget Summary here for payments and balances. Contracts and documents now live in Vendors > Files."
+        detail="Use Budget Summary here for payments and balances. Contracts and documents now live in Vendors > Docs."
         title="Deep budget reports are desktop-first"
       />
 
@@ -6535,9 +6677,9 @@ function FinanceDocumentsPanel({
       <View style={styles.cardHeaderRow}>
         <View>
           <Text style={styles.cardTitle}>Documents</Text>
-          <Text style={styles.hubDetail}>Contracts, receipts, timelines, exports, and shared planning files.</Text>
+          <Text style={styles.hubDetail}>Contracts, receipts, timelines, exports, and shared planning documents.</Text>
         </View>
-        <Text style={styles.smallStatus}>{documentUploading ? 'Uploading' : apiDocuments?.length ? 'Synced' : `${data.documents.length} files`}</Text>
+        <Text style={styles.smallStatus}>{documentUploading ? 'Uploading' : apiDocuments?.length ? 'Synced' : `${data.documents.length} docs`}</Text>
       </View>
       <View style={styles.calendarList}>
         {documents.map((document) => (
@@ -6584,7 +6726,7 @@ function FinanceDocumentsPanel({
           style={[styles.primaryActionButton, documentUploading && styles.disabledActionButton]}
         >
           <Ionicons color={colors.surface} name={documentUploading ? 'sync-outline' : 'cloud-upload-outline'} size={18} />
-          <Text style={styles.primaryActionText}>{documentUploading ? 'Uploading...' : 'Upload file'}</Text>
+          <Text style={styles.primaryActionText}>{documentUploading ? 'Uploading...' : 'Upload document'}</Text>
         </Pressable>
       </View>
       {documentUploadStatus ? <SavedStrip label={documentUploadStatus} /> : null}
@@ -6594,16 +6736,22 @@ function FinanceDocumentsPanel({
 
 function FeatureHub({
   data,
+  lastWebsiteSyncAt,
   onAddWorkspaceInvite,
   onRemoveWorkspaceInvite,
   onOpenAccount,
+  onRefreshWebsite,
   openTab,
+  websiteSyncStatus,
 }: {
   data: typeof samplePlanningData;
+  lastWebsiteSyncAt: Date | null;
   onAddWorkspaceInvite: (invite: (typeof samplePlanningData.workspaceInvites)[number]) => void;
   onRemoveWorkspaceInvite: (inviteId: string) => void;
   onOpenAccount: (view: AccountView) => void;
+  onRefreshWebsite: () => void;
   openTab: (tab: TabId) => void;
+  websiteSyncStatus: 'local' | 'synced' | 'syncing' | 'error';
 }) {
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [moreMessage, setMoreMessage] = useState('');
@@ -6629,6 +6777,31 @@ function FeatureHub({
         <SummaryCard label="Pending" value={String(pendingInvites)} />
         <SummaryCard label="Support" value="Ready" />
       </View>
+
+      <Card style={styles.syncStatusCard}>
+        <View style={styles.cardHeaderRow}>
+          <View style={styles.hubCopy}>
+            <Text style={styles.cardTitle}>Website sync</Text>
+            <Text style={styles.hubDetail}>
+              {websiteSyncStatus === 'synced'
+                ? `Connected${lastWebsiteSyncAt ? ` - refreshed ${lastWebsiteSyncAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}`
+                : websiteSyncStatus === 'syncing'
+                  ? 'Refreshing website data...'
+                  : websiteSyncStatus === 'error'
+                    ? 'Could not refresh. Check sign-in or connection.'
+                    : 'Local preview mode. Sign in to sync with the website.'}
+            </Text>
+          </View>
+          <View style={styles.livePill}>
+            <View style={[styles.liveDot, websiteSyncStatus === 'error' && styles.liveDotWarning]} />
+            <Text style={styles.liveText}>{websiteSyncStatus === 'syncing' ? 'Syncing' : websiteSyncStatus === 'synced' ? 'Synced' : websiteSyncStatus === 'error' ? 'Needs check' : 'Local'}</Text>
+          </View>
+        </View>
+        <Pressable onPress={onRefreshWebsite} style={[styles.secondaryActionButton, websiteSyncStatus === 'syncing' && styles.disabledActionButton]}>
+          <Ionicons color={colors.rose} name={websiteSyncStatus === 'syncing' ? 'sync-outline' : 'refresh-outline'} size={18} />
+          <Text style={styles.secondaryActionText}>{websiteSyncStatus === 'syncing' ? 'Refreshing...' : 'Refresh from website'}</Text>
+        </Pressable>
+      </Card>
 
       {featureGroups.map((group) => (
         <View key={group.title} style={styles.groupBlock}>
@@ -6662,11 +6835,11 @@ function FeatureHub({
                   return;
                 }
                 if (label === 'Help & support') {
-                  setMoreMessage('Support is ready: email support@aidowedding.net for account access, guest sending, vendor files, sync, or publishing help.');
+              setMoreMessage('Support is ready: email support@aidowedding.net for account access, guest sending, vendor docs, sync, or publishing help.');
                   return;
                 }
-                if (label === 'Desktop tools') {
-                  setMoreMessage('Use A.I DO on desktop for full website design editing, section ordering, invitation polish, exports, and admin-level workflows.');
+                if (label === 'Best on desktop') {
+                  setMoreMessage('Use A.I DO on desktop for full website design editing, section ordering, invitation polish, exports, and larger reports.');
                   return;
                 }
                 setMoreMessage(`${label} is available from the matching app section.`);
@@ -7321,7 +7494,7 @@ function ActionWorkspace({ action, data, saved }: { action: MockAction; data: ty
           <Ionicons color={colors.rose} name="mail-outline" size={18} />
           <View style={styles.hubCopy}>
             <Text style={styles.hubLabel}>Email support</Text>
-            <Text style={styles.hubDetail}>Use support@aidowedding.net for account access, sync issues, guest sending, vendor files, and Photo Drop help.</Text>
+            <Text style={styles.hubDetail}>Use support@aidowedding.net for account access, sync issues, guest sending, vendor docs, and Photo Drop help.</Text>
           </View>
         </View>
         <View style={styles.workspaceRow}>
@@ -7336,7 +7509,7 @@ function ActionWorkspace({ action, data, saved }: { action: MockAction; data: ty
     );
   }
 
-  if (title.includes('desktop tools')) {
+  if (title.includes('desktop tools') || title.includes('best on desktop')) {
     return (
       <View style={styles.actionWorkspace}>
         <View style={styles.workspaceRow}>
@@ -7350,7 +7523,7 @@ function ActionWorkspace({ action, data, saved }: { action: MockAction; data: ty
           <Ionicons color={colors.rose} name="desktop-outline" size={18} />
           <View style={styles.hubCopy}>
             <Text style={styles.hubLabel}>Best on desktop</Text>
-            <Text style={styles.hubDetail}>Full website design, invitation polish, drag-and-drop layout work, exports, admin workflows, and advanced reports.</Text>
+            <Text style={styles.hubDetail}>Full website design, invitation polish, drag-and-drop layout work, exports, and larger reports.</Text>
           </View>
         </View>
         {saved ? <SavedStrip label="Desktop guidance saved" /> : null}
@@ -7376,12 +7549,24 @@ function ActionWorkspace({ action, data, saved }: { action: MockAction; data: ty
           </View>
           <View style={styles.hubCopy}>
             <Text style={styles.hubLabel}>Household</Text>
-            <Text style={styles.hubDetail}>Stacy Guest + Rick Guest confirmed.</Text>
+            <Text style={styles.hubDetail}>Primary guest + plus-one confirmed.</Text>
           </View>
         </View>
         <View style={styles.formStack}>
-          <TextInput placeholder="Meal choice" placeholderTextColor={colors.muted} style={styles.formInput} value="Chicken" />
-          <TextInput multiline placeholder="Note to couple" placeholderTextColor={colors.muted} style={[styles.formInput, styles.messageInput]} value="So excited to celebrate with you!" />
+          <View style={styles.workspaceRow}>
+            <Ionicons color={colors.rose} name="restaurant-outline" size={18} />
+            <View style={styles.hubCopy}>
+              <Text style={styles.hubLabel}>Meal and notes</Text>
+              <Text style={styles.hubDetail}>Guests choose their meal, plus-one status, and any note from the live RSVP form.</Text>
+            </View>
+          </View>
+          <View style={styles.workspaceRow}>
+            <Ionicons color={colors.rose} name="sync-outline" size={18} />
+            <View style={styles.hubCopy}>
+              <Text style={styles.hubLabel}>Portal sync</Text>
+              <Text style={styles.hubDetail}>Submitted RSVPs update the guest list, meal counts, and reminder status.</Text>
+            </View>
+          </View>
         </View>
         {saved ? <SavedStrip label="RSVP submitted" /> : null}
       </View>
@@ -7397,12 +7582,12 @@ function ActionWorkspace({ action, data, saved }: { action: MockAction; data: ty
           <Text style={styles.hubDetail}>{formatInvitationDate(data.profile.weddingDate)} - {data.profile.venue}</Text>
         </View>
         <View style={styles.photoDropControlGrid}>
-          <PhotoDropControl label="PDF" value="Ready" icon="download-outline" />
-          <PhotoDropControl label="Share link" value="Copied after tap" icon="link-outline" />
+          <PhotoDropControl label="Print preview" value="Ready" icon="document-text-outline" />
+          <PhotoDropControl label="Share link" value="Ready" icon="link-outline" />
           <PhotoDropControl label="Website" value="Continue" icon="globe-outline" />
           <PhotoDropControl label="Calendar" value="Add date" icon="calendar-outline" />
         </View>
-        {saved ? <SavedStrip label="Save-the-Date PDF prepared" /> : null}
+        {saved ? <SavedStrip label="Save-the-Date print file prepared for desktop export" /> : null}
       </View>
     );
   }
@@ -7414,8 +7599,20 @@ function ActionWorkspace({ action, data, saved }: { action: MockAction; data: ty
           {['No room needed', 'Need a room', 'Already booked'].map((item) => <ActionChip key={item} label={item} active={item === 'Need a room'} />)}
         </View>
         <View style={styles.formStack}>
-          <TextInput placeholder="Hotel block" placeholderTextColor={colors.muted} style={styles.formInput} value="Wedding room block" />
-          <TextInput placeholder="Rooms" placeholderTextColor={colors.muted} style={styles.formInput} value="1 room" />
+          <View style={styles.workspaceRow}>
+            <Ionicons color={colors.rose} name="bed-outline" size={18} />
+            <View style={styles.hubCopy}>
+              <Text style={styles.hubLabel}>Hotel selection</Text>
+              <Text style={styles.hubDetail}>Guests can say whether they need a room, already booked, or do not need hotel help.</Text>
+            </View>
+          </View>
+          <View style={styles.workspaceRow}>
+            <Ionicons color={colors.rose} name="people-outline" size={18} />
+            <View style={styles.hubCopy}>
+              <Text style={styles.hubLabel}>Guest record</Text>
+              <Text style={styles.hubDetail}>Responses save back to the guest profile so you can track room demand.</Text>
+            </View>
+          </View>
         </View>
         {saved ? <SavedStrip label="Hotel response saved to guest profile" /> : null}
       </View>
@@ -7507,12 +7704,29 @@ function ActionWorkspace({ action, data, saved }: { action: MockAction; data: ty
     return (
       <View style={styles.actionWorkspace}>
         <View style={styles.formStack}>
-          <TextInput placeholder="Guest name" placeholderTextColor={colors.muted} style={styles.formInput} value={title.includes('add guest') ? '' : action.title} />
-          <TextInput placeholder="Meal choice" placeholderTextColor={colors.muted} style={styles.formInput} value={title.includes('add guest') ? '' : 'Chicken'} />
-          <TextInput placeholder="Table assignment" placeholderTextColor={colors.muted} style={styles.formInput} value={title.includes('add guest') ? '' : 'Table 3'} />
-        </View>
-        <View style={styles.eventTypeRow}>
-          {['SMS', 'Email', 'Both'].map((item) => <ActionChip key={item} label={item} active={item === 'Both'} />)}
+          {title.includes('add guest') ? (
+            <>
+              <TextInput placeholder="Guest name" placeholderTextColor={colors.muted} style={styles.formInput} />
+              <TextInput placeholder="Email or phone" placeholderTextColor={colors.muted} style={styles.formInput} />
+            </>
+          ) : (
+            <>
+              <View style={styles.workspaceRow}>
+                <Ionicons color={colors.rose} name="person-outline" size={18} />
+                <View style={styles.hubCopy}>
+                  <Text style={styles.hubLabel}>Guest details</Text>
+                  <Text style={styles.hubDetail}>Open the guest profile to edit RSVP status, meal, table, plus-one, and notes.</Text>
+                </View>
+              </View>
+              <View style={styles.workspaceRow}>
+                <Ionicons color={colors.rose} name="notifications-outline" size={18} />
+                <View style={styles.hubCopy}>
+                  <Text style={styles.hubLabel}>Messages</Text>
+                  <Text style={styles.hubDetail}>Use Invitation Studio for Save-the-Dates, RSVP invites, and reminders.</Text>
+                </View>
+              </View>
+            </>
+          )}
         </View>
       </View>
     );
@@ -7571,7 +7785,7 @@ function ActionWorkspace({ action, data, saved }: { action: MockAction; data: ty
   if (title.includes('registry')) {
     return (
       <View style={styles.actionWorkspace}>
-        <TextInput placeholder="Registry URL" placeholderTextColor={colors.muted} style={styles.formInput} value="https://registry.example/stacy-rick" />
+        <TextInput placeholder="Paste your registry link" placeholderTextColor={colors.muted} style={styles.formInput} />
         <View style={styles.eventTypeRow}>
           {['Website', 'Invites', 'RSVP'].map((item) => <ActionChip key={item} label={item} active />)}
         </View>
@@ -7584,7 +7798,7 @@ function ActionWorkspace({ action, data, saved }: { action: MockAction; data: ty
       <View style={styles.actionWorkspace}>
         <View style={styles.photoDropControlGrid}>
           <PhotoDropControl label="Display" value="Portal + website" icon="albums-outline" />
-          <PhotoDropControl label="Limit" value="20 photos per guest" icon="cloud-upload-outline" />
+          <PhotoDropControl label="Limit" value="10 photos per guest" icon="cloud-upload-outline" />
         </View>
         <SavedStrip label="QR target and approval queue ready" />
       </View>
@@ -7594,13 +7808,13 @@ function ActionWorkspace({ action, data, saved }: { action: MockAction; data: ty
   if (title.includes('contract')) {
     return (
       <View style={styles.actionWorkspace}>
-        <Pressable style={styles.noContractStrip}>
+        <View style={styles.noContractStrip}>
           <Ionicons color={colors.rose} name="cloud-upload-outline" size={18} />
           <View style={styles.hubCopy}>
             <Text style={styles.noContractTitle}>Upload contract</Text>
-            <Text style={styles.hubDetail}>Attach PDF or image files to this vendor.</Text>
+            <Text style={styles.hubDetail}>Attach PDFs, images, receipts, and notes to this vendor.</Text>
           </View>
-        </Pressable>
+        </View>
         <View style={styles.eventTypeRow}>
           {['Pending', 'Signed', 'Needs review'].map((item) => <ActionChip key={item} label={item} active={item === 'Needs review'} />)}
         </View>
@@ -7814,27 +8028,37 @@ function buildGuestShareMessage(link: GuestSendLink) {
 }
 
 function GuestManualSharePanel({ links }: { links: GuestSendLink[] }) {
+  const [manualShareMessage, setManualShareMessage] = useState('');
   const [sharedGuestId, setSharedGuestId] = useState<number | null>(null);
   const shareLink = async (link: GuestSendLink) => {
     setSharedGuestId(link.guestId);
+    setManualShareMessage('');
     try {
       await Share.share({ message: buildGuestShareMessage(link), url: link.url });
+      setManualShareMessage(`${link.name}'s link is ready to share.`);
+    } catch {
+      setManualShareMessage(`Could not open sharing for ${link.name}. Copy the link instead.`);
     } finally {
       setSharedGuestId(null);
     }
   };
   const copyLink = async (link: GuestSendLink) => {
-    const clipboard = typeof navigator !== 'undefined' ? navigator.clipboard : undefined;
-    if (clipboard?.writeText) {
-      await clipboard.writeText(link.url);
+    setManualShareMessage('');
+    try {
+      await Clipboard.setStringAsync(link.url);
+      setManualShareMessage(`${link.name}'s link copied.`);
       return;
+    } catch {
+      await shareLink(link);
     }
-    await shareLink(link);
   };
   const textLink = async (link: GuestSendLink) => {
     const body = encodeURIComponent(buildGuestShareMessage(link));
     const separator = Platform.OS === 'ios' ? '&' : '?';
-    await Linking.openURL(`sms:${separator}body=${body}`);
+    setManualShareMessage('');
+    await Linking.openURL(`sms:${separator}body=${body}`)
+      .then(() => setManualShareMessage(`Text message opened for ${link.name}.`))
+      .catch(() => setManualShareMessage(`Could not open texting for ${link.name}. Copy the link instead.`));
   };
 
   return (
@@ -7865,6 +8089,7 @@ function GuestManualSharePanel({ links }: { links: GuestSendLink[] }) {
           </View>
         </View>
       ))}
+      {manualShareMessage ? <SavedStrip label={manualShareMessage} /> : null}
       {links.length > 5 ? <Text style={styles.hubDetail}>+{links.length - 5} more links are available from the guest records.</Text> : null}
     </View>
   );
@@ -8073,7 +8298,13 @@ function VendorDetailModal({
             </>
           ) : null}
 
-          {detailView === 'message' && vendor ? <VendorMessageComposer vendor={vendor} /> : null}
+          {detailView === 'message' && vendor ? (
+            <VendorMessageComposer
+              coupleName={data.profile.coupleName}
+              senderName={data.profile.partnerOne || data.profile.coupleName.split('&')[0]?.trim() || 'the couple'}
+              vendor={vendor}
+            />
+          ) : null}
           {detailView === 'contract' && vendor ? <VendorContractPanel data={data} onMessage={() => setDetailView('message')} vendor={vendor} /> : null}
           {detailView === 'edit' && vendor ? (
             <VendorEditorPanel
@@ -8201,7 +8432,17 @@ function VendorPaymentPanel({
   );
 }
 
-function VendorMessageModal({ onClose, vendor }: { onClose: () => void; vendor: VendorRecord | null }) {
+function VendorMessageModal({
+  coupleName,
+  onClose,
+  senderName,
+  vendor,
+}: {
+  coupleName: string;
+  onClose: () => void;
+  senderName: string;
+  vendor: VendorRecord | null;
+}) {
   const [channel, setChannel] = useState<'sms' | 'email' | 'both'>('sms');
   const [tone, setTone] = useState<'warm' | 'direct' | 'formal'>('warm');
   const [composeMode, setComposeMode] = useState<'aria' | 'custom'>('aria');
@@ -8210,7 +8451,7 @@ function VendorMessageModal({ onClose, vendor }: { onClose: () => void; vendor: 
   const [messageStatus, setMessageStatus] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
   const defaultMessage = vendor
-    ? `Hi ${vendor.contactName ?? vendor.name}, this is Stacy from Stacy & Rick's wedding. Can you confirm our next payment and arrival details?`
+    ? `Hi ${vendor.contactName ?? vendor.name}, this is ${senderName} from ${coupleName}'s wedding. Can you confirm our next payment and arrival details?`
     : '';
   const [message, setMessage] = useState(defaultMessage);
 
@@ -8222,10 +8463,11 @@ function VendorMessageModal({ onClose, vendor }: { onClose: () => void; vendor: 
     setConversationMessages([]);
     setMessageStatus('');
     if (!vendor) return;
+    const vendorId = vendor.id;
     let alive = true;
     async function hydrateConversation() {
       try {
-        const conversation = await getOrCreateMobileVendorConversation(vendor.id);
+        const conversation = await getOrCreateMobileVendorConversation(vendorId);
         if (!alive) return;
         setConversationId(conversation.id);
         const messages = await listMobileVendorMessages(conversation.id);
@@ -8397,8 +8639,8 @@ function VendorMessageModal({ onClose, vendor }: { onClose: () => void; vendor: 
 
             <View style={styles.aiPromptGrid}>
               {[
-                ['Payment follow-up', `Hi ${vendor?.contactName ?? vendor?.name ?? 'there'}, hope you're doing well. Can you confirm the next payment amount, due date, and best way to pay for Stacy & Rick's wedding?`],
-                ['Arrival details', `Hi ${vendor?.contactName ?? vendor?.name ?? 'there'}, can you confirm your arrival time, onsite contact, and anything you need from the venue for Stacy & Rick's wedding day?`],
+                ['Payment follow-up', `Hi ${vendor?.contactName ?? vendor?.name ?? 'there'}, hope you're doing well. Can you confirm the next payment amount, due date, and best way to pay for ${coupleName}'s wedding?`],
+                ['Arrival details', `Hi ${vendor?.contactName ?? vendor?.name ?? 'there'}, can you confirm your arrival time, onsite contact, and anything you need from the venue for ${coupleName}'s wedding day?`],
                 ['Contract question', `Hi ${vendor?.contactName ?? vendor?.name ?? 'there'}, I am reviewing the agreement and wanted to confirm the remaining balance, cancellation terms, and final deliverables.`],
               ].map(([label, draft]) => (
                 <Pressable
@@ -8505,8 +8747,16 @@ function AddEventModal({
   );
 }
 
-function VendorMessageComposer({ vendor }: { vendor: VendorRecord }) {
-  const ariaDraft = `Hi ${vendor.contactName ?? vendor.name}, this is Stacy from Stacy & Rick's wedding. Can you confirm our next payment and arrival details?`;
+function VendorMessageComposer({
+  coupleName,
+  senderName,
+  vendor,
+}: {
+  coupleName: string;
+  senderName: string;
+  vendor: VendorRecord;
+}) {
+  const ariaDraft = `Hi ${vendor.contactName ?? vendor.name}, this is ${senderName} from ${coupleName}'s wedding. Can you confirm our next payment and arrival details?`;
   const [composeMode, setComposeMode] = useState<'aria' | 'custom'>('aria');
   const [message, setMessage] = useState(ariaDraft);
   const [status, setStatus] = useState('');
@@ -8613,7 +8863,7 @@ function VendorContractPanel({
   const primaryContract = syncedContracts[0] ?? null;
   const localPrimaryContract = localContracts[0] ?? null;
   const riskLevel = primaryContract?.analysis?.riskLevel || localPrimaryContract?.riskLevel || (hasContract ? 'Medium' : 'None');
-  const summary = primaryContract?.analysis?.summary || localPrimaryContract?.nextAction || (hasContract ? 'Review uploaded contract terms and final payment schedule.' : 'Upload the contract so A.I DO can track terms, files, and payment dates.');
+  const summary = primaryContract?.analysis?.summary || localPrimaryContract?.nextAction || (hasContract ? 'Review uploaded contract terms and final payment schedule.' : 'Upload the contract so A.I DO can track terms, documents, and payment dates.');
   const redFlagCount = primaryContract?.analysis?.redFlags?.length ?? (localPrimaryContract?.riskLevel === 'High' ? 2 : localPrimaryContract?.riskLevel === 'Medium' ? 1 : 0);
   const contractWorkflowStatus = !hasContract
     ? 'Missing'
@@ -8645,7 +8895,7 @@ function VendorContractPanel({
         if (!alive) return;
       })
       .catch(() => {
-        if (alive) setContractStatus('Showing saved app contract details. Sign in to sync live files.');
+        if (alive) setContractStatus('Showing saved app contract details. Sign in to sync live documents.');
       });
     return () => {
       alive = false;
@@ -8723,10 +8973,10 @@ function VendorContractPanel({
       <View style={styles.vendorContractSection}>
         <View style={styles.cardHeaderRow}>
           <View>
-            <Text style={styles.hubLabel}>Files</Text>
+            <Text style={styles.hubLabel}>Contracts & Docs</Text>
             <Text style={styles.hubDetail}>Contracts, receipts, and vendor documents tied to this vendor.</Text>
           </View>
-          <Text style={styles.smallStatus}>{localDocuments.length + syncedDocuments.length + localContracts.length + syncedContracts.length} files</Text>
+          <Text style={styles.smallStatus}>{localDocuments.length + syncedDocuments.length + localContracts.length + syncedContracts.length} docs</Text>
         </View>
         <View style={styles.vendorInfoList}>
           {syncedContracts.map((contract) => (
@@ -8744,7 +8994,7 @@ function VendorContractPanel({
           {!hasContract && !localDocuments.length && !syncedDocuments.length ? (
             <View style={styles.photoDropEmptyState}>
               <Ionicons color={colors.rose} name="folder-open-outline" size={22} />
-              <Text style={styles.hubLabel}>No files yet</Text>
+              <Text style={styles.hubLabel}>No documents yet</Text>
               <Text style={styles.hubDetail}>Upload the contract first, then receipts and notes can live with this vendor.</Text>
             </View>
           ) : null}
@@ -9010,7 +9260,7 @@ function FormInput({
   placeholder,
   value,
 }: {
-  keyboardType?: 'default' | 'url';
+  keyboardType?: 'default' | 'email-address' | 'number-pad' | 'numeric' | 'url';
   label: string;
   onChangeText: (value: string) => void;
   placeholder: string;
@@ -9407,7 +9657,7 @@ function VendorTrackerCard({
           <Ionicons color={colors.rose} name="document-attach-outline" size={17} />
           <View style={styles.hubCopy}>
             <Text style={styles.noContractTitle}>No contract uploaded</Text>
-            <Text style={styles.hubDetail}>Upload it under Files so Aria can track terms and payment dates.</Text>
+            <Text style={styles.hubDetail}>Upload it under Docs so Aria can track terms and payment dates.</Text>
           </View>
           <Ionicons color={colors.rose} name="cloud-upload-outline" size={18} />
         </Pressable>
@@ -10577,6 +10827,9 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     height: 8,
     width: 8,
+  },
+  liveDotWarning: {
+    backgroundColor: colors.rose,
   },
   liveText: {
     color: colors.ink,
@@ -12900,20 +13153,24 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 5,
+    flexWrap: 'wrap',
+    gap: 6,
     marginTop: 8,
-    padding: 4,
+    padding: 6,
     width: '100%',
   },
   plannerSwitchButton: {
     alignItems: 'center',
     borderRadius: 16,
-    flex: 1,
-    gap: 3,
+    flexBasis: '48%',
+    flexDirection: 'row',
+    flexGrow: 1,
+    flexShrink: 0,
+    gap: 6,
     justifyContent: 'center',
-    minHeight: 48,
-    paddingHorizontal: 4,
-    paddingVertical: 7,
+    minHeight: 40,
+    paddingHorizontal: 8,
+    paddingVertical: 9,
   },
   plannerSwitchButtonActive: {
     backgroundColor: colors.rose,
@@ -12921,8 +13178,8 @@ const styles = StyleSheet.create({
   plannerSwitchText: {
     color: colors.rose,
     fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    lineHeight: 12,
+    fontSize: 11,
+    lineHeight: 13,
   },
   plannerSwitchTextActive: {
     color: colors.surface,
@@ -12933,20 +13190,24 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 5,
+    flexWrap: 'wrap',
+    gap: 6,
     marginTop: 8,
-    padding: 5,
+    padding: 6,
     width: '100%',
   },
   vendorHubSwitchButton: {
     alignItems: 'center',
     borderRadius: 14,
-    flex: 1,
+    flexBasis: '31.5%',
+    flexGrow: 1,
+    flexShrink: 0,
+    flexDirection: 'row',
     gap: 4,
     justifyContent: 'center',
-    minHeight: 50,
-    paddingHorizontal: 4,
-    paddingVertical: 7,
+    minHeight: 40,
+    paddingHorizontal: 6,
+    paddingVertical: 9,
   },
   vendorHubSwitchButtonActive: {
     backgroundColor: colors.rose,
@@ -13114,21 +13375,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 72,
   },
-  photoDropQrGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  photoDropQrImage: {
+    borderRadius: 10,
+    height: 58,
+    width: 58,
+  },
+  photoDropQrPlaceholder: {
+    alignItems: 'center',
     gap: 2,
-    height: 48,
-    width: 48,
+    justifyContent: 'center',
+    paddingHorizontal: 4,
   },
-  photoDropQrCell: {
-    backgroundColor: '#F7E7EC',
-    borderRadius: 1,
-    height: 4,
-    width: 4,
-  },
-  photoDropQrCellFilled: {
-    backgroundColor: colors.ink,
+  photoDropQrPlaceholderText: {
+    color: colors.muted,
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 8,
+    textAlign: 'center',
   },
   photoDropGuestFlowCard: {
     alignItems: 'center',
@@ -14226,6 +14488,9 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 1,
     overflow: 'hidden',
+  },
+  syncStatusCard: {
+    gap: 12,
   },
   groupTitle: {
     color: colors.ink,

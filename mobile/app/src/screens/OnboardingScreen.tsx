@@ -180,7 +180,7 @@ export function OnboardingScreen() {
             ))}
           </View>
           {form.venueStatus === 'Booked' ? (
-            <FormField label="Venue name" onChangeText={(value) => setField('venue', value)} placeholder="Chateau LaMer" value={form.venue} />
+            <FormField label="Venue name" onChangeText={(value) => setField('venue', value)} placeholder="Your venue name" value={form.venue} />
           ) : null}
           <FormField label="Planning location" onChangeText={(value) => setField('location', value)} placeholder="Austin, TX" value={form.location} />
         </SetupStep>
@@ -237,7 +237,7 @@ export function OnboardingScreen() {
         <PrimaryButton icon={step === stepCount - 1 ? 'home-outline' : 'arrow-forward'} label={step === stepCount - 1 ? 'Go to Dashboard' : 'Continue'} onPress={next} />
       </View>
       <Pressable onPress={skip} style={({ pressed }) => [styles.skip, { opacity: pressed ? 0.7 : 1 }]}>
-        <Text style={[styles.skipText, { color: colors.muted }]}>I'll skip this for now</Text>
+        <Text style={[styles.skipText, { color: colors.muted }]}>Set up later</Text>
       </Pressable>
     </Screen>
   );

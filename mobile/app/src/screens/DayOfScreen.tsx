@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Share, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '../components/Card';
 import { FilterPill } from '../components/FilterPill';
@@ -23,6 +23,14 @@ export function DayOfScreen() {
   const complete = data.dayOf.filter((item) => item.completed).length;
   const checklistComplete = data.dayOfChecklist.filter((item) => item.completed).length;
   const checklistItems = data.dayOfChecklist.filter((item) => item.category === activeTab);
+  const shareBinder = () => {
+    const timeline = data.dayOf.map((item) => `${item.time} - ${item.title} (${item.owner}, ${item.location})`).join('\n');
+    const checklist = data.dayOfChecklist.map((item) => `${item.completed ? '[x]' : '[ ]'} ${item.category}: ${item.title}`).join('\n');
+    void Share.share({
+      message: `A.I DO Day-Of Binder\n\nTimeline\n${timeline}\n\nChecklist\n${checklist}`,
+      title: 'A.I DO Day-Of Binder',
+    });
+  };
 
   return (
     <Screen>
@@ -46,12 +54,12 @@ export function DayOfScreen() {
       </Card>
 
       <Card style={styles.binderCard}>
-        <Text style={[styles.binderTitle, { color: colors.text }]}>Export and Regenerate</Text>
+        <Text style={[styles.binderTitle, { color: colors.text }]}>Share and Regenerate</Text>
           <Text style={[styles.binderText, { color: colors.muted }]}>Regenerate when ceremony time, music cues, setup tasks, vendor contacts, or photo flow changes.</Text>
         <View style={styles.binderActions}>
           <PrimaryButton icon="sparkles-outline" label="Ask Aria" onPress={() => respondAsAria('Regenerate my day-of coordinator binder')} variant="gold" />
-          <PrimaryButton icon="document-text-outline" label="PDF" variant="ghost" />
-          <PrimaryButton icon="albums-outline" label="Full Binder" />
+          <PrimaryButton icon="document-text-outline" label="Share PDF" onPress={shareBinder} variant="ghost" />
+          <PrimaryButton icon="albums-outline" label="Full Binder" onPress={shareBinder} />
         </View>
       </Card>
 

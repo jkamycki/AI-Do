@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { StyleSheet, Text, View } from 'react-native';
+import { Linking, Share, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '../components/Card';
 import { FilterPill } from '../components/FilterPill';
@@ -18,8 +18,8 @@ export function WebsiteEditorScreen() {
   const { data, updateGuestPhotoDropSettings, updateWebsiteSectionStatus } = usePlanningData();
   const ready = data.websiteSections.filter((section) => section.status !== 'Draft').length;
   const coupleSlug = slugifyCoupleName(data.profile.coupleName);
-  const websiteUrl = `aidowedding.net/w/${coupleSlug}`;
-  const rsvpUrl = `${websiteUrl}#rsvp`;
+  const websiteUrl = `https://aidowedding.net/w/${coupleSlug}/home`;
+  const rsvpUrl = `https://aidowedding.net/w/${coupleSlug}/rsvp`;
   const selectedQrUrl = data.guestPhotoDrop.selectedQrTarget === 'rsvp' ? rsvpUrl : websiteUrl;
   const approvedGuestUploads = data.guestPhotoUploads.filter((upload) => upload.status === 'Approved').length;
 
@@ -27,9 +27,20 @@ export function WebsiteEditorScreen() {
     data.websiteSections.forEach((section) => updateWebsiteSectionStatus(section.id, 'Published'));
   }
 
+  function openPreview() {
+    void Linking.openURL(websiteUrl).catch(() => undefined);
+  }
+
+  function shareWebsite() {
+    void Share.share({
+      message: `View our wedding website: ${websiteUrl}`,
+      url: websiteUrl,
+    });
+  }
+
   return (
     <Screen>
-      <SectionHeader subtitle="Guest-facing website, RSVP flow, travel details, registry, privacy, and publishing." title="Website Editor" />
+      <SectionHeader subtitle="Guest-facing website, RSVP flow, travel details, registry, privacy, and publishing." title="Website Control" />
 
       <Card style={styles.previewCard}>
         <View>
@@ -39,8 +50,21 @@ export function WebsiteEditorScreen() {
         </View>
         <ProgressBar value={(ready / data.websiteSections.length) * 100} />
         <View style={styles.actions}>
-          <PrimaryButton icon="eye-outline" label="Preview" variant="ghost" />
+          <PrimaryButton icon="eye-outline" label="Preview" onPress={openPreview} variant="ghost" />
+          <PrimaryButton icon="share-outline" label="Share" onPress={shareWebsite} variant="ghost" />
           <PrimaryButton icon="cloud-upload-outline" label="Publish" onPress={publishAll} />
+        </View>
+      </Card>
+
+      <Card style={styles.desktopNotice}>
+        <View style={[styles.iconWrap, { backgroundColor: colors.accentSoft }]}>
+          <Ionicons color={colors.accent} name="desktop-outline" size={22} />
+        </View>
+        <View style={styles.sectionCopy}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Full design studio lives on desktop</Text>
+          <Text style={[styles.sectionDesc, { color: colors.muted }]}>
+            Use the app for preview, publishing, quick section visibility, Photo Drop, and sharing. Use A.I DO on desktop for themes, templates, drag-and-drop order, and detailed layout polish.
+          </Text>
         </View>
       </Card>
 
@@ -138,6 +162,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   photoDropCard: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  desktopNotice: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: spacing.md,

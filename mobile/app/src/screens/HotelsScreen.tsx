@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Share, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '../components/Card';
 import { FormField } from '../components/FormField';
@@ -40,6 +40,13 @@ export function HotelsScreen() {
     setHotelId(null);
   }
 
+  function shareHotelLink(hotel: (typeof data.hotels)[number]) {
+    void Share.share({
+      message: `Hotel block for ${data.profile.coupleName}\n${hotel.name}\n${hotel.address}\nRate: ${formatCurrency(hotel.rate)}\nDeadline: ${formatShortDate(hotel.deadline)}\nContact: ${hotel.contact}`,
+      title: `${hotel.name} hotel block`,
+    });
+  }
+
   return (
     <Screen>
       <SectionHeader subtitle="Room blocks, deadlines, booking links, contacts, and shuttle notes." title="Hotels" />
@@ -70,7 +77,7 @@ export function HotelsScreen() {
               <Text style={[styles.contact, { color: colors.text }]}>{hotel.shuttle ? 'Shuttle arranged' : 'No shuttle yet'} - {hotel.contact}</Text>
             </View>
             <View style={styles.actions}>
-              <PrimaryButton icon="mail-outline" label="Send Guests Link" variant="ghost" />
+              <PrimaryButton icon="share-outline" label="Share Guest Link" onPress={() => shareHotelLink(hotel)} variant="ghost" />
               <PrimaryButton icon="create-outline" label="Edit Block" onPress={() => openHotel(hotel)} variant="ghost" />
             </View>
           </Card>

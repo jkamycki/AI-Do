@@ -47,7 +47,7 @@ import { AuthMediaImage } from "@/components/AuthMediaImage";
 
 // camelCase section id <-> kebab-case URL slug
 const SECTION_TO_URL: Record<string, string> = {
-  home: "",
+  home: "home",
   welcome: "welcome",
   story: "story",
   schedule: "schedule",

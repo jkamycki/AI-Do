@@ -27,7 +27,6 @@ type AppRoute =
   | 'Settings'
   | 'Timeline'
   | 'Vendors'
-  | 'WebPortal'
   | 'WebsiteEditor'
   | 'WeddingParty'
   | 'Workspace';
@@ -41,7 +40,7 @@ type FeatureItem = {
 };
 
 const featured: FeatureItem[] = [
-  { icon: 'globe-outline', label: 'Website Editor', detail: 'Publish guest pages, travel, story, registry, and RSVP copy.', route: 'WebsiteEditor', badge: 'Core' },
+  { icon: 'globe-outline', label: 'Website Control', detail: 'Preview, publish, share, and manage mobile-safe website settings.', route: 'WebsiteEditor', badge: 'Core' },
   { icon: 'mail-open-outline', label: 'Invitations', detail: 'Save-the-dates, RSVP campaigns, opens, and responses.', route: 'Invitations', badge: 'Guest' },
   { icon: 'camera-outline', label: 'Guest Photo Drop', detail: 'QR upload settings, approval queue, captions, and gallery routing.', route: 'GuestPhotoDrop', badge: 'Live' },
   { icon: 'sparkles-outline', label: 'Aria Assistant', detail: 'Draft messages, review risks, and decide what to do next.', route: 'Aria', badge: 'AI' },
@@ -56,16 +55,16 @@ const groups: Array<{ title: string; items: FeatureItem[] }> = [
       { icon: 'images-outline', label: 'Mood Board', detail: 'Palette, inspiration, and vendor-ready design notes.', route: 'MoodBoard' },
       { icon: 'calendar-clear-outline', label: 'Timeline', detail: 'Ceremony, reception, production timing, and milestones.', route: 'Timeline' },
       { icon: 'phone-portrait-outline', label: 'Day-Of', detail: 'Run-of-show, emergency kit, vendor arrivals, and packing.', route: 'DayOf' },
-      { icon: 'person-add-outline', label: 'Wedding Party', detail: 'Roles, duties, attire, contacts, and day-of support.', route: 'WeddingParty' },
+      { icon: 'person-add-outline', label: 'Wedding Party', detail: 'Roles, duties, contacts, and day-of support.', route: 'WeddingParty' },
     ],
   },
   {
-    title: 'Spend',
+    title: 'Vendors & Budget',
     items: [
-      { icon: 'storefront-outline', label: 'Vendors', detail: 'Bookings, contacts, payment status, and next actions.', route: 'Vendors' },
-      { icon: 'cash-outline', label: 'Budget', detail: 'Totals, paid, remaining, payment dates, and categories.', route: 'Budget' },
-      { icon: 'document-text-outline', label: 'Contracts', detail: 'AI review, clause notes, risk levels, and signatures.', route: 'Contracts' },
-      { icon: 'folder-open-outline', label: 'Files', detail: 'Contracts, receipts, exports, timelines, and shared documents.', route: 'Files' },
+      { icon: 'storefront-outline', label: 'Vendor Hub', detail: 'Vendor list, messages, contacts, documents, contracts, and payments.', route: 'Vendors' },
+      { icon: 'cash-outline', label: 'Budget Summary', detail: 'Totals, paid, remaining, payment dates, and categories.', route: 'Budget' },
+      { icon: 'document-text-outline', label: 'Contracts', detail: 'Vendor contracts, AI review, clause notes, and signatures.', route: 'Contracts' },
+      { icon: 'folder-open-outline', label: 'Documents', detail: 'Vendor docs, receipts, exports, timelines, and shared planning documents.', route: 'Files' },
     ],
   },
   {
@@ -80,7 +79,6 @@ const groups: Array<{ title: string; items: FeatureItem[] }> = [
     title: 'Operate',
     items: [
       { icon: 'business-outline', label: 'Workspace', detail: 'Planner, partner, family, and vendor collaboration.', route: 'Workspace' },
-      { icon: 'phone-portrait-outline', label: 'Full Portal', detail: 'Open the authenticated website app when you need desktop-grade tools.', route: 'WebPortal' },
       { icon: 'settings-outline', label: 'Settings', detail: 'Reminders, RSVP emails, Aria memory, exports, and privacy.', route: 'Settings' },
       { icon: 'help-circle-outline', label: 'Help', detail: 'Guides, support resources, security, and legal information.', route: 'Help' },
     ],
@@ -122,7 +120,7 @@ export function MoreScreen() {
         </View>
         <ProgressBar value={taskProgress} />
         <Text style={[styles.statusMeta, { color: colors.muted }]}>
-          {lastSyncedAt ? `Last checked ${lastSyncedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : 'Using sample planning data'}
+          {lastSyncedAt ? `Last checked ${lastSyncedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : 'Local preview mode until website sync is available'}
         </Text>
       </Card>
 

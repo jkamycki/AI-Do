@@ -14,7 +14,7 @@ export function WeddingPartyScreen() {
 
   return (
     <Screen>
-      <SectionHeader subtitle="Track attendants, attire, duties, phone numbers, and ceremony roles." title="Wedding Party" />
+      <SectionHeader subtitle="Track attendants, phone numbers, ceremony roles, and day-of responsibilities." title="Wedding Party" />
 
       {data.weddingParty.map((member) => (
         <Card key={member.id} style={styles.memberCard}>
@@ -27,7 +27,7 @@ export function WeddingPartyScreen() {
                 <Text style={[styles.name, { color: colors.text }]}>{member.name}</Text>
                 <Text style={[styles.role, { color: colors.muted }]}>{member.role} - {member.side}</Text>
               </View>
-              <Text style={[styles.status, { backgroundColor: colors.accentSoft, color: colors.text }]}>{member.attireStatus}</Text>
+              <Text style={[styles.status, { backgroundColor: colors.accentSoft, color: colors.text }]}>{member.tasks.length} task{member.tasks.length === 1 ? '' : 's'}</Text>
             </View>
             <Text style={[styles.phone, { color: colors.muted }]}>{member.phone}</Text>
             <View style={styles.tasks}>

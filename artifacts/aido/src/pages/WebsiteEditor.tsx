@@ -1609,7 +1609,7 @@ export default function WebsiteEditor() {
 
   const publicUrl = useMemo(() => {
     if (!record) return "";
-    return publishedWebsiteUrl(record.slug);
+    return publishedWebsiteUrl(record.slug, "home");
   }, [record]);
 
   const copyLink = async () => {
@@ -3571,9 +3571,8 @@ function SlugEditor({
     }
   };
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const host = origin.replace(/^https?:\/\//, "");
-  const fullUrl = `${origin}/w/${slug}`;
+  const fullUrl = publishedWebsiteUrl(slug, "home");
+  const host = fullUrl.replace(/^https?:\/\//, "").replace(/\/w\/.*$/, "");
   const [copied, setCopied] = useState(false);
 
   const copyLink = async () => {
@@ -3590,7 +3589,7 @@ function SlugEditor({
         <p className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">Guest website link</p>
         <div className="flex items-center gap-2">
           <p className="text-xs font-mono break-all flex-1">
-            <span className="opacity-60">{host}/w/</span><span className="text-foreground">{slug}</span>
+            <span className="opacity-60">{host}/w/</span><span className="text-foreground">{slug}</span><span className="opacity-60">/home</span>
           </p>
           <Button
             type="button"

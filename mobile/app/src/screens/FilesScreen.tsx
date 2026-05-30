@@ -44,7 +44,7 @@ export function FilesScreen() {
 
   return (
     <Screen>
-      <SectionHeader subtitle="Contracts, receipts, inspiration boards, planning exports, AI summaries, and linked vendor files." title="Documents" />
+      <SectionHeader subtitle="Contracts, receipts, inspiration boards, planning exports, AI summaries, and linked vendor documents." title="Documents" />
 
       <Card style={styles.uploadCard}>
         <View style={[styles.uploadIcon, { backgroundColor: colors.primarySoft }]}>
@@ -52,7 +52,7 @@ export function FilesScreen() {
         </View>
         <View style={styles.uploadCopy}>
           <Text style={[styles.uploadTitle, { color: colors.text }]}>Add a contract or receipt</Text>
-          <Text style={[styles.uploadMeta, { color: colors.muted }]}>Store vendor files in the same place as payments and tasks.</Text>
+          <Text style={[styles.uploadMeta, { color: colors.muted }]}>Store vendor documents in the same place as payments and tasks.</Text>
         </View>
         <PrimaryButton icon="add" label="Add" onPress={() => setSheetOpen(true)} />
       </Card>
@@ -77,7 +77,7 @@ export function FilesScreen() {
       <FormSheet onClose={() => setSheetOpen(false)} subtitle="Add contracts, receipts, timelines, mood boards, and planning exports." title="Add Document" visible={sheetOpen}>
         <FormField label="Title" onChangeText={(value) => setForm((current) => ({ ...current, title: value }))} placeholder="Florals Receipt" value={form.title} />
         <FormField label="Linked to" onChangeText={(value) => setForm((current) => ({ ...current, linkedTo: value }))} placeholder="Park Florals" value={form.linkedTo} />
-        <FormField multiline label="Summary" onChangeText={(value) => setForm((current) => ({ ...current, summary: value }))} placeholder="Short note about this file" value={form.summary} />
+        <FormField multiline label="Summary" onChangeText={(value) => setForm((current) => ({ ...current, summary: value }))} placeholder="Short note about this document" value={form.summary} />
         <View style={styles.choiceRow}>
           {(['Contract', 'Receipt', 'Timeline', 'Mood Board', 'Other'] as DocumentItem['type'][]).map((type) => (
             <FilterPill active={form.type === type} key={type} label={type} onPress={() => setForm((current) => ({ ...current, type }))} />
