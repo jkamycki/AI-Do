@@ -2451,8 +2451,8 @@ function WebsiteSection({
             data={data}
             onAddHotel={onAddHotel}
             onDeleteHotel={onDeleteHotel}
+            onOpenGuestHubView={onChangeView}
             onUpdateHotel={onUpdateHotel}
-            openMockAction={openMockAction}
           />
         </>
       ) : null}
@@ -2738,14 +2738,14 @@ function TravelHotelsPanel({
   data,
   onAddHotel,
   onDeleteHotel,
+  onOpenGuestHubView,
   onUpdateHotel,
-  openMockAction,
 }: {
   data: typeof samplePlanningData;
   onAddHotel: (hotel: (typeof samplePlanningData.hotels)[number]) => void;
   onDeleteHotel: (hotelId: string) => void;
+  onOpenGuestHubView: (view: GuestHubView) => void;
   onUpdateHotel: (hotel: (typeof samplePlanningData.hotels)[number]) => void;
-  openMockAction: (action: MockAction) => void;
 }) {
   const [editingHotel, setEditingHotel] = useState<(typeof samplePlanningData.hotels)[number] | null>(null);
   const nextDeadline = [...data.hotels]
@@ -2806,13 +2806,7 @@ function TravelHotelsPanel({
             <Text style={styles.primaryActionText}>Add hotel block</Text>
           </Pressable>
           <Pressable
-            onPress={() =>
-              openMockAction({
-                title: 'Travel website copy',
-                detail: 'Update the Travel & Hotels section on the wedding website with booking links, hotel notes, shuttle timing, airports, and ride share details.',
-                primaryLabel: 'Edit travel copy',
-              })
-            }
+            onPress={() => onOpenGuestHubView('website')}
             style={styles.secondaryActionButton}
           >
             <Ionicons color={colors.rose} name="create-outline" size={18} />
@@ -2839,9 +2833,9 @@ function TravelHotelsPanel({
           <Text style={styles.smallStatus}>Connected</Text>
         </View>
         <View style={styles.websiteEditorToolGrid}>
-          <EditorToolButton icon="mail-open-outline" label="Add to Save the Date" onPress={() => openMockAction({ title: 'Save-the-Date hotel question', detail: 'Show hotel needs in Save-the-Date and save each response to the guest profile.', primaryLabel: 'Update invite' })} />
-          <EditorToolButton icon="globe-outline" label="Website travel section" onPress={() => openMockAction({ title: 'Website travel section', detail: 'Publish hotel blocks, travel instructions, airports, and shuttle notes to the guest website.', primaryLabel: 'Open section' })} />
-          <EditorToolButton icon="people-outline" label="Hotel responses" onPress={() => openMockAction({ title: 'Guest hotel responses', detail: 'Review which guests need rooms, booked inside the block, or still need a reminder.', primaryLabel: 'Review responses' })} />
+          <EditorToolButton icon="mail-open-outline" label="Add to Save the Date" onPress={() => onOpenGuestHubView('invites')} />
+          <EditorToolButton icon="globe-outline" label="Website travel section" onPress={() => onOpenGuestHubView('website')} />
+          <EditorToolButton icon="people-outline" label="Hotel responses" onPress={() => onOpenGuestHubView('guests')} />
         </View>
       </Card>
 
