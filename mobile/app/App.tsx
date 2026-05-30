@@ -1557,13 +1557,11 @@ function CalendarSection({
   onOpenFinance,
   onOpenGuestHub,
   onOpenVendors,
-  openMockAction,
 }: {
   data: typeof samplePlanningData;
   onOpenFinance: () => void;
   onOpenGuestHub: (view: GuestHubView) => void;
   onOpenVendors: () => void;
-  openMockAction: (action: MockAction) => void;
 }) {
   const [month, setMonth] = useState(() => {
     const today = new Date();
@@ -1572,6 +1570,7 @@ function CalendarSection({
   const [selectedDate, setSelectedDate] = useState(() => dateKey(new Date()));
   const [addEventOpen, setAddEventOpen] = useState(false);
   const [agendaEvent, setAgendaEvent] = useState<CalendarEvent | null>(null);
+  const [agendaStatus, setAgendaStatus] = useState('');
   const [completedAgendaIds, setCompletedAgendaIds] = useState<string[]>([]);
   const [newEvent, setNewEvent] = useState({
     date: dateKey(new Date()),
@@ -1651,14 +1650,12 @@ function CalendarSection({
       return;
     }
 
-    openMockAction({
-      title: event.title,
-      detail: `${formatShortDate(event.date)}. ${event.detail}${event.link ? ` Link: ${event.link}.` : ''} Opens the full appointment, reminder, or calendar details.`,
-      primaryLabel: 'Open item',
-    });
+    setAgendaEvent(event);
+    setAgendaStatus(`${event.title} is a custom calendar item. Details are shown here, and you can mark it complete when finished.`);
   };
   const markAgendaComplete = (event: CalendarEvent) => {
     setCompletedAgendaIds((current) => (current.includes(event.id) ? current : [...current, event.id]));
+    setAgendaStatus('');
     setAgendaEvent(null);
   };
   const monthEventCount = events.filter((event) => event.date.startsWith(monthKey) && !completedAgendaSet.has(event.id)).length;
@@ -1816,12 +1813,19 @@ function CalendarSection({
       />
       <AgendaItemModal
         event={agendaEvent}
-        onClose={() => setAgendaEvent(null)}
+        onClose={() => {
+          setAgendaStatus('');
+          setAgendaEvent(null);
+        }}
         onMarkComplete={markAgendaComplete}
         onOpenRelated={(event) => {
-          setAgendaEvent(null);
+          if (event.type !== 'custom') {
+            setAgendaStatus('');
+            setAgendaEvent(null);
+          }
           openRelatedCalendarEvent(event);
         }}
+        status={agendaStatus}
       />
     </Section>
   );
@@ -1832,11 +1836,13 @@ function AgendaItemModal({
   onClose,
   onMarkComplete,
   onOpenRelated,
+  status,
 }: {
   event: CalendarEvent | null;
   onClose: () => void;
   onMarkComplete: (event: CalendarEvent) => void;
   onOpenRelated: (event: CalendarEvent) => void;
+  status: string;
 }) {
   if (!event) return null;
 
@@ -1874,6 +1880,7 @@ function AgendaItemModal({
             <VendorInfoRow icon="calendar-outline" label="Agenda type" value={event.type} />
             {event.link ? <VendorInfoRow icon="link-outline" label="Link" value={event.link} /> : null}
           </View>
+          {status ? <SavedStrip label={status} /> : null}
 
           <View style={styles.websiteActions}>
             <Pressable onPress={() => onMarkComplete(event)} style={styles.primaryActionButton}>
@@ -5296,7 +5303,6 @@ function PlanSection({
           onOpenFinance={onOpenFinance}
           onOpenGuestHub={onOpenGuestHub}
           onOpenVendors={onOpenVendors}
-          openMockAction={openMockAction}
         />
       ) : plannerView === 'checklist' ? (
         <PlannerChecklistSection
