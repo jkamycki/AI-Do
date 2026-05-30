@@ -18,7 +18,7 @@ import { slugifyCoupleName } from '../utils/format';
 const destinationCopy: Record<GuestPhotoDisplayMode, { label: string; detail: string; preview: string }> = {
   portal: {
     label: 'Portal only',
-    detail: 'Approved photos stay private inside A.I Do for the couple to review and download.',
+    detail: 'Approved photos stay private inside A.I DO for the couple to review and download.',
     preview: 'Guests will not see the wedding website link after uploading.',
   },
   website: {

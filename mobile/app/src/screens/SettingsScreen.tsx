@@ -48,7 +48,7 @@ export function SettingsScreen() {
     const fileUri = `${FileSystem.cacheDirectory}aido-planning-backup.json`;
     const backup = {
       exportedAt: new Date().toISOString(),
-      app: 'A.I Do Mobile',
+      app: 'A.I DO Mobile',
       data,
     };
 
@@ -59,7 +59,7 @@ export function SettingsScreen() {
 
     if (await Sharing.isAvailableAsync()) {
       await Sharing.shareAsync(fileUri, {
-        dialogTitle: 'Download A.I Do planning backup',
+        dialogTitle: 'Download A.I DO planning backup',
         mimeType: 'application/json',
       });
       setExportMessage('Backup is ready in the share sheet.');

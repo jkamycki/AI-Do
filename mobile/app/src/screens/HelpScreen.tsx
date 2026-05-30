@@ -24,7 +24,7 @@ export function HelpScreen() {
           <Text style={[styles.supportTitle, { color: colors.text }]}>Need help?</Text>
           <Text style={[styles.supportText, { color: colors.muted }]}>Send a support ticket, share feedback, or review account and planning guidance.</Text>
         </View>
-        <PrimaryButton icon="send-outline" label="Contact" onPress={() => respondAsAria('Help me contact A.I Do support')} />
+        <PrimaryButton icon="send-outline" label="Contact" onPress={() => respondAsAria('Help me contact A.I DO support')} />
       </Card>
 
       {data.helpResources.map((resource) => (

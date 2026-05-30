@@ -7,6 +7,7 @@ export type Payment = {
   id: string;
   date: string;
   amount: number;
+  isPaid?: boolean;
   note: string;
   receiptUrl?: string;
 };
@@ -52,6 +53,9 @@ export type Guest = {
   table: string;
   role: string;
   invitationStyle: 'cream' | 'floral' | 'brown';
+  plusOne?: boolean;
+  plusOneName?: string;
+  plusOneStatus?: 'none' | 'named' | 'name_tbd' | 'unsure' | string;
 };
 
 export type Task = {
@@ -64,6 +68,7 @@ export type Task = {
 };
 
 export type CoupleProfile = {
+  coverPhotoUrl?: string;
   coupleName: string;
   partnerOne: string;
   partnerTwo: string;

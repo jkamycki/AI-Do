@@ -1,8 +1,8 @@
-# A.I Do Mobile App
+# A.I DO Mobile App
 
-This is the shared Android and iPhone React Native + Expo app for A.I Do.
+This is the shared Android and iPhone React Native + Expo app for A.I DO.
 
-The app now uses native screens for Home, Vendors, Budget, Checklist, Guests, More, guided setup, Settings, Profile, Mood Board, Timeline, Day Of, Aria, Contracts, Documents, Wedding Party, Seating Chart, Hotels, Invitations, Website Editor, Workspace, Help, and Updates. It uses local sample planning data immediately, then tries the website API paths under `https://aidowedding.net/api/mobile/*` when those endpoints are ready.
+The app uses native mobile screens for Home, Planner, Guest Hub, Vendors, Budget Summary, Aria, Account, Workspace, Seating Chart, Hotels, Invitations, Website quick edits, Contracts, Documents, Wedding Party, and Photo Drop. It reads and writes through the same mobile API layer as the website when the user is signed in.
 
 Recent app parity work includes:
 
@@ -13,8 +13,8 @@ Recent app parity work includes:
 - Budget payment date validation before saving payments.
 - Day-of coordinator tabs for timeline, ceremony, music, speeches, setup, attire, vendors, and packing.
 - Seating chart visual preview with round table layouts and seat lists.
-- Device persistence with AsyncStorage so mobile edits survive reloads while the website API sync is being connected.
-- Website Portal fallback for advanced website-only workflows while the native app continues to mature.
+- Device persistence with AsyncStorage for offline-friendly fallback states.
+- Desktop-first guidance for advanced website design, invitation polish, large seating edits, exports, and deep reports.
 
 ## See It on the Android Emulator
 

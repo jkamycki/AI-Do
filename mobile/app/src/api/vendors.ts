@@ -1,4 +1,4 @@
-import type { Vendor, VendorStatus } from '../types';
+import type { Payment, Vendor, VendorStatus } from '../types';
 import { mobileAuthFetch } from './mobileAuth';
 
 type BackendVendorPayment = {
@@ -26,6 +26,13 @@ type BackendVendor = {
 type VendorSyncResult = {
   synced: boolean;
   vendor?: Vendor;
+};
+
+type VendorPaymentInput = {
+  amount: number;
+  date: string;
+  isPaid?: boolean;
+  note: string;
 };
 
 function money(value: unknown) {
@@ -83,11 +90,22 @@ function toMobileVendor(vendor: BackendVendor, fallback?: Vendor): Vendor {
       amount: money(payment.amount),
       date: payment.dueDate || '',
       id: String(payment.id ?? `payment-${Date.now()}`),
+      isPaid: Boolean(payment.isPaid),
       note: payment.label || 'Scheduled payment',
     })),
     phone: vendor.phone?.trim() || fallback?.phone || '',
     remaining: Math.max(0, total - paid),
     status: statusForVendor(total, paid, Boolean(vendor.contractSigned)),
+  };
+}
+
+function toMobilePayment(payment: BackendVendorPayment): Payment {
+  return {
+    amount: money(payment.amount),
+    date: payment.dueDate || '',
+    id: String(payment.id ?? `payment-${Date.now()}`),
+    isPaid: Boolean(payment.isPaid),
+    note: payment.label || 'Scheduled payment',
   };
 }
 
@@ -127,4 +145,59 @@ export async function deleteMobileVendor(vendorId: string): Promise<{ synced: bo
   if (!response) return { synced: false };
   if (!response.ok) throw new Error(await readError(response));
   return { synced: true };
+}
+
+export async function createMobileVendorPayment(vendorId: string, payment: VendorPaymentInput): Promise<{ payment?: Payment; synced: boolean }> {
+  if (!isBackendId(vendorId)) return { synced: false };
+  const response = await mobileAuthFetch(`/api/vendors/${vendorId}/payments`, {
+    body: JSON.stringify({
+      amount: payment.amount,
+      dueDate: payment.date,
+      isPaid: Boolean(payment.isPaid),
+      label: payment.note.trim() || 'Payment',
+      reopenBalance: !payment.isPaid,
+    }),
+    method: 'POST',
+  });
+  if (!response) return { synced: false };
+  if (!response.ok) throw new Error(await readError(response));
+  return { payment: toMobilePayment((await response.json()) as BackendVendorPayment), synced: true };
+}
+
+export async function updateMobileVendorPayment(
+  vendorId: string,
+  paymentId: string,
+  patch: Partial<VendorPaymentInput>,
+): Promise<{ payment?: Payment; synced: boolean }> {
+  if (!isBackendId(vendorId) || !isBackendId(paymentId)) return { synced: false };
+  const response = await mobileAuthFetch(`/api/vendors/${vendorId}/payments/${paymentId}`, {
+    body: JSON.stringify({
+      ...(patch.amount !== undefined ? { amount: patch.amount } : {}),
+      ...(patch.date !== undefined ? { dueDate: patch.date } : {}),
+      ...(patch.isPaid !== undefined ? { isPaid: patch.isPaid } : {}),
+      ...(patch.note !== undefined ? { label: patch.note.trim() || 'Payment' } : {}),
+      ...(patch.isPaid === false ? { reopenBalance: true } : {}),
+    }),
+    method: 'PUT',
+  });
+  if (!response) return { synced: false };
+  if (!response.ok) throw new Error(await readError(response));
+  return { payment: toMobilePayment((await response.json()) as BackendVendorPayment), synced: true };
+}
+
+export async function deleteMobileVendorPayment(vendorId: string, paymentId: string): Promise<{ synced: boolean }> {
+  if (!isBackendId(vendorId) || !isBackendId(paymentId)) return { synced: false };
+  const response = await mobileAuthFetch(`/api/vendors/${vendorId}/payments/${paymentId}`, { method: 'DELETE' });
+  if (!response) return { synced: false };
+  if (!response.ok) throw new Error(await readError(response));
+  return { synced: true };
+}
+
+export async function markMobileVendorPaidInFull(vendorId: string): Promise<{ payment?: Payment; synced: boolean }> {
+  if (!isBackendId(vendorId)) return { synced: false };
+  const response = await mobileAuthFetch(`/api/vendors/${vendorId}/payments/mark-paid-in-full`, { method: 'POST' });
+  if (!response) return { synced: false };
+  if (!response.ok) throw new Error(await readError(response));
+  const body = (await response.json()) as { payment?: BackendVendorPayment | null };
+  return { payment: body.payment ? toMobilePayment(body.payment) : undefined, synced: true };
 }

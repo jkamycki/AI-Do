@@ -25,7 +25,7 @@ export function AidoLogo({ compact = false, splash = false }: AidoLogoProps) {
       <Image resizeMode="contain" source={compact ? brandLogo : appIcon} style={compact ? styles.brandCompact : styles.logo} />
       {!compact && (
         <View>
-          <Text style={styles.name}>A.I Do</Text>
+          <Text style={styles.name}>A.I DO</Text>
           <Text style={styles.caption}>Wedding planner</Text>
         </View>
       )}

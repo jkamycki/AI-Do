@@ -277,7 +277,7 @@ const SAMPLE_VENDOR_DIRECTORY: VendorDirectoryListing[] = [
   },
 ];
 
-function usePublishedPartnerListings() {
+function usePublishedPartnerListings(enabled = true) {
   return useQuery<VendorDirectoryListing[]>({
     queryKey: ["published-vendor-partner-directory"],
     queryFn: async () => {
@@ -286,6 +286,7 @@ function usePublishedPartnerListings() {
       const body = await response.json().catch(() => ({}));
       return Array.isArray(body.listings) ? body.listings : [];
     },
+    enabled,
     staleTime: 60_000,
   });
 }
@@ -2291,15 +2292,17 @@ function VendorDirectoryTab({
 }
 
 function VendorHubMessagesTab({
+  canPreviewPartnerVendors = false,
   initialVendorId,
   onSelectVendor,
 }: {
+  canPreviewPartnerVendors?: boolean;
   initialVendorId?: number | null;
   onSelectVendor?: (vendorId: number) => void;
 }) {
   const { toast } = useToast();
   const { data: vendors = [], isLoading: vendorsLoading } = useListVendors();
-  const { data: publishedPartnerListings = [] } = usePublishedPartnerListings();
+  const { data: publishedPartnerListings = [] } = usePublishedPartnerListings(canPreviewPartnerVendors);
   const { data: conversations = [], isLoading } = useListConversations({
     query: {
       queryKey: getListConversationsQueryKey(),
@@ -2355,8 +2358,10 @@ function VendorHubMessagesTab({
     [vendors]
   );
   const sortedPartnerListings = useMemo(
-    () => mergePartnerListings(publishedPartnerListings).sort((a, b) => a.name.localeCompare(b.name)),
-    [publishedPartnerListings]
+    () => canPreviewPartnerVendors
+      ? mergePartnerListings(publishedPartnerListings).sort((a, b) => a.name.localeCompare(b.name))
+      : [],
+    [canPreviewPartnerVendors, publishedPartnerListings]
   );
   const selectedConversationName = typeof selectedConversation?.vendorName === "string" ? selectedConversation.vendorName.trim() : "";
   const selectedVendorName = selectedConversationName || vendorDisplayName(selectedVendor) || selectedPartnerListing?.name || "Vendor";
@@ -2388,7 +2393,7 @@ function VendorHubMessagesTab({
   function handleNewMessageSelect(value: string) {
     const [type, id] = value.split(":");
     if (type === "vendor") selectVendorMessages(Number(id));
-    if (type === "partner") selectPartnerMessages(id);
+    if (type === "partner" && canPreviewPartnerVendors) selectPartnerMessages(id);
   }
 
   if (isLoading || vendorsLoading) {
@@ -2407,7 +2412,9 @@ function VendorHubMessagesTab({
       <aside className="space-y-2 rounded-2xl border border-border/70 bg-card p-3 shadow-sm lg:max-h-[680px] lg:overflow-y-auto">
         <div className="px-2 pb-2">
           <h2 className="font-serif text-xl text-foreground">Messages</h2>
-          <p className="text-xs text-muted-foreground">Vendor and partner conversations in one place.</p>
+          <p className="text-xs text-muted-foreground">
+            {canPreviewPartnerVendors ? "Vendor and partner conversations in one place." : "Vendor conversations in one place."}
+          </p>
         </div>
         <div className="rounded-xl border border-border/70 bg-background/70 p-3">
           <Label className="text-xs font-semibold uppercase tracking-wider text-primary">New message</Label>
@@ -2432,19 +2439,25 @@ function VendorHubMessagesTab({
                   <SelectItem value="vendor:none" disabled>No current vendors yet</SelectItem>
                 )}
               </SelectGroup>
-              <SelectSeparator />
-              <SelectGroup>
-                <SelectLabel>Partner Vendors</SelectLabel>
-                {sortedPartnerListings.map((listing) => (
-                  <SelectItem key={listing.id} value={`partner:${listing.id}`}>
-                    {listing.name} ({listing.category})
-                  </SelectItem>
-                ))}
-              </SelectGroup>
+              {canPreviewPartnerVendors && (
+                <>
+                  <SelectSeparator />
+                  <SelectGroup>
+                    <SelectLabel>Partner Vendors</SelectLabel>
+                    {sortedPartnerListings.map((listing) => (
+                      <SelectItem key={listing.id} value={`partner:${listing.id}`}>
+                        {listing.name} ({listing.category})
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </>
+              )}
             </SelectContent>
           </Select>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">
-            Pick a current vendor, or message a partner vendor while you are still deciding.
+            {canPreviewPartnerVendors
+              ? "Pick a current vendor, or message a partner vendor while you are still deciding."
+              : "Pick one of your current vendors to start or continue a conversation."}
           </p>
         </div>
         {conversations.length === 0 && (
@@ -3164,6 +3177,7 @@ export default function Vendors() {
         <TabsContent value="messages" className="mt-4">
           <VendorMessagesErrorBoundary resetKey={`hub-${selectedMessageVendorId ?? "none"}`}>
             <VendorHubMessagesTab
+              canPreviewPartnerVendors={canPreviewVendorDirectory}
               initialVendorId={selectedMessageVendorId}
               onSelectVendor={(vendorId) => {
                 setSelectedMessageVendorId(vendorId);

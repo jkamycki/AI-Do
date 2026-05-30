@@ -18,6 +18,7 @@ import { getRequestLanguage } from "../../lib/language";
 
 const router = Router();
 const PARTNER_INQUIRY_NOTE_MARKER = "[A.I DO partner inquiry only]";
+const VENDOR_DIRECTORY_PREVIEW_EMAIL = "kamyckijoseph@gmail.com";
 
 async function ensurePlannerAccess(req: Request, res: Response): Promise<boolean> {
   const callerRole = await resolveCallerRole(req);
@@ -40,12 +41,43 @@ async function getPrimaryAccountEmail(userId: string): Promise<string | null> {
   }
 }
 
-async function getOrCreateConversation(userId: string, vendorId: number, profileId?: number) {
+async function canUsePartnerDirectoryPreview(req: Request): Promise<boolean> {
+  const email = await getPrimaryAccountEmail(req.userId!);
+  return email === VENDOR_DIRECTORY_PREVIEW_EMAIL;
+}
+
+function excludePartnerInquiryVendors() {
+  return sql`not (
+    coalesce(${vendors.notes}, '') like ${`${PARTNER_INQUIRY_NOTE_MARKER}%`}
+    or lower(coalesce(${vendors.notes}, '')) like '%partner inquiry%'
+    or lower(coalesce(${vendors.notes}, '')) like '%partner network%'
+    or lower(coalesce(${vendors.notes}, '')) like '%not added to the user''s vendor list%'
+  )`;
+}
+
+function isPartnerInquiryVendor(vendor: { notes?: string | null }): boolean {
+  const notes = vendor.notes ?? "";
+  const normalizedNotes = notes.toLowerCase();
+  return (
+    notes.startsWith(PARTNER_INQUIRY_NOTE_MARKER) ||
+    normalizedNotes.includes("partner inquiry") ||
+    normalizedNotes.includes("partner network") ||
+    normalizedNotes.includes("not added to the user's vendor list")
+  );
+}
+
+async function getOrCreateConversation(
+  userId: string,
+  vendorId: number,
+  profileId?: number,
+  options: { allowPartnerInquiryVendor?: boolean } = {},
+) {
   const whereClause = profileId !== undefined
     ? and(eq(vendors.id, vendorId), eq(vendors.profileId, profileId))
     : eq(vendors.id, vendorId);
   const [vendor] = await db.select().from(vendors).where(whereClause).limit(1);
   if (!vendor) return null;
+  if (!options.allowPartnerInquiryVendor && isPartnerInquiryVendor(vendor)) return null;
 
   const [existing] = await db.select().from(vendorConversations)
     .where(and(eq(vendorConversations.vendorId, vendorId), eq(vendorConversations.userId, userId)))
@@ -70,6 +102,9 @@ function cleanBodyText(value: unknown, fallback = "") {
 router.post("/messaging/partner-inquiries", requireAuth, async (req, res) => {
   try {
     if (!(await ensurePlannerAccess(req, res))) return;
+    if (!(await canUsePartnerDirectoryPreview(req))) {
+      return res.status(403).json({ error: "Partner Network preview is not available for this account." });
+    }
     const userId = await resolveScopeUserId(req);
     const profile = await resolveProfile(req);
     if (!profile) return res.status(400).json({ error: "No wedding profile found" });
@@ -109,7 +144,7 @@ router.post("/messaging/partner-inquiries", requireAuth, async (req, res) => {
       primaryContact: primaryContact || null,
     }).returning())[0];
 
-    const r = await getOrCreateConversation(userId, vendor.id, profile.id);
+    const r = await getOrCreateConversation(userId, vendor.id, profile.id, { allowPartnerInquiryVendor: true });
     if (!r) return res.status(500).json({ error: "Could not create partner inquiry" });
     res.status(existingInquiry ? 200 : 201).json({ vendorId: vendor.id, conversationId: r.conversation.id });
   } catch (err) {
@@ -124,6 +159,7 @@ router.get("/messaging/conversations", requireAuth, async (req, res) => {
     const userId = await resolveScopeUserId(req);
     const profile = await resolveProfile(req);
     if (!profile) return res.json([]);
+    const showPartnerInquiryConversations = await canUsePartnerDirectoryPreview(req);
     const rows = await db
       .select({
         id: vendorConversations.id,
@@ -141,6 +177,7 @@ router.get("/messaging/conversations", requireAuth, async (req, res) => {
       .where(and(
         eq(vendorConversations.userId, userId),
         eq(vendors.profileId, profile.id),
+        showPartnerInquiryConversations ? sql`true` : excludePartnerInquiryVendors(),
         sql`exists (
           select 1
           from ${vendorMessages}
@@ -161,7 +198,9 @@ router.get("/messaging/conversations/by-vendor/:vendorId", requireAuth, async (r
     const userId = await resolveScopeUserId(req);
     const vendorId = Number(req.params.vendorId);
     const profile = await resolveProfile(req);
-    const r = await getOrCreateConversation(userId, vendorId, profile?.id);
+    const r = await getOrCreateConversation(userId, vendorId, profile?.id, {
+      allowPartnerInquiryVendor: await canUsePartnerDirectoryPreview(req),
+    });
     if (!r) return res.status(404).json({ error: "Vendor not found" });
     const { vendor, conversation } = r;
     res.json({
@@ -180,8 +219,13 @@ router.get("/messaging/conversations/by-vendor/:vendorId", requireAuth, async (r
   }
 });
 
-async function ownConversation(userId: string, conversationId: number, profileId: number) {
-  const [row] = await db.select({ conversation: vendorConversations }).from(vendorConversations)
+async function ownConversation(
+  userId: string,
+  conversationId: number,
+  profileId: number,
+  options: { allowPartnerInquiryVendor?: boolean } = {},
+) {
+  const [row] = await db.select({ conversation: vendorConversations, vendor: vendors }).from(vendorConversations)
     .innerJoin(vendors, eq(vendorConversations.vendorId, vendors.id))
     .where(and(
       eq(vendorConversations.id, conversationId),
@@ -189,7 +233,9 @@ async function ownConversation(userId: string, conversationId: number, profileId
       eq(vendors.profileId, profileId),
     ))
     .limit(1);
-  return row?.conversation ?? null;
+  if (!row) return null;
+  if (!options.allowPartnerInquiryVendor && isPartnerInquiryVendor(row.vendor)) return null;
+  return row.conversation;
 }
 
 router.get("/messaging/conversations/:id/messages", requireAuth, async (req, res) => {
@@ -199,7 +245,9 @@ router.get("/messaging/conversations/:id/messages", requireAuth, async (req, res
     const id = Number(req.params.id);
     const profile = await resolveProfile(req);
     if (!profile) return res.status(404).json({ error: "Conversation not found" });
-    const conv = await ownConversation(userId, id, profile.id);
+    const conv = await ownConversation(userId, id, profile.id, {
+      allowPartnerInquiryVendor: await canUsePartnerDirectoryPreview(req),
+    });
     if (!conv) return res.status(404).json({ error: "Conversation not found" });
 
     const rows = await db.select().from(vendorMessages)
@@ -231,7 +279,9 @@ router.post("/messaging/conversations/:id/messages", requireAuth, async (req, re
     const id = Number(req.params.id);
     const profile = await resolveProfile(req);
     if (!profile) return res.status(404).json({ error: "Conversation not found" });
-    const conv = await ownConversation(userId, id, profile.id);
+    const conv = await ownConversation(userId, id, profile.id, {
+      allowPartnerInquiryVendor: await canUsePartnerDirectoryPreview(req),
+    });
     if (!conv) return res.status(404).json({ error: "Conversation not found" });
 
     const { body, subject, attachments, cc: ccOverride } = (req.body ?? {}) as {
@@ -387,7 +437,9 @@ router.post("/messaging/conversations/:id/suggest-reply", requireAuth, async (re
     const id = Number(req.params.id);
     const profile = await resolveProfile(req);
     if (!profile) return res.status(404).json({ error: "Conversation not found" });
-    const conv = await ownConversation(userId, id, profile.id);
+    const conv = await ownConversation(userId, id, profile.id, {
+      allowPartnerInquiryVendor: await canUsePartnerDirectoryPreview(req),
+    });
     if (!conv) return res.status(404).json({ error: "Conversation not found" });
 
     const [vendor] = await db.select().from(vendors).where(eq(vendors.id, conv.vendorId)).limit(1);
@@ -439,7 +491,9 @@ router.delete("/messaging/conversations/:id/messages", requireAuth, async (req, 
     const id = Number(req.params.id);
     const profile = await resolveProfile(req);
     if (!profile) return res.status(404).json({ error: "Conversation not found" });
-    const conv = await ownConversation(userId, id, profile.id);
+    const conv = await ownConversation(userId, id, profile.id, {
+      allowPartnerInquiryVendor: await canUsePartnerDirectoryPreview(req),
+    });
     if (!conv) return res.status(404).json({ error: "Conversation not found" });
     await db.delete(vendorMessages).where(eq(vendorMessages.conversationId, id));
     await db.update(vendorConversations).set({
@@ -461,7 +515,9 @@ router.post("/messaging/conversations/:id/read", requireAuth, async (req, res) =
     const id = Number(req.params.id);
     const profile = await resolveProfile(req);
     if (!profile) return res.status(404).json({ error: "Conversation not found" });
-    const conv = await ownConversation(userId, id, profile.id);
+    const conv = await ownConversation(userId, id, profile.id, {
+      allowPartnerInquiryVendor: await canUsePartnerDirectoryPreview(req),
+    });
     if (!conv) return res.status(404).json({ error: "Conversation not found" });
     await db.update(vendorConversations).set({ unreadCount: 0 }).where(eq(vendorConversations.id, id));
     res.json({ success: true });

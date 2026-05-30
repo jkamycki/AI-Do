@@ -6,8 +6,8 @@ import * as DocumentPicker from 'expo-document-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { Image, Linking, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState, Image, Linking, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 
 import { getPlanningData, mergePlanningData } from './src/api/client';
 import { sendMobileAriaMessage } from './src/api/aria';
@@ -19,17 +19,25 @@ import { createMobileGuest, deleteMobileGuest, updateMobileGuest } from './src/a
 import { getGuestCampaignPreview, sendPendingRsvpReminders, sendRsvpInvitations, sendSaveTheDates, type GuestCampaign, type GuestCampaignPreview } from './src/api/guestMessaging';
 import { createMobileHotel, deleteMobileHotel, updateMobileHotel } from './src/api/hotels';
 import { saveMobileInvitationStudio, sendMobileInvitationTest } from './src/api/invitationStudio';
-import { getMobileAuthToken, hasMobileApiBase, mobileAuthFetch, saveMobileAuthToken, setMobileAuthTokenGetter } from './src/api/mobileAuth';
+import { hasMobileApiBase, mobileAuthFetch, saveMobileAuthToken, setMobileAuthTokenGetter } from './src/api/mobileAuth';
 import { listMobileGuestPhotoDrop, saveMobileGuestPhotoDropSettings, updateMobileGuestPhotoUploadStatus } from './src/api/photoDrop';
 import { saveMobileProfile } from './src/api/profile';
 import { applySeatingChart, generateSeatingChart, saveSeatingChart, updateSeatingChart, type SeatingGuestPayload } from './src/api/seating';
-import { createMobileVendor, deleteMobileVendor, updateMobileVendor } from './src/api/vendors';
+import {
+  createMobileVendor,
+  createMobileVendorPayment,
+  deleteMobileVendor,
+  deleteMobileVendorPayment,
+  markMobileVendorPaidInFull,
+  updateMobileVendor,
+  updateMobileVendorPayment,
+} from './src/api/vendors';
 import { getOrCreateMobileVendorConversation, listMobileVendorMessages, sendMobileVendorMessage } from './src/api/vendorMessaging';
 import { createMobileWebsite, getMobileWebsite, publishMobileWebsite, saveMobileWebsiteQuickUpdate, saveMobileWebsiteSlug, type MobileWebsiteRecord } from './src/api/website';
 import { createMobileWeddingPartyMember, deleteMobileWeddingPartyMember, updateMobileWeddingPartyMember } from './src/api/weddingParty';
 import { samplePlanningData } from './src/data/sampleData';
-import type { Guest, GuestPhotoDropSettings, GuestPhotoUpload } from './src/types';
-import { daysFromToday, formatCurrency, formatDeadlineLabel, formatLongDate, formatShortDate, parseDate } from './src/utils/format';
+import type { Guest, GuestPhotoDropSettings, GuestPhotoUpload, Payment } from './src/types';
+import { daysFromToday, formatCurrency, formatDeadlineLabel, formatLongDate, formatShortDate, isDateInputValid, parseDate } from './src/utils/format';
 
 const logo = require('./assets/aido-logo.png');
 const ariaAvatar = require('./assets/aria-avatar.png');
@@ -39,8 +47,9 @@ const couplePhotoUri =
 const userAvatarUri =
   'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=180&q=80';
 
-type TabId = 'today' | 'website' | 'plan' | 'guests' | 'vendors' | 'money' | 'more';
+type TabId = 'today' | 'website' | 'plan' | 'guests' | 'vendors' | 'more';
 type BottomTabId = TabId | 'aria';
+type VendorHubView = 'list' | 'finance' | 'contacts' | 'messages';
 type GuestHubView = 'guests' | 'seating' | 'invites' | 'travel' | 'website' | 'photoDrop';
 
 type MobileSeatingTable = {
@@ -145,6 +154,13 @@ type ApiVendorFinancials = {
   }>;
 };
 
+type VendorPaymentDraft = {
+  amount: string;
+  date: string;
+  isPaid: boolean;
+  note: string;
+};
+
 type ApiManualExpense = {
   amountPaid: number;
   category: string;
@@ -195,7 +211,7 @@ const tabs: Array<{ id: BottomTabId; label: string; icon: keyof typeof Ionicons.
   { id: 'today', label: 'Home', icon: 'home-outline' },
   { id: 'plan', label: 'Planner', icon: 'calendar-clear-outline' },
   { id: 'website', label: 'Guest Hub', icon: 'globe-outline' },
-  { id: 'money', label: 'Finance', icon: 'wallet-outline' },
+  { id: 'vendors', label: 'Vendors', icon: 'storefront-outline' },
   { id: 'aria', label: 'Aria', icon: 'sparkles-outline' },
   { id: 'more', label: 'More', icon: 'grid-outline' },
 ];
@@ -213,7 +229,6 @@ const featureGroups = [
     title: 'Collaboration',
     items: [
       ['Workspace', 'Partner, planner, family, and vendor collaboration.', 'business-outline'],
-      ['Wedding party', 'Roles, attire, duties, and contact sheet.', 'person-add-outline'],
     ],
   },
 ];
@@ -249,6 +264,7 @@ function ClerkBackedMobileApp() {
 function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge }) {
   const [activeTab, setActiveTab] = useState<TabId>('today');
   const [guestHubView, setGuestHubView] = useState<GuestHubView>('guests');
+  const [vendorHubView, setVendorHubView] = useState<VendorHubView>('list');
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [authLoaded, setAuthLoaded] = useState(false);
   const [data, setData] = useState<typeof samplePlanningData>(samplePlanningData);
@@ -258,6 +274,7 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
   const [mockAction, setMockAction] = useState<MockAction | null>(null);
   const [selectedVendor, setSelectedVendor] = useState<VendorRecord | null>(null);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const remoteRefreshInFlight = useRef(false);
   const { height, width } = useWindowDimensions();
   const [fontsLoaded] = useFonts({
     Inter_400Regular: require('./assets/fonts/Inter_400Regular.ttf'),
@@ -284,6 +301,10 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
   const showPhonePreview = Platform.OS === 'web' && width >= 520;
   const maxWidth = showPhonePreview ? 390 : Math.min(width, 560);
   const previewHeight = Math.min(Math.max(height - 56, 700), 820);
+  const openVendorHub = (view: VendorHubView = 'list') => {
+    setVendorHubView(view);
+    setActiveTab('vendors');
+  };
   const updateTaskCompletion = (taskId: string, completed: boolean) => {
     setData((current) => ({
       ...current,
@@ -398,10 +419,12 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
         });
       });
   };
-  const updateVendor = (vendor: VendorRecord) => {
+  const updateVendor = (vendor: VendorRecord, options: { sync?: boolean } = {}) => {
+    const shouldSync = options.sync !== false;
     const previous = data.vendors.find((item) => item.id === vendor.id);
     setData((current) => ({ ...current, vendors: current.vendors.map((item) => (item.id === vendor.id ? vendor : item)) }));
     setSelectedVendor(vendor);
+    if (!shouldSync) return;
     void updateMobileVendor(vendor)
       .then((result) => {
         if (!result.synced || !result.vendor) return;
@@ -603,6 +626,17 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
     });
   };
 
+  const refreshPlanningDataFromWebsite = useCallback(async () => {
+    if (!authUser || !hasMobileApiBase() || remoteRefreshInFlight.current) return;
+    remoteRefreshInFlight.current = true;
+    try {
+      const remoteData = await getPlanningData();
+      setData(remoteData);
+    } finally {
+      remoteRefreshInFlight.current = false;
+    }
+  }, [authUser?.email]);
+
   useEffect(() => {
     let alive = true;
 
@@ -702,6 +736,29 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
     void AsyncStorage.setItem(storageKeys.planningData, JSON.stringify(data));
   }, [data, planningDataLoaded, clerkSession]);
 
+  useEffect(() => {
+    if (!authLoaded || !authUser || !hasMobileApiBase()) return;
+    const refresh = () => {
+      void refreshPlanningDataFromWebsite();
+    };
+    const appStateSubscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refresh();
+    });
+    const interval = setInterval(refresh, 30000);
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.addEventListener('focus', refresh);
+    }
+
+    return () => {
+      appStateSubscription.remove();
+      clearInterval(interval);
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.removeEventListener('focus', refresh);
+      }
+    };
+  }, [authLoaded, authUser?.email, refreshPlanningDataFromWebsite]);
+
   if (!fontsLoaded || !authLoaded || !planningDataLoaded) {
     return (
       <BrowserPhoneFrame enabled={showPhonePreview} height={previewHeight}>
@@ -766,12 +823,12 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
                 confirmed={stats.confirmed}
                 onContinue={() => setActiveTab('plan')}
                 onOpenAria={() => setAriaOpen(true)}
-                onOpenFinance={() => setActiveTab('money')}
+                onOpenFinance={() => openVendorHub('finance')}
                 onOpenGuestHub={(view) => {
                   setGuestHubView(view);
                   setActiveTab('website');
                 }}
-                onOpenVendors={() => setActiveTab('vendors')}
+                onOpenVendors={() => openVendorHub('list')}
                 openMockAction={setMockAction}
                 data={data}
                 progress={stats.progress}
@@ -797,13 +854,13 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
           ) : null}
           {activeTab === 'plan' ? (
             <PlanSection
-              onOpenFinance={() => setActiveTab('money')}
+              onOpenFinance={() => openVendorHub('finance')}
               onOpenGuestHub={(view) => {
                 setGuestHubView(view);
                 setActiveTab('website');
               }}
               onOpenGuidedSetup={() => setNeedsOnboarding(true)}
-              onOpenVendors={() => setActiveTab('vendors')}
+              onOpenVendors={() => openVendorHub('list')}
               openMockAction={setMockAction}
               data={data}
               onAddWeddingPartyMember={addWeddingPartyMember}
@@ -814,8 +871,17 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
               progress={stats.progress}
             />
           ) : null}
-          {activeTab === 'vendors' ? <VendorsSection data={data} onAddVendor={addVendor} openMockAction={setMockAction} openVendor={setSelectedVendor} /> : null}
-          {activeTab === 'money' ? <MoneySection data={data} openMockAction={setMockAction} paid={stats.paid} total={stats.total} /> : null}
+          {activeTab === 'vendors' ? (
+            <VendorsSection
+              activeView={vendorHubView}
+              data={data}
+              onAddVendor={addVendor}
+              onChangeView={setVendorHubView}
+              openMockAction={setMockAction}
+              openVendor={setSelectedVendor}
+              refreshFromWebsite={refreshPlanningDataFromWebsite}
+            />
+          ) : null}
           {activeTab === 'more' ? (
             <FeatureHub
               data={data}
@@ -826,7 +892,15 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
             />
           ) : null}
         </ScrollView>
-        <BottomTabs activeTab={activeTab} ariaOpen={ariaOpen} onOpenAria={() => setAriaOpen(true)} setActiveTab={setActiveTab} />
+        <BottomTabs
+          activeTab={activeTab}
+          ariaOpen={ariaOpen}
+          onOpenAria={() => setAriaOpen(true)}
+          setActiveTab={(tab) => {
+            if (tab === 'vendors') setVendorHubView('list');
+            setActiveTab(tab);
+          }}
+        />
         <AriaModal contained={showPhonePreview} data={data} open={ariaOpen} onClose={() => setAriaOpen(false)} />
         <AccountModal
           clerkConnected={Boolean(clerkSession)}
@@ -986,11 +1060,11 @@ function ClerkAuthScreen() {
         <Image resizeMode="contain" source={logo} style={styles.authLogo} />
         <LinearGradient colors={['#FFF8F4', '#FFE8DE']} style={styles.authCard}>
           <Text style={styles.kicker}>{pendingMode ? 'Check your email' : isSignUp ? 'Create account' : 'Welcome back'}</Text>
-          <Text style={styles.authTitle}>{pendingMode ? 'Enter your verification code' : isSignUp ? 'Start planning with A.IDO' : 'Sign in to your wedding hub'}</Text>
+          <Text style={styles.authTitle}>{pendingMode ? 'Enter your verification code' : isSignUp ? 'Start planning with A.I DO' : 'Sign in to your wedding hub'}</Text>
           <Text style={styles.authSubtitle}>
             {pendingMode
               ? `We sent a sign-in code to ${email.trim() || 'your email'}.`
-              : 'Use the same A.IDO account as the website so the app syncs your real wedding workspace.'}
+              : 'Use the same A.I DO account as the website so the app syncs your real wedding workspace.'}
           </Text>
 
           {!pendingMode ? (
@@ -1085,9 +1159,23 @@ function AuthScreen({
   onSignUp: (email: string, firstName: string) => void;
 }) {
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
-  const [email, setEmail] = useState('stacy@example.com');
-  const [firstName, setFirstName] = useState('Stacy');
+  const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [error, setError] = useState('');
   const isSignUp = authMode === 'signup';
+  const submitFallbackAuth = () => {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail.includes('@')) {
+      setError('Enter the email address for your A.I DO account.');
+      return;
+    }
+    setError('');
+    if (isSignUp) {
+      onSignUp(normalizedEmail, firstName.trim() || normalizedEmail.split('@')[0] || 'there');
+      return;
+    }
+    onSignIn(normalizedEmail);
+  };
 
   return (
     <View style={styles.authRoot}>
@@ -1096,11 +1184,11 @@ function AuthScreen({
         <Image resizeMode="contain" source={logo} style={styles.authLogo} />
         <LinearGradient colors={['#FFF8F4', '#FFE8DE']} style={styles.authCard}>
           <Text style={styles.kicker}>{isSignUp ? 'Create account' : 'Welcome back'}</Text>
-          <Text style={styles.authTitle}>{isSignUp ? 'Start planning with A.IDO' : 'Sign in to your wedding hub'}</Text>
+          <Text style={styles.authTitle}>{isSignUp ? 'Start planning with A.I DO' : 'Sign in to your wedding hub'}</Text>
           <Text style={styles.authSubtitle}>
             {isSignUp
               ? 'New couples go through setup first so the planner, vendors, guest hub, and Aria start with the right details.'
-              : 'Use your A.IDO account to return to your planner, guest hub, vendors, budget, and Aria.'}
+              : 'Use your A.I DO account to return to your planner, guest hub, vendors, budget, and Aria.'}
           </Text>
 
           <View style={styles.authSwitch}>
@@ -1139,28 +1227,16 @@ function AuthScreen({
           </View>
 
           <Pressable
-            onPress={() => (isSignUp ? onSignUp(email.trim() || 'stacy@example.com', firstName.trim() || 'Stacy') : onSignIn(email.trim() || 'stacy@example.com'))}
+            onPress={submitFallbackAuth}
             style={[styles.primaryActionButton, styles.authPrimaryButton]}
           >
             <Ionicons color={colors.surface} name={isSignUp ? 'person-add-outline' : 'log-in-outline'} size={18} />
             <Text style={styles.primaryActionText}>{isSignUp ? 'Create account' : 'Sign in'}</Text>
           </Pressable>
 
-          <Pressable
-            onPress={() =>
-              isSignUp
-                ? onSignUp('google.user@example.com', firstName.trim() || 'Stacy')
-                : onSignIn('google.user@example.com')
-            }
-            style={styles.authProviderButton}
-          >
-            <Ionicons color={colors.rose} name="logo-google" size={18} />
-            <Text style={styles.secondaryActionText}>Continue with Google</Text>
-          </Pressable>
-
           <View style={styles.authNote}>
-            <Ionicons color={colors.green} name="shield-checkmark-outline" size={17} />
-            <Text style={styles.hubDetail}>{isSignUp ? 'After sign-up, the onboarding wizard opens automatically.' : 'Sign out is available from your profile avatar.'}</Text>
+            <Ionicons color={error ? colors.rose : colors.green} name={error ? 'alert-circle-outline' : 'shield-checkmark-outline'} size={17} />
+            <Text style={styles.hubDetail}>{error || (isSignUp ? 'After sign-up, the onboarding wizard opens automatically.' : 'Sign out is available from your profile avatar.')}</Text>
           </View>
         </LinearGradient>
       </ScrollView>
@@ -1314,21 +1390,22 @@ function Hero({
   const budgetPaid = data.budget.reduce((sum, item) => sum + item.paid, 0);
   const budgetTotal = data.budget.reduce((sum, item) => sum + item.total, 0);
   const budgetPercent = budgetTotal ? Math.round((budgetPaid / budgetTotal) * 100) : 0;
+  const homePhotoUri = profile.coverPhotoUrl || couplePhotoUri;
 
   return (
     <LinearGradient colors={['#FFF8F4', '#FFE8DE']} style={styles.hero}>
       <View style={styles.homeHeroTop}>
-        <Image resizeMode="cover" source={{ uri: couplePhotoUri }} style={styles.homeHeroPhoto} />
+        <Image resizeMode="cover" source={{ uri: homePhotoUri }} style={styles.homeHeroPhoto} />
         <LinearGradient
-          colors={['rgba(255,248,244,0.98)', 'rgba(255,248,244,0.78)', 'rgba(255,248,244,0.08)']}
-          end={{ x: 0.78, y: 0.56 }}
+          colors={['rgba(255,248,244,0.98)', 'rgba(255,248,244,0.62)', 'rgba(255,248,244,0)']}
+          end={{ x: 0.68, y: 0.56 }}
           start={{ x: 0, y: 0 }}
           style={styles.homeHeroPhotoWash}
         />
         <View style={styles.homeHeroCopy}>
           <Text style={styles.homeHeroTitle}>{profile.partnerOne} + {profile.partnerTwo}</Text>
           <Text style={styles.homeHeroMeta}>{formatLongDate(profile.weddingDate)}</Text>
-          <Text style={styles.homeHeroVenue}>Chateau Lumiere</Text>
+          <Text style={styles.homeHeroVenue}>{profile.venue}</Text>
           <Text style={styles.homeHeroLocation}>{profile.location}</Text>
         </View>
       </View>
@@ -1351,7 +1428,7 @@ function Hero({
         <HomeTile color="#496D89" icon="mail-open-outline" label="Invites" tint="#E7F0F7" value={`${inviteTotals.responses}/${inviteTotals.sent} replies`} onPress={() => onOpenGuestHub('invites')} />
         <HomeTile color="#2F7F7A" icon="calendar-clear-outline" label="Planner" tint="#E0F2EF" value={`${openTasks} tasks`} onPress={onContinue} />
         <HomeTile color="#B98343" icon="storefront-outline" label="Vendors" tint="#F7EBD8" value={`${data.vendors.length} booked`} onPress={onOpenVendors} />
-        <HomeTile color="#637B59" icon="wallet-outline" label="Finance" tint="#E9F0E3" value={`${budgetPercent}% paid`} onPress={onOpenFinance} />
+        <HomeTile color="#637B59" icon="wallet-outline" label="Budget Summary" tint="#E9F0E3" value={`${budgetPercent}% paid`} onPress={onOpenFinance} />
         <HomeTile color="#7D5BA6" icon="globe-outline" label="Website" tint="#EFE7F7" value="Editor" onPress={() => onOpenGuestHub('website')} />
       </View>
 
@@ -1684,7 +1761,7 @@ function AgendaItemModal({
 
   const routeLabel =
     event.type === 'payment'
-      ? 'Open Finance'
+      ? 'Open Budget Summary'
       : event.type === 'vendor'
         ? 'Open Vendors'
         : event.type === 'hotel' || event.detail.toLowerCase().includes('guests')
@@ -1790,8 +1867,9 @@ function mobileSeatingGuests(data: typeof samplePlanningData): SeatingGuestPaylo
       group: guest.role || 'Guest',
       id: guest.id,
       name: guest.name,
-      notes: `${guest.rsvp} RSVP. Meal preference: ${guest.mealPreference}. Current table: ${guest.table}.`,
-      plusOne: false,
+      notes: `${guest.rsvp} RSVP. Meal preference: ${guest.mealPreference}. Current table: ${guest.table}.${guest.plusOneStatus && guest.plusOneStatus !== 'none' ? ` Plus-one: ${guest.plusOneStatus === 'named' ? guest.plusOneName || 'name missing' : guest.plusOneStatus === 'name_tbd' ? 'name coming later' : 'not sure yet'}.` : ''}`,
+      plusOne: guest.plusOneStatus === 'named' || guest.plusOneStatus === 'name_tbd' || Boolean(guest.plusOne),
+      plusOneName: guest.plusOneName,
     }));
 }
 
@@ -1924,6 +2002,16 @@ function WebsiteSection({
     });
   };
 
+  const localGuestEligibleForCampaign = (guest: Guest, campaign: GuestCampaign) => {
+    if (campaign === 'rsvp-reminders') {
+      return guest.invitationStatus === 'sent' && guest.rsvp === 'Pending' && guest.rsvpReminderStatus !== 'sent';
+    }
+    if (campaign === 'save-the-dates') {
+      return guest.saveTheDateStatus !== 'sent';
+    }
+    return guest.invitationStatus !== 'sent' && guest.rsvp !== 'Declined';
+  };
+
   const runGuestCampaign = async (campaign: GuestCampaign) => {
     if (guestCampaignSending) return;
     const action =
@@ -1932,6 +2020,7 @@ function WebsiteSection({
         : campaign === 'save-the-dates'
           ? sendSaveTheDates
           : sendRsvpInvitations;
+    const localEligibleIds = new Set(data.guests.filter((guest) => localGuestEligibleForCampaign(guest, campaign)).map((guest) => guest.id));
     setGuestCampaignSending(campaign);
     setGuestCampaignMessage(null);
     setGuestCampaignLinks([]);
@@ -1947,8 +2036,17 @@ function WebsiteSection({
         setGuestCampaignMessage(`No eligible guests for ${campaignLabel.toLowerCase()} right now.`);
         return;
       }
+      setData((current) => ({
+        ...current,
+        guests: current.guests.map((guest) => {
+          if (!localEligibleIds.has(guest.id)) return guest;
+          if (campaign === 'save-the-dates') return { ...guest, saveTheDateStatus: 'sent' };
+          if (campaign === 'rsvp-invites') return { ...guest, invitationStatus: 'sent' };
+          return { ...guest, rsvpReminderStatus: 'sent' };
+        }),
+      }));
       setGuestCampaignMessage(
-        `${campaignLabel}: ${result.delivered} emailed, ${result.markedSent} marked sent, ${result.attempted} total processed.`,
+        `${campaignLabel} sent: ${result.delivered} emailed, ${result.markedSent} ready for manual share, ${result.attempted} total processed.`,
       );
       setGuestCampaignLinks(result.links.filter((link) => !link.emailSent));
       setGuestCampaignReview(null);
@@ -1974,17 +2072,12 @@ function WebsiteSection({
       .catch(() => {
         if (!alive) return;
         const localGuests = data.guests;
-        const eligible =
-          guestCampaignReview === 'rsvp-reminders'
-            ? localGuests.filter((guest) => guest.rsvp === 'Pending')
-            : guestCampaignReview === 'save-the-dates'
-              ? localGuests
-              : localGuests.filter((guest) => guest.rsvp !== 'Declined');
+        const eligible = localGuests.filter((guest) => localGuestEligibleForCampaign(guest, guestCampaignReview));
         setGuestCampaignPreview({
           campaign: guestCampaignReview,
-          emailCount: 0,
+          emailCount: eligible.filter((guest) => Boolean(guest.email)).length,
           eligibleCount: eligible.length,
-          markedOnlyCount: 0,
+          markedOnlyCount: eligible.filter((guest) => !guest.email).length,
           sampleNames: eligible.slice(0, 4).map((guest) => guest.name),
           totalGuests: localGuests.length,
         });
@@ -2029,7 +2122,7 @@ function WebsiteSection({
       }));
       setSeatingChartId(null);
       setSeatingApplied(false);
-      setSeatingSyncMessage(error instanceof Error ? `${error.message} Showing preview seating instead.` : 'Showing preview seating instead.');
+      setSeatingSyncMessage(error instanceof Error ? `${error.message} Showing the saved seating plan on this device instead.` : 'Showing the saved seating plan on this device instead.');
     } finally {
       setSeatingGenerating(false);
     }
@@ -2082,7 +2175,7 @@ function WebsiteSection({
       setSeatingSyncMessage('Applied to guest records.');
     } catch (error) {
       setSeatingApplied(true);
-      setSeatingSyncMessage(error instanceof Error ? `${error.message} Applied locally for preview.` : 'Applied locally for preview.');
+      setSeatingSyncMessage(error instanceof Error ? `${error.message} Applied on this device for now.` : 'Applied on this device for now.');
     } finally {
       setSeatingSaving(false);
     }
@@ -2232,7 +2325,7 @@ function WebsiteSection({
               </View>
             </View>
             <Text style={styles.websiteTitle}>{data.profile.coupleName}</Text>
-            <Text style={styles.websiteMeta}>{data.profile.venue} - {formatShortDate(data.profile.weddingDate)}</Text>
+            <Text style={styles.websiteMeta}>{data.profile.venue} - {formatLongDate(data.profile.weddingDate)}</Text>
             <View style={styles.websiteStatusRow}>
               <View style={styles.websiteStatusBadge}>
                 <Ionicons color={registryConnected ? colors.green : colors.rose} name="gift-outline" size={14} />
@@ -2799,6 +2892,11 @@ function MobileSeatingGenerator({
         </View>
       </View>
 
+      <DesktopStudioNotice
+        detail="Use the app to generate, review, apply, and tap-to-move guests. Use A.I DO on desktop for drag-and-drop editing across many tables."
+        title="Large seating edits are desktop-first"
+      />
+
       <View style={styles.seatingControlsGrid}>
         <SeatingStepper
           label="Number of tables"
@@ -3209,10 +3307,15 @@ function GuestDetailModal({
   const canSave = draft.name.trim().length > 0;
   const saveGuest = () => {
     if (!canSave) return;
+    const plusOneStatus = draft.plusOneStatus || 'none';
     onSave({
       ...draft,
+      email: draft.email?.trim() || undefined,
       mealPreference: draft.mealPreference.trim() || 'Guest',
       name: draft.name.trim(),
+      plusOne: plusOneStatus === 'named' || plusOneStatus === 'name_tbd',
+      plusOneName: plusOneStatus === 'named' ? draft.plusOneName?.trim() || undefined : undefined,
+      plusOneStatus,
       role: draft.role.trim() || 'Guest',
       table: draft.table.trim() || 'No table',
     });
@@ -3240,6 +3343,7 @@ function GuestDetailModal({
 
           <View style={styles.actionWorkspace}>
             <FormInput label="Guest name" onChangeText={(value) => setDraft({ ...draft, name: value })} placeholder="Guest or household name" value={draft.name} />
+            <FormInput label="Email" onChangeText={(value) => setDraft({ ...draft, email: value })} placeholder="guest@example.com" value={draft.email ?? ''} />
             <View>
               <Text style={styles.formLabel}>RSVP</Text>
               <View style={styles.eventTypeRow}>
@@ -3256,6 +3360,36 @@ function GuestDetailModal({
             <FormInput label="Meal" onChangeText={(value) => setDraft({ ...draft, mealPreference: value })} placeholder="Chicken, vegetarian, kids meal..." value={draft.mealPreference} />
             <FormInput label="Table" onChangeText={(value) => setDraft({ ...draft, table: value })} placeholder="Table 1 or No table" value={draft.table} />
             <FormInput label="Group" onChangeText={(value) => setDraft({ ...draft, role: value })} placeholder="Family, friend, wedding party..." value={draft.role} />
+            <View>
+              <Text style={styles.formLabel}>Plus-one</Text>
+              <View style={styles.eventTypeRow}>
+                {[
+                  ['none', 'No'],
+                  ['named', 'Name known'],
+                  ['name_tbd', 'Name later'],
+                  ['unsure', 'Not sure'],
+                ].map(([status, label]) => {
+                  const active = (draft.plusOneStatus || 'none') === status;
+                  return (
+                    <Pressable
+                      key={status}
+                      onPress={() => setDraft({
+                        ...draft,
+                        plusOne: status === 'named' || status === 'name_tbd',
+                        plusOneName: status === 'named' ? draft.plusOneName : '',
+                        plusOneStatus: status,
+                      })}
+                      style={[styles.eventTypePill, active && styles.eventTypePillActive]}
+                    >
+                      <Text style={[styles.eventTypeText, active && styles.eventTypeTextActive]}>{label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+            {(draft.plusOneStatus || 'none') === 'named' ? (
+              <FormInput label="Plus-one name" onChangeText={(value) => setDraft({ ...draft, plusOneName: value })} placeholder="Guest's plus-one name" value={draft.plusOneName ?? ''} />
+            ) : null}
           </View>
 
           <View style={styles.websiteActions}>
@@ -3415,7 +3549,7 @@ function WebsiteMobilePreview({
         const record = await getMobileWebsite();
         if (alive) applyMobileWebsiteRecord(record);
       } catch {
-        // Keep local preview values when the website is not created or sync is unavailable.
+        // Keep saved device values when the website is not created or sync is unavailable.
       }
     }
     void hydrateWebsite();
@@ -3442,9 +3576,9 @@ function WebsiteMobilePreview({
           <Ionicons color={colors.rose} name="phone-portrait-outline" size={18} />
         </View>
         <View style={styles.hubCopy}>
-          <Text style={styles.mobileEditorGuidanceTitle}>Mobile controls are for quick updates</Text>
+          <Text style={styles.mobileEditorGuidanceTitle}>Quick edits only on mobile</Text>
           <Text style={styles.hubDetail}>
-            Preview the site, update simple copy, toggle sections, manage photos, publish changes, send invites, and check RSVP activity here. Use desktop for full layout, templates, detailed design, drag-and-drop ordering, and invitation polish.
+            Preview the site, update simple copy, toggle sections, manage photos, publish changes, send invites, and check RSVP activity here. For full design editing, use A.I DO on desktop.
           </Text>
         </View>
       </View>
@@ -3527,13 +3661,7 @@ function WebsiteMobilePreview({
               <EditorToolButton icon="images-outline" label="Gallery photos" onPress={() => onOpenEditor('Gallery')} />
               <EditorToolButton icon="scan-outline" label="Reposition photo" onPress={() => onOpenEditor('Photo position')} />
             </View>
-            <View style={styles.desktopStudioNotice}>
-              <Ionicons color={colors.gold} name="desktop-outline" size={18} />
-              <View style={styles.hubCopy}>
-                <Text style={styles.hubLabel}>Full design studio lives on desktop</Text>
-                <Text style={styles.hubDetail}>Use the website editor on desktop for themes, templates, layout, section order, animation, and detailed invitation design.</Text>
-              </View>
-            </View>
+            <DesktopStudioNotice detail="Use the website editor on desktop for themes, templates, layout, section order, animation, and detailed design polish." />
           </>
         ) : null}
 
@@ -3558,6 +3686,10 @@ function WebsiteMobilePreview({
               <EditorToolButton icon="bed-outline" label="Hotel blocks" onPress={() => onOpenEditor('Travel & Venue Items')} />
               <EditorToolButton icon="gift-outline" label="Registry links" onPress={() => onOpenEditor('Registry Links')} />
             </View>
+            <DesktopStudioNotice
+              detail="The app can toggle sections on or off. Use A.I DO on desktop for drag-and-drop section ordering and full page layout edits."
+              title="Section ordering is desktop-first"
+            />
           </>
         ) : null}
 
@@ -3622,7 +3754,7 @@ function WebsiteMobilePreview({
             })}
           </View>
           <Text style={styles.websitePreviewDeviceHint}>
-            {previewDevice === 'desktop' ? 'Desktop guest preview' : 'Mobile guest preview'}
+            {previewDevice === 'desktop' ? 'Desktop guest preview only. Full desktop editing lives on A.I DO desktop.' : 'Mobile guest preview'}
           </Text>
           <View style={[styles.websiteLivePreviewFrame, previewDevice === 'desktop' && styles.websiteLivePreviewFrameDesktop]}>
             {previewDevice === 'desktop' ? (
@@ -3704,7 +3836,7 @@ function WebsiteMobilePreview({
                   ) : null}
                   {previewDevice !== 'desktop' ? (
                     <>
-                  <Text style={styles.websiteLiveHeroMeta}>{formatShortDate(data.profile.weddingDate)} · {data.profile.venue}</Text>
+                  <Text style={styles.websiteLiveHeroMeta}>{formatLongDate(data.profile.weddingDate)} - {data.profile.venue}</Text>
                   <Text style={styles.websiteLiveHeroMeta}>{data.profile.location}</Text>
                   {sectionState.rsvp ? (
                     <Pressable onPress={onPreview} style={[styles.websiteLiveHeroButton, { backgroundColor: accentColor }]}>
@@ -3773,7 +3905,7 @@ function WebsiteMobilePreview({
                 </View>
               ) : null}
               <View style={[styles.websiteLiveFooter, { backgroundColor: colors.ink }]}>
-                <Text style={styles.websiteLiveFooterText}>Built with A.IDO</Text>
+                <Text style={styles.websiteLiveFooterText}>Built with A.I DO</Text>
               </View>
             </ScrollView>
           </View>
@@ -3856,9 +3988,14 @@ function PhotoDropMobilePanel({
   const [publicUploadUrl, setPublicUploadUrl] = useState('');
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [queueFilter, setQueueFilter] = useState<'Pending' | 'Approved' | 'Hidden' | 'All'>('Pending');
   const pendingUploads = data.guestPhotoUploads.filter((upload) => upload.status === 'Pending').length;
   const approvedUploads = data.guestPhotoUploads.filter((upload) => upload.status === 'Approved').length;
+  const hiddenUploads = data.guestPhotoUploads.filter((upload) => upload.status === 'Hidden').length;
   const photoCount = data.guestPhotoUploads.reduce((sum, upload) => sum + upload.photoCount, 0);
+  const visibleUploads = queueFilter === 'All'
+    ? data.guestPhotoUploads
+    : data.guestPhotoUploads.filter((upload) => upload.status === queueFilter);
   const uploadLink = publicUploadUrl || 'Create or publish the wedding website to generate the guest upload link.';
 
   useEffect(() => {
@@ -3907,7 +4044,7 @@ function PhotoDropMobilePanel({
       copyUploadLink();
       return;
     }
-    void Share.share({ message: publicUploadUrl, url: publicUploadUrl }).catch(() => {
+    void Share.share({ message: `${data.guestPhotoDrop.title}: ${publicUploadUrl}`, url: publicUploadUrl }).catch(() => {
       openMockAction({
         title: 'Share did not open',
         detail: 'Copy the Photo Drop link and send it by text, email, or printed signage.',
@@ -3959,13 +4096,29 @@ function PhotoDropMobilePanel({
           ) : null}
           <LinearGradient colors={['#FFF2EA', '#F8DDE5']} style={styles.photoDropShareCard}>
             <View style={styles.photoDropQrBox}>
-              <Ionicons color={colors.rose} name="qr-code-outline" size={46} />
+              <PhotoDropQrPreview />
             </View>
             <View style={styles.hubCopy}>
               <Text style={styles.hubLabel}>{data.guestPhotoDrop.title}</Text>
               <Text style={styles.hubDetail}>{data.guestPhotoDrop.instructions}</Text>
             </View>
           </LinearGradient>
+          <View style={styles.photoDropGuestFlowCard}>
+            <View style={styles.photoDropGuestFlowStep}>
+              <Ionicons color={colors.rose} name="qr-code-outline" size={16} />
+              <Text style={styles.photoDropGuestFlowText}>Guest scans QR</Text>
+            </View>
+            <Ionicons color={colors.muted} name="chevron-forward" size={14} />
+            <View style={styles.photoDropGuestFlowStep}>
+              <Ionicons color={colors.rose} name="cloud-upload-outline" size={16} />
+              <Text style={styles.photoDropGuestFlowText}>Uploads photos</Text>
+            </View>
+            <Ionicons color={colors.muted} name="chevron-forward" size={14} />
+            <View style={styles.photoDropGuestFlowStep}>
+              <Ionicons color={colors.rose} name="checkmark-circle-outline" size={16} />
+              <Text style={styles.photoDropGuestFlowText}>You approve</Text>
+            </View>
+          </View>
           <View style={styles.photoDropQuickStats}>
             <PhotoDropMiniStat label="Target" value={data.guestPhotoDrop.selectedQrTarget === 'website' ? 'Website' : 'Portal'} />
             <PhotoDropMiniStat label="Mode" value={photoDropModeLabel(data.guestPhotoDrop.displayMode)} />
@@ -3995,9 +4148,25 @@ function PhotoDropMobilePanel({
             <SummaryCard label="Approved" value={String(approvedUploads)} />
             <SummaryCard label="Photos" value={String(photoCount)} />
           </View>
+          <View style={styles.photoDropFilterRow}>
+            {([
+              ['Pending', pendingUploads],
+              ['Approved', approvedUploads],
+              ['Hidden', hiddenUploads],
+              ['All', data.guestPhotoUploads.length],
+            ] as const).map(([filter, count]) => {
+              const active = queueFilter === filter;
+              return (
+                <Pressable key={filter} onPress={() => setQueueFilter(filter)} style={[styles.photoDropFilterChip, active && styles.photoDropFilterChipActive]}>
+                  <Text style={[styles.photoDropFilterText, active && styles.photoDropFilterTextActive]}>{filter}</Text>
+                  <Text style={[styles.photoDropFilterCount, active && styles.photoDropFilterTextActive]}>{count}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
           <View style={styles.photoDropUploadList}>
-            {data.guestPhotoUploads.length ? (
-              data.guestPhotoUploads.map((upload) => {
+            {visibleUploads.length ? (
+              visibleUploads.map((upload) => {
                 const imageUri = upload.publicImageUrl || upload.imageUrl;
                 return (
                   <View key={upload.id} style={styles.photoDropUploadRow}>
@@ -4016,18 +4185,28 @@ function PhotoDropMobilePanel({
                       <Text style={styles.hubDetail}>{upload.caption || upload.originalName || 'Guest photo upload'}</Text>
                       <Text style={styles.photoDropUploadMeta}>{formatShortDate(upload.uploadedAt)}</Text>
                       <View style={styles.photoDropUploadActions}>
-                        {(['Approved', 'Hidden', 'Pending'] as const).map((status) => {
-                          const active = upload.status === status;
-                          return (
-                            <Pressable
-                              key={status}
-                              onPress={() => onUpdateUploadStatus(upload.id, status)}
-                              style={[styles.photoDropStatusButton, active && styles.photoDropStatusButtonActive]}
-                            >
-                              <Text style={[styles.photoDropStatusButtonText, active && styles.photoDropStatusButtonTextActive]}>{status}</Text>
-                            </Pressable>
-                          );
-                        })}
+                        <Pressable
+                          disabled={upload.status === 'Approved'}
+                          onPress={() => onUpdateUploadStatus(upload.id, 'Approved')}
+                          style={[styles.photoDropStatusButton, upload.status === 'Approved' && styles.photoDropStatusButtonActive]}
+                        >
+                          <Ionicons color={upload.status === 'Approved' ? colors.surface : colors.rose} name="checkmark-outline" size={13} />
+                          <Text style={[styles.photoDropStatusButtonText, upload.status === 'Approved' && styles.photoDropStatusButtonTextActive]}>Approve</Text>
+                        </Pressable>
+                        <Pressable
+                          disabled={upload.status === 'Hidden'}
+                          onPress={() => onUpdateUploadStatus(upload.id, 'Hidden')}
+                          style={[styles.photoDropStatusButton, upload.status === 'Hidden' && styles.photoDropStatusButtonActive]}
+                        >
+                          <Ionicons color={upload.status === 'Hidden' ? colors.surface : colors.rose} name="eye-off-outline" size={13} />
+                          <Text style={[styles.photoDropStatusButtonText, upload.status === 'Hidden' && styles.photoDropStatusButtonTextActive]}>Hide</Text>
+                        </Pressable>
+                        {upload.status !== 'Pending' ? (
+                          <Pressable onPress={() => onUpdateUploadStatus(upload.id, 'Pending')} style={styles.photoDropStatusButton}>
+                            <Ionicons color={colors.rose} name="return-down-back-outline" size={13} />
+                            <Text style={styles.photoDropStatusButtonText}>Review</Text>
+                          </Pressable>
+                        ) : null}
                       </View>
                     </View>
                   </View>
@@ -4036,8 +4215,8 @@ function PhotoDropMobilePanel({
             ) : (
               <View style={styles.photoDropEmptyState}>
                 <Ionicons color={colors.rose} name="images-outline" size={22} />
-                <Text style={styles.hubLabel}>{loading ? 'Loading uploads' : 'No guest photos yet'}</Text>
-                <Text style={styles.hubDetail}>When guests upload photos, they will appear here for approval before showing on the website.</Text>
+                <Text style={styles.hubLabel}>{loading ? 'Loading uploads' : queueFilter === 'All' ? 'No guest photos yet' : `No ${queueFilter.toLowerCase()} photos`}</Text>
+                <Text style={styles.hubDetail}>When guests upload photos, they appear here for approval before showing on the website.</Text>
               </View>
             )}
           </View>
@@ -4047,6 +4226,7 @@ function PhotoDropMobilePanel({
       {activeTab === 'settings' ? (
         <View style={styles.photoDropPanel}>
           <PhotoDropSettingRow icon="albums-outline" label="Display mode" value={photoDropModeLabel(data.guestPhotoDrop.displayMode)} />
+          <Text style={styles.hubDetail}>Choose whether approved guest photos appear in the private portal, wedding website, or both.</Text>
           <View style={styles.eventTypeRow}>
             {(['portal', 'website', 'both'] as const).map((mode) => {
               const active = data.guestPhotoDrop.displayMode === mode;
@@ -4062,6 +4242,7 @@ function PhotoDropMobilePanel({
             })}
           </View>
           <PhotoDropSettingRow icon="qr-code-outline" label="QR target" value={data.guestPhotoDrop.selectedQrTarget === 'website' ? 'Website' : 'RSVP'} />
+          <Text style={styles.hubDetail}>Website QR sends guests to your wedding website. RSVP QR starts from the RSVP flow.</Text>
           <View style={styles.eventTypeRow}>
             {(['website', 'rsvp'] as const).map((target) => {
               const active = data.guestPhotoDrop.selectedQrTarget === target;
@@ -4120,6 +4301,25 @@ function PhotoDropMiniStat({ label, value }: { label: string; value: string }) {
   );
 }
 
+function PhotoDropQrPreview() {
+  const cells = [
+    0, 1, 2, 4, 5, 6,
+    8, 10, 12, 14,
+    16, 17, 18, 20, 22,
+    24, 27, 29, 30,
+    32, 34, 35, 37, 38,
+    40, 42, 44, 46, 47,
+    48, 49, 50, 52, 53, 54,
+  ];
+  return (
+    <View style={styles.photoDropQrGrid}>
+      {Array.from({ length: 56 }, (_, index) => (
+        <View key={`qr-${index}`} style={[styles.photoDropQrCell, cells.includes(index) && styles.photoDropQrCellFilled]} />
+      ))}
+    </View>
+  );
+}
+
 function PhotoDropSettingRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }) {
   return (
     <View style={styles.photoDropSettingRow}>
@@ -4170,7 +4370,7 @@ function InvitationStudioPanel({ data, openMockAction }: { data: typeof samplePl
   const studioTools: Array<{ id: typeof activeStudioTool; icon: keyof typeof Ionicons.glyphMap; label: string; visible: boolean }> = [
     { id: 'photo', icon: 'image-outline', label: 'Photo', visible: true },
     { id: 'message', icon: 'chatbubble-ellipses-outline', label: 'Message', visible: true },
-    { id: 'design', icon: 'color-palette-outline', label: 'Design', visible: true },
+    { id: 'design', icon: 'color-palette-outline', label: 'Style', visible: true },
     { id: 'print', icon: 'print-outline', label: 'Print', visible: !isDigital },
     { id: 'delivery', icon: 'paper-plane-outline', label: 'Delivery', visible: isDigital },
     { id: 'hotel', icon: 'bed-outline', label: 'Hotel', visible: !isRsvp },
@@ -4224,7 +4424,7 @@ function InvitationStudioPanel({ data, openMockAction }: { data: typeof samplePl
       });
       setStudioSavedMessage(messageText);
     } catch (error) {
-      setStudioSavedMessage(error instanceof Error ? `${error.message} Design saved locally for preview.` : 'Design saved locally for preview.');
+      setStudioSavedMessage(error instanceof Error ? `${error.message} Design saved on this device for now.` : 'Design saved on this device for now.');
     } finally {
       setStudioSaving(false);
     }
@@ -4278,7 +4478,7 @@ function InvitationStudioPanel({ data, openMockAction }: { data: typeof samplePl
         <Ionicons color={colors.rose} name="phone-portrait-outline" size={18} />
         <View style={styles.hubCopy}>
           <Text style={styles.hubLabel}>Mobile quick edits</Text>
-          <Text style={styles.hubDetail}>Use the app for message, photo, RSVP deadline, preview, and sends. Use desktop for full layout and detailed design polish.</Text>
+          <Text style={styles.hubDetail}>Use the app for message, photo, RSVP deadline, preview, and sends. For full invitation design polish, use A.I DO on desktop.</Text>
         </View>
       </View>
       <View style={styles.studioToolbar}>
@@ -4418,6 +4618,10 @@ function InvitationStudioPanel({ data, openMockAction }: { data: typeof samplePl
             <Text style={styles.smallStatus}>{printSize}</Text>
           </View>
           <Text style={styles.mutedText}>Physical invitations use a print layout separate from the digital email.</Text>
+          <DesktopStudioNotice
+            detail="Use the app to preview and prepare print basics. Use A.I DO on desktop before final print exports, bleed checks, and detailed paper sizing."
+            title="Final print polish is desktop-first"
+          />
           <Text style={styles.formLabel}>Print size</Text>
           <View style={styles.eventTypeRow}>
             {(['5x7', '4x6'] as const).map((size) => {
@@ -4608,7 +4812,11 @@ function InvitationStudioPanel({ data, openMockAction }: { data: typeof samplePl
       ) : null}
 
       {activeStudioTool === 'design' ? <View style={styles.studioSettingsCard}>
-        <Text style={styles.formLabel}>Design</Text>
+        <DesktopStudioNotice
+          detail="These are safe mobile style tweaks. Use A.I DO on desktop for full invitation layout, spacing, typography, and print-perfect design controls."
+          title="Full invitation design is desktop-first"
+        />
+        <Text style={styles.formLabel}>Quick style</Text>
         <View style={styles.swatchRow}>
           {[
             ['#A93D5B', 'Rose'],
@@ -4834,7 +5042,7 @@ function SaveDateWebsitePreview({
         <View style={styles.websiteSaveDateFooter}>
           <Image resizeMode="contain" source={logo} style={styles.websiteSaveDateLogo} />
           <Text style={[styles.websiteSaveDateFooterText, { color: mutedColor, fontFamily }]}>Planning your own wedding?</Text>
-          <Text style={[styles.websiteSaveDateFooterLink, { color: accent, fontFamily }]}>Try A.IDO - AI-powered wedding planning</Text>
+          <Text style={[styles.websiteSaveDateFooterLink, { color: accent, fontFamily }]}>Try A.I DO - AI-powered wedding planning</Text>
         </View>
       </View>
     </Pressable>
@@ -4909,7 +5117,7 @@ function RsvpWebsitePreview({
         <View style={styles.websiteSaveDateFooter}>
           <Image resizeMode="contain" source={logo} style={styles.websiteSaveDateLogo} />
           <Text style={[styles.websiteSaveDateFooterText, { color: mutedColor, fontFamily }]}>Planning your own wedding?</Text>
-          <Text style={[styles.websiteSaveDateFooterLink, { color: accent, fontFamily }]}>Try A.IDO - AI-powered wedding planning</Text>
+          <Text style={[styles.websiteSaveDateFooterLink, { color: accent, fontFamily }]}>Try A.I DO - AI-powered wedding planning</Text>
         </View>
       </View>
     </Pressable>
@@ -5350,18 +5558,23 @@ function WeddingPartyEditorModal({
 }
 
 function VendorsSection({
+  activeView,
   data,
   onAddVendor,
+  onChangeView,
   openMockAction,
   openVendor,
+  refreshFromWebsite,
 }: {
+  activeView: VendorHubView;
   data: typeof samplePlanningData;
   onAddVendor: (vendor: VendorRecord) => void;
+  onChangeView: (view: VendorHubView) => void;
   openMockAction: (action: MockAction) => void;
   openVendor: (vendor: VendorRecord) => void;
+  refreshFromWebsite: () => Promise<void>;
 }) {
   const [addingVendor, setAddingVendor] = useState<VendorRecord | null>(null);
-  const [vendorView, setVendorView] = useState<'list' | 'contacts' | 'messages'>('list');
   const [messageVendor, setMessageVendor] = useState<VendorRecord | null>(null);
   const vendors = data.vendors;
   const totalCommitted = vendors.reduce((sum, vendor) => sum + vendor.committed, 0);
@@ -5403,7 +5616,7 @@ function VendorsSection({
             <Ionicons color={colors.surface} name="add" size={18} />
             <Text style={styles.primaryActionText}>Add vendor</Text>
           </Pressable>
-          <Pressable onPress={() => setVendorView('messages')} style={styles.secondaryActionButton}>
+          <Pressable onPress={() => onChangeView('messages')} style={styles.secondaryActionButton}>
             <Ionicons color={colors.rose} name="chatbubbles-outline" size={18} />
             <Text style={styles.secondaryActionText}>Messages</Text>
           </Pressable>
@@ -5416,23 +5629,24 @@ function VendorsSection({
         <SummaryCard label="Contracts" value={`${signedCount}/${vendors.length}`} />
       </View>
 
-      <View style={styles.plannerSwitch}>
+      <View style={styles.vendorHubSwitch}>
         {[
-          ['list', 'Vendor List', 'storefront-outline'],
+          ['list', 'List', 'storefront-outline'],
+          ['finance', 'Budget', 'wallet-outline'],
           ['contacts', 'Contacts', 'people-outline'],
-          ['messages', 'Messages', 'chatbubbles-outline'],
+          ['messages', 'Inbox', 'chatbubbles-outline'],
         ].map(([id, label, icon]) => {
-          const active = vendorView === id;
+          const active = activeView === id;
           return (
-            <Pressable key={id} onPress={() => setVendorView(id as 'list' | 'contacts' | 'messages')} style={[styles.plannerSwitchButton, active && styles.plannerSwitchButtonActive]}>
+            <Pressable key={id} onPress={() => onChangeView(id as VendorHubView)} style={[styles.vendorHubSwitchButton, active && styles.vendorHubSwitchButtonActive]}>
               <Ionicons color={active ? colors.surface : colors.rose} name={icon as keyof typeof Ionicons.glyphMap} size={16} />
-              <Text style={[styles.plannerSwitchText, active && styles.plannerSwitchTextActive]}>{label}</Text>
+              <Text numberOfLines={1} style={[styles.vendorHubSwitchText, active && styles.vendorHubSwitchTextActive]}>{label}</Text>
             </Pressable>
           );
         })}
       </View>
 
-      {vendorView === 'list' ? (
+      {activeView === 'list' ? (
         <Card>
           <View style={styles.cardHeaderRow}>
             <View>
@@ -5462,7 +5676,11 @@ function VendorsSection({
         </Card>
       ) : null}
 
-      {vendorView === 'contacts' ? (
+      {activeView === 'finance' ? (
+        <MoneySection data={data} embedded openMockAction={openMockAction} paid={totalPaid} refreshFromWebsite={refreshFromWebsite} total={totalCommitted} />
+      ) : null}
+
+      {activeView === 'contacts' ? (
         <Card>
           <View style={styles.cardHeaderRow}>
             <View>
@@ -5484,7 +5702,7 @@ function VendorsSection({
         </Card>
       ) : null}
 
-      {vendorView === 'messages' ? (
+      {activeView === 'messages' ? (
         <Card>
           <View style={styles.cardHeaderRow}>
             <View>
@@ -5517,11 +5735,15 @@ function VendorsSection({
 
 function MoneySection({
   data,
+  embedded = false,
   openMockAction,
+  refreshFromWebsite,
 }: {
   data: typeof samplePlanningData;
+  embedded?: boolean;
   openMockAction: (action: MockAction) => void;
   paid: number;
+  refreshFromWebsite?: () => Promise<void>;
   total: number;
 }) {
   const [addPaymentOpen, setAddPaymentOpen] = useState(false);
@@ -5539,55 +5761,14 @@ function MoneySection({
     title: '',
     total: '',
   });
+  const [budgetFormMessage, setBudgetFormMessage] = useState('');
   const [newPayment, setNewPayment] = useState({
     amount: '',
     date: dateKey(new Date()),
     itemId: data.budget[0]?.id ?? '',
     label: 'Scheduled payment',
   });
-  const [budgetItems, setBudgetItems] = useState<LocalBudgetRecord[]>(() =>
-    [
-      ...data.budget.map((item) => ({
-        ...item,
-        scheduledPayments: item.nextPayment
-          ? [
-              {
-                amount: item.nextPayment.amount,
-                date: item.nextPayment.date,
-                id: `scheduled-${item.id}-next`,
-                label: 'Scheduled payment',
-              },
-            ]
-          : [],
-        payments: [...item.payments],
-        source: 'vendor' as const,
-      })),
-      {
-        id: 'misc-license',
-        category: 'License',
-        nextPayment: undefined,
-        paid: 0,
-        payments: [],
-        receiptName: 'County clerk receipt',
-        scheduledPayments: [{ amount: 150, date: '2026-06-05', id: 'scheduled-misc-license', label: 'County fee' }],
-        source: 'misc' as const,
-        title: 'Marriage license',
-        total: 150,
-      },
-      {
-        id: 'misc-alterations',
-        category: 'Attire',
-        nextPayment: undefined,
-        notes: 'Final fitting and bustle work.',
-        paid: 200,
-        payments: [{ id: 'misc-alt-1', amount: 200, date: '2026-04-20', note: 'Fitting deposit' }],
-        scheduledPayments: [{ amount: 325, date: '2026-06-22', id: 'scheduled-misc-alterations', label: 'Final fitting balance' }],
-        source: 'misc' as const,
-        title: 'Dress alterations',
-        total: 525,
-      },
-    ],
-  );
+  const [budgetItems, setBudgetItems] = useState<LocalBudgetRecord[]>(() => buildLocalBudgetRecords(data));
   const [budgetItemsLoaded, setBudgetItemsLoaded] = useState(false);
   const [apiSyncStatus, setApiSyncStatus] = useState<'local' | 'synced' | 'syncing'>('local');
   const localPaid = budgetItems.reduce((sum, item) => sum + item.paid, 0);
@@ -5615,9 +5796,6 @@ function MoneySection({
   useEffect(() => {
     let alive = true;
     async function hydrateBudgetItems() {
-      const storedBudgetItems = await readStoredJson<LocalBudgetRecord[]>(storageKeys.budgetItems);
-      if (!alive) return;
-      if (storedBudgetItems?.length) setBudgetItems(storedBudgetItems);
       setBudgetItemsLoaded(true);
       setApiSyncStatus('syncing');
       const apiItems = await loadBudgetItemsFromApi();
@@ -5626,6 +5804,9 @@ function MoneySection({
         setBudgetItems(apiItems);
         setApiSyncStatus('synced');
       } else {
+        const storedBudgetItems = await readStoredJson<LocalBudgetRecord[]>(storageKeys.budgetItems);
+        if (!alive) return;
+        setBudgetItems(storedBudgetItems?.length ? storedBudgetItems : buildLocalBudgetRecords(data));
         setApiSyncStatus('local');
       }
     }
@@ -5633,15 +5814,28 @@ function MoneySection({
     return () => {
       alive = false;
     };
-  }, []);
+  }, [data.budget]);
 
   useEffect(() => {
     if (!budgetItemsLoaded) return;
+    if (apiSyncStatus === 'synced') return;
     void AsyncStorage.setItem(storageKeys.budgetItems, JSON.stringify(budgetItems));
-  }, [budgetItems, budgetItemsLoaded]);
+  }, [apiSyncStatus, budgetItems, budgetItemsLoaded]);
+
+  const refreshBudgetFromApi = async () => {
+    setApiSyncStatus('syncing');
+    const apiItems = await loadBudgetItemsFromApi();
+    if (apiItems.length) {
+      setBudgetItems(apiItems);
+      setApiSyncStatus('synced');
+      await refreshFromWebsite?.();
+    } else {
+      setApiSyncStatus('local');
+    }
+  };
 
   const markScheduledPaid = (item: LocalBudgetRecord, payment: ScheduledPayment) => {
-    void markPaymentPaidInApi(item, payment);
+    void markPaymentPaidInApi(item, payment).then(refreshBudgetFromApi);
     setBudgetItems((current) =>
       current.map((budgetItem) => {
         if (budgetItem.id !== item.id) return budgetItem;
@@ -5666,7 +5860,7 @@ function MoneySection({
     );
   };
   const markPaidInFull = (item: LocalBudgetRecord) => {
-    void markPaidInFullInApi(item);
+    void markPaidInFullInApi(item).then(refreshBudgetFromApi);
     setBudgetItems((current) =>
       current.map((budgetItem) => {
         if (budgetItem.id !== item.id) return budgetItem;
@@ -5692,7 +5886,15 @@ function MoneySection({
   };
   const addScheduledPayment = () => {
     const amount = Number(newPayment.amount);
-    if (!newPayment.itemId || !newPayment.label.trim() || !newPayment.date.trim() || !Number.isFinite(amount) || amount <= 0) return;
+    if (!newPayment.itemId || !newPayment.label.trim() || !Number.isFinite(amount) || amount <= 0) {
+      setBudgetFormMessage('Add a payment label and a valid amount.');
+      return;
+    }
+    if (!isDateInputValid(newPayment.date.trim())) {
+      setBudgetFormMessage('Use a due date in YYYY-MM-DD format.');
+      return;
+    }
+    setBudgetFormMessage('');
     const targetItem = budgetItems.find((item) => item.id === newPayment.itemId);
     const localPaymentId = `mobile-scheduled-${newPayment.itemId}-${Date.now()}`;
     if (targetItem) {
@@ -5708,6 +5910,7 @@ function MoneySection({
               : item,
           ),
         );
+        void refreshBudgetFromApi();
       });
     }
     setBudgetItems((current) =>
@@ -5740,8 +5943,15 @@ function MoneySection({
     const total = Number(miscForm.total);
     const paid = Math.max(0, Math.min(total, Number(miscForm.paid) || 0));
     const nextAmount = Number(miscForm.nextAmount);
-    if (!miscForm.title.trim() || !miscForm.category.trim() || !Number.isFinite(total) || total <= 0) return;
-    if (nextAmount > 0 && !miscForm.nextDate.trim()) return;
+    if (!miscForm.title.trim() || !miscForm.category.trim() || !Number.isFinite(total) || total <= 0) {
+      setBudgetFormMessage('Add an expense name, category, and valid total cost.');
+      return;
+    }
+    if (Number.isFinite(nextAmount) && nextAmount > 0 && !isDateInputValid(miscForm.nextDate.trim())) {
+      setBudgetFormMessage('Use a next due date in YYYY-MM-DD format.');
+      return;
+    }
+    setBudgetFormMessage('');
     const id = `misc-${Date.now()}`;
     const scheduledPayments =
       Number.isFinite(nextAmount) && nextAmount > 0
@@ -5773,13 +5983,14 @@ function MoneySection({
     }).then((syncedExpense) => {
       if (!syncedExpense) return;
       setBudgetItems((current) => current.map((item) => (item.id === localExpense.id ? syncedExpense : item)));
+      void refreshBudgetFromApi();
     });
     setMiscForm({ category: 'Misc', nextAmount: '', nextDate: '', notes: '', paid: '', receiptName: '', title: '', total: '' });
     setAddMiscOpen(false);
   };
   const deleteMiscExpense = (itemId: string) => {
     const item = budgetItems.find((budgetItem) => budgetItem.id === itemId);
-    if (item) void deleteManualExpenseInApi(item);
+    if (item) void deleteManualExpenseInApi(item).then(refreshBudgetFromApi);
     setBudgetItems((current) => current.filter((item) => item.id !== itemId));
   };
   const openAddPayment = (itemId?: string) => {
@@ -5791,10 +6002,11 @@ function MoneySection({
       label: 'Scheduled payment',
     }));
     setAddPaymentOpen(true);
+    setBudgetFormMessage('');
   };
   const deleteScheduledPayment = (itemId: string, paymentId: string) => {
     const item = budgetItems.find((budgetItem) => budgetItem.id === itemId);
-    if (item) void deleteBudgetPaymentInApi(item, paymentId);
+    if (item) void deleteBudgetPaymentInApi(item, paymentId).then(refreshBudgetFromApi);
     setBudgetItems((current) =>
       current.map((item) =>
         item.id === itemId
@@ -5804,8 +6016,8 @@ function MoneySection({
     );
   };
 
-  return (
-    <Section title="Finance" subtitle="Budget, vendors, payments, contracts, and files tied together.">
+  const content = (
+    <>
       <LinearGradient colors={['#FFF2EA', '#F4DEBE']} style={styles.financeHero}>
         <View style={styles.cardHeaderRow}>
           <View>
@@ -5825,6 +6037,11 @@ function MoneySection({
           {nextPayment ? `${nextPayment.item.title} has the next scheduled payment.` : 'All scheduled payments shown here are paid.'}
         </Text>
       </LinearGradient>
+
+      <DesktopStudioNotice
+        detail="Use the app for payments, balances, contracts, receipts, and quick updates. Use A.I DO on desktop for deep reports, exports, and larger budget review views."
+        title="Deep budget reports are desktop-first"
+      />
 
       <View style={styles.summaryGrid}>
         <SummaryCard label="Vendors" value={`${signedVendors}/${data.vendors.length}`} />
@@ -5947,7 +6164,7 @@ function MoneySection({
               <Text style={styles.cardTitle}>Misc expenses</Text>
               <Text style={styles.hubDetail}>{formatCurrency(miscPaid)} paid of {formatCurrency(miscTotal)}</Text>
             </View>
-            <Pressable onPress={() => setAddMiscOpen(true)} style={styles.addPaymentMiniButton}>
+            <Pressable onPress={() => { setBudgetFormMessage(''); setAddMiscOpen(true); }} style={styles.addPaymentMiniButton}>
               <Ionicons color={colors.rose} name="add" size={15} />
               <Text style={styles.addPaymentMiniText}>Add misc</Text>
             </Pressable>
@@ -5971,18 +6188,20 @@ function MoneySection({
       <AddPaymentModal
         budgetItems={budgetItems}
         form={newPayment}
-        onChange={setNewPayment}
-        onClose={() => setAddPaymentOpen(false)}
-        onSave={addScheduledPayment}
-        open={addPaymentOpen}
-      />
+      onChange={setNewPayment}
+      onClose={() => setAddPaymentOpen(false)}
+      message={budgetFormMessage}
+      onSave={addScheduledPayment}
+      open={addPaymentOpen}
+    />
       <AddMiscExpenseModal
         form={miscForm}
-        onChange={setMiscForm}
-        onClose={() => setAddMiscOpen(false)}
-        onSave={addMiscExpense}
-        open={addMiscOpen}
-      />
+      onChange={setMiscForm}
+      onClose={() => setAddMiscOpen(false)}
+      message={budgetFormMessage}
+      onSave={addMiscExpense}
+      open={addMiscOpen}
+    />
       <PaymentScheduleModal
         item={scheduleItem}
         onAddPayment={(itemId) => openAddPayment(itemId)}
@@ -5991,6 +6210,16 @@ function MoneySection({
         onMarkPaid={markScheduledPaid}
         onPaidFull={markPaidInFull}
       />
+    </>
+  );
+
+  if (embedded) {
+    return <View style={styles.embeddedFinanceSection}>{content}</View>;
+  }
+
+  return (
+    <Section title="Budget Summary" subtitle="Budget, vendors, payments, contracts, and files tied together.">
+      {content}
     </Section>
   );
 }
@@ -6324,7 +6553,7 @@ function WorkspaceModal({
         setSyncMessage('Workspace collaborators synced');
       })
       .catch(() => {
-        if (alive) setSyncMessage('Workspace is in local preview mode until mobile auth is connected.');
+        if (alive) setSyncMessage('Sign in to sync live collaborators. Showing the last workspace saved on this device.');
       });
     return () => {
       alive = false;
@@ -6640,43 +6869,6 @@ function AccountModal({
   open: boolean;
   user: AuthUser;
 }) {
-  const [syncToken, setSyncToken] = useState('');
-  const [syncSaved, setSyncSaved] = useState(false);
-  const [syncStatus, setSyncStatus] = useState('');
-
-  useEffect(() => {
-    if (!open) return;
-    let alive = true;
-    getMobileAuthToken()
-      .then((token) => {
-        if (!alive) return;
-        setSyncToken(token ?? '');
-        setSyncStatus(
-          clerkConnected
-            ? hasMobileApiBase()
-              ? 'Signed in with Clerk. Website backend sync is active.'
-              : 'Signed in. Set EXPO_PUBLIC_AIDO_API_URL to connect the website backend.'
-            : hasMobileApiBase()
-              ? token
-                ? 'Backend sync is ready.'
-                : 'Add a bearer token to sync with the website backend.'
-              : 'Set EXPO_PUBLIC_AIDO_API_URL to enable backend sync.',
-        );
-      })
-      .catch(() => {
-        if (alive) setSyncStatus('Backend sync is not configured yet.');
-      });
-    return () => {
-      alive = false;
-    };
-  }, [clerkConnected, open]);
-
-  const saveToken = async () => {
-    await saveMobileAuthToken(syncToken);
-    setSyncSaved(true);
-    setSyncStatus(syncToken.trim() ? 'Backend token saved. Synced features will use it now.' : 'Backend token cleared. The app will use local preview mode.');
-  };
-
   return (
     <Modal animationType="slide" onRequestClose={onClose} transparent visible={open}>
       <View style={styles.modalBackdrop}>
@@ -6699,54 +6891,10 @@ function AccountModal({
             <VendorInfoRow icon="person-circle-outline" label="Profile" value={`${user.firstName} - Couple account`} />
             <VendorInfoRow icon="notifications-outline" label="Notifications" value="RSVP, vendor, payment, and deadline alerts" />
             <VendorInfoRow icon="shield-checkmark-outline" label="Privacy" value="Aria memory, data export, and security" />
-          </View>
-
-          <View style={styles.accountSyncCard}>
-            <View style={styles.cardHeaderRow}>
-              <View style={styles.hubCopy}>
-                <Text style={styles.hubLabel}>Backend sync</Text>
-                <Text style={styles.hubDetail}>{syncStatus}</Text>
-              </View>
-              <View style={[styles.websiteStatusBadge, hasMobileApiBase() && styles.websiteStatusBadgeConnected]}>
-                <Ionicons color={hasMobileApiBase() ? colors.green : colors.rose} name={hasMobileApiBase() ? 'cloud-done-outline' : 'cloud-offline-outline'} size={14} />
-                <Text style={[styles.websiteStatusBadgeText, hasMobileApiBase() && styles.websiteStatusBadgeTextConnected]}>{hasMobileApiBase() ? 'API set' : 'Local'}</Text>
-              </View>
-            </View>
-            <TextInput
-              autoCapitalize="none"
-              editable={!clerkConnected}
-              onChangeText={(value) => {
-                setSyncSaved(false);
-                setSyncToken(value);
-              }}
-              placeholder={clerkConnected ? 'Managed by Clerk sign-in' : 'Paste Clerk bearer token for preview sync'}
-              placeholderTextColor={colors.muted}
-              secureTextEntry
-              style={[styles.formInput, clerkConnected && styles.disabledInput]}
-              value={syncToken}
-            />
-            {syncSaved ? <SavedStrip label="Backend sync settings saved" /> : null}
+            <VendorInfoRow icon="cloud-done-outline" label="Website sync" value={hasMobileApiBase() && clerkConnected ? 'Automatic with your A.I DO account' : 'Active after sign-in'} />
           </View>
 
           <View style={styles.websiteActions}>
-            <Pressable disabled={clerkConnected} onPress={saveToken} style={[styles.secondaryActionButton, clerkConnected && styles.disabledButton]}>
-              <Ionicons color={colors.rose} name="settings-outline" size={18} />
-              <Text style={styles.secondaryActionText}>Save sync</Text>
-            </Pressable>
-            <Pressable
-              disabled={clerkConnected}
-              onPress={() => {
-                setSyncToken('');
-                void saveMobileAuthToken(null).then(() => {
-                  setSyncSaved(true);
-                  setSyncStatus('Backend token cleared. The app will use local preview mode.');
-                });
-              }}
-              style={[styles.secondaryActionButton, clerkConnected && styles.disabledButton]}
-            >
-              <Ionicons color={colors.rose} name="trash-outline" size={18} />
-              <Text style={styles.secondaryActionText}>Clear sync</Text>
-            </Pressable>
             <Pressable onPress={onSignOut} style={styles.signOutButton}>
               <Ionicons color={colors.surface} name="log-out-outline" size={18} />
               <Text style={styles.primaryActionText}>Sign out</Text>
@@ -6797,7 +6945,7 @@ function MockActionModal({ action, data, onClose }: { action: MockAction | null;
           setStatusMessage(`${result.delivered} of ${result.attempted} ${label} email${result.attempted === 1 ? '' : 's'} delivered${result.markedSent ? `; ${result.markedSent} marked sent without email` : ''}.`);
         }
       } catch (error) {
-        setStatusMessage(error instanceof Error ? error.message : 'Could not send from A.I Do right now.');
+        setStatusMessage(error instanceof Error ? error.message : 'Could not send from A.I DO right now.');
       } finally {
         setSending(false);
       }
@@ -6921,14 +7069,14 @@ function ActionWorkspace({ action, data, saved }: { action: MockAction; data: ty
           placeholderTextColor={colors.muted}
           editable={false}
           style={[styles.formInput, styles.messageInput]}
-          value="A.I Do writes and sends the final reminder email from your saved RSVP invitation design."
+          value="A.I DO writes and sends the final reminder email from your saved RSVP invitation design."
         />
         <View style={styles.eventTypeRow}>
           <ActionChip label="Email" active />
           <ActionChip label="Website template" active />
           <ActionChip label="RSVP link" active />
         </View>
-        {saved ? <SavedStrip label="RSVP reminders sent through A.I Do" /> : null}
+        {saved ? <SavedStrip label="RSVP reminders sent through A.I DO" /> : null}
       </View>
     );
   }
@@ -6952,7 +7100,7 @@ function ActionWorkspace({ action, data, saved }: { action: MockAction; data: ty
           <ActionChip label="Website design" active />
           <ActionChip label="Guest tracking" active />
         </View>
-        {saved ? <SavedStrip label="Save-the-Dates sent through A.I Do" /> : null}
+        {saved ? <SavedStrip label="Save-the-Dates sent through A.I DO" /> : null}
       </View>
     );
   }
@@ -6976,7 +7124,7 @@ function ActionWorkspace({ action, data, saved }: { action: MockAction; data: ty
           <ActionChip label="RSVP form" active />
           <ActionChip label="Response tracking" active />
         </View>
-        {saved ? <SavedStrip label="RSVP invitations sent through A.I Do" /> : null}
+        {saved ? <SavedStrip label="RSVP invitations sent through A.I DO" /> : null}
       </View>
     );
   }
@@ -7019,7 +7167,6 @@ function ActionWorkspace({ action, data, saved }: { action: MockAction; data: ty
         <View style={styles.actionWorkspace}>
           <TextInput
             autoCapitalize="none"
-            defaultValue="stacy@example.com"
             keyboardType="email-address"
             placeholder="Recipient email"
             placeholderTextColor={colors.muted}
@@ -7134,13 +7281,34 @@ function SavedStrip({ label }: { label: string }) {
   );
 }
 
+function DesktopStudioNotice({
+  detail,
+  title = 'Full design studio lives on desktop',
+}: {
+  detail: string;
+  title?: string;
+}) {
+  return (
+    <View style={styles.desktopStudioNotice}>
+      <Ionicons color={colors.gold} name="desktop-outline" size={18} />
+      <View style={styles.hubCopy}>
+        <Text style={styles.hubLabel}>{title}</Text>
+        <Text style={styles.hubDetail}>{detail}</Text>
+      </View>
+    </View>
+  );
+}
+
 function guestCampaignCopy(campaign: GuestCampaign | null) {
   if (campaign === 'save-the-dates') {
     return {
       button: 'Send Save-the-Dates',
       detail: 'Uses the saved Save-the-Date design from Invitation Studio, creates each guest link, and updates tracking just like the website.',
       icon: 'calendar-outline' as keyof typeof Ionicons.glyphMap,
+      source: 'Saved Save-the-Date design',
+      target: 'Guests who have not received one yet',
       title: 'Send Save-the-Dates',
+      tracking: 'Updates Save-the-Date status on each guest',
     };
   }
   if (campaign === 'rsvp-invites') {
@@ -7148,14 +7316,20 @@ function guestCampaignCopy(campaign: GuestCampaign | null) {
       button: 'Send RSVP invitations',
       detail: 'Uses the saved RSVP invitation design from Invitation Studio, includes the RSVP form link, and updates invitation status.',
       icon: 'mail-open-outline' as keyof typeof Ionicons.glyphMap,
+      source: 'Saved RSVP invitation design',
+      target: 'Guests still waiting for an RSVP invite',
       title: 'Send RSVP Invitations',
+      tracking: 'Updates invitation status and RSVP link tracking',
     };
   }
   return {
     button: 'Send RSVP reminders',
     detail: 'Uses the saved RSVP invitation design as the reminder email, includes each guest RSVP link, and only targets guests still pending.',
     icon: 'chatbubble-ellipses-outline' as keyof typeof Ionicons.glyphMap,
+    source: 'Saved RSVP reminder template',
+    target: 'Pending guests who already received an RSVP invite',
     title: 'Send RSVP Reminders',
+    tracking: 'Updates reminder status without changing RSVP answers',
   };
 }
 
@@ -7204,12 +7378,45 @@ function GuestCampaignReviewModal({
                 <Text style={styles.hubDetail}>{loading ? 'Checking live website guest list...' : sampleNames}</Text>
               </View>
             </View>
+            <View style={styles.guestFlowStep}>
+              <View style={styles.guestFlowStepIcon}>
+                <Ionicons color={colors.rose} name="color-palette-outline" size={18} />
+              </View>
+              <View style={styles.hubCopy}>
+                <Text style={styles.hubLabel}>Design source</Text>
+                <Text style={styles.hubDetail}>{copy.source}</Text>
+              </View>
+            </View>
+            <View style={styles.guestFlowStep}>
+              <View style={styles.guestFlowStepIcon}>
+                <Ionicons color={colors.rose} name="filter-outline" size={18} />
+              </View>
+              <View style={styles.hubCopy}>
+                <Text style={styles.hubLabel}>Who receives this</Text>
+                <Text style={styles.hubDetail}>{copy.target}</Text>
+              </View>
+            </View>
+            <View style={styles.guestFlowStep}>
+              <View style={styles.guestFlowStepIcon}>
+                <Ionicons color={colors.rose} name="checkmark-done-outline" size={18} />
+              </View>
+              <View style={styles.hubCopy}>
+                <Text style={styles.hubLabel}>After sending</Text>
+                <Text style={styles.hubDetail}>{copy.tracking}</Text>
+              </View>
+            </View>
             {preview && preview.markedOnlyCount > 0 ? (
               <View style={styles.guestCampaignNotice}>
                 <Ionicons color={colors.gold} name="alert-circle-outline" size={16} />
                 <Text style={styles.guestCampaignNoticeText}>
-                  Guests without email will be marked sent and a share link will be available from their guest record.
+                  Guests without email will be marked ready for manual share. Their link appears below the guest list after sending.
                 </Text>
+              </View>
+            ) : null}
+            {!loading && preview?.eligibleCount === 0 ? (
+              <View style={styles.guestCampaignNotice}>
+                <Ionicons color={colors.green} name="checkmark-circle-outline" size={16} />
+                <Text style={styles.guestCampaignNoticeText}>No action needed right now. Everyone eligible is already up to date.</Text>
               </View>
             ) : null}
           </View>
@@ -7229,7 +7436,7 @@ function GuestCampaignReviewModal({
 }
 
 function buildGuestShareMessage(link: GuestSendLink) {
-  return `Hi ${link.name}, here is your wedding link: ${link.url}`;
+  return `Hi ${link.name}, here is your wedding link from A.I DO: ${link.url}`;
 }
 
 function GuestManualSharePanel({ links }: { links: GuestSendLink[] }) {
@@ -7262,7 +7469,7 @@ function GuestManualSharePanel({ links }: { links: GuestSendLink[] }) {
         <Ionicons color={colors.gold} name="link-outline" size={18} />
         <View style={styles.hubCopy}>
           <Text style={styles.hubLabel}>Needs manual share</Text>
-          <Text style={styles.hubDetail}>These guests do not have an email on file. Text or share their link from here.</Text>
+          <Text style={styles.hubDetail}>These guests do not have an email on file. Text, copy, or share their link from here.</Text>
         </View>
       </View>
       {links.slice(0, 5).map((link) => (
@@ -7299,14 +7506,134 @@ function VendorDetailModal({
   data: typeof samplePlanningData;
   onClose: () => void;
   onDelete: (vendorId: string) => void;
-  onUpdate: (vendor: VendorRecord) => void;
+  onUpdate: (vendor: VendorRecord, options?: { sync?: boolean }) => void;
   vendor: VendorRecord | null;
 }) {
   const [detailView, setDetailView] = useState<'overview' | 'message' | 'contract' | 'edit'>('overview');
+  const [paymentDraft, setPaymentDraft] = useState<VendorPaymentDraft>({
+    amount: '',
+    date: '',
+    isPaid: false,
+    note: 'Scheduled payment',
+  });
+  const [paymentStatus, setPaymentStatus] = useState('');
+  const [savingPayment, setSavingPayment] = useState(false);
 
   useEffect(() => {
-    if (vendor) setDetailView('overview');
+    if (vendor) {
+      setDetailView('overview');
+      setPaymentStatus('');
+      setPaymentDraft({ amount: '', date: '', isPaid: false, note: 'Scheduled payment' });
+    }
   }, [vendor?.id]);
+
+  const applyVendorPayments = (payments: Payment[], statusMessage: string, paidOverride?: number) => {
+    if (!vendor) return;
+    const nextPaid = paidOverride ?? Math.min(
+      vendor.committed,
+      Math.max(0, vendor.paid + payments.filter((payment) => payment.isPaid).reduce((sum, payment) => sum + payment.amount, 0)),
+    );
+    onUpdate({
+      ...vendor,
+      nextPaymentDate: payments.filter((payment) => !payment.isPaid).sort((a, b) => a.date.localeCompare(b.date))[0]?.date,
+      paid: nextPaid,
+      payments,
+      remaining: Math.max(0, vendor.committed - nextPaid),
+      status: vendor.committed > 0 && nextPaid >= vendor.committed ? 'Completed' : vendor.status,
+    }, { sync: false });
+    setPaymentStatus(statusMessage);
+  };
+
+  const saveVendorPayment = async () => {
+    if (!vendor || savingPayment) return;
+    const amount = Number(paymentDraft.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setPaymentStatus('Add a valid payment amount first.');
+      return;
+    }
+    if (!isDateInputValid(paymentDraft.date.trim())) {
+      setPaymentStatus('Use a due date in YYYY-MM-DD format.');
+      return;
+    }
+    setSavingPayment(true);
+    setPaymentStatus('');
+    const localPayment: Payment = {
+      amount,
+      date: paymentDraft.date.trim(),
+      id: `payment-local-${Date.now()}`,
+      isPaid: paymentDraft.isPaid,
+      note: paymentDraft.note.trim() || 'Scheduled payment',
+    };
+    try {
+      const result = await createMobileVendorPayment(vendor.id, {
+        amount,
+        date: localPayment.date,
+        isPaid: localPayment.isPaid,
+        note: localPayment.note,
+      });
+      const savedPayment = result.payment ?? localPayment;
+      const payments = [...vendor.payments, savedPayment];
+      const paidOverride = savedPayment.isPaid ? Math.min(vendor.committed, vendor.paid + savedPayment.amount) : vendor.paid;
+      applyVendorPayments(payments, result.synced ? 'Payment saved and synced.' : 'Payment saved on this device for now.', paidOverride);
+      setPaymentDraft({ amount: '', date: '', isPaid: false, note: 'Scheduled payment' });
+    } catch (error) {
+      setPaymentStatus(error instanceof Error ? error.message : 'Payment could not be saved.');
+    } finally {
+      setSavingPayment(false);
+    }
+  };
+
+  const toggleVendorPaymentPaid = async (payment: Payment) => {
+    if (!vendor || savingPayment) return;
+    const nextPaidState = !payment.isPaid;
+    setSavingPayment(true);
+    setPaymentStatus('');
+    try {
+      const result = await updateMobileVendorPayment(vendor.id, payment.id, { isPaid: nextPaidState });
+      const updatedPayment = result.payment ?? { ...payment, isPaid: nextPaidState };
+      const payments = vendor.payments.map((item) => (item.id === payment.id ? updatedPayment : item));
+      const paidOverride = Math.min(
+        vendor.committed,
+        Math.max(0, vendor.paid + (nextPaidState ? payment.amount : -payment.amount)),
+      );
+      applyVendorPayments(payments, nextPaidState ? 'Payment marked paid.' : 'Payment marked unpaid.', paidOverride);
+    } catch (error) {
+      setPaymentStatus(error instanceof Error ? error.message : 'Payment status could not be updated.');
+    } finally {
+      setSavingPayment(false);
+    }
+  };
+
+  const removeVendorPayment = async (payment: Payment) => {
+    if (!vendor || savingPayment) return;
+    setSavingPayment(true);
+    setPaymentStatus('');
+    try {
+      await deleteMobileVendorPayment(vendor.id, payment.id);
+      const payments = vendor.payments.filter((item) => item.id !== payment.id);
+      const paidOverride = payment.isPaid ? Math.max(0, vendor.paid - payment.amount) : vendor.paid;
+      applyVendorPayments(payments, 'Payment deleted.', paidOverride);
+    } catch (error) {
+      setPaymentStatus(error instanceof Error ? error.message : 'Payment could not be deleted.');
+    } finally {
+      setSavingPayment(false);
+    }
+  };
+
+  const markVendorPaidInFull = async () => {
+    if (!vendor || savingPayment) return;
+    setSavingPayment(true);
+    setPaymentStatus('');
+    try {
+      const result = await markMobileVendorPaidInFull(vendor.id);
+      const payments = result.payment ? [...vendor.payments, result.payment] : vendor.payments.map((payment) => ({ ...payment, isPaid: true }));
+      applyVendorPayments(payments, 'Vendor marked paid in full.', vendor.committed);
+    } catch (error) {
+      setPaymentStatus(error instanceof Error ? error.message : 'Vendor could not be marked paid in full.');
+    } finally {
+      setSavingPayment(false);
+    }
+  };
 
   return (
     <Modal animationType="slide" onRequestClose={onClose} transparent visible={Boolean(vendor)}>
@@ -7355,11 +7682,25 @@ function VendorDetailModal({
                 <VendorInfoRow icon="card-outline" label="Next payment" value={vendor?.nextPaymentDate ? formatShortDate(vendor.nextPaymentDate) : 'No payment due'} />
                 <VendorInfoRow icon="document-attach-outline" label="Contract" value={vendor && vendorHasUploadedContract(data, vendor) ? 'Contract uploaded' : 'No contract uploaded - tap Contract to upload'} />
               </View>
+
+              {vendor ? (
+                <VendorPaymentPanel
+                  draft={paymentDraft}
+                  onChangeDraft={setPaymentDraft}
+                  onDeletePayment={removeVendorPayment}
+                  onMarkPaidInFull={markVendorPaidInFull}
+                  onSavePayment={saveVendorPayment}
+                  onTogglePaymentPaid={toggleVendorPaymentPaid}
+                  saving={savingPayment}
+                  status={paymentStatus}
+                  vendor={vendor}
+                />
+              ) : null}
             </>
           ) : null}
 
           {detailView === 'message' && vendor ? <VendorMessageComposer vendor={vendor} /> : null}
-          {detailView === 'contract' && vendor ? <VendorContractPanel data={data} vendor={vendor} /> : null}
+          {detailView === 'contract' && vendor ? <VendorContractPanel data={data} onMessage={() => setDetailView('message')} vendor={vendor} /> : null}
           {detailView === 'edit' && vendor ? (
             <VendorEditorPanel
               onDelete={() => onDelete(vendor.id)}
@@ -7373,6 +7714,116 @@ function VendorDetailModal({
         </View>
       </View>
     </Modal>
+  );
+}
+
+function VendorPaymentPanel({
+  draft,
+  onChangeDraft,
+  onDeletePayment,
+  onMarkPaidInFull,
+  onSavePayment,
+  onTogglePaymentPaid,
+  saving,
+  status,
+  vendor,
+}: {
+  draft: VendorPaymentDraft;
+  onChangeDraft: (draft: VendorPaymentDraft) => void;
+  onDeletePayment: (payment: Payment) => void;
+  onMarkPaidInFull: () => void;
+  onSavePayment: () => void;
+  onTogglePaymentPaid: (payment: Payment) => void;
+  saving: boolean;
+  status: string;
+  vendor: VendorRecord;
+}) {
+  const sortedPayments = [...vendor.payments].sort((a, b) => a.date.localeCompare(b.date));
+  return (
+    <View style={styles.vendorPaymentPanel}>
+      <View style={styles.cardHeaderRow}>
+        <View>
+          <Text style={styles.hubLabel}>Payment milestones</Text>
+          <Text style={styles.hubDetail}>Add, mark paid, or delete vendor payment milestones from the app.</Text>
+        </View>
+        <Pressable disabled={saving || vendor.remaining <= 0} onPress={onMarkPaidInFull} style={[styles.iconMiniButton, (saving || vendor.remaining <= 0) && styles.disabledActionButton]}>
+          <Ionicons color={colors.rose} name="checkmark-done-outline" size={15} />
+        </Pressable>
+      </View>
+
+      {status ? <SavedStrip label={status} /> : null}
+
+      <View style={styles.formStack}>
+        <FormInput
+          keyboardType="numeric"
+          label="Amount"
+          onChangeText={(amount) => onChangeDraft({ ...draft, amount })}
+          placeholder="500"
+          value={draft.amount}
+        />
+        <FormInput
+          label="Due date"
+          onChangeText={(date) => onChangeDraft({ ...draft, date })}
+          placeholder="2026-06-15"
+          value={draft.date}
+        />
+        <FormInput
+          label="Label"
+          onChangeText={(note) => onChangeDraft({ ...draft, note })}
+          placeholder="Final balance"
+          value={draft.note}
+        />
+        <View style={styles.eventTypeRow}>
+          {[
+            [false, 'Scheduled'],
+            [true, 'Already paid'],
+          ].map(([isPaid, label]) => {
+            const active = draft.isPaid === isPaid;
+            return (
+              <Pressable
+                key={label as string}
+                onPress={() => onChangeDraft({ ...draft, isPaid: Boolean(isPaid) })}
+                style={[styles.eventTypePill, active && styles.eventTypePillActive]}
+              >
+                <Text style={[styles.eventTypeText, active && styles.eventTypeTextActive]}>{label as string}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Pressable disabled={saving} onPress={onSavePayment} style={[styles.primaryActionButton, saving && styles.disabledActionButton]}>
+          <Ionicons color={colors.surface} name={saving ? 'sync-outline' : 'add-circle-outline'} size={18} />
+          <Text style={styles.primaryActionText}>{saving ? 'Saving...' : 'Add payment'}</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.vendorInfoList}>
+        {sortedPayments.length ? sortedPayments.map((payment) => (
+          <View key={payment.id} style={styles.workspaceRow}>
+            <Ionicons color={payment.isPaid ? colors.green : colors.rose} name={payment.isPaid ? 'checkmark-circle-outline' : 'time-outline'} size={18} />
+            <View style={styles.hubCopy}>
+              <Text style={styles.hubLabel}>{payment.note}</Text>
+              <Text style={styles.hubDetail}>{formatCurrency(payment.amount)} - {payment.date ? formatShortDate(payment.date) : 'No date'} - {payment.isPaid ? 'Paid' : 'Scheduled'}</Text>
+            </View>
+            <View style={styles.manualShareActions}>
+              <Pressable disabled={saving} onPress={() => onTogglePaymentPaid(payment)} style={styles.iconMiniButton}>
+                <Ionicons color={colors.rose} name={payment.isPaid ? 'return-down-back-outline' : 'checkmark-outline'} size={15} />
+              </Pressable>
+              <Pressable disabled={saving} onPress={() => onDeletePayment(payment)} style={styles.iconMiniButton}>
+                <Ionicons color={colors.rose} name="trash-outline" size={15} />
+              </Pressable>
+            </View>
+          </View>
+        )) : (
+          <View style={styles.noContractStrip}>
+            <Ionicons color={colors.rose} name="card-outline" size={18} />
+            <View style={styles.hubCopy}>
+              <Text style={styles.noContractTitle}>No payment milestones yet</Text>
+              <Text style={styles.hubDetail}>Add a scheduled or paid milestone so Budget Summary stays accurate.</Text>
+            </View>
+          </View>
+        )}
+      </View>
+    </View>
   );
 }
 
@@ -7767,20 +8218,198 @@ function VendorMessageComposer({ vendor }: { vendor: VendorRecord }) {
   );
 }
 
-function VendorContractPanel({ data, vendor }: { data: typeof samplePlanningData; vendor: VendorRecord }) {
-  const hasContract = vendorHasUploadedContract(data, vendor);
+function VendorContractPanel({
+  data,
+  onMessage,
+  vendor,
+}: {
+  data: typeof samplePlanningData;
+  onMessage: () => void;
+  vendor: VendorRecord;
+}) {
+  const [apiContracts, setApiContracts] = useState<MobileContractRecord[] | null>(null);
+  const [apiDocuments, setApiDocuments] = useState<MobileDocumentRecord[] | null>(null);
+  const [contractStatus, setContractStatus] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const localContracts = data.contracts.filter((contract) => contract.vendorName === vendor.name);
+  const localDocuments = data.documents.filter((document) => document.linkedTo === vendor.name || document.title.toLowerCase().includes(vendor.name.toLowerCase()));
+  const syncedContracts = (apiContracts ?? []).filter((contract) => contract.vendorName === vendor.name);
+  const syncedDocuments = (apiDocuments ?? []).filter((document) => document.linkedVendorName === vendor.name || document.folder === vendor.name);
+  const hasContract = Boolean(localContracts.length || syncedContracts.length);
+  const primaryContract = syncedContracts[0] ?? null;
+  const localPrimaryContract = localContracts[0] ?? null;
+  const riskLevel = primaryContract?.analysis?.riskLevel || localPrimaryContract?.riskLevel || (hasContract ? 'Medium' : 'None');
+  const summary = primaryContract?.analysis?.summary || localPrimaryContract?.nextAction || (hasContract ? 'Review uploaded contract terms and final payment schedule.' : 'Upload the contract so A.I DO can track terms, files, and payment dates.');
+  const redFlagCount = primaryContract?.analysis?.redFlags?.length ?? (localPrimaryContract?.riskLevel === 'High' ? 2 : localPrimaryContract?.riskLevel === 'Medium' ? 1 : 0);
+  const contractWorkflowStatus = !hasContract
+    ? 'Missing'
+    : localPrimaryContract?.status === 'Signed'
+      ? 'Signed'
+      : primaryContract?.analysis || localPrimaryContract
+        ? 'Needs review'
+        : 'Uploaded';
+  const keyTerms = [
+    ...(primaryContract?.analysis?.keyTerms?.slice(0, 3).map((_, index) => `Key term ${index + 1}`) ?? []),
+    ...(localPrimaryContract?.clauses?.slice(0, 3) ?? []),
+  ];
+
+  const refreshVendorFiles = async () => {
+    const [contracts, documents] = await Promise.all([
+      listMobileContracts().catch(() => null),
+      listMobileDocuments().catch(() => null),
+    ]);
+    setApiContracts(contracts);
+    setApiDocuments(documents);
+    return { contracts, documents };
+  };
+
+  useEffect(() => {
+    let alive = true;
+    setContractStatus('');
+    refreshVendorFiles()
+      .then(() => {
+        if (!alive) return;
+      })
+      .catch(() => {
+        if (alive) setContractStatus('Showing saved app contract details. Sign in to sync live files.');
+      });
+    return () => {
+      alive = false;
+    };
+  }, [vendor.id]);
+
+  const uploadContract = async () => {
+    if (uploading) return;
+    setContractStatus('');
+    try {
+      const pickedFile = await pickMobileUploadFile(['application/pdf', 'image/*']);
+      if (!pickedFile) return;
+      setUploading(true);
+      await uploadMobileContract(pickedFile, {
+        displayName: `${vendor.name} contract`,
+        syncToDocumentLibrary: true,
+        vendorId: /^\d+$/.test(vendor.id) ? Number(vendor.id) : undefined,
+      });
+      await refreshVendorFiles();
+      setContractStatus('Contract uploaded, copied to Documents, and ready for review.');
+    } catch (error) {
+      setContractStatus(error instanceof Error ? error.message : 'Contract upload failed.');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <View style={styles.actionWorkspace}>
-      <View style={hasContract ? styles.workspaceRow : styles.noContractStrip}>
-        <Ionicons color={colors.rose} name={hasContract ? 'document-text-outline' : 'cloud-upload-outline'} size={18} />
+      <View style={hasContract ? styles.vendorContractHero : styles.noContractStrip}>
+        <View style={styles.vendorContractHeroIcon}>
+          <Ionicons color={colors.rose} name={hasContract ? 'document-text-outline' : 'cloud-upload-outline'} size={20} />
+        </View>
         <View style={styles.hubCopy}>
-          <Text style={hasContract ? styles.hubLabel : styles.noContractTitle}>{hasContract ? 'Contract uploaded' : 'No contract uploaded'}</Text>
-          <Text style={styles.hubDetail}>{hasContract ? 'Open the uploaded contract, review terms, or replace the file.' : 'Upload it here under Contract so Aria can track terms and payment dates.'}</Text>
+          <Text style={hasContract ? styles.hubLabel : styles.noContractTitle}>{hasContract ? 'Contract workspace' : 'No contract uploaded'}</Text>
+          <Text style={styles.hubDetail}>{summary}</Text>
         </View>
       </View>
+
+      <View style={styles.vendorMetricGrid}>
+        <SummaryCard label="Status" value={contractWorkflowStatus} />
+        <SummaryCard label="Risk" value={riskLevel} />
+        <SummaryCard label="Flags" value={String(redFlagCount)} />
+      </View>
+
       <View style={styles.eventTypeRow}>
-        {['Pending', 'Signed', 'Needs review'].map((item) => <ActionChip key={item} label={item} active={item === (hasContract ? 'Needs review' : 'Pending')} />)}
+        {['Missing', 'Needs review', 'Signed'].map((item) => {
+          const active = item === contractWorkflowStatus;
+          return <ActionChip key={item} label={item} active={active} />;
+        })}
+      </View>
+
+      <DesktopStudioNotice
+        detail="Use the app to upload, replace, and track key terms. Use A.I DO on desktop for deep document review, redlines, and larger contract comparisons."
+        title="Deep contract review is desktop-first"
+      />
+
+      <View style={styles.vendorContractSection}>
+        <View style={styles.cardHeaderRow}>
+          <View>
+            <Text style={styles.hubLabel}>Key review notes</Text>
+            <Text style={styles.hubDetail}>Quick terms to confirm before the wedding day.</Text>
+          </View>
+        </View>
+        <View style={styles.vendorInfoList}>
+          {(keyTerms.length ? keyTerms : ['Final balance due date', 'Cancellation terms', 'Arrival and deliverables']).map((term) => (
+            <View key={term} style={styles.vendorContractNoteRow}>
+              <Ionicons color={colors.rose} name="checkmark-circle-outline" size={16} />
+              <Text style={styles.hubDetail}>{term}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.vendorContractSection}>
+        <View style={styles.cardHeaderRow}>
+          <View>
+            <Text style={styles.hubLabel}>Files</Text>
+            <Text style={styles.hubDetail}>Contracts, receipts, and vendor documents tied to this vendor.</Text>
+          </View>
+          <Text style={styles.smallStatus}>{localDocuments.length + syncedDocuments.length + localContracts.length + syncedContracts.length} files</Text>
+        </View>
+        <View style={styles.vendorInfoList}>
+          {syncedContracts.map((contract) => (
+            <VendorFileRow key={`contract-${contract.id}`} icon="document-text-outline" title={contract.fileName} detail={`${contract.vendorName || vendor.name} - ${contract.analysis?.riskLevel || 'Review'} risk`} />
+          ))}
+          {localContracts.map((contract) => (
+            <VendorFileRow key={contract.id} icon="document-text-outline" title={contract.title} detail={`${contract.status} - ${formatCurrency(contract.value)} - ${contract.riskLevel} risk`} />
+          ))}
+          {syncedDocuments.map((document) => (
+            <VendorFileRow key={`doc-${document.id}`} icon={documentIcon(document.fileType || document.folder || 'Document')} title={document.fileName || document.originalFileName || 'Vendor document'} detail={document.summary || document.folder || 'Synced document'} />
+          ))}
+          {localDocuments.map((document) => (
+            <VendorFileRow key={document.id} icon={documentIcon(document.type)} title={document.title} detail={`${document.type} - ${document.status} - ${formatShortDate(document.updatedAt)}`} />
+          ))}
+          {!hasContract && !localDocuments.length && !syncedDocuments.length ? (
+            <View style={styles.photoDropEmptyState}>
+              <Ionicons color={colors.rose} name="folder-open-outline" size={22} />
+              <Text style={styles.hubLabel}>No files yet</Text>
+              <Text style={styles.hubDetail}>Upload the contract first, then receipts and notes can live with this vendor.</Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+
+      {contractStatus ? <SavedStrip label={contractStatus} /> : null}
+
+      <View style={styles.websiteActions}>
+        <Pressable disabled={uploading} onPress={uploadContract} style={[styles.primaryActionButton, uploading && styles.disabledActionButton]}>
+          <Ionicons color={colors.surface} name={uploading ? 'sync-outline' : hasContract ? 'cloud-upload-outline' : 'document-attach-outline'} size={18} />
+          <Text style={styles.primaryActionText}>{uploading ? 'Uploading...' : hasContract ? 'Replace contract' : 'Upload contract'}</Text>
+        </Pressable>
+        <Pressable onPress={onMessage} style={styles.secondaryActionButton}>
+          <Ionicons color={colors.rose} name="chatbubble-outline" size={18} />
+          <Text style={styles.secondaryActionText}>Ask vendor</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function VendorFileRow({
+  detail,
+  icon,
+  title,
+}: {
+  detail: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+}) {
+  return (
+    <View style={styles.workspaceRow}>
+      <View style={styles.financeRowIcon}>
+        <Ionicons color={colors.rose} name={icon} size={17} />
+      </View>
+      <View style={styles.hubCopy}>
+        <Text style={styles.hubLabel}>{title}</Text>
+        <Text style={styles.hubDetail}>{detail}</Text>
       </View>
     </View>
   );
@@ -7807,7 +8436,7 @@ function VendorEditorPanel({
         <FormInput label="Category" onChangeText={(value) => setDraft({ ...draft, category: value })} placeholder="Florist, venue, DJ..." value={draft.category} />
         <FormInput label="Contact" onChangeText={(value) => setDraft({ ...draft, contactName: value })} placeholder="Contact name" value={draft.contactName ?? ''} />
         <FormInput label="Phone" onChangeText={(value) => setDraft({ ...draft, phone: value })} placeholder="(555) 000-0000" value={draft.phone ?? ''} />
-        <FormInput keyboardType="url" label="Email" onChangeText={(value) => setDraft({ ...draft, email: value })} placeholder="vendor@example.com" value={draft.email ?? ''} />
+        <FormInput keyboardType="email-address" label="Email" onChangeText={(value) => setDraft({ ...draft, email: value })} placeholder="vendor@example.com" value={draft.email ?? ''} />
         <FormInput label="Arrival time" onChangeText={(value) => setDraft({ ...draft, arrivalTime: value })} placeholder="10:30 AM" value={draft.arrivalTime ?? ''} />
         <FormInput label="Total cost" onChangeText={(value) => setDraft({ ...draft, committed: Number(value) || 0, remaining: Math.max(0, (Number(value) || 0) - paid) })} placeholder="2500" value={String(draft.committed || '')} />
         <FormInput label="Paid" onChangeText={(value) => setDraft({ ...draft, paid: Number(value) || 0, remaining: Math.max(0, committed - (Number(value) || 0)) })} placeholder="700" value={String(draft.paid || '')} />
@@ -7879,6 +8508,7 @@ function VendorEditorModal({
 function AddPaymentModal({
   budgetItems,
   form,
+  message,
   onChange,
   onClose,
   onSave,
@@ -7886,6 +8516,7 @@ function AddPaymentModal({
 }: {
   budgetItems: LocalBudgetRecord[];
   form: { amount: string; date: string; itemId: string; label: string };
+  message?: string;
   onChange: (form: { amount: string; date: string; itemId: string; label: string }) => void;
   onClose: () => void;
   onSave: () => void;
@@ -7923,6 +8554,7 @@ function AddPaymentModal({
             <FormInput label="Payment label" onChangeText={(value) => onChange({ ...form, label: value })} placeholder="Second payment, final payment..." value={form.label} />
             <FormInput label="Amount" onChangeText={(value) => onChange({ ...form, amount: value })} placeholder="1200" value={form.amount} />
             <FormInput label="Due date" onChangeText={(value) => onChange({ ...form, date: value })} placeholder="2026-06-15" value={form.date} />
+            {message ? <SavedStrip label={message} /> : null}
           </View>
 
           <View style={styles.websiteActions}>
@@ -7942,12 +8574,14 @@ function AddPaymentModal({
 
 function AddMiscExpenseModal({
   form,
+  message,
   onChange,
   onClose,
   onSave,
   open,
 }: {
   form: { category: string; nextAmount: string; nextDate: string; notes: string; paid: string; receiptName: string; title: string; total: string };
+  message?: string;
   onChange: (form: { category: string; nextAmount: string; nextDate: string; notes: string; paid: string; receiptName: string; title: string; total: string }) => void;
   onClose: () => void;
   onSave: () => void;
@@ -7977,6 +8611,7 @@ function AddMiscExpenseModal({
             <FormInput label="Next due date" onChangeText={(value) => onChange({ ...form, nextDate: value })} placeholder="2026-06-22" value={form.nextDate} />
             <FormInput label="Notes" onChangeText={(value) => onChange({ ...form, notes: value })} placeholder="Optional details or reminder context" value={form.notes} />
             <FormInput label="Receipt" onChangeText={(value) => onChange({ ...form, receiptName: value })} placeholder="Receipt or invoice name" value={form.receiptName} />
+            {message ? <SavedStrip label={message} /> : null}
           </View>
 
           <View style={styles.websiteActions}>
@@ -8139,10 +8774,18 @@ function guestSendStatus(value: string | undefined, sentLabel = 'Sent') {
   return value === 'sent' ? sentLabel : 'Not sent';
 }
 
+function guestPlusOneLabel(guest: Guest) {
+  if (guest.plusOneStatus === 'named') return guest.plusOneName ? `Plus-one: ${guest.plusOneName}` : 'Plus-one name needed';
+  if (guest.plusOneStatus === 'name_tbd') return 'Plus-one: name coming later';
+  if (guest.plusOneStatus === 'unsure') return 'Plus-one: not sure yet';
+  return '';
+}
+
 function GuestListRow({ guest, onPress }: { guest: Guest; onPress?: () => void }) {
   const saveDateStatus = guestSendStatus(guest.saveTheDateStatus, 'STD sent');
   const invitationStatus = guestSendStatus(guest.invitationStatus, 'Invite sent');
   const reminderStatus = guestSendStatus(guest.rsvpReminderStatus, 'Reminder sent');
+  const plusOne = guestPlusOneLabel(guest);
   return (
     <Pressable onPress={onPress} style={styles.guestListRow}>
       <View style={styles.guestListIcon}>
@@ -8153,7 +8796,7 @@ function GuestListRow({ guest, onPress }: { guest: Guest; onPress?: () => void }
           <Text style={styles.hubLabel}>{guest.name}</Text>
           <Text style={[styles.websiteStatusPill, guestStatusStyle(guest.rsvp)]}>{guest.rsvp}</Text>
         </View>
-        <Text style={styles.hubDetail}>{guest.mealPreference} - {guest.table}</Text>
+        <Text style={styles.hubDetail}>{guest.mealPreference} - {guest.table}{plusOne ? ` - ${plusOne}` : ''}</Text>
         <View style={styles.guestTrackingRow}>
           <Text style={[styles.guestTrackingPill, guest.saveTheDateStatus === 'sent' && styles.guestTrackingPillSent]}>{saveDateStatus}</Text>
           <Text style={[styles.guestTrackingPill, guest.invitationStatus === 'sent' && styles.guestTrackingPillSent]}>{invitationStatus}</Text>
@@ -8276,35 +8919,55 @@ function VendorTrackerCard({
   onOpen: () => void;
   vendor: VendorRecord;
 }) {
-  const progress = vendor.committed ? Math.round((vendor.paid / vendor.committed) * 100) : 0;
   const paidInFull = vendor.remaining <= 0;
   const hasContract = vendorHasUploadedContract(data, vendor);
+  const nextAction = !hasContract
+    ? 'Upload contract'
+    : vendor.nextPaymentDate && !paidInFull
+      ? `Payment due ${formatShortDate(vendor.nextPaymentDate)}`
+      : paidInFull
+        ? 'Paid in full'
+        : 'Add next payment';
 
   return (
     <View style={styles.vendorTrackerCard}>
       <Pressable onPress={onOpen} style={styles.vendorTrackerMain}>
-        <View style={styles.financeRowIcon}>
-          <Ionicons color={colors.rose} name="storefront-outline" size={18} />
+        <View style={styles.vendorAvatar}>
+          <Text style={styles.vendorAvatarText}>{vendor.name.slice(0, 1).toUpperCase()}</Text>
         </View>
         <View style={styles.hubCopy}>
           <View style={styles.websitePageTitleRow}>
             <Text style={styles.hubLabel}>{vendor.name}</Text>
             <Text style={[styles.websiteStatusPill, vendorStatusStyle(vendor.status)]}>{vendor.status}</Text>
           </View>
-          <Text style={styles.hubDetail}>{vendor.category} - {vendor.contactName ?? 'No contact'} - {vendor.arrivalTime ?? 'Arrival TBD'}</Text>
+          <Text style={styles.hubDetail}>{vendor.category} - {vendor.contactName || 'No contact yet'}</Text>
         </View>
         <Ionicons color={colors.muted} name="chevron-forward" size={18} />
       </Pressable>
 
-      <View style={styles.vendorPaymentStrip}>
-        <View style={styles.cardHeaderRow}>
-          <Text style={styles.vendorPaymentText}>{paidInFull ? 'Paid in full' : `${formatCurrency(vendor.remaining)} remaining`}</Text>
-          <Text style={styles.vendorPaymentText}>{progress}% paid</Text>
+      <View style={styles.vendorMetaGrid}>
+        <View style={styles.vendorMetaChip}>
+          <Ionicons color={colors.rose} name="time-outline" size={14} />
+          <Text style={styles.vendorMetaText}>{vendor.arrivalTime || 'Arrival TBD'}</Text>
         </View>
-        <Progress value={progress} />
-        <Text style={styles.hubDetail}>
-          {vendor.nextPaymentDate && !paidInFull ? `Next payment ${formatShortDate(vendor.nextPaymentDate)}` : 'No upcoming payment due'}
-        </Text>
+        <View style={styles.vendorMetaChip}>
+          <Ionicons color={hasContract ? colors.green : colors.rose} name={hasContract ? 'document-text-outline' : 'document-attach-outline'} size={14} />
+          <Text style={styles.vendorMetaText}>{hasContract ? 'Contract saved' : 'Needs contract'}</Text>
+        </View>
+      </View>
+
+      <View style={styles.vendorNextActionStrip}>
+        <View style={styles.vendorNextActionIcon}>
+          <Ionicons color={colors.rose} name={hasContract ? 'calendar-outline' : 'alert-circle-outline'} size={16} />
+        </View>
+        <View style={styles.hubCopy}>
+          <Text style={styles.noContractTitle}>Next action</Text>
+          <Text style={styles.hubDetail}>{nextAction}</Text>
+        </View>
+        <View style={styles.vendorBalancePill}>
+          <Text style={styles.vendorBalanceLabel}>Balance</Text>
+          <Text style={styles.vendorBalanceText}>{paidInFull ? '$0' : formatCurrency(vendor.remaining)}</Text>
+        </View>
       </View>
 
       {!hasContract ? (
@@ -8312,7 +8975,7 @@ function VendorTrackerCard({
           <Ionicons color={colors.rose} name="document-attach-outline" size={17} />
           <View style={styles.hubCopy}>
             <Text style={styles.noContractTitle}>No contract uploaded</Text>
-            <Text style={styles.hubDetail}>Upload it here under Contract so Aria can track terms and payment dates.</Text>
+            <Text style={styles.hubDetail}>Upload it under Contract so Aria can track terms and payment dates.</Text>
           </View>
           <Ionicons color={colors.rose} name="cloud-upload-outline" size={18} />
         </Pressable>
@@ -8570,6 +9233,50 @@ async function mobileApiFetch(path: string, init: RequestInit = {}) {
   } catch {
     return null;
   }
+}
+
+function buildLocalBudgetRecords(data: typeof samplePlanningData): LocalBudgetRecord[] {
+  return [
+    ...data.budget.map((item) => ({
+      ...item,
+      scheduledPayments: item.nextPayment
+        ? [
+            {
+              amount: item.nextPayment.amount,
+              date: item.nextPayment.date,
+              id: `scheduled-${item.id}-next`,
+              label: 'Scheduled payment',
+            },
+          ]
+        : [],
+      payments: [...item.payments],
+      source: 'vendor' as const,
+    })),
+    {
+      id: 'misc-license',
+      category: 'License',
+      nextPayment: undefined,
+      paid: 0,
+      payments: [],
+      receiptName: 'County clerk receipt',
+      scheduledPayments: [{ amount: 150, date: '2026-06-05', id: 'scheduled-misc-license', label: 'County fee' }],
+      source: 'misc' as const,
+      title: 'Marriage license',
+      total: 150,
+    },
+    {
+      id: 'misc-alterations',
+      category: 'Attire',
+      nextPayment: undefined,
+      notes: 'Final fitting and bustle work.',
+      paid: 200,
+      payments: [{ id: 'misc-alt-1', amount: 200, date: '2026-04-20', note: 'Fitting deposit' }],
+      scheduledPayments: [{ amount: 325, date: '2026-06-22', id: 'scheduled-misc-alterations', label: 'Final fitting balance' }],
+      source: 'misc' as const,
+      title: 'Dress alterations',
+      total: 525,
+    },
+  ];
 }
 
 async function loadBudgetItemsFromApi(): Promise<LocalBudgetRecord[]> {
@@ -9020,7 +9727,7 @@ function targetTabForFeature(label: string): TabId | null {
   if (planner.has(label)) return 'plan';
   if (guestHub.has(label)) return 'website';
   if (vendors.has(label)) return 'vendors';
-  if (finance.has(label)) return 'money';
+  if (finance.has(label)) return 'vendors';
   return null;
 }
 
@@ -9453,18 +10160,18 @@ const styles = StyleSheet.create({
     borderColor: colors.faint,
     borderRadius: 18,
     borderWidth: 1,
-    height: 168,
+    height: 184,
     overflow: 'hidden',
     position: 'relative',
   },
   homeHeroCopy: {
     left: 0,
     minWidth: 0,
-    paddingLeft: 0,
-    paddingTop: 0,
+    paddingLeft: 16,
+    paddingTop: 18,
     position: 'absolute',
     top: 0,
-    width: '54%',
+    width: '62%',
     zIndex: 2,
   },
   homeHeroTitle: {
@@ -9501,7 +10208,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 0,
-    width: '100%',
+    width: '68%',
   },
   homeHeroPhotoWash: {
     bottom: 0,
@@ -11773,6 +12480,40 @@ const styles = StyleSheet.create({
   plannerSwitchTextActive: {
     color: colors.surface,
   },
+  vendorHubSwitch: {
+    backgroundColor: colors.surface,
+    borderColor: colors.faint,
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 5,
+    marginTop: 8,
+    padding: 5,
+    width: '100%',
+  },
+  vendorHubSwitchButton: {
+    alignItems: 'center',
+    borderRadius: 14,
+    flex: 1,
+    gap: 4,
+    justifyContent: 'center',
+    minHeight: 50,
+    paddingHorizontal: 4,
+    paddingVertical: 7,
+  },
+  vendorHubSwitchButtonActive: {
+    backgroundColor: colors.rose,
+  },
+  vendorHubSwitchText: {
+    color: colors.rose,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    lineHeight: 13,
+    textAlign: 'center',
+  },
+  vendorHubSwitchTextActive: {
+    color: colors.surface,
+  },
   registryPreview: {
     alignItems: 'center',
     backgroundColor: colors.surfaceWarm,
@@ -11923,6 +12664,45 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 72,
   },
+  photoDropQrGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 2,
+    height: 48,
+    width: 48,
+  },
+  photoDropQrCell: {
+    backgroundColor: '#F7E7EC',
+    borderRadius: 1,
+    height: 4,
+    width: 4,
+  },
+  photoDropQrCellFilled: {
+    backgroundColor: colors.ink,
+  },
+  photoDropGuestFlowCard: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.faint,
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 7,
+    justifyContent: 'space-between',
+    padding: 10,
+  },
+  photoDropGuestFlowStep: {
+    alignItems: 'center',
+    flex: 1,
+    gap: 4,
+  },
+  photoDropGuestFlowText: {
+    color: colors.muted,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    lineHeight: 13,
+    textAlign: 'center',
+  },
   photoDropQuickStats: {
     flexDirection: 'row',
     gap: 8,
@@ -11953,8 +12733,41 @@ const styles = StyleSheet.create({
   photoDropUploadList: {
     gap: 10,
   },
-  photoDropUploadRow: {
+  photoDropFilterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 7,
+  },
+  photoDropFilterChip: {
     alignItems: 'center',
+    backgroundColor: colors.surfaceWarm,
+    borderColor: colors.faint,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  photoDropFilterChipActive: {
+    backgroundColor: colors.rose,
+    borderColor: colors.rose,
+  },
+  photoDropFilterText: {
+    color: colors.rose,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+  },
+  photoDropFilterTextActive: {
+    color: colors.surface,
+  },
+  photoDropFilterCount: {
+    color: colors.muted,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+  },
+  photoDropUploadRow: {
+    alignItems: 'flex-start',
     backgroundColor: colors.surfaceWarm,
     borderColor: colors.faint,
     borderRadius: 16,
@@ -11991,10 +12804,13 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   photoDropStatusButton: {
+    alignItems: 'center',
     backgroundColor: colors.surface,
     borderColor: colors.faint,
     borderRadius: 999,
     borderWidth: 1,
+    flexDirection: 'row',
+    gap: 4,
     paddingHorizontal: 10,
     paddingVertical: 7,
   },
@@ -12168,6 +12984,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: 'hidden',
     padding: 18,
+  },
+  embeddedFinanceSection: {
+    gap: 14,
   },
   financeTitle: {
     color: colors.ink,
@@ -12559,26 +13378,93 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   vendorTrackerCard: {
-    backgroundColor: colors.surfaceWarm,
+    backgroundColor: colors.surface,
     borderColor: colors.faint,
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
-    padding: 12,
+    gap: 12,
+    padding: 14,
+    shadowColor: '#271B22',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
   },
   vendorTrackerMain: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 10,
+    gap: 11,
   },
-  vendorPaymentStrip: {
-    backgroundColor: colors.surface,
-    borderColor: colors.faint,
-    borderRadius: 15,
+  vendorAvatar: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceWarm,
+    borderColor: colors.roseSoft,
+    borderRadius: 18,
     borderWidth: 1,
-    marginTop: 12,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
+  },
+  vendorAvatarText: {
+    color: colors.rose,
+    fontFamily: 'PlayfairDisplay_700Bold',
+    fontSize: 21,
+    lineHeight: 25,
+  },
+  vendorMetaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  vendorMetaChip: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceWarm,
+    borderColor: colors.faint,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  vendorMetaText: {
+    color: colors.muted,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+  },
+  vendorNextActionStrip: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceWarm,
+    borderColor: colors.faint,
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
     padding: 11,
   },
-  vendorPaymentText: {
+  vendorNextActionIcon: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 13,
+    height: 30,
+    justifyContent: 'center',
+    width: 30,
+  },
+  vendorBalancePill: {
+    alignItems: 'flex-end',
+    backgroundColor: colors.surface,
+    borderColor: colors.faint,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+  },
+  vendorBalanceLabel: {
+    color: colors.muted,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 9,
+    textTransform: 'uppercase',
+  },
+  vendorBalanceText: {
     color: colors.ink,
     fontFamily: 'Inter_700Bold',
     fontSize: 12,
@@ -12593,6 +13479,44 @@ const styles = StyleSheet.create({
     gap: 9,
     marginTop: 12,
     padding: 11,
+  },
+  vendorContractHero: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceWarm,
+    borderColor: colors.faint,
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 11,
+    padding: 12,
+  },
+  vendorContractHeroIcon: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.roseSoft,
+    borderRadius: 15,
+    borderWidth: 1,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  vendorContractSection: {
+    backgroundColor: colors.surface,
+    borderColor: colors.faint,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 10,
+    padding: 12,
+  },
+  vendorContractNoteRow: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceWarm,
+    borderColor: colors.faint,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    padding: 10,
   },
   noContractTitle: {
     color: colors.rose,
@@ -13255,6 +14179,15 @@ const styles = StyleSheet.create({
   vendorInfoList: {
     gap: 10,
     marginTop: 16,
+  },
+  vendorPaymentPanel: {
+    backgroundColor: colors.surfaceWarm,
+    borderColor: colors.faint,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 10,
+    marginTop: 16,
+    padding: 12,
   },
   vendorInfoRow: {
     alignItems: 'center',

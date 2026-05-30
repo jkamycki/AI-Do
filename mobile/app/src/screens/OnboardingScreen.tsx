@@ -171,7 +171,7 @@ export function OnboardingScreen() {
       {step === 2 ? (
         <SetupStep
           icon="map-marker-outline"
-          subtitle="If you do not have a venue yet, A.I Do keeps discovery notes ready for Aria and your vendor shortlist."
+          subtitle="If you do not have a venue yet, A.I DO keeps discovery notes ready for Aria and your vendor shortlist."
           title="Where is the celebration headed?"
         >
           <View style={styles.choiceRow}>

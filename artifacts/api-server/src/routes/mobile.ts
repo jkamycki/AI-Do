@@ -119,6 +119,7 @@ router.get("/mobile/planning", requireAuth, async (req, res) => {
           id: String(payment.id),
           date: payment.dueDate,
           amount: money(payment.amount),
+          isPaid: payment.isPaid,
           note: payment.label,
         })),
       };
@@ -164,8 +165,12 @@ router.get("/mobile/planning", requireAuth, async (req, res) => {
       : [];
 
     const website = websiteRows[0];
+    const heroImages = Array.isArray(website?.heroImages) ? website.heroImages : [];
+    const sortedHeroImages = [...heroImages].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const coverPhotoUrl = website?.heroImage || sortedHeroImages[0]?.url || undefined;
     res.json({
       profile: {
+        coverPhotoUrl,
         coupleName: `${profile.partner1Name} & ${profile.partner2Name}`,
         partnerOne: profile.partner1Name,
         partnerTwo: profile.partner2Name,
@@ -194,6 +199,9 @@ router.get("/mobile/planning", requireAuth, async (req, res) => {
         rsvp: rsvpStatus(guest.rsvpStatus),
         saveTheDateStatus: guest.saveTheDateStatus || "not_sent",
         mealPreference: guest.mealChoice || "Guest",
+        plusOne: guest.plusOne,
+        plusOneName: guest.plusOneName || "",
+        plusOneStatus: guest.plusOneStatus || (guest.plusOne ? "name_tbd" : "none"),
         table: guest.tableAssignment || "No table",
         role: guest.guestGroup || "Guest",
         invitationStyle: "cream",

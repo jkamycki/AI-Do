@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '../components/Card';
 import { ProgressBar } from '../components/ProgressBar';
@@ -9,6 +9,8 @@ import { StatusPill } from '../components/StatusPill';
 import { usePlanningData } from '../state/PlanningDataContext';
 import { fonts, radii, spacing, useAppTheme } from '../theme';
 import { daysFromToday, daysUntil, formatCurrency, formatDeadlineLabel, formatShortDate } from '../utils/format';
+
+const fallbackCoverPhotoUrl = 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=900&q=90';
 
 type RouteName =
   | 'Aria'
@@ -51,38 +53,41 @@ export function HomeScreen() {
   const nextPayment = data.budget
     .filter((item) => item.nextPayment)
     .sort((a, b) => String(a.nextPayment?.date).localeCompare(String(b.nextPayment?.date)))[0];
+  const coverPhotoUrl = profile.coverPhotoUrl || fallbackCoverPhotoUrl;
 
   const go = (route: RouteName) => navigation.navigate(route);
 
   return (
     <Screen contentStyle={styles.homeContent} onRefresh={refresh} refreshing={loading}>
-      <View style={styles.hero}>
-        <View style={styles.heroTop}>
-          <View style={styles.heroCopy}>
-            <Text style={[styles.eyebrow, { color: colors.primary }]}>A.I Do Planner</Text>
-            <Text style={[styles.couple, { color: colors.text }]}>{profile.coupleName}</Text>
-            <Text style={[styles.date, { color: colors.muted }]}>
-              {formatShortDate(profile.weddingDate)} at {profile.venue}
-            </Text>
+      <ImageBackground imageStyle={styles.heroImage} resizeMode="cover" source={{ uri: coverPhotoUrl }} style={styles.hero}>
+        <View style={styles.heroOverlay}>
+          <View style={styles.heroTop}>
+            <View style={styles.heroCopy}>
+              <Text style={styles.heroEyebrow}>A.I DO Planner</Text>
+              <Text style={styles.heroCouple}>{profile.coupleName}</Text>
+              <Text style={styles.heroDate}>
+                {formatShortDate(profile.weddingDate)} at {profile.venue}
+              </Text>
+            </View>
+            <Pressable
+              accessibilityLabel="Open profile"
+              onPress={() => go('ProfileSettings')}
+              style={({ pressed }) => [
+                styles.avatar,
+                { backgroundColor: 'rgba(255, 248, 244, 0.94)', borderColor: 'rgba(255, 255, 255, 0.72)', opacity: pressed ? 0.78 : 1 },
+              ]}
+            >
+              <Text style={[styles.avatarText, { color: colors.primary }]}>{profile.photoInitials}</Text>
+            </Pressable>
           </View>
-          <Pressable
-            accessibilityLabel="Open profile"
-            onPress={() => go('ProfileSettings')}
-            style={({ pressed }) => [
-              styles.avatar,
-              { backgroundColor: colors.primarySoft, borderColor: colors.cardStrong, opacity: pressed ? 0.78 : 1 },
-            ]}
-          >
-            <Text style={[styles.avatarText, { color: colors.primary }]}>{profile.photoInitials}</Text>
-          </Pressable>
-        </View>
 
-        <View style={styles.heroMetrics}>
-          <Metric label="Days" value={String(daysUntil(profile.weddingDate))} />
-          <Metric label="Planned" value={`${taskProgress}%`} />
-          <Metric label="Guests" value={`${confirmedGuests}/${profile.guestTarget}`} />
+          <View style={styles.heroMetrics}>
+            <Metric label="Days" value={String(daysUntil(profile.weddingDate))} />
+            <Metric label="Planned" value={`${taskProgress}%`} />
+            <Metric label="Guests" value={`${confirmedGuests}/${profile.guestTarget}`} />
+          </View>
         </View>
-      </View>
+      </ImageBackground>
 
       <Pressable onPress={() => go('Aria')} style={({ pressed }) => ({ opacity: pressed ? 0.78 : 1 })}>
         <Card padding={spacing.md} style={styles.ariaCard}>
@@ -292,7 +297,42 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   hero: {
+    borderRadius: radii.xl,
     marginBottom: spacing.lg,
+    minHeight: 278,
+    overflow: 'hidden',
+  },
+  heroDate: {
+    color: '#FFF8F4',
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: spacing.xs,
+  },
+  heroEyebrow: {
+    color: '#FFE8DE',
+    fontFamily: fonts.bold,
+    fontSize: 12,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  heroImage: {
+    borderRadius: radii.xl,
+  },
+  heroOverlay: {
+    backgroundColor: 'rgba(44, 22, 29, 0.38)',
+    flex: 1,
+    justifyContent: 'space-between',
+    padding: spacing.lg,
+  },
+  heroCouple: {
+    color: '#FFF8F4',
+    fontFamily: fonts.heading,
+    fontSize: 34,
+    lineHeight: 38,
+    textShadowColor: 'rgba(34, 16, 22, 0.26)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 10,
   },
   heroCopy: {
     flex: 1,

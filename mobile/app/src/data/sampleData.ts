@@ -2,6 +2,7 @@ import { PlanningData } from '../types';
 
 export const samplePlanningData: PlanningData = {
   profile: {
+    coverPhotoUrl: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=900&q=90',
     coupleName: 'Stacy & Rick',
     partnerOne: 'Stacy',
     partnerTwo: 'Rick',
@@ -54,8 +55,8 @@ export const samplePlanningData: PlanningData = {
       payments: [{ id: 'rm-1', date: '2026-02-04', amount: 1000, note: 'Initial deposit' }],
     },
     {
-      id: 'posidis',
-      name: 'POSIDIS',
+      id: 'posh-djs',
+      name: 'Posh DJs',
       category: 'DJ & Entertainment',
       committed: 600,
       paid: 600,
@@ -64,7 +65,7 @@ export const samplePlanningData: PlanningData = {
       status: 'Completed',
       contactName: 'Marco Silva',
       phone: '(555) 018-4477',
-      email: 'music@posidis.example',
+      email: 'music@poshdjs.example',
       arrivalTime: '3:30 PM',
       payments: [{ id: 'po-1', date: '2026-02-22', amount: 600, note: 'Paid in full' }],
     },
@@ -117,18 +118,18 @@ export const samplePlanningData: PlanningData = {
     {
       id: 'music',
       category: 'Entertainment',
-      title: 'POSIDIS',
+      title: 'Posh DJs',
       total: 600,
       paid: 600,
       payments: [{ id: 'b-music-1', date: '2026-02-22', amount: 600, note: 'Paid in full' }],
     },
   ],
   guests: [
-    { id: 'emily', name: 'Emily Vargas', rsvp: 'Confirmed', mealPreference: 'Chicken', table: 'Table 3', role: 'Guest', invitationStyle: 'floral' },
-    { id: 'michael', name: 'Michael Russo', rsvp: 'Pending', mealPreference: 'Guest', table: 'Table 5', role: 'Guest', invitationStyle: 'cream' },
-    { id: 'sofia', name: 'Sofia Martinez', rsvp: 'Confirmed', mealPreference: 'Vegetarian', table: 'Table 8', role: 'Guest', invitationStyle: 'floral' },
-    { id: 'rachel', name: 'Rachel Donovan', rsvp: 'Declined', mealPreference: 'Declined', table: 'No table', role: 'Guest', invitationStyle: 'brown' },
-    { id: 'anthony', name: 'Anthony Delgado', rsvp: 'Pending', mealPreference: 'Guest', table: 'Table 2', role: 'Guest', invitationStyle: 'floral' },
+    { id: 'emily', name: 'Emily Vargas', email: 'emily.vargas@example.com', rsvp: 'Confirmed', mealPreference: 'Chicken', table: 'Table 3', role: 'Guest', invitationStyle: 'floral' },
+    { id: 'michael', name: 'Michael Russo', email: 'michael.russo@example.com', rsvp: 'Pending', mealPreference: 'Guest', table: 'Table 5', role: 'Guest', invitationStyle: 'cream' },
+    { id: 'sofia', name: 'Sofia Martinez', email: 'sofia.martinez@example.com', rsvp: 'Confirmed', mealPreference: 'Vegetarian', table: 'Table 8', role: 'Guest', invitationStyle: 'floral' },
+    { id: 'rachel', name: 'Rachel Donovan', email: 'rachel.donovan@example.com', rsvp: 'Declined', mealPreference: 'Declined', table: 'No table', role: 'Guest', invitationStyle: 'brown' },
+    { id: 'anthony', name: 'Anthony Delgado', email: 'anthony.delgado@example.com', rsvp: 'Pending', mealPreference: 'Guest', table: 'Table 2', role: 'Guest', invitationStyle: 'floral' },
   ],
   tasks: [
     { id: 'guest-addresses', title: 'Collect missing mailing addresses', dueDate: '2026-05-28', category: 'Guests', completed: false, detail: 'Send reminders to pending invitation households.' },
@@ -209,7 +210,7 @@ export const samplePlanningData: PlanningData = {
     deadlineReminderDays: 7,
     pushNotificationsEnabled: false,
     rsvpEmailForwardingEnabled: true,
-    rsvpResponseEmails: ['stacy@example.com'],
+    rsvpResponseEmails: ['couple@example.com'],
     ariaMemory:
       'We are planning a soft blush, cream, and gold wedding. Avoid shellfish because of an allergy. Ceremony will be outdoors if weather allows.',
   },

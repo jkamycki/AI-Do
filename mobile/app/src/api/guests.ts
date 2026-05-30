@@ -10,6 +10,9 @@ type BackendGuest = {
   rsvpStatus?: string | null;
   saveTheDateStatus?: string | null;
   mealChoice?: string | null;
+  plusOne?: boolean | null;
+  plusOneName?: string | null;
+  plusOneStatus?: string | null;
   guestGroup?: string | null;
   tableAssignment?: string | null;
 };
@@ -37,10 +40,14 @@ function isBackendId(id: string) {
 
 function guestPayload(guest: Guest) {
   return {
+    email: guest.email?.trim() || null,
     guestGroup: guest.role.trim() || null,
     invitationStatus: 'pending',
     mealChoice: guest.mealPreference.trim() || null,
     name: guest.name.trim(),
+    plusOne: guest.plusOneStatus === 'named' || guest.plusOneStatus === 'name_tbd',
+    plusOneName: guest.plusOneName?.trim() || null,
+    plusOneStatus: guest.plusOneStatus || (guest.plusOne ? 'name_tbd' : 'none'),
     rsvpStatus: rsvpToBackend[guest.rsvp],
     tableAssignment: guest.table.trim() && guest.table !== 'No table' ? guest.table.trim() : null,
   };
@@ -54,6 +61,9 @@ function toMobileGuest(guest: BackendGuest, fallback?: Guest): Guest {
     invitationStyle: fallback?.invitationStyle ?? 'cream',
     mealPreference: guest.mealChoice?.trim() || fallback?.mealPreference || 'Guest',
     name: guest.name?.trim() || fallback?.name || 'Guest',
+    plusOne: Boolean(guest.plusOne ?? fallback?.plusOne),
+    plusOneName: guest.plusOneName?.trim() || fallback?.plusOneName || '',
+    plusOneStatus: guest.plusOneStatus || fallback?.plusOneStatus || (guest.plusOne ? 'name_tbd' : 'none'),
     rsvpReminderStatus: guest.rsvpReminderStatus || fallback?.rsvpReminderStatus || 'not_sent',
     role: guest.guestGroup?.trim() || fallback?.role || 'Guest',
     rsvp: backendRsvpToMobile(guest.rsvpStatus) || fallback?.rsvp || 'Pending',
