@@ -70,6 +70,13 @@ type GuestPhotoDropData = {
     hidden: number;
   };
   uploads: GuestPhotoUpload[];
+  page: {
+    limit: number;
+    offset: number;
+    returned: number;
+    hasMore: boolean;
+    nextOffset: number;
+  };
 };
 
 const statusStyles: Record<string, string> = {
@@ -79,6 +86,7 @@ const statusStyles: Record<string, string> = {
 };
 
 const WEBSITE_GUEST_PHOTO_LIMIT = 50;
+const PHOTO_DROP_PAGE_SIZE = 48;
 
 const displayModeCopy: Record<GuestPhotoSettings["displayMode"], { label: string; description: string }> = {
   portal: {
@@ -136,13 +144,21 @@ function formatFileSize(size?: number | null) {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function summarizeUploads(uploads: GuestPhotoUpload[]): GuestPhotoDropData["summary"] {
-  return {
-    total: uploads.length,
-    pending: uploads.filter((upload) => upload.status === "pending").length,
-    approved: uploads.filter((upload) => upload.status === "approved").length,
-    hidden: uploads.filter((upload) => upload.status === "hidden").length,
-  };
+function adjustSummary(
+  summary: GuestPhotoDropData["summary"],
+  fromStatus: string | null,
+  toStatus: string | null,
+): GuestPhotoDropData["summary"] {
+  const next = { ...summary };
+  if (fromStatus === "pending") next.pending = Math.max(0, next.pending - 1);
+  if (fromStatus === "approved") next.approved = Math.max(0, next.approved - 1);
+  if (fromStatus === "hidden") next.hidden = Math.max(0, next.hidden - 1);
+  if (toStatus === "pending") next.pending += 1;
+  if (toStatus === "approved") next.approved += 1;
+  if (toStatus === "hidden") next.hidden += 1;
+  if (fromStatus === null && toStatus !== null) next.total += 1;
+  if (fromStatus !== null && toStatus === null) next.total = Math.max(0, next.total - 1);
+  return next;
 }
 
 function updateUploadInData(
@@ -152,20 +168,36 @@ function updateUploadInData(
 ): GuestPhotoDropData | undefined {
   if (!data) return data;
   let changed = false;
+  let fromStatus: string | null = null;
+  let toStatus: string | null = null;
   const uploads = data.uploads.map((upload) => {
     if (upload.id !== id) return upload;
     changed = true;
+    fromStatus = upload.status;
+    toStatus = patch.status ?? upload.status;
     return { ...upload, ...patch };
   });
   if (!changed) return data;
-  return { ...data, uploads, summary: summarizeUploads(uploads) };
+  return { ...data, uploads, summary: fromStatus === toStatus ? data.summary : adjustSummary(data.summary, fromStatus, toStatus) };
 }
 
 function removeUploadFromData(data: GuestPhotoDropData | undefined, id: number): GuestPhotoDropData | undefined {
   if (!data) return data;
+  const removed = data.uploads.find((upload) => upload.id === id);
   const uploads = data.uploads.filter((upload) => upload.id !== id);
   if (uploads.length === data.uploads.length) return data;
-  return { ...data, uploads, summary: summarizeUploads(uploads) };
+  return { ...data, uploads, summary: adjustSummary(data.summary, removed?.status ?? null, null) };
+}
+
+function mergeUploads(existing: GuestPhotoUpload[], incoming: GuestPhotoUpload[]): GuestPhotoUpload[] {
+  const seen = new Set<number>();
+  const merged: GuestPhotoUpload[] = [];
+  for (const upload of [...existing, ...incoming]) {
+    if (seen.has(upload.id)) continue;
+    seen.add(upload.id);
+    merged.push(upload);
+  }
+  return merged;
 }
 
 export default function GuestPhotoDrop() {
@@ -177,7 +209,7 @@ export default function GuestPhotoDrop() {
 
   const photoDropQuery = useQuery<GuestPhotoDropData>({
     queryKey: ["guest-photo-drop"],
-    queryFn: async () => readJson<GuestPhotoDropData>(await authFetch("/api/website/photo-drop")),
+    queryFn: async () => readJson<GuestPhotoDropData>(await authFetch(`/api/website/photo-drop?limit=${PHOTO_DROP_PAGE_SIZE}&offset=0`)),
     staleTime: 15_000,
   });
 
@@ -260,6 +292,34 @@ export default function GuestPhotoDrop() {
       if (context?.previous) queryClient.setQueryData(["guest-photo-drop"], context.previous);
       toast({
         title: "Could not delete photo",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const loadMoreUploads = useMutation({
+    mutationFn: async () => {
+      const current = queryClient.getQueryData<GuestPhotoDropData>(["guest-photo-drop"]);
+      const offset = current?.page?.nextOffset ?? current?.uploads.length ?? 0;
+      return readJson<GuestPhotoDropData>(
+        await authFetch(`/api/website/photo-drop?limit=${PHOTO_DROP_PAGE_SIZE}&offset=${offset}`),
+      );
+    },
+    onSuccess: (body) => {
+      queryClient.setQueryData<GuestPhotoDropData>(["guest-photo-drop"], (current) => {
+        if (!current) return body;
+        return {
+          ...current,
+          summary: body.summary,
+          uploads: mergeUploads(current.uploads, body.uploads),
+          page: body.page,
+        };
+      });
+    },
+    onError: (err) => {
+      toast({
+        title: "Could not load more photos",
         description: err instanceof Error ? err.message : "Please try again.",
         variant: "destructive",
       });
@@ -399,6 +459,7 @@ export default function GuestPhotoDrop() {
     ? uploads.filter((upload) => upload.status === "approved").length
     : 0;
   const websiteGalleryFull = websitePublishesGuestPhotos && approvedWebsitePhotos >= WEBSITE_GUEST_PHOTO_LIMIT;
+  const loadedCount = uploads.length;
 
   const approveUpload = (upload: GuestPhotoUpload) => {
     if (websiteGalleryFull && upload.status !== "approved") {
@@ -671,6 +732,20 @@ export default function GuestPhotoDrop() {
           onDelete={(id) => deleteUpload.mutate(id)}
           onDownload={downloadUpload}
         />
+
+        {data.page.hasMore && (
+          <div className="flex justify-center">
+            <Button
+              type="button"
+              onClick={() => loadMoreUploads.mutate()}
+              disabled={loadMoreUploads.isPending}
+              className="rounded-full bg-[#8D294D] px-6 text-white hover:bg-[#762140]"
+            >
+              {loadMoreUploads.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              Load more photos ({loadedCount} of {data.summary.total})
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

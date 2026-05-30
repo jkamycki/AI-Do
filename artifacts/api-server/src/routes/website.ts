@@ -1052,25 +1052,47 @@ router.get("/website/photo-drop", requireAuth, async (req, res) => {
       .limit(1);
     if (!site) return res.status(404).json({ error: "Website not created yet" });
 
+    const limit = Math.max(1, Math.min(96, Number(req.query.limit ?? 48) || 48));
+    const offset = Math.max(0, Number(req.query.offset ?? 0) || 0);
+    const [summaryRow] = await db
+      .select({
+        total: sql<number>`count(*)::int`,
+        pending: sql<number>`coalesce(sum(case when ${guestPhotoUploads.status} = 'pending' then 1 else 0 end), 0)::int`,
+        approved: sql<number>`coalesce(sum(case when ${guestPhotoUploads.status} = 'approved' then 1 else 0 end), 0)::int`,
+        hidden: sql<number>`coalesce(sum(case when ${guestPhotoUploads.status} = 'hidden' then 1 else 0 end), 0)::int`,
+      })
+      .from(guestPhotoUploads)
+      .where(eq(guestPhotoUploads.websiteId, site.id));
+
     const uploads = await db
       .select()
       .from(guestPhotoUploads)
       .where(eq(guestPhotoUploads.websiteId, site.id))
-      .orderBy(desc(guestPhotoUploads.uploadedAt));
+      .orderBy(desc(guestPhotoUploads.uploadedAt))
+      .limit(limit)
+      .offset(offset);
     const settings = guestPhotoDropSettings(site.customText);
     const publicUploadUrl = `${buildFrontendOrigin(req).replace(/\/+$/, "")}/photo-drop/${site.slug}`;
+    const total = Number(summaryRow?.total ?? 0);
 
     res.json({
       website: serialize(site),
       settings,
       publicUploadUrl,
       summary: {
-        total: uploads.length,
-        pending: uploads.filter((u) => u.status === "pending").length,
-        approved: uploads.filter((u) => u.status === "approved").length,
-        hidden: uploads.filter((u) => u.status === "hidden").length,
+        total,
+        pending: Number(summaryRow?.pending ?? 0),
+        approved: Number(summaryRow?.approved ?? 0),
+        hidden: Number(summaryRow?.hidden ?? 0),
       },
       uploads: uploads.map((upload) => serializeGuestPhotoUpload(upload, site, true, guestPhotoShowsOnWebsite(settings))),
+      page: {
+        limit,
+        offset,
+        returned: uploads.length,
+        hasMore: offset + uploads.length < total,
+        nextOffset: offset + uploads.length,
+      },
     });
   } catch (err) {
     req.log.error(err, "guestPhotoDropGet failed");
