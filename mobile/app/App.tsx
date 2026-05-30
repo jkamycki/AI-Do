@@ -5774,7 +5774,7 @@ function VendorsSection({
       ) : null}
 
       {activeView === 'finance' ? (
-        <MoneySection data={data} embedded openMockAction={openMockAction} paid={totalPaid} refreshFromWebsite={refreshFromWebsite} total={totalCommitted} />
+        <MoneySection data={data} embedded paid={totalPaid} refreshFromWebsite={refreshFromWebsite} total={totalCommitted} />
       ) : null}
 
       {activeView === 'files' ? (
@@ -5840,12 +5840,10 @@ function VendorsSection({
 function MoneySection({
   data,
   embedded = false,
-  openMockAction,
   refreshFromWebsite,
 }: {
   data: typeof samplePlanningData;
   embedded?: boolean;
-  openMockAction: (action: MockAction) => void;
   paid: number;
   refreshFromWebsite?: () => Promise<void>;
   total: number;
@@ -6196,13 +6194,7 @@ function MoneySection({
                   payment={payment}
                   onMarkPaid={() => markScheduledPaid(item, payment)}
                   onPaidFull={() => markPaidInFull(item)}
-                  onPress={() =>
-                    openMockAction({
-                      title: `${item.title} payment`,
-                      detail: `Open payment details, due date reminders, receipt uploads, and vendor payment history for ${item.title}. Use Paid scheduled payment for this milestone or Paid full balance for the whole remaining balance.`,
-                      primaryLabel: 'Open payment',
-                    })
-                  }
+                  onPress={() => setScheduleItemId(item.id)}
                 />
               ))}
             {scheduledPaymentRows.length === 0 ? (
