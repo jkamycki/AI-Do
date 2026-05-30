@@ -229,7 +229,14 @@ const featureGroups = [
   {
     title: 'Collaboration',
     items: [
-      ['Workspace', 'Partner, planner, family, and vendor collaboration.', 'business-outline'],
+      ['Workspace', 'Partner, planner, and family collaboration.', 'business-outline'],
+    ],
+  },
+  {
+    title: 'Support',
+    items: [
+      ['Help & support', 'Contact A.I DO support and view app guidance.', 'help-circle-outline'],
+      ['Desktop tools', 'Full design editing, exports, admin, and advanced setup live on desktop.', 'desktop-outline'],
     ],
   },
 ];
@@ -6557,9 +6564,29 @@ function FeatureHub({
   openTab: (tab: TabId) => void;
 }) {
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const pendingInvites = data.workspaceInvites.filter((invite) => invite.status !== 'Accepted').length;
+  const acceptedInvites = data.workspaceInvites.length - pendingInvites;
 
   return (
-    <Section title="More" subtitle="Account, privacy, collaboration, and support.">
+    <Section title="More" subtitle="Account, privacy, workspace access, and support.">
+      <LinearGradient colors={['#FFF2EA', '#F8DDE5']} style={styles.vendorHero}>
+        <View style={styles.kickerRow}>
+          <Text style={styles.kicker}>Settings</Text>
+          <View style={styles.livePill}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveText}>App ready</Text>
+          </View>
+        </View>
+        <Text style={styles.vendorHeroTitle}>Manage access and support.</Text>
+        <Text style={styles.vendorHeroText}>Keep account settings, workspace invites, notifications, privacy, and help in one quiet place.</Text>
+      </LinearGradient>
+
+      <View style={styles.summaryGrid}>
+        <SummaryCard label="Workspace" value={`${acceptedInvites}/${data.workspaceInvites.length}`} />
+        <SummaryCard label="Pending" value={String(pendingInvites)} />
+        <SummaryCard label="Support" value="Ready" />
+      </View>
+
       {featureGroups.map((group) => (
         <View key={group.title} style={styles.groupBlock}>
           <Text style={styles.groupTitle}>{group.title}</Text>
@@ -6606,7 +6633,7 @@ function WorkspaceModal({
   open: boolean;
 }) {
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'Planner' | 'Partner' | 'Family' | 'Vendor'>('Planner');
+  const [role, setRole] = useState<'Planner' | 'Partner' | 'Family'>('Planner');
   const [invites, setInvites] = useState(data.workspaceInvites);
   const [syncMessage, setSyncMessage] = useState('');
   const [syncing, setSyncing] = useState(false);
@@ -6678,7 +6705,7 @@ function WorkspaceModal({
               </View>
               <View style={styles.hubCopy}>
                 <Text style={styles.cardTitle}>Workspace</Text>
-                <Text style={styles.hubDetail}>Invite your partner, planner, family, or vendors into the planning workspace.</Text>
+                <Text style={styles.hubDetail}>Invite your partner, planner, or family into the planning workspace.</Text>
               </View>
             </View>
             <Pressable onPress={onClose} style={styles.closeButton}>
@@ -6702,7 +6729,7 @@ function WorkspaceModal({
             <View>
               <Text style={styles.formLabel}>Role</Text>
               <View style={styles.eventTypeRow}>
-                {(['Planner', 'Partner', 'Family', 'Vendor'] as const).map((item) => {
+                {(['Planner', 'Partner', 'Family'] as const).map((item) => {
                   const active = role === item;
                   return (
                     <Pressable key={item} onPress={() => setRole(item)} style={[styles.eventTypePill, active && styles.eventTypePillActive]}>
@@ -9832,6 +9859,7 @@ function cleanActionDetail(detail: string) {
 
 function workspaceRoleValue(role: string) {
   if (role === 'Partner') return 'partner';
+  if (role === 'Family') return 'family';
   if (role === 'Vendor') return 'vendor';
   return 'planner';
 }
@@ -9857,6 +9885,22 @@ function targetTabForFeature(label: string): TabId | null {
 }
 
 function openFeatureMock(openMockAction: (action: MockAction) => void, label: string) {
+  if (label === 'Help & support') {
+    openMockAction({
+      title: 'Help & support',
+      detail: 'Get help with mobile app sync, account access, guest sending, vendor files, and wedding website publishing.',
+      primaryLabel: 'Contact support',
+    });
+    return;
+  }
+  if (label === 'Desktop tools') {
+    openMockAction({
+      title: 'Desktop tools',
+      detail: 'Use A.I DO on desktop for full website design editing, section ordering, advanced invitation polish, exports, and admin-level workflows.',
+      primaryLabel: 'Got it',
+    });
+    return;
+  }
   openMockAction({
     title: label,
     detail: `${label} includes editable details, saved changes, and related planning data.`,
