@@ -461,6 +461,9 @@ export default function GuestPhotoDrop() {
   const websiteGalleryFull = websitePublishesGuestPhotos && approvedWebsitePhotos >= WEBSITE_GUEST_PHOTO_LIMIT;
   const loadedCount = uploads.length;
 
+  const canOfferDeleteAfterDownload = (upload: GuestPhotoUpload) =>
+    !websitePublishesGuestPhotos || upload.status !== "approved";
+
   const approveUpload = (upload: GuestPhotoUpload) => {
     if (websiteGalleryFull && upload.status !== "approved") {
       toast({
@@ -718,6 +721,10 @@ export default function GuestPhotoDrop() {
           onHide={(id) => setUploadStatus.mutate({ id, status: "hidden" })}
           onDelete={(id) => deleteUpload.mutate(id)}
           onDownload={downloadUpload}
+          onDownloadThenDelete={(upload) => {
+            void downloadUpload(upload).then(() => deleteUpload.mutate(upload.id));
+          }}
+          canOfferDeleteAfterDownload={canOfferDeleteAfterDownload}
         />
 
         <UploadQueue
@@ -731,6 +738,10 @@ export default function GuestPhotoDrop() {
           onHide={(id) => setUploadStatus.mutate({ id, status: "hidden" })}
           onDelete={(id) => deleteUpload.mutate(id)}
           onDownload={downloadUpload}
+          onDownloadThenDelete={(upload) => {
+            void downloadUpload(upload).then(() => deleteUpload.mutate(upload.id));
+          }}
+          canOfferDeleteAfterDownload={canOfferDeleteAfterDownload}
         />
 
         {data.page.hasMore && (
@@ -784,6 +795,8 @@ function UploadQueue({
   onHide,
   onDelete,
   onDownload,
+  onDownloadThenDelete,
+  canOfferDeleteAfterDownload,
 }: {
   title: string;
   description: string;
@@ -795,6 +808,8 @@ function UploadQueue({
   onHide: (id: number) => void;
   onDelete: (id: number) => void;
   onDownload: (upload: GuestPhotoUpload) => void;
+  onDownloadThenDelete: (upload: GuestPhotoUpload) => void;
+  canOfferDeleteAfterDownload: (upload: GuestPhotoUpload) => boolean;
 }) {
   return (
     <Card className="border-[#E6A6B7]/40 bg-white/90 shadow-[0_24px_70px_rgba(91,15,42,0.10)]">
@@ -856,6 +871,22 @@ function UploadQueue({
                     <Download className="mr-2 h-4 w-4" />
                     Download Photo
                   </Button>
+                  {canOfferDeleteAfterDownload(upload) && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        if (window.confirm("Download this photo and remove it from the portal afterward?")) {
+                          onDownloadThenDelete(upload);
+                        }
+                      }}
+                      className="w-full rounded-full border-[#E6A6B7]/70 bg-[#FFF7F2]/80 text-[#8D294D] hover:bg-[#F7DDE2]/50"
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Download & remove from portal
+                    </Button>
+                  )}
                   <div className="grid grid-cols-3 gap-2">
                     {(() => {
                       const disabled = approveDisabled?.(upload) ?? false;
