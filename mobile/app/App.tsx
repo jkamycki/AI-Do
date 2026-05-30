@@ -2004,6 +2004,7 @@ function WebsiteSection({
   const [registryConnected, setRegistryConnected] = useState(false);
   const [registryUrl, setRegistryUrl] = useState('');
   const [registryLoaded, setRegistryLoaded] = useState(false);
+  const [registryMessage, setRegistryMessage] = useState('');
   const [invitationStudioOpen, setInvitationStudioOpen] = useState(false);
   const [guestCampaignMessage, setGuestCampaignMessage] = useState<string | null>(null);
   const [guestCampaignSending, setGuestCampaignSending] = useState<GuestCampaign | null>(null);
@@ -2283,6 +2284,17 @@ function WebsiteSection({
     void AsyncStorage.setItem(storageKeys.registryConnected, String(registryConnected));
     void AsyncStorage.setItem(storageKeys.registryUrl, registryUrl);
   }, [registryConnected, registryLoaded, registryUrl]);
+  const saveRegistryLink = () => {
+    const trimmedUrl = registryUrl.trim();
+    setRegistryConnected(Boolean(trimmedUrl));
+    setRegistryMessage(trimmedUrl ? 'Registry link saved for the wedding website and guest flow.' : 'Add a registry URL when it is ready.');
+  };
+  const setPresetRegistry = (provider: string) => {
+    const url = `https://${provider.toLowerCase().replace(/\s+/g, '')}.com/registry/stacy-rick`;
+    setRegistryConnected(true);
+    setRegistryUrl(url);
+    setRegistryMessage(`${provider} registry link added. Update the URL anytime.`);
+  };
 
   return (
     <Section title={viewCopy[activeView].title} subtitle={viewCopy[activeView].subtitle}>
@@ -2669,13 +2681,7 @@ function WebsiteSection({
             <Pressable
               key={provider}
               onPress={() => {
-                setRegistryConnected(true);
-                setRegistryUrl(`https://${provider.toLowerCase().replace(/\s+/g, '')}.com/registry/stacy-rick`);
-                openMockAction({
-                  title: `${provider} registry connected`,
-                  detail: `Connect the couple's ${provider} registry and make it available in Guest Hub, invitations, and RSVP flows.`,
-                  primaryLabel: 'Done',
-                });
+                setPresetRegistry(provider);
               }}
               style={styles.registryProvider}
             >
@@ -2685,16 +2691,7 @@ function WebsiteSection({
         </View>
         <View style={styles.websiteActions}>
           <Pressable
-            onPress={() => {
-              setRegistryConnected(Boolean(registryUrl.trim()) || true);
-              openMockAction({
-                title: 'Registry connected',
-                detail: registryUrl.trim()
-                  ? `${registryUrl.trim()} is saved and ready for the website, invitations, and RSVP experience.`
-                  : 'Add a registry URL when it is ready, then show it on the website, invitations, and RSVP experience.',
-                primaryLabel: 'Save registry',
-              });
-            }}
+            onPress={saveRegistryLink}
             style={styles.primaryActionButton}
           >
             <Ionicons color={colors.surface} name="link-outline" size={18} />
@@ -2702,13 +2699,9 @@ function WebsiteSection({
           </Pressable>
           <Pressable
             onPress={() => {
-              setRegistryConnected(true);
               if (!registryUrl.trim()) setRegistryUrl('https://');
-              openMockAction({
-                title: 'Custom registry link',
-                detail: 'Paste any registry URL and choose where guests see it.',
-                primaryLabel: 'Add link',
-              });
+              setRegistryConnected(Boolean(registryUrl.trim()));
+              setRegistryMessage('Paste any registry URL, then tap Connect registry.');
             }}
             style={styles.secondaryActionButton}
           >
@@ -2716,6 +2709,7 @@ function WebsiteSection({
             <Text style={styles.secondaryActionText}>Add custom link</Text>
           </Pressable>
         </View>
+        {registryMessage ? <SavedStrip label={registryMessage} /> : null}
       </Card> : null}
 
       {activeView === 'photoDrop' ? (
