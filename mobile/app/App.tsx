@@ -5607,6 +5607,8 @@ function VendorsSection({
   const totalCommitted = vendors.reduce((sum, vendor) => sum + vendor.committed, 0);
   const totalPaid = vendors.reduce((sum, vendor) => sum + vendor.paid, 0);
   const signedCount = vendors.filter((vendor) => vendor.status === 'Signed' || vendor.status === 'Completed').length;
+  const needsContractCount = vendors.filter((vendor) => !vendorHasUploadedContract(data, vendor)).length;
+  const upcomingPaymentCount = vendors.filter((vendor) => vendor.nextPaymentDate && vendor.remaining > 0).length;
 
   return (
     <Section title="Vendors" subtitle="Track vendor contacts, contracts, payment status, files, and messages.">
@@ -5618,8 +5620,8 @@ function VendorsSection({
             <Text style={styles.liveText}>{vendors.length} booked</Text>
           </View>
         </View>
-        <Text style={styles.vendorHeroTitle}>Keep every vendor in one clean place.</Text>
-        <Text style={styles.vendorHeroText}>Contacts, contracts, scheduled payments, files, and Aria-assisted messages stay tied to each vendor.</Text>
+        <Text style={styles.vendorHeroTitle}>Your vendor command center.</Text>
+        <Text style={styles.vendorHeroText}>Vendor list, budget summary, contacts, contracts, and messages are grouped here so the app does not feel like a spreadsheet.</Text>
         <View style={styles.websiteActions}>
           <Pressable
             onPress={() =>
@@ -5658,10 +5660,10 @@ function VendorsSection({
 
       <View style={styles.vendorHubSwitch}>
         {[
-          ['list', 'List', 'storefront-outline'],
-          ['finance', 'Budget', 'wallet-outline'],
+          ['list', 'Vendor List', 'storefront-outline'],
+          ['finance', 'Budget Summary', 'wallet-outline'],
           ['contacts', 'Contacts', 'people-outline'],
-          ['messages', 'Inbox', 'chatbubbles-outline'],
+          ['messages', 'Messages', 'chatbubbles-outline'],
         ].map(([id, label, icon]) => {
           const active = activeView === id;
           return (
@@ -5678,9 +5680,25 @@ function VendorsSection({
           <View style={styles.cardHeaderRow}>
             <View>
               <Text style={styles.cardTitle}>Vendor List</Text>
-              <Text style={styles.hubDetail}>Tap a vendor for details, contract status, and payment info.</Text>
+              <Text style={styles.hubDetail}>A contact-first view for vendor status, balances, contracts, and quick actions.</Text>
             </View>
             <Text style={styles.smallStatus}>{vendors.length} vendors</Text>
+          </View>
+          <View style={styles.vendorActionGrid}>
+            <View style={styles.vendorActionCard}>
+              <Ionicons color={needsContractCount > 0 ? colors.rose : colors.green} name={needsContractCount > 0 ? 'document-attach-outline' : 'checkmark-circle-outline'} size={19} />
+              <View style={styles.hubCopy}>
+                <Text style={styles.vendorActionValue}>{needsContractCount}</Text>
+                <Text style={styles.hubDetail}>need contracts</Text>
+              </View>
+            </View>
+            <View style={styles.vendorActionCard}>
+              <Ionicons color={upcomingPaymentCount > 0 ? colors.gold : colors.green} name="calendar-outline" size={19} />
+              <View style={styles.hubCopy}>
+                <Text style={styles.vendorActionValue}>{upcomingPaymentCount}</Text>
+                <Text style={styles.hubDetail}>scheduled payments</Text>
+              </View>
+            </View>
           </View>
           <View style={styles.calendarList}>
             {vendors.map((vendor) => (
@@ -8920,6 +8938,16 @@ function VendorContactRow({
         </View>
         <Ionicons color={colors.muted} name="chevron-forward" size={18} />
       </Pressable>
+      <View style={styles.vendorContactInfoGrid}>
+        <View style={styles.vendorContactInfoChip}>
+          <Ionicons color={colors.rose} name="call-outline" size={14} />
+          <Text numberOfLines={1} style={styles.vendorContactInfoText}>{vendor.phone || 'No phone yet'}</Text>
+        </View>
+        <View style={styles.vendorContactInfoChip}>
+          <Ionicons color={colors.rose} name="mail-outline" size={14} />
+          <Text numberOfLines={1} style={styles.vendorContactInfoText}>{vendor.email || 'No email yet'}</Text>
+        </View>
+      </View>
       <View style={styles.vendorContactActions}>
         <Pressable onPress={onMessage} style={styles.vendorMessageButton}>
           <Ionicons color={colors.surface} name="chatbubble-outline" size={15} />
@@ -8948,6 +8976,7 @@ function VendorTrackerCard({
 }) {
   const paidInFull = vendor.remaining <= 0;
   const hasContract = vendorHasUploadedContract(data, vendor);
+  const paidPercent = vendor.committed ? Math.min(100, Math.round((vendor.paid / vendor.committed) * 100)) : 0;
   const nextAction = !hasContract
     ? 'Upload contract'
     : vendor.nextPaymentDate && !paidInFull
@@ -8971,6 +9000,24 @@ function VendorTrackerCard({
         </View>
         <Ionicons color={colors.muted} name="chevron-forward" size={18} />
       </Pressable>
+
+      <View style={styles.vendorMoneyPanel}>
+        <View style={styles.vendorMoneyTopRow}>
+          <View>
+            <Text style={styles.vendorMoneyLabel}>Paid</Text>
+            <Text adjustsFontSizeToFit allowFontScaling={false} numberOfLines={1} style={styles.vendorMoneyValue}>{formatCurrency(vendor.paid)}</Text>
+          </View>
+          <View style={styles.vendorMoneyRight}>
+            <Text style={styles.vendorMoneyLabel}>Balance</Text>
+            <Text adjustsFontSizeToFit allowFontScaling={false} numberOfLines={1} style={styles.vendorMoneyValue}>{formatCurrency(vendor.remaining)}</Text>
+          </View>
+        </View>
+        <Progress value={paidPercent} />
+        <View style={styles.vendorMoneyTopRow}>
+          <Text style={styles.vendorMoneyMeta}>{paidPercent}% paid</Text>
+          <Text style={styles.vendorMoneyMeta}>{formatCurrency(vendor.committed)} total</Text>
+        </View>
+      </View>
 
       <View style={styles.vendorMetaGrid}>
         <View style={styles.vendorMetaChip}>
@@ -9008,6 +9055,23 @@ function VendorTrackerCard({
         </Pressable>
       ) : null}
 
+      {(vendor.phone || vendor.email) ? (
+        <View style={styles.vendorContactShortcutRow}>
+          {vendor.phone ? (
+            <Pressable onPress={() => void Linking.openURL(`tel:${vendor.phone}`)} style={styles.vendorContactShortcut}>
+              <Ionicons color={colors.rose} name="call-outline" size={14} />
+              <Text style={styles.vendorContactShortcutText}>Call</Text>
+            </Pressable>
+          ) : null}
+          {vendor.email ? (
+            <Pressable onPress={() => void Linking.openURL(`mailto:${vendor.email}`)} style={styles.vendorContactShortcut}>
+              <Ionicons color={colors.rose} name="mail-outline" size={14} />
+              <Text style={styles.vendorContactShortcutText}>Email</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
+
       <View style={styles.vendorQuickGrid}>
         <Pressable onPress={onMessage} style={styles.vendorQuickButton}>
           <Ionicons color={colors.rose} name="chatbubble-outline" size={15} />
@@ -9018,8 +9082,8 @@ function VendorTrackerCard({
           <Text style={styles.vendorQuickText}>Contract</Text>
         </Pressable>
         <Pressable onPress={onOpen} style={styles.vendorQuickButton}>
-          <Ionicons color={colors.rose} name="folder-open-outline" size={15} />
-          <Text style={styles.vendorQuickText}>Files</Text>
+          <Ionicons color={colors.rose} name="information-circle-outline" size={15} />
+          <Text style={styles.vendorQuickText}>Details</Text>
         </Pressable>
       </View>
     </View>
@@ -13380,6 +13444,27 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 12,
   },
+  vendorContactInfoGrid: {
+    gap: 8,
+    marginTop: 12,
+  },
+  vendorContactInfoChip: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.faint,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+  },
+  vendorContactInfoText: {
+    color: colors.muted,
+    flex: 1,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 12,
+  },
   vendorMessageButton: {
     alignItems: 'center',
     backgroundColor: colors.rose,
@@ -13427,6 +13512,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 11,
   },
+  vendorActionGrid: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  vendorActionCard: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceWarm,
+    borderColor: colors.faint,
+    borderRadius: 16,
+    borderWidth: 1,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 9,
+    padding: 11,
+  },
+  vendorActionValue: {
+    color: colors.ink,
+    fontFamily: 'PlayfairDisplay_700Bold',
+    fontSize: 22,
+    lineHeight: 25,
+  },
   vendorAvatar: {
     alignItems: 'center',
     backgroundColor: colors.surfaceWarm,
@@ -13462,6 +13569,40 @@ const styles = StyleSheet.create({
   vendorMetaText: {
     color: colors.muted,
     fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+  },
+  vendorMoneyPanel: {
+    backgroundColor: colors.surfaceWarm,
+    borderColor: colors.faint,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 8,
+    padding: 11,
+  },
+  vendorMoneyTopRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  vendorMoneyRight: {
+    alignItems: 'flex-end',
+  },
+  vendorMoneyLabel: {
+    color: colors.muted,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    textTransform: 'uppercase',
+  },
+  vendorMoneyValue: {
+    color: colors.ink,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 16,
+    marginTop: 2,
+    maxWidth: 132,
+  },
+  vendorMoneyMeta: {
+    color: colors.muted,
+    fontFamily: 'Inter_600SemiBold',
     fontSize: 11,
   },
   vendorNextActionStrip: {
@@ -13552,6 +13693,27 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   noContractTitle: {
+    color: colors.rose,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 12,
+  },
+  vendorContactShortcutRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  vendorContactShortcut: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceWarm,
+    borderColor: colors.faint,
+    borderRadius: 15,
+    borderWidth: 1,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+    justifyContent: 'center',
+    paddingVertical: 10,
+  },
+  vendorContactShortcutText: {
     color: colors.rose,
     fontFamily: 'Inter_700Bold',
     fontSize: 12,
