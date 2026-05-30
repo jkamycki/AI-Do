@@ -123,17 +123,23 @@ async function disableClerkBreachedPasswordCheck(): Promise<void> {
 
 async function startBackgroundJobs(): Promise<void> {
   try {
-    if (process.env["DISABLE_SCHEDULED_BACKUPS"] !== "true") {
+    if (process.env["DATABASE_BACKUP_SCHEDULER_ENABLED"] === "true") {
       const { scheduleBackups } = await import("./lib/backup");
       scheduleBackups();
+    } else {
+      logger.info("Scheduled database backups disabled by default");
     }
   } catch (err) {
     logger.warn({ err }, "Failed to start scheduled backups");
   }
 
   try {
-    const { scheduleTaskDeadlineReminders } = await import("./lib/taskReminders");
-    scheduleTaskDeadlineReminders();
+    if (process.env["TASK_REMINDER_SCHEDULER_ENABLED"] === "true") {
+      const { scheduleTaskDeadlineReminders } = await import("./lib/taskReminders");
+      scheduleTaskDeadlineReminders();
+    } else {
+      logger.info("Task reminder scheduler disabled by default");
+    }
   } catch (err) {
     logger.warn({ err }, "Failed to start task deadline reminders");
   }
