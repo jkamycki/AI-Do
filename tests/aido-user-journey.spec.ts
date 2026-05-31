@@ -380,6 +380,88 @@ test.describe('A.IDO user journey', () => {
     await expectHealthyPage(page, 'Website editor workflow', collectPageFailures(page));
   });
 
+  test('website URL can be edited after unpublishing', async ({ page }) => {
+    const websiteFixture = {
+      id: 999001,
+      profileId: 999001,
+      slug: 'old-published-link',
+      theme: 'classic',
+      layoutStyle: 'classic',
+      font: 'playfair',
+      accentColor: '#8D294D',
+      colorPalette: {
+        primary: '#8D294D',
+        secondary: '#D86F67',
+        accent: '#F2B8A0',
+        neutral: '#F8EFEA',
+        background: '#FFF9F6',
+        text: '#3A1826',
+      },
+      sectionsEnabled: {
+        welcome: true,
+        story: true,
+        schedule: true,
+        travel: true,
+        registry: true,
+        faq: true,
+        gallery: true,
+        weddingParty: true,
+        rsvp: true,
+      },
+      customText: {},
+      textStyles: {},
+      textPositions: {},
+      galleryImages: [],
+      heroImages: [],
+      heroImage: null,
+      passwordEnabled: false,
+      published: false,
+      publishedAt: '2026-01-01T00:00:00.000Z',
+      lastUpdated: '2026-01-02T00:00:00.000Z',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      portalParty: [],
+    };
+
+    await page.route('**/api/website/me', async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback();
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(websiteFixture),
+      });
+    });
+
+    await page.route('**/api/website/slug', async (route) => {
+      const requestBody = JSON.parse(route.request().postData() || '{}') as { slug?: string };
+      expect(route.request().method()).toBe('PUT');
+      expect(requestBody.slug).toBe('new-unpublished-link');
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ...websiteFixture,
+          slug: requestBody.slug,
+          lastUpdated: '2026-01-03T00:00:00.000Z',
+        }),
+      });
+    });
+
+    await visitFeature(page, '/website-editor', 'Website Editor URL settings', /website|preview|rsvp|publish/i);
+
+    await clickIfVisible(page.getByRole('button', { name: /^settings$/i }).last());
+    await expect(page.getByText(/guest website link/i)).toBeVisible({ timeout: 10_000 });
+
+    const editUrlButton = page.getByRole('button', { name: /edit url/i });
+    await expect(editUrlButton).toBeEnabled();
+    await editUrlButton.click();
+
+    await page.getByPlaceholder('your-url-slug').fill('new-unpublished-link');
+    await page.getByRole('button', { name: /save url/i }).click();
+    await expect(page.getByText(/new-unpublished-link/i)).toBeVisible();
+
+    await expectHealthyPage(page, 'Website URL edit after unpublish', collectPageFailures(page));
+  });
+
   test('documents and contracts expose upload/download paths safely', async ({ page }) => {
     await visitFeature(page, '/documents', 'Documents', /document|upload|download|folder/i);
     await expect(page.locator('body')).toContainText(/upload|download|folder|organize/i);
