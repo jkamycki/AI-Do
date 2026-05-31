@@ -3210,12 +3210,12 @@ export default function WebsiteEditor() {
             <div className="min-w-0">
               <Label className="text-xs font-medium">Show whole photo</Label>
               <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">
-                Off: photo fills the frame and may crop. On: shows the entire photo with side bars.
+                On: shows the full photo like desktop. Off: photo fills the frame and may crop.
               </p>
             </div>
             <Switch
-              checked={editingRecord.customText._heroFit === "contain"}
-              onCheckedChange={(checked) => update({ customText: { ...editingRecord.customText, _heroFit: checked ? "contain" : "" } })}
+              checked={editingRecord.customText._heroFit !== "cover"}
+              onCheckedChange={(checked) => update({ customText: { ...editingRecord.customText, _heroFit: checked ? "contain" : "cover" } })}
             />
           </div>
         </Section>}

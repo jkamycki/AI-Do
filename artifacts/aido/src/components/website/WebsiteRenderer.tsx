@@ -248,6 +248,18 @@ function layoutOnlyTextStyles(styles: WebsiteDeviceOverride["textStyles"]) {
   );
 }
 
+function layoutOnlyCustomText(customText: WebsiteDeviceOverride["customText"]) {
+  const text = stripDeviceOverrideMarker(customText);
+  if (!text) return text;
+  return Object.fromEntries(
+    Object.entries(text).filter(([key]) => {
+      if (key === "_headingFont" || key === "_bodyFont") return false;
+      if (key === "_faqQuestionFont" || key === "_faqAnswerFont") return false;
+      return !key.endsWith("_font");
+    }),
+  );
+}
+
 export function applyWebsiteDeviceOverrides<T extends WebsiteRendererPayload>(
   data: T,
   device: WebsiteRenderDevice,
@@ -272,7 +284,7 @@ export function applyWebsiteDeviceOverrides<T extends WebsiteRendererPayload>(
       : data.sectionsEnabled,
     customText: {
       ...stripDeviceOverrideMarker(data.customText),
-      ...stripDeviceOverrideMarker(override.customText),
+      ...layoutOnlyCustomText(override.customText),
     },
     textStyles: {
       ...(data.textStyles ?? {}),
@@ -1778,7 +1790,7 @@ function HeroBackground({
   // backdrop filling the extra space). Default "cover" keeps the existing
   // bleed-edge look for sites that don't opt in.
   const heroFitValue = data.customText._heroFit;
-  const fit = (heroFitValue === "contain" ? "contain" : "cover") as
+  const fit = (heroFitValue === "cover" ? "cover" : "contain") as
     | "cover"
     | "contain";
   // When letterboxing in contain mode, fall back to the palette background
@@ -1819,13 +1831,13 @@ function HeroBackground({
         >
           {strip.map((url, i) => {
             const focal = heroFocalFor(data, url);
-            const zoom = heroZoomFor(data, url);
+            const zoom = fit === "contain" ? 1 : heroZoomFor(data, url);
             const slide = (
               <AuthBgSlide
                 url={url}
                 className="h-full w-full"
                 style={{
-                  backgroundPosition: focal,
+                  backgroundPosition: fit === "contain" ? "center" : focal,
                   backgroundSize: fit,
                   backgroundRepeat: "no-repeat",
                   filter: photoFilter,
@@ -1896,7 +1908,43 @@ function HeroBackground({
     >
       {slideshowImages.map((url, i) => {
         const focal = heroFocalFor(data, url);
-        const zoom = heroZoomFor(data, url);
+        const zoom = fit === "contain" ? 1 : heroZoomFor(data, url);
+        const opacity = mode === "slideshow" ? (i === activeIdx ? 1 : 0) : 1;
+        const transition =
+          mode === "slideshow" ? "opacity 1s ease-in-out" : undefined;
+        if (fit === "contain") {
+          return (
+            <div
+              key={url + i}
+              className="absolute inset-0 overflow-hidden"
+              style={{ opacity, transition }}
+            >
+              <AuthBgSlide
+                url={url}
+                className="absolute inset-0"
+                style={{
+                  backgroundPosition: focal,
+                  backgroundSize: "cover",
+                  backgroundRepeat: "no-repeat",
+                  filter: `${photoFilter} blur(18px)`,
+                  transform: "scale(1.08)",
+                  opacity: 0.72,
+                }}
+              />
+              <AuthBgSlide
+                url={url}
+                className="absolute inset-0"
+                style={{
+                  backgroundPosition: "center",
+                  backgroundSize: "contain",
+                  backgroundRepeat: "no-repeat",
+                  filter: photoFilter,
+                  ...animationStyle,
+                }}
+              />
+            </div>
+          );
+        }
         const slide = (
           <AuthBgSlide
             url={url}
@@ -1905,9 +1953,8 @@ function HeroBackground({
               backgroundPosition: focal,
               backgroundSize: fit,
               backgroundRepeat: "no-repeat",
-              opacity: mode === "slideshow" ? (i === activeIdx ? 1 : 0) : 1,
-              transition:
-                mode === "slideshow" ? "opacity 1s ease-in-out" : undefined,
+              opacity,
+              transition,
               filter: photoFilter,
               ...animationStyle,
             }}
