@@ -34,7 +34,9 @@ import { Users, Plus, Trash2, Edit2, Crown, Heart, RotateCcw, Camera, Loader2, G
 import { useTranslation } from "react-i18next";
 import { HeadshotCropDialog } from "@/components/HeadshotCropDialog";
 
-const API = import.meta.env.VITE_API_URL ?? "";
+import { API_BASE_URL } from "@/lib/apiBase";
+
+const API = API_BASE_URL;
 
 // ─── Storage helpers ──────────────────────────────────────────────────────────
 

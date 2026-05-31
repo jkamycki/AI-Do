@@ -20,7 +20,9 @@ import { CalendarDays, CheckSquare, Wand2, ClipboardList, Pencil, Trash2, Plus, 
 import { useTranslation } from "react-i18next";
 import { Progress } from "@/components/ui/progress";
 
-const API = import.meta.env.VITE_API_URL ?? "";
+import { API_BASE_URL } from "@/lib/apiBase";
+
+const API = API_BASE_URL;
 const CHECKLIST_TRANSLATION_CACHE_PREFIX = "aido_checklist_translation_v1";
 
 type ChecklistItem = {

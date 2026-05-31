@@ -117,7 +117,7 @@ function stackedFooterCoupleName(value: string, data: WebsiteRendererPayload) {
 }
 
 function firstInitial(name: string) {
-  const match = name.trim().match(/[A-Za-zÀ-ÖØ-öø-ÿ0-9]/u);
+  const match = name.trim().match(/[\p{L}0-9]/u);
   return match?.[0]?.toUpperCase() ?? "";
 }
 
@@ -253,7 +253,7 @@ export interface WebsiteRendererPayload {
     venueState: string | null;
     venueZip?: string | null;
   };
-  // timeline removed â€” wedding website schedule is entered directly by the couple
+  // timeline removed - wedding website schedule is entered directly by the couple
 }
 
 export type WebsiteRenderDevice = "desktop" | "mobile";
@@ -571,7 +571,7 @@ function tspStyle(ctx: EditCtx, key: string) {
   };
 }
 
-// Style-only, no delete, no drag â€” for hero elements that must stay
+// Style-only, no delete, no drag - for hero elements that must stay
 // centered. Visibility is controlled exclusively via sidebar toggles.
 function tspNoDelete(ctx: EditCtx, key: string, aiEnabled = false) {
   if (!ctx.editable) return { textStyle: ctx.textStyles?.[key] };
@@ -928,7 +928,7 @@ function DraggableRow({
 
   const handlePointerDown = (e: React.PointerEvent) => {
     // If the user pressed inside an inner EditableText (contenteditable),
-    // don't hijack the pointer â€” let the inner element get focus and open
+    // don't hijack the pointer - let the inner element get focus and open
     // its own toolbar / inline drag. DraggableRow only captures pointer
     // events that originate on its own padding / icons.
     const target = e.target as HTMLElement | null;
@@ -1036,7 +1036,7 @@ function DraggableRow({
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => onPositionChange({ x: 0, y: 0 })}
         >
-          Ã—
+          &times;
         </span>
       )}
       {children}
@@ -1743,18 +1743,18 @@ function AnnouncementBanner({
 
   return (
     <div
-      className="relative flex items-center justify-center px-5 py-3 text-sm"
+      className="relative flex items-center justify-center px-5 py-3 pr-12 text-sm sm:pr-5"
       style={{
         background: `${data.colorPalette.primary}18`,
         borderBottom: `2px solid ${data.colorPalette.primary}55`,
       }}
     >
-      <div className="w-full overflow-hidden whitespace-nowrap text-center">
+      <div className="w-full min-w-0 overflow-hidden whitespace-nowrap text-center">
         {ctx.editable ? (
           <div
             className={
               marqueeEnabled
-                ? "wsa-announcement-marquee"
+                ? "wsa-announcement-marquee motion-reduce:animate-none motion-reduce:whitespace-normal"
                 : "flex w-full items-center justify-center whitespace-normal text-center"
             }
             style={{
@@ -1780,7 +1780,7 @@ function AnnouncementBanner({
           <div
             className={
               marqueeEnabled
-                ? "wsa-announcement-marquee"
+                ? "wsa-announcement-marquee motion-reduce:animate-none motion-reduce:whitespace-normal"
                 : "w-full whitespace-normal text-center"
             }
             style={{
@@ -2142,7 +2142,7 @@ function HeroBackground({
           />
         );
         // Static / slideshow can take the user's zoom directly on the slide.
-        // Kenburns / pan-lr already use `transform` for their CSS animation â€”
+        // Kenburns / pan-lr already use `transform` for their CSS animation -
         // wrap them so the user's scale layers without clobbering the keyframes.
         if (zoom === 1)
           return (
@@ -2323,7 +2323,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   );
 }
 
-// Custom floating text boxes â€” rendered at the page level (not inside any
+// Custom floating text boxes - rendered at the page level (not inside any
 // one section) so the user can drag them anywhere on the website and they
 // stay visible regardless of which section is currently scrolled to. The
 // outer wrapper is marked position:relative so absolute positioning here
@@ -2535,7 +2535,7 @@ function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const text = data.customText.story ?? "";
   const isMobileRender = ctx.renderDevice === "mobile";
   // The section is gated by sectionsEnabled.story upstream; if the user
-  // enabled it, render it everywhere â€” editor, preview, and published â€”
+  // enabled it, render it everywhere - editor, preview, and published -
   // so the layout is consistent even before the body has been filled in.
   const labelColor = sectionTextColor(data, "story");
   const storySubtitleProps = withBaseColor(tsp(ctx, "story_subtitle"), labelColor);
@@ -3301,13 +3301,14 @@ function Gallery({
     speed === "slow" ? 6000 : speed === "fast" ? 2500 : 4000;
   const marqueeDuration =
     speed === "slow" ? "60s" : speed === "fast" ? "20s" : "40s";
-  // Grid mode always uses the puzzle fade entrance â€” ignore _galleryEntrance
+  // Grid mode uses the puzzle fade entrance on the guest site, but editor
+  // previews should show every image immediately in desktop and mobile.
   const entrance: "none" | "fade-in" | "slide-up" | "zoom-in" | "puzzle" =
-    animation === "grid" ? "puzzle" : "none";
+    ctx.editable || ctx.previewMode ? "none" : animation === "grid" ? "puzzle" : "none";
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [guestLightboxIndex, setGuestLightboxIndex] = useState<number | null>(null);
 
-  // Slideshow auto-advance. Hooks must run unconditionally â€” bail out inside.
+  // Slideshow auto-advance. Hooks must run unconditionally - bail out inside.
   const [activeIdx, setActiveIdx] = useState(0);
   useEffect(() => {
     if (animation !== "slideshow" || images.length < 2) return;
@@ -3561,7 +3562,7 @@ function Gallery({
         >
           {images.map((img, i) => (
             <div
-              key={i}
+              key={`${img.url}-${img.order}`}
               ref={(el) => {
                 itemRefs.current[i] = el;
               }}
@@ -3569,8 +3570,7 @@ function Gallery({
               style={
                 entrance !== "none"
                   ? {
-                      ["--stagger" as string]:
-                        entrance === "puzzle" ? `${i * 4000}ms` : `${i * 80}ms`,
+                      ["--stagger" as string]: `${i * 80}ms`,
                     }
                   : undefined
               }
@@ -4026,7 +4026,7 @@ export interface WeddingPartyMember {
   name: string;
   role: string;
   side?: WeddingPartySide;
-  // Photo focal point as percentages 0â€“100. Defaults to 50/50 (centered).
+  // Photo focal point as percentages 0-100. Defaults to 50/50 (centered).
   photoX?: number;
   photoY?: number;
 }
@@ -4449,7 +4449,7 @@ function BrandingFooter() {
         >
           Privacy
         </a>
-        <span className="hidden opacity-40 sm:inline">·</span>
+        <span className="hidden opacity-40 sm:inline">&middot;</span>
         <a
           href="https://aidowedding.net/terms"
           target="_blank"
@@ -4458,7 +4458,7 @@ function BrandingFooter() {
         >
           Terms &amp; Conditions
         </a>
-        <span className="hidden opacity-40 sm:inline">·</span>
+        <span className="hidden opacity-40 sm:inline">&middot;</span>
         <a
           href="https://aidowedding.net/security"
           target="_blank"
@@ -4467,7 +4467,7 @@ function BrandingFooter() {
         >
           Security
         </a>
-        <span className="hidden opacity-40 sm:inline">·</span>
+        <span className="hidden opacity-40 sm:inline">&middot;</span>
         <a
           href="https://aidowedding.net/data-handling"
           target="_blank"
@@ -4476,7 +4476,7 @@ function BrandingFooter() {
         >
           Data Handling
         </a>
-        <span className="hidden opacity-40 sm:inline">Â·</span>
+        <span className="hidden opacity-40 sm:inline">&middot;</span>
         <a
           href="https://aidowedding.net/for-vendors/apply"
           target="_blank"
@@ -4487,7 +4487,7 @@ function BrandingFooter() {
         </a>
       </nav>
       <p className="mx-auto max-w-[18rem] text-[10.5px] leading-relaxed opacity-85 sm:max-w-2xl sm:text-[11px]">
-        © {year} A.IDO. All rights reserved. A.IDO is the platform that hosts
+        &copy; {year} A.IDO. All rights reserved. A.IDO is the platform that hosts
         this wedding website. Photos, names, schedules, and other content shown
         here are provided by the wedding couple and are their sole
         responsibility. By visiting this site you agree to A.IDO&rsquo;s Terms
@@ -4640,7 +4640,7 @@ function TopNav({
   const active = pageMode ? currentSection : scrollActive;
 
   const renderItem = (it: { id: string; label: string }) => {
-    const className = `relative pb-1 font-semibold transition-colors hover:opacity-100 ${active === it.id ? "" : "opacity-90"}`;
+    const className = `relative inline-flex min-h-9 items-center px-1 pb-1 pt-2 font-semibold transition-colors hover:opacity-100 ${active === it.id ? "" : "opacity-90"}`;
     const style = {
       color: data.customText._navLinkColor || data.colorPalette.text,
       borderBottom:
@@ -4748,7 +4748,7 @@ function TopNav({
         <div
           className={isMobileRender
             ? "flex w-full max-w-full items-center justify-start gap-x-5 overflow-x-auto whitespace-nowrap px-1 pb-1 text-xs [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            : "flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-xs sm:gap-x-7 sm:text-sm"}
+            : "flex w-full max-w-full items-center justify-start gap-x-5 overflow-x-auto whitespace-nowrap px-1 pb-1 text-xs [-ms-overflow-style:none] [scrollbar-width:none] sm:flex-wrap sm:justify-center sm:gap-x-7 sm:gap-y-1 sm:overflow-visible sm:whitespace-normal sm:px-0 sm:text-sm [&::-webkit-scrollbar]:hidden"}
         >
           {items.map(renderItem)}
         </div>
@@ -4786,7 +4786,7 @@ export function WebsiteRenderer({
   onGalleryCaptionChange?: (imageUrl: string, caption: string) => void;
   currentSection?: string;
   // When provided alongside currentSection, the TopNav drives navigation
-  // through this callback instead of routing or scrolling â€” used by the
+  // through this callback instead of routing or scrolling - used by the
   // editor's Guest Preview to render one section at a time without changing
   // the URL.
   onSectionChange?: (id: string) => void;

@@ -138,17 +138,19 @@ async function firstVisibleLocator(locators: Locator[]) {
 async function expectVisibleMainContent(page: Page, label: string, expected: RegExp) {
   await expect
     .poll(
-      async () => {
-        const candidates = page.locator('main, [role="main"]').filter({ hasText: expected });
-        const count = await candidates.count().catch(() => 0);
-        for (let index = 0; index < count; index += 1) {
-          if (await visible(candidates.nth(index))) return true;
-        }
-        return false;
-      },
+      () => hasVisibleMainContent(page, expected),
       { message: `${label} page content`, timeout: 25_000 },
     )
     .toBe(true);
+}
+
+async function hasVisibleMainContent(page: Page, expected: RegExp) {
+  const candidates = page.locator('main, [role="main"]').filter({ hasText: expected });
+  const count = await candidates.count().catch(() => 0);
+  for (let index = 0; index < count; index += 1) {
+    if (await visible(candidates.nth(index))) return true;
+  }
+  return false;
 }
 
 async function closeAnyOverlay(page: Page) {
@@ -167,6 +169,28 @@ async function closeAnyOverlay(page: Page) {
       return;
     }
   }
+}
+
+async function ensureSignedIn(page: Page) {
+  await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(1200);
+
+  const dashboardReady = await page
+    .locator('main, [role="main"]')
+    .filter({ hasText: /dashboard|wedding|budget|guest|vendor/i })
+    .first()
+    .isVisible({ timeout: 1500 })
+    .catch(() => false);
+
+  if (dashboardReady && !/sign-in|sign-up/i.test(page.url())) return;
+
+  await page.goto('/sign-in', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /sign in to test account/i }).click();
+  if (!/\/dashboard(?:\?|#|$)/.test(new URL(page.url()).pathname)) {
+    await page.getByRole('button', { name: /continue as/i }).click({ timeout: 30_000 });
+  }
+  await expect(page).toHaveURL(/\/dashboard(?:\?|#|$)/, { timeout: 30_000 });
+  await expectVisibleMainContent(page, 'Dashboard', /dashboard|wedding|budget|guest|vendor/i);
 }
 
 async function expectHealthyPage(page: Page, label: string, failures: string[]) {
@@ -191,7 +215,18 @@ async function expectHealthyPage(page: Page, label: string, failures: string[]) 
 
 async function visitFeature(page: Page, pathName: string, label: string, expected: RegExp) {
   const failures = collectPageFailures(page);
-  const response = await page.goto(pathName, { waitUntil: 'domcontentloaded' });
+  let response = await page.goto(pathName, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(1200);
+
+  if (!(await hasVisibleMainContent(page, expected))) {
+    const bodyText = await page.locator('body').innerText().catch(() => '');
+    const redirectedAway = new URL(page.url()).pathname !== pathName;
+    if (redirectedAway || /start planning free|plan your perfect day|sign in|get started free/i.test(bodyText)) {
+      await ensureSignedIn(page);
+      response = await page.goto(pathName, { waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(1200);
+    }
+  }
 
   expect(response?.ok(), `${label} HTTP response`).toBeTruthy();
   await expectVisibleMainContent(page, label, expected);
@@ -199,14 +234,16 @@ async function visitFeature(page: Page, pathName: string, label: string, expecte
 }
 
 test.describe('A.IDO user journey', () => {
+  test.describe.configure({ mode: 'serial' });
   test.setTimeout(90_000);
   test.use({ storageState: hasAuthState ? authStatePath : undefined });
 
-  test.beforeEach(() => {
+  test.beforeEach(async ({ page }) => {
     test.skip(
       !hasAuthState,
       'Missing .auth/user.json. Run: npx.cmd playwright codegen --save-storage=.auth/user.json https://aidowedding.net',
     );
+    await ensureSignedIn(page);
   });
 
   test('walks the main signed-in product areas like a user', async ({ page }) => {

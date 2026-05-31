@@ -1,4 +1,6 @@
-const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+import { API_BASE_URL } from "@/lib/apiBase";
+
+const API_BASE = API_BASE_URL;
 
 export function getResolvedMediaUrl(url: string | null | undefined): string | null {
   return resolveMediaUrl(url);

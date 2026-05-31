@@ -31,7 +31,9 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 
-const API = import.meta.env.VITE_API_URL ?? "";
+import { API_BASE_URL } from "@/lib/apiBase";
+
+const API = API_BASE_URL;
 const CUSTOM_EVENTS_KEY = "aido_calendar_custom_events_v1";
 
 type CalendarEventType =

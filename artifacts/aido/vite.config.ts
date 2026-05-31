@@ -80,12 +80,23 @@ export default defineConfig({
         target: "https://clerk.aidowedding.net",
         changeOrigin: true,
         secure: true,
+        cookieDomainRewrite: "",
         rewrite: (p) => p.replace(/^\/api\/__clerk/, ""),
+        configure(proxy) {
+          proxy.on("proxyReq", (proxyReq) => {
+            proxyReq.setHeader("origin", "https://clerk.aidowedding.net");
+          });
+        },
       },
       "/api": {
         target: "https://ai-do.onrender.com",
         changeOrigin: true,
         secure: true,
+        configure(proxy) {
+          proxy.on("proxyReq", (proxyReq) => {
+            proxyReq.setHeader("origin", "https://aidowedding.net");
+          });
+        },
       },
     },
     fs: {

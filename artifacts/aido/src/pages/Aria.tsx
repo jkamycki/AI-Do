@@ -33,7 +33,9 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-const API = import.meta.env.VITE_API_URL ?? "";
+import { API_BASE_URL } from "@/lib/apiBase";
+
+const API = API_BASE_URL;
 
 type ActionStatus = "running" | "ok" | "error";
 interface ActionLog {

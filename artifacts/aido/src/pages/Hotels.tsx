@@ -19,7 +19,9 @@ import {
 } from "lucide-react";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 
-const API = import.meta.env.VITE_API_URL ?? "";
+import { API_BASE_URL } from "@/lib/apiBase";
+
+const API = API_BASE_URL;
 
 interface HotelBlock {
   id: number;

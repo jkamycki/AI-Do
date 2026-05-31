@@ -100,7 +100,9 @@ const PRESET_TAGS = [
 
 // ─── Auth headers helper ──────────────────────────────────────────────────────
 
-const _API = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+import { API_BASE_URL } from "@/lib/apiBase";
+
+const _API = API_BASE_URL;
 const STORAGE_BASE_PATH = `${_API}/api/storage`;
 function applyApiBase(url: string): string {
   return url.startsWith("/") && _API ? `${_API}${url}` : url;

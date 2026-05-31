@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { authFetch } from "@/lib/authFetch";
+import { API_BASE_URL } from "@/lib/apiBase";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth, useUser } from "@clerk/react";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
@@ -1321,7 +1322,7 @@ export default function SettingsPage() {
 
   const authedFetch = async (url: string, init: RequestInit = {}) => {
     const token = await getToken();
-    const apiBase = import.meta.env.VITE_API_URL ?? "";
+    const apiBase = API_BASE_URL;
     const resolved = url.startsWith("/") && apiBase ? `${apiBase}${url}` : url;
     return fetch(resolved, {
       ...init,

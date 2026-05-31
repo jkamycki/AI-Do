@@ -1616,10 +1616,13 @@ export default function WebsiteEditor() {
     update({ galleryImages: newImages });
   };
 
-  const removeGalleryImage = (index: number) => {
-    if (!record) return;
-    const next = record.galleryImages.filter((_, i) => i !== index).map((img, i) => ({ ...img, order: i }));
-    update({ galleryImages: next });
+  const removeGalleryImage = (targetUrl: string, targetOrder: number) => {
+    patchRecord((prev) => {
+      const next = (prev.galleryImages ?? [])
+        .filter((img) => !(img.url === targetUrl && img.order === targetOrder))
+        .map((img, i) => ({ ...img, order: i }));
+      return { galleryImages: next };
+    });
   };
 
   // ----- Hero photo crop-on-upload flow -------------------------------------
@@ -1683,10 +1686,13 @@ export default function WebsiteEditor() {
     setHeroCropTotal(0);
   };
 
-  const removeHeroImage = (index: number) => {
-    if (!record) return;
-    const next = (record.heroImages ?? []).filter((_, i) => i !== index).map((img, i) => ({ ...img, order: i }));
-    update({ heroImages: next });
+  const removeHeroImage = (targetUrl: string, targetOrder: number) => {
+    patchRecord((prev) => {
+      const next = (prev.heroImages ?? [])
+        .filter((img) => !(img.url === targetUrl && img.order === targetOrder))
+        .map((img, i) => ({ ...img, order: i }));
+      return { heroImages: next };
+    });
   };
 
   const applyTheme = (themeId: string) => {
@@ -1870,6 +1876,12 @@ export default function WebsiteEditor() {
     }[activeEditorPage];
     return textFields ?? [];
   })();
+  const orderedHeroImages = (editingRecord.heroImages ?? [])
+    .slice()
+    .sort((a, b) => a.order - b.order);
+  const orderedGalleryImages = (editingRecord.galleryImages ?? [])
+    .slice()
+    .sort((a, b) => a.order - b.order);
 
   return (
     <div className="flex min-h-[100dvh] flex-col overflow-x-hidden lg:h-screen lg:min-h-0 lg:flex-row relative">
@@ -3164,8 +3176,8 @@ export default function WebsiteEditor() {
                 </button>
               </div>
             )}
-            {(editingRecord.heroImages ?? []).map((img, i) => (
-              <div key={i} className="relative aspect-square rounded-md overflow-hidden">
+            {orderedHeroImages.map((img) => (
+              <div key={`${img.url}-${img.order}`} className="relative aspect-square rounded-md overflow-hidden">
                 <AuthMediaImage
                   src={editorMediaSrc(img.url)}
                   alt=""
@@ -3190,7 +3202,7 @@ export default function WebsiteEditor() {
                 <button
                   onClick={() => {
                     const url = img.url;
-                    removeHeroImage(i);
+                    removeHeroImage(img.url, img.order);
                     dropHeroFocal(url);
                     dropHeroZoom(url);
                   }}
@@ -3234,8 +3246,8 @@ export default function WebsiteEditor() {
         {/* Gallery */}
         {editingGroup("photos", "gallery") && <Section icon={<ImageIcon className="h-4 w-4" />} title="Gallery">
           <div className="grid grid-cols-3 gap-2 mb-3 items-start">
-            {editingRecord.galleryImages.map((img, i) => (
-              <div key={i} className="flex flex-col gap-1">
+            {orderedGalleryImages.map((img) => (
+              <div key={`${img.url}-${img.order}`} className="flex flex-col gap-1">
                 <div className="relative aspect-square rounded-md overflow-hidden">
                   <AuthMediaImage
                     src={editorMediaSrc(img.url)}
@@ -3243,7 +3255,7 @@ export default function WebsiteEditor() {
                     className="w-full h-full object-cover"
                   />
                   <button
-                    onClick={() => removeGalleryImage(i)}
+                    onClick={() => removeGalleryImage(img.url, img.order)}
                     className="absolute top-1 right-1 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white"
                   >
                     <X className="h-3 w-3" />
@@ -3252,10 +3264,14 @@ export default function WebsiteEditor() {
                 <input
                   value={img.caption ?? ""}
                   onChange={(e) => {
-                    const next = editingRecord.galleryImages.map((im, idx) =>
-                      idx === i ? { ...im, caption: e.target.value || undefined } : im
-                    );
-                    update({ galleryImages: next });
+                    const caption = e.target.value || undefined;
+                    patchRecord((prev) => ({
+                      galleryImages: (prev.galleryImages ?? []).map((im) =>
+                        im.url === img.url && im.order === img.order
+                          ? { ...im, caption }
+                          : im
+                      ),
+                    }));
                   }}
                   placeholder={t("website_editor.caption_placeholder", { defaultValue: "Caption…" })}
                   className="w-full text-[10px] border border-border rounded px-1.5 py-1 bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 truncate"

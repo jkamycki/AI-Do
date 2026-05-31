@@ -37,7 +37,9 @@ import { useTranslation } from "react-i18next";
 import { getListVendorsQueryKey, useGetProfile, useListVendors } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 
-const API = import.meta.env.VITE_API_URL ?? "";
+import { API_BASE_URL } from "@/lib/apiBase";
+
+const API = API_BASE_URL;
 
 interface RedFlag {
   severity: "high" | "medium" | "low";

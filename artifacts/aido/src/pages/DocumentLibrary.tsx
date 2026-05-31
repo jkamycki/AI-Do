@@ -34,7 +34,9 @@ import {
   X,
 } from "lucide-react";
 
-const API = import.meta.env.VITE_API_URL ?? "";
+import { API_BASE_URL } from "@/lib/apiBase";
+
+const API = API_BASE_URL;
 
 type ExtractedFields = {
   vendorName?: string | null;

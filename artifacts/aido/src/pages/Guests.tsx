@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -1854,7 +1854,7 @@ export default function Guests({
     });
   };
 
-  const allGuests = (data?.guests ?? []) as Guest[];
+  const allGuests = useMemo(() => (data?.guests ?? []) as Guest[], [data?.guests]);
   const { data: invitationShareLinks } = useQuery({
     queryKey: ["invitation-share-links"],
     queryFn: async () => {

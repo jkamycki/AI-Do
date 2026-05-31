@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/lib/apiBase";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
@@ -537,7 +538,7 @@ export default function InvitationCustomizationPage({
         rsvpByDate: v.rsvpByDate || null,
       });
 
-      const apiBase = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+      const apiBase = API_BASE_URL;
       const saveUrl = `${apiBase}/api/invitation-customizations`;
 
       const cachedToken = tokenRef.current;
@@ -845,7 +846,7 @@ export default function InvitationCustomizationPage({
       if (typeof payload.digitalInvitationPhotoUrl === "string" && payload.digitalInvitationPhotoUrl.startsWith("blob:")) {
         delete payload.digitalInvitationPhotoUrl;
       }
-      const apiBase = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+      const apiBase = API_BASE_URL;
       const cachedToken = tokenRef.current;
       fetch(`${apiBase}/api/invitation-customizations`, {
         method: "POST",
