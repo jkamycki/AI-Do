@@ -115,10 +115,14 @@ interface Props {
   // emoji calls onInsertText with the chosen character; EditableText then
   // splices it into the current selection and commits.
   onInsertText?: (text: string) => void;
+  onInlineCommand?: (
+    command: "bold" | "italic" | "underline" | "strikeThrough" | "foreColor" | "fontName" | "fontSize",
+    value?: string,
+  ) => boolean;
 }
 
 export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
-  ({ style, onChange, anchorRect, onKeepOpen, onDelete, currentText, onAiGenerate, onInsertText }, ref) => {
+  ({ style, onChange, anchorRect, onKeepOpen, onDelete, currentText, onAiGenerate, onInsertText, onInlineCommand }, ref) => {
     const { t } = useTranslation();
     // Keep the prompt input collapsed until the user explicitly clicks the
     // sparkle button. Auto-opening it covered too much of the canvas and made
@@ -164,6 +168,17 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
       if (!fontSizeFocused) setFontSizeDraft(fontSizeNumber);
     }, [fontSizeFocused, fontSizeNumber]);
     const patch = (partial: Partial<WebsiteTextStyle>) => onChange({ ...style, ...partial });
+    const inlineOrPatch = (
+      command: Parameters<NonNullable<Props["onInlineCommand"]>>[0],
+      value: string | undefined,
+      partial: Partial<WebsiteTextStyle>,
+    ) => {
+      if (onInlineCommand?.(command, value)) {
+        onKeepOpen?.();
+        return;
+      }
+      patch(partial);
+    };
     const commitFontSize = (value = fontSizeDraft) => {
       const v = value.trim();
       if (!v) {
@@ -177,7 +192,7 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
       }
       const clamped = Math.max(8, Math.min(120, n));
       setFontSizeDraft(String(clamped));
-      patch({ fontSize: `${clamped}px` });
+      inlineOrPatch("fontSize", String(clamped), { fontSize: `${clamped}px` });
     };
 
     const btnClass = (active: boolean) =>
@@ -212,7 +227,7 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
           value={style.fontFamily ?? ""}
           options={FONT_OPTIONS}
           onChange={(v) => {
-            patch({ fontFamily: v || undefined });
+            inlineOrPatch("fontName", v || undefined, { fontFamily: v || undefined });
             if (v) loadGoogleFont(v);
           }}
           onKeepOpen={onKeepOpen}
@@ -264,7 +279,7 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
         <button
           className={btnClass(!!style.bold)}
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => patch({ bold: !style.bold })}
+          onClick={() => inlineOrPatch("bold", undefined, { bold: !style.bold })}
           title={t("text_toolbar.bold", { defaultValue: "Bold" })}
         >
           <strong>B</strong>
@@ -272,7 +287,7 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
         <button
           className={btnClass(!!style.italic)}
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => patch({ italic: !style.italic })}
+          onClick={() => inlineOrPatch("italic", undefined, { italic: !style.italic })}
           title={t("text_toolbar.italic", { defaultValue: "Italic" })}
         >
           <em>I</em>
@@ -280,7 +295,7 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
         <button
           className={btnClass(!!style.underline)}
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => patch({ underline: !style.underline })}
+          onClick={() => inlineOrPatch("underline", undefined, { underline: !style.underline })}
           title={t("text_toolbar.underline", { defaultValue: "Underline" })}
         >
           <Underline className="h-3.5 w-3.5" />
@@ -288,7 +303,7 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
         <button
           className={btnClass(!!style.strikethrough)}
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => patch({ strikethrough: !style.strikethrough })}
+          onClick={() => inlineOrPatch("strikeThrough", undefined, { strikethrough: !style.strikethrough })}
           title={t("text_toolbar.strikethrough", { defaultValue: "Strikethrough" })}
         >
           <Strikethrough className="h-3.5 w-3.5" />
@@ -333,7 +348,7 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
             <input
               type="color"
               value={style.color ?? "#000000"}
-              onChange={(e) => patch({ color: e.target.value })}
+              onChange={(e) => inlineOrPatch("foreColor", e.target.value, { color: e.target.value })}
               onFocus={() => onKeepOpen?.()}
               className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
             />
