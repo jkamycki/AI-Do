@@ -9,7 +9,7 @@ import {
   verticalListSortingStrategy, useSortable, arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useGetTimeline, useGenerateTimeline, useGetProfile, getGetTimelineQueryKey, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
+import { useGetTimeline, useGenerateTimeline, useGetProfile, getGetTimelineQueryKey, getGetDashboardSummaryQueryKey, type Timeline as ApiTimeline } from "@workspace/api-client-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { authFetch } from "@/lib/authFetch";
 import { getCurrentLanguageCode, getCurrentLanguageName } from "@/lib/languagePreference";
@@ -848,7 +848,7 @@ export default function Timeline() {
     generateTimeline.mutate(
       { data: { profileId: profile.id, dayVision: dayVision.trim() || undefined } },
       {
-        onSuccess: (created) => {
+        onSuccess: (created: ApiTimeline) => {
           setLocalEvents((created.events as any[]).map(normalizeEvent));
           updateDayVision("");
           toast({ title: t("timeline.generated_title"), description: t("timeline.generated_desc") });
