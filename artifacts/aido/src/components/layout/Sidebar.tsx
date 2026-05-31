@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import type { ElementType } from "react";
 import { Link, useLocation } from "wouter";
 import { useClerk, useUser, useAuth } from "@clerk/react";
 import { useQuery } from "@tanstack/react-query";
@@ -58,9 +59,34 @@ const routePrefetchers: Record<string, () => Promise<unknown>> = {
 
 const prefetchedRoutes = new Set<string>();
 
+type NavigatorWithConnection = Navigator & {
+  connection?: {
+    saveData?: boolean;
+  };
+};
+
+type WindowWithIdleCallback = Window & typeof globalThis & {
+  requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+  cancelIdleCallback?: (handle: number) => void;
+};
+
+type SidebarItem = {
+  href: string;
+  label: string;
+  icon?: ElementType;
+  special?: boolean;
+};
+
+type SidebarSection = {
+  id: string;
+  label: string;
+  defaultOpen: boolean;
+  items: SidebarItem[];
+};
+
 function prefetchSidebarRoute(href: string) {
   if (prefetchedRoutes.has(href)) return;
-  if (typeof navigator !== "undefined" && navigator.connection?.saveData) return;
+  if (typeof navigator !== "undefined" && (navigator as NavigatorWithConnection).connection?.saveData) return;
   const load = routePrefetchers[href.split("?")[0]];
   if (!load) return;
   prefetchedRoutes.add(href);
@@ -328,13 +354,14 @@ export function Sidebar() {
     if (!isSignedIn) return;
     const warmRoutes = ["/dashboard", "/profile", "/calendar", "/budget", "/vendors", "/guests", "/guest-photo-drop", "/timeline", "/checklist", "/wedding-party", "/day-of", "/registry"];
     const warm = () => warmRoutes.forEach(prefetchSidebarRoute);
-    const idleId =
-      "requestIdleCallback" in window
-        ? window.requestIdleCallback(warm, { timeout: 5000 })
-        : window.setTimeout(warm, 1800);
+    const idleWindow = window as WindowWithIdleCallback;
+    const usesIdleCallback = typeof idleWindow.requestIdleCallback === "function";
+    const idleId = usesIdleCallback
+      ? idleWindow.requestIdleCallback!(warm, { timeout: 5000 })
+      : window.setTimeout(warm, 1800);
     return () => {
-      if ("cancelIdleCallback" in window && typeof idleId === "number") {
-        window.cancelIdleCallback(idleId);
+      if (usesIdleCallback && typeof idleWindow.cancelIdleCallback === "function") {
+        idleWindow.cancelIdleCallback(idleId);
       } else {
         window.clearTimeout(idleId);
       }
@@ -362,7 +389,7 @@ export function Sidebar() {
 
   const closeMenu = () => setIsOpen(false);
 
-  const sidebarSections = [
+  const sidebarSections: SidebarSection[] = [
     {
       id: "planning",
       label: t("nav.planning", { defaultValue: "Planning" }),
@@ -679,8 +706,8 @@ export function Sidebar() {
                           key={`${section.id}-${item.href}-${item.label}`}
                           href={item.href}
                           label={item.label}
-                          icon={"icon" in item ? item.icon : undefined}
-                          special={"special" in item ? item.special : false}
+                          icon={item.icon}
+                          special={item.special ?? false}
                           sectionLabel={section.label}
                         />
                       ))}

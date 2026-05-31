@@ -4160,10 +4160,11 @@ function WeddingParty({
 
   const isMobileRender = ctx.renderDevice === "mobile";
   const labelColor = sectionTextColor(data, "weddingParty");
-  const usesPortalParty = !!(data.portalParty && data.portalParty.length > 0);
+  const portalParty = data.portalParty ?? [];
+  const usesPortalParty = portalParty.length > 0;
   const rawMembers: WeddingPartyMember[] =
     usesPortalParty
-      ? data.portalParty.map((m) => ({
+      ? portalParty.map((m) => ({
           photo: m.photoUrl ?? "",
           name: m.name,
           role: m.role,

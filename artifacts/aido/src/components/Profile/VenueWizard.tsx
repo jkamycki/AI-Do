@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { ChangeEvent, ReactNode } from "react";
+import type { ChangeEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { Mail, Plus, Sparkles, Trash2, Upload, X } from "lucide-react";
 import { authFetch } from "@/lib/authFetch";
 import { Button } from "@/components/ui/button";
@@ -171,7 +171,7 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding", prio
     update({ location: parseLocations(value.location).filter((_, locationIndex) => locationIndex !== index).join("\n") });
   };
 
-  const addLocationOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
+  const addLocationOnEnter = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key !== "Enter") return;
     event.preventDefault();
     addPreferredLocation();
