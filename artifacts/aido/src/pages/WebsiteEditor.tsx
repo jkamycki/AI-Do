@@ -55,13 +55,6 @@ interface WebsiteRecord extends WebsiteRendererPayload {
 type HotelOption = NonNullable<WebsiteRendererPayload["hotelOptions"]>[number];
 type ControlGroupId = "copy" | "design" | "elements" | "photos" | "animation" | "settings";
 
-function defaultControlGroupForPage(pageId: string): ControlGroupId {
-  if (pageId === "gallery") return "photos";
-  if (pageId === "rsvp") return "settings";
-  if (["schedule", "travel", "registry", "faq", "weddingParty"].includes(pageId)) return "elements";
-  return "copy";
-}
-
 interface InvitationHotelSettings {
   rsvpAskHotel: boolean;
   rsvpHotelBlockId: string;
@@ -412,6 +405,7 @@ function isDeviceLayoutCustomTextKey(key: string): boolean {
   return (
     key === "_heroFocals" ||
     key === "_heroZooms" ||
+    key === "_heroFit" ||
     key === "_sectionsBg" ||
     key === "_photoFilter" ||
     key === "_heroAnimation" ||
@@ -1509,7 +1503,7 @@ export default function WebsiteEditor() {
         setPublishSlugDialogOpen(false);
         setPreviewSection("home");
         setEditorSection("home");
-        setActiveControlGroup(defaultControlGroupForPage("home"));
+        setActiveControlGroup("copy");
       }
       toast({ title: cleanBody.published ? "Website published!" : "Website unpublished" });
     } catch {
@@ -1875,7 +1869,7 @@ export default function WebsiteEditor() {
               onSectionChange={(id) => {
                 setEditorSection(id);
                 setActiveTab("setup");
-                setActiveControlGroup(defaultControlGroupForPage(id));
+                setActiveControlGroup("copy");
                 mobilePreviewRef.current?.scrollTo({ top: 0, behavior: "auto" });
               }}
               onTextChange={(key, value) => patchRecord((prev) => ({ customText: { ...prev.customText, [key]: value } }))}
@@ -2125,7 +2119,7 @@ export default function WebsiteEditor() {
                     onClick={() => {
                       setActiveTab("setup");
                       setEditorSection(item.id);
-                      setActiveControlGroup(defaultControlGroupForPage(item.id));
+                      setActiveControlGroup("copy");
                       previewRef.current?.scrollTo({ top: 0, behavior: "smooth" });
                       mobilePreviewRef.current?.scrollTo({ top: 0, behavior: "smooth" });
                     }}
@@ -2496,7 +2490,7 @@ export default function WebsiteEditor() {
                       // regardless of whether they toggled it on or off, so
                       // they're always looking at what their click affected.
                       setEditorSection(s.id);
-                      setActiveControlGroup(defaultControlGroupForPage(s.id));
+                      setActiveControlGroup("copy");
                       previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
                     }}
                   />
@@ -2952,6 +2946,27 @@ export default function WebsiteEditor() {
                 }}
               />
             </div>
+            {editingRecord.customText._announcementMarquee !== "false" && (
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">
+                  {t("website_editor.speed_label", { defaultValue: "Speed" })}
+                </Label>
+                <select
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  value={editingRecord.customText._announcementMarqueeSpeed ?? "medium"}
+                  onChange={(e) => update({
+                    customText: {
+                      ...editingRecord.customText,
+                      _announcementMarqueeSpeed: e.target.value,
+                    },
+                  })}
+                >
+                  <option value="slow">{t("website_editor.speed_slow", { defaultValue: "Slow" })}</option>
+                  <option value="medium">{t("website_editor.speed_medium", { defaultValue: "Medium" })}</option>
+                  <option value="fast">{t("website_editor.speed_fast", { defaultValue: "Fast" })}</option>
+                </select>
+              </div>
+            )}
           </div>
         </Section>}
 
@@ -3575,7 +3590,7 @@ export default function WebsiteEditor() {
             onSectionChange={(id) => {
               setEditorSection(id);
               setActiveTab("setup");
-              setActiveControlGroup(defaultControlGroupForPage(id));
+              setActiveControlGroup("copy");
               // Reset preview scroll to top when switching pages
               previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
             }}

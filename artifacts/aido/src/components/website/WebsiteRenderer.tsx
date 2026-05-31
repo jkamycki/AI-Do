@@ -1512,6 +1512,8 @@ function AnnouncementBanner({
   const text = data.customText._announcement ?? "";
   const trimmed = text.trim();
   const marqueeEnabled = data.customText._announcementMarquee !== "false";
+  const marqueeSpeed = (data.customText._announcementMarqueeSpeed || "medium") as "slow" | "medium" | "fast";
+  const marqueeDuration = marqueeSpeed === "slow" ? "22s" : marqueeSpeed === "fast" ? "9s" : "14s";
   const [dismissed, setDismissed] = useState(false);
 
   // Hide when the user has toggled the announcement off via Home Elements.
@@ -1537,7 +1539,10 @@ function AnnouncementBanner({
                 ? "wsa-announcement-marquee"
                 : "flex w-full items-center justify-center whitespace-normal text-center"
             }
-            style={{ color: data.colorPalette.text }}
+            style={{
+              color: data.colorPalette.text,
+              "--announcement-marquee-duration": marqueeDuration,
+            } as React.CSSProperties}
             aria-label={trimmed}
           >
             <EditableText
@@ -1560,6 +1565,9 @@ function AnnouncementBanner({
                 ? "wsa-announcement-marquee"
                 : "w-full whitespace-normal text-center"
             }
+            style={{
+              "--announcement-marquee-duration": marqueeDuration,
+            } as React.CSSProperties}
             aria-label={trimmed}
           >
             <span
@@ -1678,7 +1686,14 @@ function heroZoomFor(data: WebsiteRendererPayload, url: string): number {
   }
 }
 
-function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
+function HeroBackground({
+  data,
+  renderDevice,
+}: {
+  data: WebsiteRendererPayload;
+  renderDevice?: WebsiteRenderDevice;
+}) {
+  const isMobileRender = renderDevice === "mobile";
   const mode = (data.customText._heroAnimation || "static") as
     | "static"
     | "slideshow"
@@ -1698,9 +1713,10 @@ function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
   // "contain" lets the user see the whole cropped photo (with a colored
   // backdrop filling the extra space). Default "cover" keeps the existing
   // bleed-edge look for sites that don't opt in.
-  const fit = (data.customText._heroFit === "contain" ? "contain" : "cover") as
-    | "cover"
-    | "contain";
+  const heroFitValue = data.customText._heroFit;
+  const fit = (heroFitValue === "contain" || (isMobileRender && !heroFitValue)
+    ? "contain"
+    : "cover") as "cover" | "contain";
   // When letterboxing in contain mode, fall back to the palette background
   // so the bars match the rest of the site instead of showing black.
   const backdrop = fit === "contain" ? data.colorPalette.background : undefined;
@@ -1757,7 +1773,7 @@ function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
                 key={url + i}
                 className="h-full flex-shrink-0 overflow-hidden relative"
                 style={{
-                  width: "60vw",
+                  width: isMobileRender ? "100vw" : "60vw",
                   // Wrapping the slide in a scale wrapper layers the user's
                   // zoom on top of the marquee's translateX animation without
                   // them clobbering each other on the same transform property.
@@ -1882,10 +1898,15 @@ function HeroBackground({ data }: { data: WebsiteRendererPayload }) {
 function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const couple = `${data.couple.partner2Name} & ${data.couple.partner1Name}`;
   const dateStr = formatWeddingDate(data.couple.weddingDate);
+  const isMobileRender = ctx.renderDevice === "mobile";
   return (
     <section
       id="home"
-      className="relative min-h-[80vh] flex items-center justify-center text-center px-4 sm:px-6 py-20 sm:py-24 overflow-hidden"
+      className={`relative flex items-center justify-center overflow-hidden text-center ${
+        isMobileRender
+          ? "min-h-[72vh] px-5 py-14"
+          : "min-h-[80vh] px-4 py-20 sm:px-6 sm:py-24"
+      }`}
       style={{
         color:
           data.heroImage || (data.heroImages?.length ?? 0) > 0
@@ -1893,7 +1914,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             : data.colorPalette.text,
       }}
     >
-      <HeroBackground data={data} />
+      <HeroBackground data={data} renderDevice={ctx.renderDevice} />
       <div className="relative max-w-3xl min-w-0">
         {!isEditableHiddenMarker(data.customText._heroTaglineHidden) && (
           <EditableText
@@ -2343,13 +2364,13 @@ function Schedule({
       ctx={ctx}
     >
       <div className="max-w-2xl mx-auto">
-        <div className="space-y-3 mb-8">
+        <div className="mx-auto mb-8 max-w-md space-y-3">
           {visibleItems.map((it, idx) => {
             const hasTime = !!it.time;
             return (
               <div
                 key={it.key}
-                className="flex gap-4 items-center py-3"
+                className="grid grid-cols-[2.25rem_5.5rem_minmax(8rem,1fr)] items-center gap-3 py-3 sm:grid-cols-[2.25rem_6rem_minmax(10rem,1fr)] sm:gap-4"
                 style={{
                   borderBottom:
                     idx < visibleItems.length - 1
@@ -2365,13 +2386,13 @@ function Schedule({
                   sizeKey={`${it.key}_iconSize`}
                   defaultColor={data.colorPalette.primary}
                   defaultSizePx={16}
-                  wrapperClassName="flex items-center justify-center w-9 h-9 rounded-full flex-shrink-0"
+                  wrapperClassName="flex items-center justify-center w-9 h-9 rounded-full"
                   wrapperStyle={{
                     background: `${data.colorPalette.primary}15`,
                   }}
                 />
                 <div
-                  className="w-28 text-sm font-medium px-3 py-1.5 rounded-md"
+                  className="w-full text-sm font-medium px-3 py-1.5 rounded-md"
                   style={{
                     color: data.colorPalette.primary,
                     border:
@@ -2397,7 +2418,7 @@ function Schedule({
                     )}
                   />
                 </div>
-                <div className="flex-1 text-base" style={{ color: labelColor }}>
+                <div className="min-w-0 text-left text-base" style={{ color: labelColor }}>
                   <EditableText
                     editable={ctx.editable}
                     value={data.customText[it.labelKey] ?? ""}

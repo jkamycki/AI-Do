@@ -129,6 +129,8 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
     const [aiBusy, setAiBusy] = useState(false);
     const [aiError, setAiError] = useState<string | null>(null);
     const [emojiOpen, setEmojiOpen] = useState(false);
+    const [fontSizeDraft, setFontSizeDraft] = useState("");
+    const [fontSizeFocused, setFontSizeFocused] = useState(false);
     const aiInputRef = useRef<HTMLInputElement | null>(null);
     useEffect(() => {
       FONT_OPTIONS.filter((f) => f.value).forEach((f) => loadGoogleFont(f.value));
@@ -152,13 +154,31 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
     const top = Math.max(8, anchorRect.top - 52 + window.scrollY);
     const left = Math.max(8, anchorRect.left + window.scrollX);
 
-    const patch = (partial: Partial<WebsiteTextStyle>) => onChange({ ...style, ...partial });
     const fontSizeNumber = (() => {
       const raw = style.fontSize;
       if (!raw) return "";
       const n = Number.parseInt(String(raw).replace("px", "").trim(), 10);
       return Number.isFinite(n) ? String(n) : "";
     })();
+    useEffect(() => {
+      if (!fontSizeFocused) setFontSizeDraft(fontSizeNumber);
+    }, [fontSizeFocused, fontSizeNumber]);
+    const patch = (partial: Partial<WebsiteTextStyle>) => onChange({ ...style, ...partial });
+    const commitFontSize = (value = fontSizeDraft) => {
+      const v = value.trim();
+      if (!v) {
+        patch({ fontSize: undefined });
+        return;
+      }
+      const n = Number.parseInt(v, 10);
+      if (!Number.isFinite(n)) {
+        setFontSizeDraft(fontSizeNumber);
+        return;
+      }
+      const clamped = Math.max(8, Math.min(120, n));
+      setFontSizeDraft(String(clamped));
+      patch({ fontSize: `${clamped}px` });
+    };
 
     const btnClass = (active: boolean) =>
       `px-2 py-1 rounded text-xs font-medium transition-colors ${
@@ -208,19 +228,32 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
             min={8}
             max={120}
             step={1}
-            value={fontSizeNumber}
-            onFocus={() => onKeepOpen?.()}
+            value={fontSizeFocused ? fontSizeDraft : fontSizeNumber}
+            onFocus={() => {
+              setFontSizeFocused(true);
+              setFontSizeDraft(fontSizeNumber);
+              onKeepOpen?.();
+            }}
+            onBlur={() => {
+              setFontSizeFocused(false);
+              commitFontSize();
+            }}
             onMouseDown={(e) => e.stopPropagation()}
-            onChange={(e) => {
-              const v = e.target.value.trim();
-              if (!v) {
-                patch({ fontSize: undefined });
-                return;
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commitFontSize();
+                (e.currentTarget as HTMLInputElement).blur();
               }
-              const n = Number.parseInt(v, 10);
-              if (!Number.isFinite(n)) return;
-              const clamped = Math.max(8, Math.min(120, n));
-              patch({ fontSize: `${clamped}px` });
+              if (e.key === "Escape") {
+                e.preventDefault();
+                setFontSizeDraft(fontSizeNumber);
+                (e.currentTarget as HTMLInputElement).blur();
+              }
+            }}
+            onChange={(e) => {
+              setFontSizeDraft(e.target.value.replace(/[^\d]/g, ""));
             }}
             className="h-7 w-[64px] rounded border border-[#D6C8B8] bg-[#FFFDF8] px-1.5 text-xs text-[#1F242C]"
             aria-label={t("text_toolbar.font-size", { defaultValue: "Font size" })}

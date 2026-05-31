@@ -176,7 +176,7 @@
   min-width: 100%;
   white-space: nowrap;
   will-change: transform;
-  animation: wsa-announcement-ltr 14s linear infinite;
+  animation: wsa-announcement-ltr var(--announcement-marquee-duration, 14s) linear infinite;
 }
 
 @custom-variant dark (&:is(.dark *));
