@@ -1462,7 +1462,7 @@ function RsvpSection({
                   style={inputStyle}
                   value={dietary}
                   onChange={(e) => setDietary(e.target.value)}
-                  placeholder="Vegetarian, gluten-freeâ€¦"
+                  placeholder="Vegetarian, gluten-free..."
                 />
               </div>
             </div>
@@ -2065,7 +2065,7 @@ function CustomTextBoxes({
             if (scope !== "global" && scope !== currentSection) return false;
           }
           if (!ctx.editable)
-            return !!v?.trim() && v.trim() !== "New text â€” click to edit";
+            return !!v?.trim() && v.trim() !== "New text - click to edit";
           return true;
         })
         .map(([key, val], idx) => (
@@ -2083,9 +2083,9 @@ function CustomTextBoxes({
               as="div"
               editable={ctx.editable}
               value={val}
-              defaultValue="New text â€” click to edit"
+              defaultValue="New text - click to edit"
               onCommit={(v) =>
-                ctx.onTextChange(key, v || "New text â€” click to edit")
+                ctx.onTextChange(key, v || "New text - click to edit")
               }
               style={{
                 display: "inline-block",
@@ -2456,7 +2456,7 @@ function Schedule({
           value={customSchedule}
           defaultValue={
             ctx.editable
-              ? "Add any extra schedule notes â€” dress code, parking, after-party, etc."
+              ? "Add any extra schedule notes - dress code, parking, after-party, etc."
               : ""
           }
           onCommit={(v) => ctx.onTextChange("schedule", v)}
@@ -2712,7 +2712,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           value={text}
           defaultValue={
             ctx.editable
-              ? "Add parking info, directions, or other travel notesâ€¦"
+              ? "Add parking info, directions, or other travel notes..."
               : ""
           }
           onCommit={(v) => ctx.onTextChange("travel", v)}
@@ -2967,7 +2967,7 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
 
       {items.length === 0 && !legacyText && ctx.editable && (
         <p className="text-center text-sm text-muted-foreground max-w-2xl mx-auto">
-          Add FAQ questions in the sidebar (Pages tab â†’ FAQ Questions).
+          Add FAQ questions in the sidebar (Pages tab &gt; FAQ Questions).
         </p>
       )}
     </SectionShell>
@@ -3106,7 +3106,7 @@ function Gallery({
         as="div"
         editable={ctx.editable}
         value={caption ?? ""}
-        defaultValue={ctx.editable ? "Add a captionâ€¦" : ""}
+        defaultValue={ctx.editable ? "Add a caption..." : ""}
         onCommit={(v) => ctx.onGalleryCaptionChange?.(imageUrl, v)}
         aiEnabled={false}
         textStyle={data.textStyles?.[styleKey]}
@@ -3939,7 +3939,7 @@ function WeddingParty({
           className="text-center text-sm font-medium"
           style={{ color: labelColor }}
         >
-          No wedding party members yet â€” add some from the sidebar.
+          No wedding party members yet - add some from the sidebar.
         </p>
       ) : (
         <div className="space-y-16">
