@@ -2209,7 +2209,7 @@ export default function WebsiteEditor() {
             <SlugEditor
               slug={editingRecord.slug}
               published={editingRecord.published}
-              locked={Boolean(editingRecord.publishedAt)}
+              locked={editingRecord.published}
               onSaved={(newSlug, lastUpdated) =>
                 setRecord((prev) => prev ? { ...prev, slug: newSlug, lastUpdated } : prev)
               }
@@ -3977,7 +3977,7 @@ function SlugEditor({
       </div>
       {locked && (
         <p className="text-[11px] text-green-700 dark:text-green-400">
-          URL is now locked to keep your shared link and QR code permanent.
+          URL is locked while your website is published. Unpublish to edit it.
         </p>
       )}
       {editing && !locked ? (
@@ -4020,7 +4020,7 @@ function SlugEditor({
             className="h-7 text-xs"
             onClick={() => { setEditing(true); setInput(slug); }}
             disabled={locked}
-            title={locked ? "URL is locked after first publish" : "Edit URL"}
+            title={locked ? "Unpublish your website to edit the URL" : "Edit URL"}
           >
             Edit URL
           </Button>
