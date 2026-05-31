@@ -75,6 +75,19 @@ export default defineConfig({
     port,
     host: "0.0.0.0",
     allowedHosts: true,
+    proxy: {
+      "/api/__clerk": {
+        target: "https://clerk.aidowedding.net",
+        changeOrigin: true,
+        secure: true,
+        rewrite: (p) => p.replace(/^\/api\/__clerk/, ""),
+      },
+      "/api": {
+        target: "https://ai-do.onrender.com",
+        changeOrigin: true,
+        secure: true,
+      },
+    },
     fs: {
       strict: true,
       deny: ["**/.*"],

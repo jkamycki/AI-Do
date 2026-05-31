@@ -11,8 +11,11 @@ const FAILURES_BEFORE_BANNER = 2;
 const FETCH_TIMEOUT_MS = 8_000;
 
 async function pingHealth(): Promise<boolean> {
-  const apiUrl = import.meta.env.VITE_API_URL ?? "";
-  if (!apiUrl) return true;
+  const apiUrl =
+    typeof window !== "undefined" &&
+    ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname)
+      ? ""
+      : (import.meta.env.VITE_API_URL ?? "");
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {

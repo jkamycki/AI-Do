@@ -62,13 +62,30 @@ const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const rawClerkProxyUrl = String(import.meta.env.VITE_CLERK_PROXY_URL ?? "").trim().replace(/\/+$/, "");
 const publicOrigin = String(import.meta.env.VITE_PUBLIC_APP_URL ?? "https://aidowedding.net").trim().replace(/\/+$/, "");
 const normalizedClerkProxyUrl = rawClerkProxyUrl.replace(/\/clerk$/, "/api/__clerk");
-const clerkProxyUrl = /^https:\/\/ai-do\.onrender\.com\/api\/__clerk$/i.test(normalizedClerkProxyUrl)
-  ? `${publicOrigin}/api/__clerk`
-  : normalizedClerkProxyUrl;
+const clerkFrontendApi = (() => {
+  const encoded = String(clerkPubKey ?? "").replace(/^pk_(?:live|test)_/, "");
+  try {
+    return atob(encoded).replace(/\$$/, "");
+  } catch {
+    return "";
+  }
+})();
+const usesAidoClerkFrontend = clerkFrontendApi === "clerk.aidowedding.net";
+const isLocalAppOrigin =
+  typeof window !== "undefined" &&
+  ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+const clerkProxyUrl = isLocalAppOrigin
+  ? "/api/__clerk"
+  : usesAidoClerkFrontend
+    ? ""
+  : /^https:\/\/ai-do\.onrender\.com\/api\/__clerk$/i.test(normalizedClerkProxyUrl)
+    ? `${publicOrigin}/api/__clerk`
+    : normalizedClerkProxyUrl;
+const apiBaseUrl = isLocalAppOrigin ? "" : (import.meta.env.VITE_API_URL || "");
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-setBaseUrl(import.meta.env.VITE_API_URL || null);
-setAuthFetchBaseUrl(import.meta.env.VITE_API_URL || null);
+setBaseUrl(apiBaseUrl || null);
+setAuthFetchBaseUrl(apiBaseUrl || null);
 
 function stripBase(path: string): string {
   return basePath && path.startsWith(basePath)
@@ -1827,9 +1844,7 @@ function NoAccountFromSignInDetector() {
 
 function ServerWarmupPing() {
   useEffect(() => {
-    const apiUrl = import.meta.env.VITE_API_URL;
-    if (!apiUrl) return;
-    fetch(`${apiUrl}/api/healthz`, { method: "GET" }).catch(() => {});
+    fetch(`${apiBaseUrl}/api/healthz`, { method: "GET" }).catch(() => {});
   }, []);
   return null;
 }
@@ -1840,8 +1855,7 @@ function ServerKeepAlive() {
   const { isSignedIn } = useAuth();
   useEffect(() => {
     if (!isSignedIn) return;
-    const API = import.meta.env.VITE_API_URL ?? "";
-    const ping = () => fetch(`${API}/api/healthz`, { method: "GET" }).catch(() => {});
+    const ping = () => fetch(`${apiBaseUrl}/api/healthz`, { method: "GET" }).catch(() => {});
     const id = setInterval(ping, 10 * 60 * 1000);
     return () => clearInterval(id);
   }, [isSignedIn]);
