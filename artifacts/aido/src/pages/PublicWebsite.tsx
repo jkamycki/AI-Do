@@ -115,7 +115,7 @@ export default function PublicWebsite() {
     setData(null);
     setPassword(null);
     const url = `/api/website/public/${encodeURIComponent(slug)}`;
-    apiFetch(url)
+    apiFetch(url, { cache: "no-store" })
       .then(async (res) => {
         if (res.status === 401) {
           const body = await res.json().catch(() => ({}));
@@ -150,6 +150,7 @@ export default function PublicWebsite() {
     try {
       const res = await apiFetch(`/api/website/public/${encodeURIComponent(slug)}/unlock`, {
         method: "POST",
+        cache: "no-store",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password: pw }),
       });

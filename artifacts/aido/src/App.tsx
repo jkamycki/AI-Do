@@ -1937,6 +1937,39 @@ function Router() {
   );
 }
 
+function PublicWeddingRouter() {
+  return (
+    <Suspense fallback={<RouteLoading />}>
+      <Switch>
+        <Route path="/photo-drop/:slug" component={PublicGuestPhotoDrop} />
+        <Route path="/wedding/:slug/disposable" component={PublicDisposableCamera} />
+        <Route path="/w/:slug/:section" component={PublicWebsite} />
+        <Route path="/w/:slug" component={PublicWebsite} />
+        <Route component={NotFound} />
+      </Switch>
+    </Suspense>
+  );
+}
+
+function isPublicWeddingRoute(path: string) {
+  return (
+    path.startsWith("/w/") ||
+    path.startsWith("/photo-drop/") ||
+    /^\/wedding\/[^/]+\/disposable\/?$/.test(path)
+  );
+}
+
+function PublicWeddingApp() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <PublicWeddingRouter />
+        <Toaster />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
+
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
 
@@ -2117,9 +2150,10 @@ class AppErrorBoundary extends Component<
 
 function AppWithRouteBoundary() {
   const [location] = useLocation();
+  const publicOnly = isPublicWeddingRoute(location);
   return (
     <AppErrorBoundary resetKey={location}>
-      <ClerkProviderWithRoutes />
+      {publicOnly ? <PublicWeddingApp /> : <ClerkProviderWithRoutes />}
     </AppErrorBoundary>
   );
 }

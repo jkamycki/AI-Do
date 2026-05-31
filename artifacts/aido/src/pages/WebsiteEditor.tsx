@@ -2030,6 +2030,9 @@ export default function WebsiteEditor() {
           </div>
           {editingRecord.published && (
             <div className="mt-3 space-y-2">
+              <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
+                Published link stays the same. Any edits you make here auto-save to the live site.
+              </p>
               {qrOpen ? (
                 <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 text-xs">
                   <QrCode className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
@@ -2191,6 +2194,7 @@ export default function WebsiteEditor() {
             <SlugEditor
               slug={editingRecord.slug}
               published={editingRecord.published}
+              locked={Boolean(editingRecord.publishedAt)}
               onSaved={(newSlug, lastUpdated) =>
                 setRecord((prev) => prev ? { ...prev, slug: newSlug, lastUpdated } : prev)
               }
@@ -3880,10 +3884,12 @@ export default function WebsiteEditor() {
 function SlugEditor({
   slug,
   published,
+  locked,
   onSaved,
 }: {
   slug: string;
   published: boolean;
+  locked: boolean;
   onSaved: (newSlug: string, lastUpdated: string) => void;
 }) {
   const { t } = useTranslation();
@@ -3950,12 +3956,12 @@ function SlugEditor({
           </Button>
         </div>
       </div>
-      {published && (
+      {locked && (
         <p className="text-[11px] text-green-700 dark:text-green-400">
           URL is now locked to keep your shared link and QR code permanent.
         </p>
       )}
-      {editing && !published ? (
+      {editing && !locked ? (
         <div className="space-y-2">
           <div className="flex items-center text-xs font-mono rounded-md border border-border bg-background overflow-hidden focus-within:ring-2 focus-within:ring-primary/30">
             <span className="px-2.5 py-1.5 bg-muted text-muted-foreground border-r border-border whitespace-nowrap">{host}/w/</span>
@@ -3994,8 +4000,8 @@ function SlugEditor({
             variant="outline"
             className="h-7 text-xs"
             onClick={() => { setEditing(true); setInput(slug); }}
-            disabled={published}
-            title={published ? "URL is locked after publish" : "Edit URL"}
+            disabled={locked}
+            title={locked ? "URL is locked after first publish" : "Edit URL"}
           >
             Edit URL
           </Button>
