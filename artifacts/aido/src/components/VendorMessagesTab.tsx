@@ -18,7 +18,7 @@ import {
   getListConversationsQueryKey,
   getGetProfileQueryKey,
 } from "@workspace/api-client-react";
-import type { Message } from "@workspace/api-client-react";
+import type { Message, VendorEmail } from "@workspace/api-client-react";
 import {
   Dialog,
   DialogContent,
@@ -92,17 +92,17 @@ export function VendorMessagesTab({ vendorId }: Props) {
         setDraft("");
         setAttachments([]);
       },
-      onError: (e) => toast({ title: t("vendors.msg_send_failed"), description: String(e), variant: "destructive" }),
+      onError: (e: unknown) => toast({ title: t("vendors.msg_send_failed"), description: String(e), variant: "destructive" }),
     },
   });
 
   const suggestMutation = useSuggestReply({
     mutation: {
-      onSuccess: (r) => {
+      onSuccess: (r: { draft: string }) => {
         setDraft((d) => (d ? `${d}\n\n${r.draft}` : r.draft));
         setIsSuggesting(false);
       },
-      onError: (e) => {
+      onError: (e: unknown) => {
         setIsSuggesting(false);
         toast({ title: t("vendors.msg_ai_suggest_failed"), description: String(e), variant: "destructive" });
       },
@@ -311,7 +311,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
 
   const upload = useUpload({
     getToken,
-    onError: (e) => toast({ title: t("vendors.msg_upload_failed"), description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: t("vendors.msg_upload_failed"), description: e.message, variant: "destructive" }),
   });
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -386,7 +386,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
             <p className="text-xs mt-1">{t("vendors.msg_replies_arrive_hint")}</p>
           </div>
         )}
-        {messages?.map((m) => (
+        {messages?.map((m: Message) => (
           <MessageBubble key={m.id} message={m} />
         ))}
       </div>
@@ -512,7 +512,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
 
       {attachments.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {attachments.map((a, i) => (
+          {attachments.map((a: PendingAttachment, i: number) => (
             <Badge key={i} variant="secondary" className="gap-1.5">
               <Paperclip className="h-3 w-3" />
               <span className="max-w-[180px] truncate">{a.name}</span>
@@ -693,7 +693,7 @@ export function VendorMessagesTab({ vendorId }: Props) {
                     },
                   },
                   {
-                    onSuccess: (result) => {
+                    onSuccess: (result: VendorEmail) => {
                       if (result.subject) setSubject(result.subject);
                       setDraft((d) => (d ? `${d}\n\n${result.body}` : result.body));
                       setShowDraftDialog(false);
@@ -757,7 +757,7 @@ function MessageBubble({ message }: { message: Message }) {
           {message.body}
           {message.attachments && message.attachments.length > 0 && (
             <div className="mt-2 space-y-1">
-              {message.attachments.map((a, i) => {
+              {message.attachments.map((a: Message["attachments"][number], i: number) => {
                 const href = a.url.startsWith("/objects/") ? `/api/storage${a.url}` : a.url;
                 return (
                   <a

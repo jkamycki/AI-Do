@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@clerk/react";
 import { useListConversations, getListConversationsQueryKey } from "@workspace/api-client-react";
+import type { ConversationSummary } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { Mail } from "lucide-react";
 
@@ -12,7 +13,7 @@ export function VendorReplyNotifier() {
   const seenUnread = useRef<Map<number, number>>(new Map());
   const initialized = useRef(false);
 
-  const { data: conversations } = useListConversations({
+  const { data: conversations } = useListConversations<ConversationSummary[]>({
     query: {
       queryKey: getListConversationsQueryKey(),
       enabled: !!isSignedIn,
@@ -24,11 +25,11 @@ export function VendorReplyNotifier() {
   useEffect(() => {
     if (!conversations) return;
     if (!initialized.current) {
-      conversations.forEach((c) => seenUnread.current.set(c.id, c.unreadCount ?? 0));
+      conversations.forEach((c: ConversationSummary) => seenUnread.current.set(c.id, c.unreadCount ?? 0));
       initialized.current = true;
       return;
     }
-    conversations.forEach((c) => {
+    conversations.forEach((c: ConversationSummary) => {
       const previous = seenUnread.current.get(c.id) ?? 0;
       const current = c.unreadCount ?? 0;
       if (current > previous) {

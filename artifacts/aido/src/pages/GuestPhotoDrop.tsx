@@ -472,7 +472,7 @@ export default function GuestPhotoDrop() {
   const displayMode = settings.displayMode === "website"
     ? "both"
     : settings.displayMode ?? (settings.galleryEnabled ? "both" : "portal");
-  const websitePublishesGuestPhotos = displayMode === "website" || displayMode === "both";
+  const websitePublishesGuestPhotos = displayMode === "both";
   const approvedWebsitePhotos = websitePublishesGuestPhotos
     ? uploads.filter((upload) => upload.status === "approved").length
     : 0;
