@@ -4136,7 +4136,22 @@ function QrCodeSection({ publicUrl, published }: { publicUrl: string; published:
   const [destination, setDestination] = useState<QrDestination>("website");
   const [qrUrl, setQrUrl] = useState("");
   const cleanPublicUrl = useMemo(() => publicUrl.replace(/\/+$/, ""), [publicUrl]);
-  const publicWebsiteBaseUrl = useMemo(() => cleanPublicUrl.replace(/\/(?:home|rsvp)$/, ""), [cleanPublicUrl]);
+  const publicWebsiteBaseUrl = useMemo(() => {
+    try {
+      const url = new URL(cleanPublicUrl);
+      const parts = url.pathname.split("/").filter(Boolean);
+      if (parts[0] === "w" && parts[1]) {
+        url.pathname = `/w/${parts[1]}`;
+        url.search = "";
+        url.hash = "";
+        return url.toString().replace(/\/+$/, "");
+      }
+    } catch {
+      const match = cleanPublicUrl.match(/^(.*\/w\/[^/]+)(?:\/.*)?$/);
+      if (match?.[1]) return match[1].replace(/\/+$/, "");
+    }
+    return cleanPublicUrl.replace(/\/(?:home|story|schedule|travel|registry|wedding-party|gallery|guest-photo-drop|faq|rsvp)$/, "");
+  }, [cleanPublicUrl]);
   const destinationUrl = destination === "rsvp" ? `${publicWebsiteBaseUrl}/rsvp` : `${publicWebsiteBaseUrl}/home`;
   const selectedDestination = QR_DESTINATIONS.find((item) => item.id === destination) ?? QR_DESTINATIONS[0];
 

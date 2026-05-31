@@ -72,6 +72,34 @@ export function sectionFromUrlSegment(seg: string | undefined): string {
   return URL_TO_SECTION[seg ?? ""] ?? "home";
 }
 
+function splitDisplayName(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return { first: parts[0] ?? "", last: "" };
+  return {
+    first: parts.slice(0, -1).join(" "),
+    last: parts[parts.length - 1],
+  };
+}
+
+function coupleHeaderParts(data: WebsiteRendererPayload) {
+  const partner2 = splitDisplayName(data.couple.partner2Name);
+  const partner1 = splitDisplayName(data.couple.partner1Name);
+  const firstLine = [partner2.first, partner1.first].filter(Boolean).join(" & ");
+  const sharedLast =
+    partner1.last && (!partner2.last || partner1.last.toLowerCase() === partner2.last.toLowerCase())
+      ? partner1.last
+      : "";
+  return {
+    firstLine: firstLine || `${data.couple.partner2Name} & ${data.couple.partner1Name}`.trim(),
+    lastLine: sharedLast,
+  };
+}
+
+function stackedCoupleName(value: string) {
+  if (hasInlineHtml(value)) return value;
+  return value.replace(/\s+&\s+/g, "\n&\n");
+}
+
 export interface WebsiteRendererPayload {
   slug?: string;
   publicWebsiteUrl?: string | null;
@@ -2154,10 +2182,10 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         <EditableText
           as="div"
           editable={ctx.editable}
-          value={data.customText._coupleName ?? ""}
-          defaultValue={couple}
+          value={stackedCoupleName(data.customText._coupleName ?? "")}
+          defaultValue={stackedCoupleName(couple)}
           onCommit={(v) => ctx.onTextChange("_coupleName", v)}
-          className="text-4xl sm:text-6xl md:text-8xl mb-6 leading-tight break-words [overflow-wrap:anywhere]"
+          className="text-4xl sm:text-6xl md:text-8xl mb-6 leading-tight whitespace-pre-line break-words [overflow-wrap:anywhere]"
           style={{
             fontFamily: fontStack(headingFont(data)),
             color:
@@ -4489,7 +4517,6 @@ function TopNav({
   // through React state without changing the actual URL.
   onSectionChange?: (id: string) => void;
 }) {
-  const couple = `${data.couple.partner2Name} & ${data.couple.partner1Name}`;
   const [scrollActive, setScrollActive] = useState<string>("home");
   const isMobileRender = renderDevice === "mobile";
   const navLabel = (key: string, fallback: string) => {
@@ -4612,6 +4639,22 @@ function TopNav({
   const homeHref = slug && !onSectionChange ? `/w/${slug}/home` : undefined;
   // Show the Share button only on the real public site (not editor preview / live preview)
   const showShare = !!slug && !onSectionChange;
+  const headerParts = coupleHeaderParts(data);
+  const titleClassName = `${
+    isMobileRender ? "text-xl" : "text-2xl sm:text-3xl"
+  } max-w-full leading-tight text-center transition-colors hover:opacity-80`;
+  const titleStyle: React.CSSProperties = {
+    fontFamily: fontStack(headingFont(data)),
+    color: data.customText._navCoupleColor || data.colorPalette.primary,
+  };
+  const titleContent = (
+    <span className="block max-w-full text-center">
+      <span className="block max-w-full truncate">{headerParts.firstLine}</span>
+      {headerParts.lastLine && (
+        <span className="block max-w-full truncate">{headerParts.lastLine}</span>
+      )}
+    </span>
+  );
 
   return (
     <nav
@@ -4631,14 +4674,10 @@ function TopNav({
         {homeHref ? (
           <Link
             href={homeHref}
-            className={`${isMobileRender ? "text-xl" : "text-2xl sm:text-3xl"} max-w-full truncate leading-tight transition-colors hover:opacity-80`}
-            style={{
-              fontFamily: fontStack(headingFont(data)),
-              color:
-                data.customText._navCoupleColor || data.colorPalette.primary,
-            }}
+            className={titleClassName}
+            style={titleStyle}
           >
-            {couple}
+            {titleContent}
           </Link>
         ) : (
           <button
@@ -4650,14 +4689,10 @@ function TopNav({
                 scrollTo("home");
               }
             }}
-            className={`${isMobileRender ? "text-xl" : "text-2xl sm:text-3xl"} max-w-full truncate leading-tight transition-colors hover:opacity-80`}
-            style={{
-              fontFamily: fontStack(headingFont(data)),
-              color:
-                data.customText._navCoupleColor || data.colorPalette.primary,
-            }}
+            className={titleClassName}
+            style={titleStyle}
           >
-            {couple}
+            {titleContent}
           </button>
         )}
         <div
