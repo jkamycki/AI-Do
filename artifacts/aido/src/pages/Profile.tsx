@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { authFetch } from "@/lib/authFetch";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useGetProfile, useSaveProfile, getGetProfileQueryKey, getGetBudgetQueryKey, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
@@ -381,11 +381,11 @@ export default function Profile() {
       queryKey: getGetProfileQueryKey(),
       enabled: isLoaded && !!isSignedIn,
       // Don't retry 404 — that just means "no profile yet, render the empty form".
-      retry: (failureCount, err) => {
+      retry: (failureCount: number, err: unknown) => {
         if ((err as { status?: number } | null | undefined)?.status === 404) return false;
         return failureCount < 3;
       },
-      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
+      retryDelay: (attempt: number) => Math.min(1000 * 2 ** attempt, 10000),
     }
   });
   // True 404 = brand-new user without a profile yet. We render the empty form
@@ -394,7 +394,7 @@ export default function Profile() {
   const saveProfile = useSaveProfile();
 
   const form = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileSchema),
+    resolver: zodResolver(profileSchema) as unknown as Resolver<ProfileFormValues>,
     defaultValues: {
       partner1Name: "",
       accountType: "couple_individual",
