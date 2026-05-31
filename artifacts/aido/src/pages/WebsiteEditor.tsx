@@ -489,95 +489,6 @@ function withDevicePatch(
   };
 }
 
-function writePublishedPreviewShell(targetWindow: Window | null, publicUrl: string) {
-  if (!targetWindow) return;
-  const safeUrl = JSON.stringify(publicUrl);
-  try {
-    targetWindow.document.open();
-    targetWindow.document.write(`<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>A.I DO published website</title>
-  <style>
-    :root { color-scheme: light; }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      background: #fff7f2;
-      color: #5b0f2a;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-    }
-    .actions {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 10px;
-      border: 1px solid #ead0d8;
-      border-radius: 22px;
-      background: #fff;
-      box-shadow: 0 18px 50px rgba(91, 15, 42, .14);
-    }
-    button {
-      appearance: none;
-      display: grid;
-      place-items: center;
-      width: 54px;
-      height: 54px;
-      border: 1px solid #ead0d8;
-      border-radius: 18px;
-      background: #fff7f2;
-      color: #8d294d;
-      font: inherit;
-      font-size: 26px;
-      cursor: pointer;
-      transition: transform .16s ease, background .16s ease, color .16s ease;
-    }
-    button:hover {
-      transform: translateY(-1px);
-      background: #8d294d;
-      color: #fff7f2;
-    }
-  </style>
-</head>
-<body>
-  <div class="actions" aria-label="Open published website size">
-    <button id="desktopBtn" type="button" title="Desktop view" aria-label="Desktop view">&#128421;</button>
-    <button id="mobileBtn" type="button" title="Mobile view" aria-label="Mobile view">&#128241;</button>
-  </div>
-  <script>
-    const publicUrl = ${safeUrl};
-    const desktopBtn = document.getElementById("desktopBtn");
-    const mobileBtn = document.getElementById("mobileBtn");
-    function openPublished(width, height) {
-      try {
-        window.resizeTo(width, height);
-        window.moveTo(Math.max(0, (screen.availWidth - width) / 2), Math.max(0, (screen.availHeight - height) / 2));
-      } catch {}
-      window.location.href = publicUrl;
-    }
-    desktopBtn.addEventListener("click", () => openPublished(1366, 900));
-    mobileBtn.addEventListener("click", () => openPublished(430, 860));
-  </script>
-</body>
-</html>`);
-    targetWindow.document.close();
-  } catch {
-    try {
-      targetWindow.location.href = publicUrl;
-    } catch {
-      // Ignore: popup may have been blocked or closed.
-    }
-  }
-}
-
 // ---------- main ----------
 
 export default function WebsiteEditor() {
@@ -1608,7 +1519,7 @@ export default function WebsiteEditor() {
         setEditorSection("home");
         setActiveControlGroup("copy");
         if (guestPreviewWindow) {
-          writePublishedPreviewShell(guestPreviewWindow, publishedWebsiteUrl(cleanBody.slug, "home"));
+          guestPreviewWindow.location.href = publishedWebsiteUrl(cleanBody.slug, "home");
         }
       }
       toast({ title: cleanBody.published ? "Website published!" : "Website unpublished" });

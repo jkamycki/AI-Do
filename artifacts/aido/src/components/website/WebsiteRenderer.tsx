@@ -181,6 +181,22 @@ export interface WebsiteRendererPayload {
 export type WebsiteRenderDevice = "desktop" | "mobile";
 export const WEBSITE_DEVICE_OVERRIDES_KEY = "_deviceOverrides";
 
+function detectWebsiteRenderDevice(): WebsiteRenderDevice {
+  if (typeof window === "undefined") return "desktop";
+
+  const viewportWidth = Math.min(
+    window.innerWidth || Number.POSITIVE_INFINITY,
+    window.visualViewport?.width || Number.POSITIVE_INFINITY,
+    document.documentElement?.clientWidth || Number.POSITIVE_INFINITY,
+  );
+  const ua = navigator.userAgent || "";
+  const isMobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|CriOS|FxiOS/i.test(ua);
+  const hasCoarsePointer = window.matchMedia?.("(pointer: coarse)").matches ?? false;
+  const isNarrowViewport = viewportWidth <= 900;
+
+  return isNarrowViewport || isMobileUserAgent || (hasCoarsePointer && viewportWidth <= 1180) ? "mobile" : "desktop";
+}
+
 export type WebsiteDeviceOverride = Partial<
   Pick<
     WebsiteRendererPayload,
@@ -4486,16 +4502,25 @@ export function WebsiteRenderer({
   previewMode?: boolean;
   renderDevice?: WebsiteRenderDevice;
 }) {
-  const [detectedDevice, setDetectedDevice] = useState<WebsiteRenderDevice>(() =>
-    typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches ? "mobile" : "desktop",
-  );
+  const [detectedDevice, setDetectedDevice] = useState<WebsiteRenderDevice>(() => detectWebsiteRenderDevice());
   useEffect(() => {
     if (renderDevice || typeof window === "undefined") return;
-    const media = window.matchMedia("(max-width: 767px)");
-    const updateDevice = () => setDetectedDevice(media.matches ? "mobile" : "desktop");
+    const mediaQueries = [
+      window.matchMedia("(max-width: 900px)"),
+      window.matchMedia("(pointer: coarse)"),
+    ];
+    const updateDevice = () => setDetectedDevice(detectWebsiteRenderDevice());
     updateDevice();
-    media.addEventListener?.("change", updateDevice);
-    return () => media.removeEventListener?.("change", updateDevice);
+    window.addEventListener("resize", updateDevice);
+    window.addEventListener("orientationchange", updateDevice);
+    window.visualViewport?.addEventListener("resize", updateDevice);
+    mediaQueries.forEach((media) => media.addEventListener?.("change", updateDevice));
+    return () => {
+      window.removeEventListener("resize", updateDevice);
+      window.removeEventListener("orientationchange", updateDevice);
+      window.visualViewport?.removeEventListener("resize", updateDevice);
+      mediaQueries.forEach((media) => media.removeEventListener?.("change", updateDevice));
+    };
   }, [renderDevice]);
 
   const activeRenderDevice = renderDevice ?? detectedDevice;
