@@ -72,6 +72,13 @@ interface Vendor {
   isPaidOff?: boolean;
 }
 
+interface DashboardUpcomingTask {
+  id: number;
+  task: string;
+  month?: string | null;
+  dueDate?: string | null;
+}
+
 
 function getGreetingKey() {
   const h = new Date().getHours();
@@ -1306,7 +1313,7 @@ function DashboardContent() {
             <span className="text-sm font-semibold text-amber-800 dark:text-amber-300 uppercase tracking-wider">{t("dashboard.needs_attention")}</span>
           </div>
           <div className="space-y-2">
-            {(summary.upcomingTasks ?? []).map(task => (
+            {((summary.upcomingTasks ?? []) as DashboardUpcomingTask[]).map((task: DashboardUpcomingTask) => (
               <div key={task.id} className="flex items-start gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-amber-400 flex-shrink-0 mt-2" />
                 <div>

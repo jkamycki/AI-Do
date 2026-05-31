@@ -86,6 +86,12 @@ interface HotelBlockOption {
   state?: string | null;
 }
 
+interface ContractVendorOption {
+  id: number;
+  name: string;
+  category?: string | null;
+}
+
 function riskColor(level: "low" | "medium" | "high") {
   if (level === "high") return "bg-red-100 text-red-700 border-red-200";
   if (level === "medium") return "bg-amber-100 text-amber-700 border-amber-200";
@@ -574,7 +580,9 @@ export default function Contracts({ embedded = false }: { embedded?: boolean } =
   const [pendingName, setPendingName] = useState("");
   const [pendingVendorId, setPendingVendorId] = useState<string>("none");
   const [syncToDocumentLibrary, setSyncToDocumentLibrary] = useState(false);
-  const { data: vendors = [], isLoading: vendorsLoading } = useListVendors();
+  const vendorsQuery = useListVendors();
+  const vendors = (vendorsQuery.data ?? []) as ContractVendorOption[];
+  const vendorsLoading = vendorsQuery.isLoading;
   const { data: hotels = [], isLoading: hotelsLoading } = useQuery<HotelBlockOption[]>({
     queryKey: ["hotels"],
     queryFn: async () => {
@@ -774,7 +782,7 @@ export default function Contracts({ embedded = false }: { embedded?: boolean } =
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">{t("contracts.no_vendor_assigned", { defaultValue: "No vendor assigned" })}</SelectItem>
-                {vendors.map((vendor) => (
+                {vendors.map((vendor: ContractVendorOption) => (
                   <SelectItem key={`vendor-${vendor.id}`} value={`vendor:${vendor.id}`}>
                     Vendor: {vendor.name} {vendor.category ? `(${vendor.category})` : ""}
                   </SelectItem>
