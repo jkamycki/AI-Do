@@ -30,7 +30,9 @@ const schema = z.object({
   path: ["plusOneFirstName"],
 });
 
-type FormData = z.infer<typeof schema>;
+type FormInput = z.input<typeof schema>;
+type FormData = z.output<typeof schema>;
+type PlusOneStatus = FormInput["plusOneStatus"];
 
 const palette = {
   cream: "#FFF7F2",
@@ -85,7 +87,7 @@ export default function GuestCollect() {
     retry: false,
   });
 
-  const form = useForm<FormData>({
+  const form = useForm<FormInput, unknown, FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       name: "",
@@ -287,12 +289,12 @@ export default function GuestCollect() {
                             <p className="mt-0.5 text-xs text-[#6F3E54]">It is okay if you do not know their name yet.</p>
                           </div>
                           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                            {[
+                            {([
                               { value: "none", label: "No" },
                               { value: "named", label: "Yes, I know their name" },
                               { value: "name_tbd", label: "Yes, name coming later" },
                               { value: "unsure", label: "Not sure yet" },
-                            ].map((option) => (
+                            ] satisfies Array<{ value: PlusOneStatus; label: string }>).map((option) => (
                               <button
                                 key={option.value}
                                 type="button"

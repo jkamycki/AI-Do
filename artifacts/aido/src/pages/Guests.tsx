@@ -305,7 +305,8 @@ const guestSchema = z.object({
   weddingPartySide: z.string().optional().default("bride"),
 });
 
-type GuestFormValues = z.infer<typeof guestSchema>;
+type GuestFormInput = z.input<typeof guestSchema>;
+type GuestFormValues = z.output<typeof guestSchema>;
 
 function getGuestApiValues(
   data: GuestFormValues,
@@ -338,14 +339,14 @@ function GuestForm({
   isPending,
   submitLabel,
 }: {
-  defaultValues?: Partial<GuestFormValues>;
+  defaultValues?: Partial<GuestFormInput>;
   hotels?: HotelOption[];
   onSubmit: (data: GuestFormValues) => void;
   isPending: boolean;
   submitLabel: string;
 }) {
   const { t } = useTranslation();
-  const form = useForm<GuestFormValues>({
+  const form = useForm<GuestFormInput, unknown, GuestFormValues>({
     resolver: zodResolver(guestSchema),
     defaultValues: {
       name: "",
@@ -1253,7 +1254,7 @@ async function parseGuestImportWorkbook(file: File) {
     if (header) headerMap.set(header, columnNumber);
   });
 
-  const guestsToImport: Array<GuestFormValues & { plusOneName?: string }> = [];
+  const guestsToImport: Array<GuestFormInput & { plusOneName?: string }> = [];
   const skipped: string[] = [];
 
   sheet.eachRow((row, rowNumber) => {
@@ -1285,12 +1286,12 @@ async function parseGuestImportWorkbook(file: File) {
         getImportCell(row, headerMap, ["RSVP Status", "RSVP"]),
         ["pending", "attending", "maybe", "declined"],
         "pending",
-      ) as GuestFormValues["rsvpStatus"],
+      ) as GuestFormInput["rsvpStatus"],
       invitationStatus: normalizeImportStatus(
         getImportCell(row, headerMap, ["Invitation Status", "Invite Status", "Invitation Sent"]),
         ["pending", "sent"],
         "pending",
-      ) as GuestFormValues["invitationStatus"],
+      ) as GuestFormInput["invitationStatus"],
       mealChoice: getImportCell(row, headerMap, ["Meal Choice", "Meal"]),
       dietaryNotes: getImportCell(row, headerMap, ["Dietary Notes", "Dietary Restrictions", "Allergies"]),
       guestGroup: getImportCell(row, headerMap, ["Category", "Guest Group", "Group"]),
