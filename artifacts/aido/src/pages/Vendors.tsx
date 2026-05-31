@@ -21,7 +21,7 @@ import {
   getGetVendorQueryKey,
   getGetDashboardSummaryQueryKey,
 } from "@workspace/api-client-react";
-import type { Vendor, VendorPayment } from "@workspace/api-client-react";
+import type { SummarizeEmailResponse, Vendor, VendorPayment } from "@workspace/api-client-react";
 import { useUpload } from "@workspace/object-storage-web";
 import { VendorMessagesTab } from "@/components/VendorMessagesTab";
 import { Button } from "@/components/ui/button";
@@ -626,7 +626,7 @@ function AddEditVendorDialog({
 
   const updateMutation = useUpdateVendor({
     mutation: {
-      onSuccess: async (updated) => {
+      onSuccess: async (updated: Vendor) => {
         if (vendor) {
           const key = getGetVendorQueryKey(vendor.id);
           const existing = qc.getQueryData<{ payments?: unknown[] }>(key);
@@ -1338,12 +1338,12 @@ function VendorDetailDialog({
     );
   }
 
-  const hasDepositMilestone = vendor.payments.some((p) => p.label.toLowerCase() === "deposit");
-  const paidFromPayments = vendor.payments.filter((p) => p.isPaid).reduce((s, p) => s + p.amount, 0);
+  const hasDepositMilestone = vendor.payments.some((p: VendorPayment) => p.label.toLowerCase() === "deposit");
+  const paidFromPayments = vendor.payments.filter((p: VendorPayment) => p.isPaid).reduce((s: number, p: VendorPayment) => s + p.amount, 0);
   const paidAmount = (hasDepositMilestone ? 0 : vendor.depositAmount) + paidFromPayments;
-  const totalScheduled = vendor.payments.reduce((s, p) => s + p.amount, 0);
+  const totalScheduled = vendor.payments.reduce((s: number, p: VendorPayment) => s + p.amount, 0);
   const totalForProgress = vendor.totalCost > 0 ? vendor.totalCost : totalScheduled;
-  const overdue = vendor.payments.filter((p) => !p.isPaid && daysUntil(p.dueDate) < 0);
+  const overdue = vendor.payments.filter((p: VendorPayment) => !p.isPaid && daysUntil(p.dueDate) < 0);
   const setContractStatus = (contractSigned: boolean) => {
     if (vendor.contractSigned === contractSigned) return;
     updateContractMutation.mutate({
@@ -1498,7 +1498,7 @@ function SummarizeEmailDialog({ open, onClose }: { open: boolean; onClose: () =>
     mutation.mutate({ data: { emailText, preferredLanguage: getCurrentLanguageName() } });
   }
 
-  const result = mutation.data;
+  const result = mutation.data as SummarizeEmailResponse | undefined;
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -1535,7 +1535,7 @@ function SummarizeEmailDialog({ open, onClose }: { open: boolean; onClose: () =>
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">{t("vendors.key_points_label", { defaultValue: "Key Points" })}</p>
                 <ul className="space-y-1.5">
-                  {result.keyPoints.map((point, i) => (
+                  {result.keyPoints.map((point: string, i: number) => (
                     <li key={i} className="flex items-start gap-2 text-sm">
                       <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
                       {point}
@@ -1548,7 +1548,7 @@ function SummarizeEmailDialog({ open, onClose }: { open: boolean; onClose: () =>
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">{t("vendors.action_items_label", { defaultValue: "Action Items" })}</p>
                 <ul className="space-y-1.5">
-                  {result.actionItems.map((item, i) => (
+                  {result.actionItems.map((item: string, i: number) => (
                     <li key={i} className="flex items-start gap-2 text-sm">
                       <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
                       {item}
@@ -2036,7 +2036,7 @@ function VendorDirectoryTab({
   const accountEmail = user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses?.[0]?.emailAddress ?? "";
   const createPartnerVendorMutation = useCreateVendor({
     mutation: {
-      onSuccess: async (created) => {
+      onSuccess: async (created: Vendor) => {
         await qc.invalidateQueries({ queryKey: getListVendorsQueryKey() });
         qc.invalidateQueries({ queryKey: vendorContactsQueryKey });
         qc.invalidateQueries({ queryKey: ["vendor-financials"] });
