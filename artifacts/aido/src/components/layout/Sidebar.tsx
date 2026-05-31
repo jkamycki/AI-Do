@@ -16,7 +16,6 @@ import {
   ImagePlus,
   Trash2,
   Pencil,
-  Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -410,7 +409,7 @@ export function Sidebar() {
       label: t("sidebar.planning_tools_section", { defaultValue: "Planning Tools" }),
       defaultOpen: false,
       items: [
-        { href: "/registry", label: t("nav.registry", { defaultValue: "Registry" }), icon: Gift },
+        { href: "/registry", label: t("nav.registry", { defaultValue: "Registry" }) },
         { href: "/website-editor", label: t("nav.website_editor", { defaultValue: "Website Editor" }) },
         { href: "/documents", label: t("nav.document_library", { defaultValue: "Document Library" }) },
       ],

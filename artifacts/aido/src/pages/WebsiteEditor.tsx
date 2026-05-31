@@ -53,6 +53,14 @@ interface WebsiteRecord extends WebsiteRendererPayload {
 }
 
 type HotelOption = NonNullable<WebsiteRendererPayload["hotelOptions"]>[number];
+type ControlGroupId = "copy" | "design" | "elements" | "photos" | "animation" | "settings";
+
+function defaultControlGroupForPage(pageId: string): ControlGroupId {
+  if (pageId === "gallery") return "photos";
+  if (pageId === "rsvp") return "settings";
+  if (["schedule", "travel", "registry", "faq", "weddingParty"].includes(pageId)) return "elements";
+  return "copy";
+}
 
 interface InvitationHotelSettings {
   rsvpAskHotel: boolean;
@@ -512,7 +520,7 @@ export default function WebsiteEditor() {
   const [publishSlugInput, setPublishSlugInput] = useState("");
   const [publishSlugError, setPublishSlugError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"setup" | "design" | "sections" | "rsvp" | "publish">("setup");
-  const [activeControlGroup, setActiveControlGroup] = useState<"copy" | "design" | "elements" | "photos" | "animation" | "settings">("copy");
+  const [activeControlGroup, setActiveControlGroup] = useState<ControlGroupId>("copy");
   const inTab = (t: typeof activeTab) => activeTab === t;
   const [emojiFieldOpen, setEmojiFieldOpen] = useState<string | null>(null);
   const [translatedWebsiteText, setTranslatedWebsiteText] = useState<Record<string, string> | null>(null);
@@ -1501,6 +1509,7 @@ export default function WebsiteEditor() {
         setPublishSlugDialogOpen(false);
         setPreviewSection("home");
         setEditorSection("home");
+        setActiveControlGroup(defaultControlGroupForPage("home"));
       }
       toast({ title: cleanBody.published ? "Website published!" : "Website unpublished" });
     } catch {
@@ -1866,7 +1875,7 @@ export default function WebsiteEditor() {
               onSectionChange={(id) => {
                 setEditorSection(id);
                 setActiveTab("setup");
-                setActiveControlGroup("copy");
+                setActiveControlGroup(defaultControlGroupForPage(id));
                 mobilePreviewRef.current?.scrollTo({ top: 0, behavior: "auto" });
               }}
               onTextChange={(key, value) => patchRecord((prev) => ({ customText: { ...prev.customText, [key]: value } }))}
@@ -2116,7 +2125,7 @@ export default function WebsiteEditor() {
                     onClick={() => {
                       setActiveTab("setup");
                       setEditorSection(item.id);
-                      setActiveControlGroup("copy");
+                      setActiveControlGroup(defaultControlGroupForPage(item.id));
                       previewRef.current?.scrollTo({ top: 0, behavior: "smooth" });
                       mobilePreviewRef.current?.scrollTo({ top: 0, behavior: "smooth" });
                     }}
@@ -2487,6 +2496,7 @@ export default function WebsiteEditor() {
                       // regardless of whether they toggled it on or off, so
                       // they're always looking at what their click affected.
                       setEditorSection(s.id);
+                      setActiveControlGroup(defaultControlGroupForPage(s.id));
                       previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
                     }}
                   />
@@ -3565,7 +3575,7 @@ export default function WebsiteEditor() {
             onSectionChange={(id) => {
               setEditorSection(id);
               setActiveTab("setup");
-              setActiveControlGroup("copy");
+              setActiveControlGroup(defaultControlGroupForPage(id));
               // Reset preview scroll to top when switching pages
               previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
             }}

@@ -110,6 +110,8 @@ export interface WebsiteRendererPayload {
       strikethrough?: boolean;
       textAlign?: "left" | "center" | "right";
       animation?: string;
+      width?: string;
+      height?: string;
     }
   >;
   textPositions?: Record<string, { x: number; y: number }>;
@@ -288,6 +290,8 @@ type TextStyle = {
   strikethrough?: boolean;
   textAlign?: "left" | "center" | "right";
   animation?: string;
+  width?: string;
+  height?: string;
 };
 
 // Edit mode props passed to every section (and its EditableText spans).

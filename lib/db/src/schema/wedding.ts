@@ -807,10 +807,10 @@ export type WebsiteTextStyle = {
   strikethrough?: boolean;
   textAlign?: "left" | "center" | "right";
   animation?: string;
-  // Explicit box width set by dragging the corner resize handle sideways.
-  // When present, the rendered text wraps inside this width so users can
-  // pull a heading into a square-shaped paragraph instead of a long single line.
+  // Explicit text box dimensions set by dragging the corner resize handle.
+  // Font size stays independent, matching familiar document editors.
   width?: string;
+  height?: string;
 };
 export type WebsiteTextStyles = Record<string, WebsiteTextStyle>;
 
