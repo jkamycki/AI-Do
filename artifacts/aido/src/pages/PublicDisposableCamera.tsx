@@ -105,6 +105,10 @@ function saveShotsRemaining(slug: string, remaining: number, limit: number, subm
   } catch {}
 }
 
+function markRollSubmitted(slug: string, limit: number) {
+  saveShotsRemaining(slug, 0, limit, true);
+}
+
 function fileFromBlob(blob: Blob) {
   return new File([blob], `aido-disposable-${Date.now()}.jpg`, { type: "image/jpeg" });
 }
@@ -243,6 +247,7 @@ export default function PublicDisposableCamera() {
   const [shotsRemaining, setShotsRemaining] = useState(() => readShotsRemaining(slug, DEFAULT_SHOT_LIMIT));
   const [flash, setFlash] = useState(false);
   const [shutterAnimating, setShutterAnimating] = useState(false);
+  const [capturing, setCapturing] = useState(false);
   const [developing, setDeveloping] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [photoRoll, setPhotoRoll] = useState<File[]>([]);
@@ -268,7 +273,8 @@ export default function PublicDisposableCamera() {
   useEffect(() => {
     if (!slug) return;
     let active = true;
-    setDeviceId(getGuestPhotoDeviceId(slug));
+    const nextDeviceId = getGuestPhotoDeviceId(slug);
+    setDeviceId(nextDeviceId);
     void apiFetch(`/api/website/public/${encodeURIComponent(slug)}/photo-drop`)
       .then(async (response) => {
         const body = await response.json().catch(() => ({}));
@@ -300,6 +306,51 @@ export default function PublicDisposableCamera() {
       active = false;
     };
   }, [photoRoll.length, slug]);
+
+  useEffect(() => {
+    if (!slug || !deviceId) return;
+    let active = true;
+
+    void apiFetch(`/api/website/public/${encodeURIComponent(slug)}/photo-drop/usage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deviceId }),
+    })
+      .then(async (response) => {
+        const body = await response.json().catch(() => ({}));
+        if (!active || !response.ok) return;
+
+        const limit = Number((body as { limit?: number }).limit);
+        const remaining = Number((body as { remaining?: number }).remaining);
+        const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(shotLimit, Math.floor(limit))) : shotLimit;
+        const safeRemaining = Number.isFinite(remaining) ? Math.max(0, Math.min(safeLimit, Math.floor(remaining))) : safeLimit;
+
+        if (safeRemaining <= 0) {
+          markRollSubmitted(slug, safeLimit);
+          setShotLimit(safeLimit);
+          setShotsRemaining(0);
+          setPhotoRoll([]);
+          setShowUploadPrompt(false);
+          setRollSubmitted(true);
+          setMessage("This phone already submitted its disposable roll.");
+          return;
+        }
+
+        setShotLimit(safeLimit);
+        setShotsRemaining((current) => {
+          const nextRemaining = Math.min(current, safeRemaining);
+          saveShotsRemaining(slug, nextRemaining, safeLimit, false);
+          return nextRemaining;
+        });
+      })
+      .catch(() => {
+        // Local roll storage still protects the experience when usage check is unavailable.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [deviceId, shotLimit, slug]);
 
   const stopCamera = useCallback(() => {
     void applyTorch(streamRef.current, false);
@@ -417,12 +468,23 @@ export default function PublicDisposableCamera() {
       setPhotoRoll([]);
       setShowUploadPrompt(false);
       setShotsRemaining(0);
-      saveShotsRemaining(slug, 0, shotLimit, true);
+      markRollSubmitted(slug, shotLimit);
       setSubmittedThisVisit(true);
       setRollSubmitted(true);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Upload failed. Please try again.");
-      setShowUploadPrompt(true);
+      const uploadMessage = error instanceof Error ? error.message : "Upload failed. Please try again.";
+      if (/already uploaded|already submitted|0 photos left/i.test(uploadMessage)) {
+        markRollSubmitted(slug, shotLimit);
+        setPhotoRoll([]);
+        setShowUploadPrompt(false);
+        setShotsRemaining(0);
+        setSubmittedThisVisit(false);
+        setRollSubmitted(true);
+        setMessage("This phone already submitted its disposable roll.");
+      } else {
+        setMessage(uploadMessage);
+        setShowUploadPrompt(true);
+      }
     } finally {
       setUploading(false);
       setDeveloping(false);
@@ -454,28 +516,34 @@ export default function PublicDisposableCamera() {
   }
 
   async function handleShutter() {
-    if (shotsRemaining <= 0 || uploading) return;
+    if (shotsRemaining <= 0 || uploading || capturing || showUploadPrompt || rollSubmitted) return;
+    setCapturing(true);
     triggerShutterEffect();
     try {
       const file = await applyFilmEffect(await captureFrame(), selectedEffect);
       addPhotoToLockedRoll(file);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not take this photo.");
+    } finally {
+      window.setTimeout(() => setCapturing(false), 260);
     }
   }
 
   async function handleCameraRoll(files: FileList | null) {
     const file = files?.[0];
-    if (!file || shotsRemaining <= 0 || uploading) return;
+    if (!file || shotsRemaining <= 0 || uploading || capturing || showUploadPrompt || rollSubmitted) return;
     if (!file.type.startsWith("image/")) {
       setMessage("Please choose a photo file.");
       return;
     }
+    setCapturing(true);
     triggerShutterEffect();
     try {
       addPhotoToLockedRoll(await applyFilmEffect(file, selectedEffect));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not save this photo.");
+    } finally {
+      window.setTimeout(() => setCapturing(false), 260);
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
@@ -521,13 +589,15 @@ export default function PublicDisposableCamera() {
     setShutterAnimating(false);
     if (shutterTimeoutRef.current !== null) window.clearTimeout(shutterTimeoutRef.current);
     window.requestAnimationFrame(() => {
-      setShutterAnimating(true);
-      shutterTimeoutRef.current = window.setTimeout(() => setShutterAnimating(false), 620);
+      window.requestAnimationFrame(() => {
+        setShutterAnimating(true);
+        shutterTimeoutRef.current = window.setTimeout(() => setShutterAnimating(false), 420);
+      });
     });
 
     if (flashEnabled) {
       setFlash(true);
-      window.setTimeout(() => setFlash(false), 150);
+      window.setTimeout(() => setFlash(false), 90);
     }
   }
 
@@ -549,45 +619,39 @@ export default function PublicDisposableCamera() {
     setMessage(nextEnabled ? "Selfie flash is on. The screen will flash when you take the photo." : "Flash is off.");
   }
 
-  const canShoot = status === "ready" && shotsRemaining > 0 && !uploading && !showUploadPrompt && !rollSubmitted;
+  const canShoot = status === "ready" && shotsRemaining > 0 && !uploading && !capturing && !showUploadPrompt && !rollSubmitted;
   const flashModeLabel = torchSupported && facingMode === "environment" ? "Camera flash" : "Screen flash";
 
   return (
-    <main className={`fixed inset-0 overflow-hidden bg-[#070203] text-white ${shutterAnimating ? "aido-camera-kick" : ""}`}>
+      <main className="fixed inset-0 overflow-hidden bg-[#070203] text-white">
       <style>{`
-        @keyframes aido-camera-kick {
-          0% { transform: translate3d(0, 0, 0) rotate(0deg); }
-          10% { transform: translate3d(-2px, 2px, 0) rotate(-0.28deg); }
-          22% { transform: translate3d(2px, -1px, 0) rotate(0.22deg); }
-          45% { transform: translate3d(-1px, 1px, 0) rotate(-0.12deg); }
-          100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+        @keyframes aido-shutter-backdrop {
+          0% { opacity: 0; }
+          18% { opacity: 0.34; }
+          48% { opacity: 0.34; }
+          100% { opacity: 0; }
         }
-        .aido-camera-kick {
-          animation: aido-camera-kick 360ms cubic-bezier(0.18, 0.92, 0.2, 1) both;
+        @keyframes aido-shutter-top {
+          0% { transform: translate3d(0, -104%, 0); }
+          24% { transform: translate3d(0, 0, 0); }
+          48% { transform: translate3d(0, 0, 0); }
+          100% { transform: translate3d(0, -104%, 0); }
         }
-        @keyframes aido-viewfinder-blink {
-          0% { opacity: 0; transform: scale(1.06); }
-          9% { opacity: 1; transform: scale(1); }
-          28% { opacity: 1; transform: scale(1); }
-          100% { opacity: 0; transform: scale(1.08); }
+        @keyframes aido-shutter-bottom {
+          0% { transform: translate3d(0, 104%, 0); }
+          24% { transform: translate3d(0, 0, 0); }
+          48% { transform: translate3d(0, 0, 0); }
+          100% { transform: translate3d(0, 104%, 0); }
         }
-        @keyframes aido-shutter-iris {
-          0% { transform: translate(-50%, -50%) scale(1.65); opacity: 0; }
-          11% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
-          24% { transform: translate(-50%, -50%) scale(0.22); opacity: 1; }
-          42% { transform: translate(-50%, -50%) scale(0.22); opacity: 1; }
-          100% { transform: translate(-50%, -50%) scale(1.75); opacity: 0; }
-        }
-        @keyframes aido-shutter-slit {
-          0% { transform: translate(-50%, -50%) scaleX(1.8) scaleY(0.08); opacity: 0; }
-          16% { transform: translate(-50%, -50%) scaleX(1) scaleY(1); opacity: 1; }
-          40% { transform: translate(-50%, -50%) scaleX(0.08) scaleY(0.08); opacity: 1; }
-          100% { transform: translate(-50%, -50%) scaleX(1.8) scaleY(0.08); opacity: 0; }
+        @keyframes aido-shutter-flash {
+          0%, 62% { opacity: 0; }
+          70% { opacity: 0.2; }
+          100% { opacity: 0; }
         }
         @keyframes aido-film-advance-pill {
-          0%, 38% { transform: translateX(-130%); opacity: 0; }
+          0%, 34% { transform: translateX(-130%); opacity: 0; }
           48% { opacity: 1; }
-          82% { transform: translateX(22%); opacity: 1; }
+          82% { transform: translateX(18%); opacity: 1; }
           100% { transform: translateX(130%); opacity: 0; }
         }
       `}</style>
@@ -798,28 +862,28 @@ export default function PublicDisposableCamera() {
         <div className="pointer-events-none absolute inset-0 z-[45] overflow-hidden">
           <div
             className="absolute inset-0 bg-black"
-            style={{ animation: "aido-viewfinder-blink 620ms cubic-bezier(0.16, 0.9, 0.18, 1) both" }}
+            style={{ animation: "aido-shutter-backdrop 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }}
           />
           <div
-            className="absolute left-1/2 top-1/2 h-[78vmin] w-[78vmin] rounded-full border-[36vmin] border-black shadow-[0_0_0_160vmax_rgba(0,0,0,0.88)]"
-            style={{ animation: "aido-shutter-iris 620ms cubic-bezier(0.16, 0.9, 0.18, 1) both" }}
+            className="absolute inset-x-0 top-0 h-1/2 bg-[#050102] shadow-[0_18px_38px_rgba(0,0,0,0.46)]"
+            style={{ animation: "aido-shutter-top 420ms cubic-bezier(0.2, 0.84, 0.18, 1) both" }}
           />
           <div
-            className="absolute left-1/2 top-1/2 h-12 w-[72vmin] rounded-full bg-[#070203] shadow-[0_0_32px_rgba(255,255,255,0.18)]"
-            style={{ animation: "aido-shutter-slit 620ms cubic-bezier(0.16, 0.9, 0.18, 1) both" }}
+            className="absolute inset-x-0 bottom-0 h-1/2 bg-[#050102] shadow-[0_-18px_38px_rgba(0,0,0,0.46)]"
+            style={{ animation: "aido-shutter-bottom 420ms cubic-bezier(0.2, 0.84, 0.18, 1) both" }}
           />
+          <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-white/10" />
           <div
             className="absolute bottom-[max(7.2rem,calc(env(safe-area-inset-bottom)+6.2rem))] left-1/2 h-1.5 w-24 -translate-x-1/2 overflow-hidden rounded-full bg-white/10"
-            style={{ animation: "aido-viewfinder-blink 620ms cubic-bezier(0.16, 0.9, 0.18, 1) both" }}
           >
             <div
               className="h-full w-14 rounded-full bg-[#F8DDE5]"
-              style={{ animation: "aido-film-advance-pill 620ms cubic-bezier(0.2, 0.85, 0.2, 1) both" }}
+              style={{ animation: "aido-film-advance-pill 420ms cubic-bezier(0.2, 0.85, 0.2, 1) both" }}
             />
           </div>
           <div
-            className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.18),rgba(255,255,255,0)_34%),linear-gradient(90deg,rgba(255,255,255,0.08),rgba(255,255,255,0)_22%,rgba(255,255,255,0)_78%,rgba(255,255,255,0.08))]"
-            style={{ animation: "aido-viewfinder-blink 420ms ease-out both" }}
+            className="absolute inset-0 bg-white"
+            style={{ animation: "aido-shutter-flash 420ms ease-out both" }}
           />
         </div>
       )}

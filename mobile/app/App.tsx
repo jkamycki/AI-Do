@@ -1541,7 +1541,7 @@ function Hero({
       </View>
 
       <View style={styles.homeTileGrid}>
-        <HomeTile color="#A93D5B" icon="people-outline" label="Guests" tint="#FBE7ED" value={`${confirmed}/${profile.guestTarget}`} onPress={() => onOpenGuestHub('guests')} />
+        <HomeTile color="#A93D5B" icon="people-outline" label="Guest Hub" tint="#FBE7ED" value={`${confirmed}/${profile.guestTarget}`} onPress={() => onOpenGuestHub('guests')} />
         <HomeTile color="#496D89" icon="mail-open-outline" label="Invites" tint="#E7F0F7" value={`${inviteTotals.responses}/${inviteTotals.sent} replies`} onPress={() => onOpenGuestHub('invites')} />
         <HomeTile color="#2F7F7A" icon="calendar-clear-outline" label="Plan" tint="#E0F2EF" value={`${openTasks} tasks`} onPress={onContinue} />
         <HomeTile color="#B98343" icon="storefront-outline" label="Vendors" tint="#F7EBD8" value={`${data.vendors.length} booked`} onPress={onOpenVendors} />
@@ -2060,6 +2060,7 @@ function WebsiteSection({
   const [registryUrl, setRegistryUrl] = useState('');
   const [registryLoaded, setRegistryLoaded] = useState(false);
   const [registryMessage, setRegistryMessage] = useState('');
+  const [registrySaving, setRegistrySaving] = useState(false);
   const [invitationStudioOpen, setInvitationStudioOpen] = useState(false);
   const [guestCampaignMessage, setGuestCampaignMessage] = useState<string | null>(null);
   const [guestCampaignSending, setGuestCampaignSending] = useState<GuestCampaign | null>(null);
@@ -2080,7 +2081,7 @@ function WebsiteSection({
   const [seatingSyncMessage, setSeatingSyncMessage] = useState<string | null>(null);
   const viewCopy: Record<GuestHubView, { subtitle: string; title: string }> = {
     guests: {
-      title: 'Guests',
+      title: 'Guest Hub',
       subtitle: 'Guest list, RSVPs, meals, tables, and reminders.',
     },
     seating: {
@@ -2338,10 +2339,37 @@ function WebsiteSection({
     void AsyncStorage.setItem(storageKeys.registryConnected, String(registryConnected));
     void AsyncStorage.setItem(storageKeys.registryUrl, registryUrl);
   }, [registryConnected, registryLoaded, registryUrl]);
+  const syncRegistryLinkToWebsite = async (url: string) => {
+    const trimmedUrl = url.trim();
+    const registryLinks = trimmedUrl ? JSON.stringify([{ label: 'Registry', url: trimmedUrl }]) : '[]';
+    const payload = {
+      customText: {
+        _registryLinks: registryLinks,
+        registry: trimmedUrl ? 'Registry details are linked below.' : '',
+      },
+      sectionsEnabled: {
+        registry: Boolean(trimmedUrl),
+      },
+    };
+    try {
+      await saveMobileWebsiteQuickUpdate(payload);
+    } catch (error) {
+      await createMobileWebsite();
+      await saveMobileWebsiteQuickUpdate(payload);
+    }
+  };
   const saveRegistryLink = () => {
     const trimmedUrl = registryUrl.trim();
     setRegistryConnected(Boolean(trimmedUrl));
-    setRegistryMessage(trimmedUrl ? 'Registry link saved for the wedding website and guest flow.' : 'Add a registry URL when it is ready.');
+    setRegistrySaving(true);
+    void syncRegistryLinkToWebsite(trimmedUrl)
+      .then(() => {
+        setRegistryMessage(trimmedUrl ? 'Registry link saved to the wedding website and guest flow.' : 'Registry link removed from the wedding website.');
+      })
+      .catch((error) => {
+        setRegistryMessage(error instanceof Error ? error.message : 'Registry link saved on this device, but website sync failed.');
+      })
+      .finally(() => setRegistrySaving(false));
   };
   const setPresetRegistry = (provider: string) => {
     const url = `https://${provider.toLowerCase().replace(/\s+/g, '')}.com/registry/${slugifyWeddingLabel(data.profile.coupleName)}`;
@@ -2354,7 +2382,7 @@ function WebsiteSection({
     <Section title={viewCopy[activeView].title} subtitle={viewCopy[activeView].subtitle}>
       <View style={styles.guestHubSwitch}>
         {[
-          ['guests', 'Guests', 'people-outline'],
+          ['guests', 'Guest List', 'people-outline'],
           ['seating', 'Seating', 'grid-outline'],
           ['invites', 'Invites', 'mail-open-outline'],
           ['travel', 'Travel', 'bed-outline'],
@@ -2734,11 +2762,12 @@ function WebsiteSection({
         </View>
         <View style={styles.websiteActions}>
           <Pressable
+            disabled={registrySaving}
             onPress={saveRegistryLink}
-            style={styles.primaryActionButton}
+            style={[styles.primaryActionButton, registrySaving && styles.disabledActionButton]}
           >
-            <Ionicons color={colors.surface} name="link-outline" size={18} />
-            <Text style={styles.primaryActionText}>{registryConnected ? 'Update link' : 'Connect registry'}</Text>
+            <Ionicons color={colors.surface} name={registrySaving ? 'sync-outline' : 'link-outline'} size={18} />
+            <Text style={styles.primaryActionText}>{registrySaving ? 'Saving...' : registryConnected ? 'Update link' : 'Connect registry'}</Text>
           </Pressable>
           <Pressable
             onPress={() => {
@@ -3688,7 +3717,7 @@ function WebsiteMobilePreview({
     }
     if (lowerTitle.includes('rsvp')) {
       setEditorTab('rsvp');
-      setWebsitePreviewMessage('RSVP copy, deadline, hotel question, and thank-you message live here on mobile.');
+      setWebsitePreviewMessage('RSVP deadline and thank-you message live here on mobile.');
       return;
     }
     setEditorTab('copy');
@@ -3774,7 +3803,7 @@ function WebsiteMobilePreview({
       <View style={styles.websiteEditorTabRow}>
         {[
           ['setup', 'Setup', 'settings-outline'],
-          ['copy', 'Copy', 'create-outline'],
+          ['copy', 'Content', 'create-outline'],
           ['design', 'Photos', 'image-outline'],
           ['sections', 'Sections', 'toggle-outline'],
           ['rsvp', 'RSVP', 'heart-outline'],
@@ -3891,7 +3920,6 @@ function WebsiteMobilePreview({
             <FormInput label="Registry URL" onChangeText={setRegistryUrl} placeholder="https://..." value={registryUrl} />
             <View style={styles.websiteEditorToolGrid}>
               <EditorToolButton icon="restaurant-outline" label="Meal options" onPress={() => openMobileWebsiteTool('RSVP Meal Options')} />
-              <EditorToolButton icon="bed-outline" label="Ask hotel needs" onPress={() => openMobileWebsiteTool('RSVP Hotel Questions')} />
             </View>
           </>
         ) : null}
@@ -4087,7 +4115,7 @@ function WebsiteMobilePreview({
               {sectionState.travel ? (
                 <View style={[styles.websiteLiveSection, previewDevice === 'desktop' && styles.websiteLiveSectionDesktop]}>
                   <Text style={[styles.websiteLiveSectionTitle, { color: accentColor, fontFamily: coupleFont }]}>Travel & Venue</Text>
-                  <Text style={styles.websiteLiveSectionText}>{data.profile.venue} · {data.profile.location}</Text>
+                  <Text style={styles.websiteLiveSectionText}>{data.profile.venue} - {data.profile.location}</Text>
                   <Text style={styles.websiteLiveSectionText}>Hotel blocks and travel notes display in this section.</Text>
                 </View>
               ) : null}
@@ -4100,7 +4128,7 @@ function WebsiteMobilePreview({
               {sectionState.photoDrop ? (
                 <View style={[styles.websiteLiveSection, previewDevice === 'desktop' && styles.websiteLiveSectionDesktop]}>
                   <Text style={[styles.websiteLiveSectionTitle, { color: accentColor, fontFamily: coupleFont }]}>Photo Drop</Text>
-                  <Text style={styles.websiteLiveSectionText}>Guest upload instructions and upload button appear here.</Text>
+                  <Text style={styles.websiteLiveSectionText}>Guests open the disposable camera, take a locked 10-shot roll, and submit it to your portal for review.</Text>
                 </View>
               ) : null}
               {sectionState.rsvp ? (
@@ -4197,6 +4225,8 @@ function PhotoDropMobilePanel({
   const [publicUploadUrl, setPublicUploadUrl] = useState('');
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [photoDropPage, setPhotoDropPage] = useState({ hasMore: false, limit: 48, offset: 0, total: data.guestPhotoUploads.length });
   const [queueFilter, setQueueFilter] = useState<'Pending' | 'Approved' | 'Hidden' | 'All'>('Pending');
   const pendingUploads = data.guestPhotoUploads.filter((upload) => upload.status === 'Pending').length;
   const approvedUploads = data.guestPhotoUploads.filter((upload) => upload.status === 'Approved').length;
@@ -4216,10 +4246,11 @@ function PhotoDropMobilePanel({
     let active = true;
     setLoading(true);
     setSyncMessage(null);
-    void listMobileGuestPhotoDrop()
+    void listMobileGuestPhotoDrop({ limit: 48, offset: 0 })
       .then((result) => {
         if (!active) return;
         setPublicUploadUrl(result.publicUploadUrl);
+        setPhotoDropPage(result.page);
         onHydrate({ ...data.guestPhotoDrop, ...result.settings }, result.uploads);
       })
       .catch((error) => {
@@ -4233,6 +4264,28 @@ function PhotoDropMobilePanel({
       active = false;
     };
   }, []);
+
+  const loadMoreUploads = () => {
+    if (loadingMore || !photoDropPage.hasMore) return;
+    const nextOffset = photoDropPage.offset + photoDropPage.limit;
+    setLoadingMore(true);
+    setSyncMessage(null);
+    void listMobileGuestPhotoDrop({ limit: photoDropPage.limit, offset: nextOffset })
+      .then((result) => {
+        setPublicUploadUrl(result.publicUploadUrl);
+        setPhotoDropPage(result.page);
+        const existingIds = new Set(data.guestPhotoUploads.map((upload) => upload.id));
+        const mergedUploads = [
+          ...data.guestPhotoUploads,
+          ...result.uploads.filter((upload) => !existingIds.has(upload.id)),
+        ];
+        onHydrate({ ...data.guestPhotoDrop, ...result.settings }, mergedUploads);
+      })
+      .catch((error) => {
+        setSyncMessage(error instanceof Error ? error.message : 'More Photo Drop uploads could not load.');
+      })
+      .finally(() => setLoadingMore(false));
+  };
 
   useEffect(() => {
     if (data.guestPhotoDrop.maxUploads !== disposableRollLimit) {
@@ -4384,6 +4437,14 @@ function PhotoDropMobilePanel({
             <SummaryCard label="Approved" value={String(approvedUploads)} />
             <SummaryCard label="Photos" value={String(photoCount)} />
           </View>
+          {photoDropPage.total > data.guestPhotoUploads.length ? (
+            <View style={styles.inlineNotice}>
+              <Ionicons color={colors.rose} name="albums-outline" size={16} />
+              <Text style={styles.inlineNoticeText}>
+                Showing {data.guestPhotoUploads.length} of {photoDropPage.total} portal photos. Load more as needed instead of pulling the whole event at once.
+              </Text>
+            </View>
+          ) : null}
           {websitePublishesGuestPhotos ? (
             <View style={styles.inlineNotice}>
               <Ionicons color={colors.rose} name="globe-outline" size={16} />
@@ -4488,6 +4549,12 @@ function PhotoDropMobilePanel({
               </View>
             )}
           </View>
+          {photoDropPage.hasMore ? (
+            <Pressable disabled={loadingMore} onPress={loadMoreUploads} style={[styles.secondaryActionButton, loadingMore && styles.disabledActionButton]}>
+              <Ionicons color={colors.rose} name="download-outline" size={18} />
+              <Text style={styles.secondaryActionText}>{loadingMore ? 'Loading photos...' : 'Load more photos'}</Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 

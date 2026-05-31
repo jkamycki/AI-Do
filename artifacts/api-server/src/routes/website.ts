@@ -1013,12 +1013,18 @@ router.get("/website/media/*objectPath", requireAuth, async (req: Request, res: 
       .select({ photoUrl: weddingParty.photoUrl })
       .from(weddingParty)
       .where(eq(weddingParty.profileId, profile.id));
-    const photoRows = await db
-      .select({ imageUrl: guestPhotoUploads.imageUrl })
-      .from(guestPhotoUploads)
-      .where(eq(guestPhotoUploads.websiteId, row.id));
+    const isWebsiteMedia = collectWebsiteMediaPaths(row, party, []).has(objectPath);
+    let isGuestPhotoMedia = false;
+    if (!isWebsiteMedia) {
+      const [photoMatch] = await db
+        .select({ id: guestPhotoUploads.id })
+        .from(guestPhotoUploads)
+        .where(and(eq(guestPhotoUploads.websiteId, row.id), eq(guestPhotoUploads.imageUrl, objectPath)))
+        .limit(1);
+      isGuestPhotoMedia = !!photoMatch;
+    }
 
-    if (!collectWebsiteMediaPaths(row, party, photoRows.map((photo) => photo.imageUrl)).has(objectPath)) {
+    if (!isWebsiteMedia && !isGuestPhotoMedia) {
       return res.status(404).json({ error: "Not found" });
     }
 
@@ -1728,13 +1734,22 @@ router.get("/website/public/:slug/media/*objectPath", async (req: Request, res: 
       .from(weddingParty)
       .where(eq(weddingParty.profileId, row.profileId));
     const guestPhotoSettings = guestPhotoDropSettings(row.customText);
-    const photoRows = guestPhotoShowsOnWebsite(guestPhotoSettings)
-      ? await db
-        .select({ imageUrl: guestPhotoUploads.imageUrl })
+    const isWebsiteMedia = collectWebsiteMediaPaths(row, party, []).has(objectPath);
+    let isApprovedGuestPhotoMedia = false;
+    if (!isWebsiteMedia && guestPhotoShowsOnWebsite(guestPhotoSettings)) {
+      const [photoMatch] = await db
+        .select({ id: guestPhotoUploads.id })
         .from(guestPhotoUploads)
-        .where(and(eq(guestPhotoUploads.websiteId, row.id), eq(guestPhotoUploads.status, "approved")))
-      : [];
-    if (!collectWebsiteMediaPaths(row, party, photoRows.map((photo) => photo.imageUrl)).has(objectPath)) {
+        .where(and(
+          eq(guestPhotoUploads.websiteId, row.id),
+          eq(guestPhotoUploads.status, "approved"),
+          eq(guestPhotoUploads.imageUrl, objectPath),
+        ))
+        .limit(1);
+      isApprovedGuestPhotoMedia = !!photoMatch;
+    }
+
+    if (!isWebsiteMedia && !isApprovedGuestPhotoMedia) {
       return res.status(404).json({ error: "Not found" });
     }
 

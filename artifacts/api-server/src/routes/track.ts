@@ -2,6 +2,8 @@ import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db, anonymousSessions, analyticsEvents } from "@workspace/db";
 import { pruneAnalyticsEvents, sanitizeAnalyticsMetadata } from "../lib/trackEvent";
+import { analyticsLimiter } from "../middlewares/rateLimiter";
+import { sql } from "drizzle-orm";
 import crypto from "crypto";
 
 const router = Router();
@@ -17,7 +19,21 @@ function sessionRef(sessionId: string): string {
   return crypto.createHash("sha256").update(sessionId).digest("hex").slice(0, 16);
 }
 
-router.post("/track", async (req, res) => {
+async function pruneAnonymousSessionEvents(sessionId: string, keep = 50): Promise<void> {
+  await db.execute(sql`
+    DELETE FROM anonymous_sessions
+    WHERE session_id = ${sessionId}
+      AND id NOT IN (
+        SELECT id
+        FROM anonymous_sessions
+        WHERE session_id = ${sessionId}
+        ORDER BY timestamp DESC, id DESC
+        LIMIT ${keep}
+      )
+  `);
+}
+
+router.post("/track", analyticsLimiter, async (req, res) => {
   try {
     const sessionId = cleanSessionId(req.body?.sessionId) ?? cleanSessionId(req.headers["x-aido-session-id"]);
     const event = typeof req.body?.event === "string" ? req.body.event.trim().slice(0, 120) : "";
@@ -41,6 +57,7 @@ router.post("/track", async (req, res) => {
       createdAt: safeTimestamp,
       lastActiveAt: safeTimestamp,
     });
+    await pruneAnonymousSessionEvents(safeSessionRef);
 
     const auth = getAuth(req);
     const userId =

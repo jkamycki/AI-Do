@@ -109,6 +109,18 @@ function stackedCoupleName(value: string) {
   return value.replace(/\s+&\s+/g, "\n&\n");
 }
 
+function stackedFooterCoupleName(value: string, data: WebsiteRendererPayload) {
+  const { lastLine } = coupleHeaderParts(data);
+  if (!lastLine || hasInlineHtml(value) || value.includes("\n")) return value;
+  const pattern = new RegExp(`\\s+${lastLine.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i");
+  return pattern.test(value) ? value.replace(pattern, `\n${lastLine}`) : value;
+}
+
+function defaultFooterCoupleName(data: WebsiteRendererPayload) {
+  const { firstLine, lastLine } = coupleHeaderParts(data);
+  return lastLine ? `${firstLine}\n${lastLine}` : firstLine;
+}
+
 export interface WebsiteRendererPayload {
   slug?: string;
   publicWebsiteUrl?: string | null;
@@ -4340,7 +4352,7 @@ function WeddingParty({
 }
 
 function Footer({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
-  const couple = `${data.couple.partner2Name} & ${data.couple.partner1Name}`;
+  const footerCouple = defaultFooterCoupleName(data);
   const dateStr = formatWeddingDate(data.couple.weddingDate);
   return (
     <>
@@ -4354,11 +4366,11 @@ function Footer({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         <EditableText
           as="div"
           editable={ctx.editable}
-          value={data.customText._footerCoupleName ?? ""}
-          defaultValue={couple}
+          value={stackedFooterCoupleName(data.customText._footerCoupleName ?? "", data)}
+          defaultValue={footerCouple}
           onCommit={(v) => ctx.onTextChange("_footerCoupleName", v)}
-          className="text-2xl mb-2"
-          style={{ fontFamily: fontStack(headingFont(data)), color: "#fff" }}
+          className="text-2xl mb-2 whitespace-pre-line leading-tight"
+          style={{ fontFamily: fontStack(headingFont(data)), color: "#fff", textAlign: "center" }}
           {...tsp(ctx, "_footerCoupleName")}
         />
         <EditableText

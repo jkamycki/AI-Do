@@ -68,7 +68,7 @@ const groups: Array<{ title: string; items: FeatureItem[] }> = [
     ],
   },
   {
-    title: 'Guests',
+    title: 'Guest Hub',
     items: [
       { icon: 'people-outline', label: 'Guest List', detail: 'RSVPs, meals, households, table notes, and reminders.', route: 'Guests' },
       { icon: 'grid-outline', label: 'Seating Chart', detail: 'Tables, capacity, assignments, meal needs, and notes.', route: 'SeatingChart' },

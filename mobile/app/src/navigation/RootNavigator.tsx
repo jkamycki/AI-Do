@@ -148,7 +148,7 @@ function MainTabs() {
       })}
     >
       <Tab.Screen component={HomeScreen} name="Home" />
-      <Tab.Screen component={GuestsScreen} name="Guests" />
+      <Tab.Screen component={GuestsScreen} name="Guests" options={{ tabBarLabel: 'Guest Hub' }} />
       <Tab.Screen component={VendorsScreen} name="Vendors" />
       <Tab.Screen component={ChecklistScreen} name="Checklist" />
       <Tab.Screen component={MoreScreen} name="More" />

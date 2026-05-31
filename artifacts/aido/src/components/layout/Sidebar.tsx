@@ -386,7 +386,7 @@ export function Sidebar() {
     },
     {
       id: "people",
-      label: t("sidebar.guests_section", { defaultValue: "Guests" }),
+      label: t("sidebar.guests_section", { defaultValue: "Guest Hub" }),
       defaultOpen: false,
       items: [
         { href: "/guests", label: t("nav.guests", { defaultValue: "Guest List & Invitations" }) },
