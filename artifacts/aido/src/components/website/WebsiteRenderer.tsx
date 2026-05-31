@@ -1420,6 +1420,17 @@ function websiteHotelAddressLine(hotel: NonNullable<WebsiteRendererPayload["hote
   ].filter(Boolean).join(" ");
 }
 
+function websiteHotelAddressLines(hotel: NonNullable<WebsiteRendererPayload["hotelOptions"]>[number]) {
+  const cityStateZip = [
+    [hotel.city, hotel.state].filter(Boolean).join(", "),
+    hotel.zip,
+  ].filter(Boolean).join(" ");
+  return [
+    hotel.address,
+    cityStateZip,
+  ].filter(Boolean);
+}
+
 function websiteHotelCutoffDate(value: string | null | undefined) {
   if (!value) return "";
   const [yy, mm, dd] = value.split("-").map(Number);
@@ -2788,8 +2799,14 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
       ? data.hotelOptions?.find((hotel) => String(hotel.id) === selectedHotelBlockId)
       : data.hotelOptions?.[0]) ?? null;
   const syncedHotelAddress = syncedHotel ? websiteHotelAddressLine(syncedHotel) : "";
+  const syncedHotelAddressLines = syncedHotel ? websiteHotelAddressLines(syncedHotel) : [];
   const hotelName = (syncedHotel?.hotelName || data.customText._hotelName || "").trim();
   const hotelAddress = (syncedHotelAddress || data.customText._hotelAddress || "").trim();
+  const hotelAddressLines = syncedHotelAddressLines.length
+    ? syncedHotelAddressLines
+    : hotelAddress
+      ? [hotelAddress]
+      : [];
   const hotelBookingLink = (syncedHotel?.bookingLink || data.customText._hotelBookingLink || "").trim();
   const hotelBookingLabel = (data.customText._hotelBookingLinkLabel || "Book hotel room").trim();
   const hasHotel = !!hotelName;
@@ -2811,7 +2828,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
       .join(", "),
   );
   const hotelQuery = encodeURIComponent(
-    [hotelName, hotelAddress].filter(Boolean).join(", "),
+    [hotelName, ...hotelAddressLines].filter(Boolean).join(", "),
   );
 
   const cardStyle: React.CSSProperties = {
@@ -2950,12 +2967,21 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   >
                     {hotelName || (ctx.editable ? "Hotel name" : "")}
                   </div>
-                  {(hotelAddress || ctx.editable) && (
+                  {hotelAddressLines.map((line) => (
+                    <div
+                      key={line}
+                      className="text-sm font-medium"
+                      style={{ color: labelColor }}
+                    >
+                      {line}
+                    </div>
+                  ))}
+                  {!hotelAddressLines.length && ctx.editable && (
                     <div
                       className="text-sm font-medium"
                       style={{ color: labelColor }}
                     >
-                      {hotelAddress || "Address (street, city, state)"}
+                      Address (street, city, state)
                     </div>
                   )}
                 </div>
