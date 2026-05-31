@@ -18,7 +18,7 @@ export default function Security() {
         </Link>
         <div className="space-y-2 mb-10">
           <h1 className="font-serif text-4xl">Security</h1>
-          <p className="text-sm text-[#6F3E54]">Last updated: May 20, 2026</p>
+          <p className="text-sm text-[#6F3E54]">Last updated: May 31, 2026</p>
         </div>
 
         <div className="space-y-8 leading-relaxed">
@@ -68,8 +68,8 @@ export default function Security() {
               </li>
               <li>
                 Uploaded files (mood-board photos, contract PDFs, Document
-                Library files, member headshots, wedding-website hero images)
-                are stored in object
+                Library files, member headshots, wedding-website hero images,
+                Photo Drop photos, vendor logos, and vendor service photos) are stored in object
                 storage with access tokens — direct URLs are not publicly
                 readable.
               </li>
@@ -148,6 +148,17 @@ export default function Security() {
                 guests, links, previews, and QR codes before sending.
               </li>
               <li>
+                Photo Drop uses portal-first storage, owner approval before
+                website display, per-session shot limits, and delete controls so
+                couples can moderate guest photos before anything appears on a
+                public wedding website.
+              </li>
+              <li>
+                Vendor partner applications are reviewed by authorized admins
+                before a partner profile can be published to the public Partner
+                Network.
+              </li>
+              <li>
                 Address autocomplete and hotel distance lookup use external
                 geocoding services only for the address text needed to return
                 suggestions or distance estimates.
@@ -175,6 +186,12 @@ export default function Security() {
               <li>
                 RSVP submissions are stored in your private workspace, not
                 displayed publicly.
+              </li>
+              <li>
+                Registry links, hotel block details, public Photo Drop links,
+                and partner profile links should be reviewed before publishing
+                or sharing because anyone with access to the public wedding site
+                or QR code may open them.
               </li>
             </ul>
           </section>
@@ -225,13 +242,16 @@ export default function Security() {
           </section>
         </div>
 
-        <div className="border-t border-[#E6A6B7]/45 pt-6 mt-12 flex items-center justify-between text-xs text-[#6F3E54]">
+        <div className="border-t border-[#E6A6B7]/45 pt-6 mt-12 flex flex-wrap items-center justify-between gap-3 text-xs text-[#6F3E54]">
           <p>
             © {new Date().getFullYear()} A.IDO — AI Wedding Planning OS. All
             rights reserved.
           </p>
           <Link href="/" className="hover:text-[#3B1C2B]">
             Home
+          </Link>
+          <Link href="/for-vendors/apply" className="hover:text-[#3B1C2B]">
+            Vendors
           </Link>
         </div>
       </div>

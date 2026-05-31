@@ -296,6 +296,7 @@ export default function Landing() {
             <Link href="/beta" className="underline-offset-4 hover:underline">Beta Disclaimer</Link>
             <Link href="/security" className="underline-offset-4 hover:underline">Security</Link>
             <Link href="/data-handling" className="underline-offset-4 hover:underline">Data Handling</Link>
+            <Link href="/for-vendors/apply" className="underline-offset-4 hover:underline">Vendors</Link>
           </div>
         </div>
       </footer>

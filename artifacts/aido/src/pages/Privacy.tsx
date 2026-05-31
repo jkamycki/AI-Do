@@ -18,7 +18,7 @@ export default function Privacy() {
         </Link>
         <div className="space-y-2 mb-10">
           <h1 className="font-serif text-4xl">Privacy Policy</h1>
-          <p className="text-sm text-[#6F3E54]">Last updated: May 20, 2026</p>
+          <p className="text-sm text-[#6F3E54]">Last updated: May 31, 2026</p>
         </div>
 
         <div className="space-y-8 leading-relaxed">
@@ -75,7 +75,18 @@ export default function Privacy() {
               <li>Seating-chart layouts.</li>
               <li>
                 Wedding website content (text, images, theme, schedule, registry
-                links, RSVP responses).
+                links, RSVP responses, mobile/desktop layout settings, share
+                links, and QR codes).
+              </li>
+              <li>
+                Photo Drop settings and uploads, including disposable-camera
+                session state, guest-submitted photos, owner approvals, and
+                whether photos are portal-only or also published to the wedding
+                website.
+              </li>
+              <li>
+                Vendor Partner Network messages, saved partner records, and any
+                partner inquiries you start from a public partner profile.
               </li>
               <li>Day-of timeline events.</li>
               <li>
@@ -103,6 +114,23 @@ export default function Privacy() {
                 Through guest collector links: name, mailing address, email,
                 phone, plus-one information, meal notes, dietary notes, and
                 submission timestamps.
+              </li>
+              <li>
+                Through Photo Drop links or QR codes: photos guests choose to
+                capture or upload, upload timestamps, and device/session signals
+                used to enforce shot limits and prevent duplicate disposable
+                camera rolls.
+              </li>
+            </ul>
+            <p>
+              <strong>From vendors who apply to partner with A.IDO:</strong>
+            </p>
+            <ul className="list-disc pl-6 space-y-1.5 text-[#3B1C2B]/90">
+              <li>
+                Business contact details, category, service area, website,
+                social links, public-facing about and services copy, starting
+                price, logo, service photos, badge preferences, and application
+                status.
               </li>
             </ul>
             <p>
@@ -146,6 +174,11 @@ export default function Privacy() {
                 (rate-limiting, fraud detection).
               </li>
               <li>To respond to your support requests.</li>
+              <li>
+                To review vendor partner applications, create approved public
+                partner profiles, display partner badges, and route partner
+                messages or inquiries.
+              </li>
             </ul>
             <p>
               We do not sell your personal information. We do not use your data
@@ -215,6 +248,12 @@ export default function Privacy() {
               photos, schedule) is no longer private. RSVP submissions from your
               guests are stored in your private workspace, not displayed on the
               public site.
+            </p>
+            <p>
+              Photo Drop uploads always go to your private portal first. Only
+              photos you approve for the wedding website are displayed publicly,
+              and the Service may enforce a maximum number of website-published
+              Photo Drop photos to keep guest sites performant.
             </p>
           </section>
 
@@ -325,13 +364,16 @@ export default function Privacy() {
           </section>
         </div>
 
-        <div className="border-t border-[#E6A6B7]/45 pt-6 mt-12 flex items-center justify-between text-xs text-[#6F3E54]">
+        <div className="border-t border-[#E6A6B7]/45 pt-6 mt-12 flex flex-wrap items-center justify-between gap-3 text-xs text-[#6F3E54]">
           <p>
             © {new Date().getFullYear()} A.IDO — AI Wedding Planning OS. All
             rights reserved.
           </p>
           <Link href="/" className="hover:text-[#3B1C2B]">
             Home
+          </Link>
+          <Link href="/for-vendors/apply" className="hover:text-[#3B1C2B]">
+            Vendors
           </Link>
         </div>
       </div>

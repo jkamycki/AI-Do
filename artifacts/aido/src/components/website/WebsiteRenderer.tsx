@@ -241,8 +241,21 @@ function layoutOnlyTextStyles(styles: WebsiteDeviceOverride["textStyles"]) {
   return Object.fromEntries(
     Object.entries(styles).map(([key, style]) => {
       if (!style || typeof style !== "object") return [key, style];
-      const { fontFamily: _fontFamily, ...layoutStyle } = style as TextStyle;
+      const {
+        fontFamily: _fontFamily,
+        color: _color,
+        bold: _bold,
+        italic: _italic,
+        underline: _underline,
+        strikethrough: _strikethrough,
+        ...layoutStyle
+      } = style as TextStyle;
       void _fontFamily;
+      void _color;
+      void _bold;
+      void _italic;
+      void _underline;
+      void _strikethrough;
       return [key, layoutStyle];
     }),
   );
@@ -253,6 +266,7 @@ function layoutOnlyCustomText(customText: WebsiteDeviceOverride["customText"]) {
   if (!text) return text;
   return Object.fromEntries(
     Object.entries(text).filter(([key]) => {
+      if (!key.startsWith("_")) return false;
       if (key === "_headingFont" || key === "_bodyFont") return false;
       if (key === "_faqQuestionFont" || key === "_faqAnswerFont") return false;
       return !key.endsWith("_font");
@@ -260,38 +274,124 @@ function layoutOnlyCustomText(customText: WebsiteDeviceOverride["customText"]) {
   );
 }
 
+function typographyOnlyCustomText(customText: WebsiteDeviceOverride["customText"]) {
+  const text = stripDeviceOverrideMarker(customText);
+  if (!text) return {};
+  return Object.fromEntries(
+    Object.entries(text).filter(([key, value]) => {
+      if (typeof value !== "string" || !value.trim()) return false;
+      return (
+        key === "_headingFont" ||
+        key === "_bodyFont" ||
+        key === "_faqQuestionFont" ||
+        key === "_faqAnswerFont" ||
+        key.endsWith("_font")
+      );
+    }),
+  );
+}
+
+function typographyOnlyTextStyles(styles: WebsiteDeviceOverride["textStyles"]) {
+  if (!styles) return {};
+  const entries = Object.entries(styles).flatMap(([key, style]) => {
+      if (!style || typeof style !== "object") return [];
+      const source = style as TextStyle;
+      const typography: TextStyle = {};
+      if (source.fontFamily) typography.fontFamily = source.fontFamily;
+      if (source.color) typography.color = source.color;
+      if (source.bold !== undefined) typography.bold = source.bold;
+      if (source.italic !== undefined) typography.italic = source.italic;
+      if (source.underline !== undefined) typography.underline = source.underline;
+      if (source.strikethrough !== undefined) typography.strikethrough = source.strikethrough;
+      return Object.keys(typography).length ? [[key, typography]] : [];
+    });
+  return Object.fromEntries(entries);
+}
+
+function mergeTextStyleRecords(
+  ...records: Array<Record<string, TextStyle> | undefined>
+) {
+  const merged: Record<string, TextStyle> = {};
+  records.forEach((record) => {
+    Object.entries(record ?? {}).forEach(([key, style]) => {
+      if (!style || typeof style !== "object") return;
+      merged[key] = { ...(merged[key] ?? {}), ...style };
+    });
+  });
+  return merged;
+}
+
 export function applyWebsiteDeviceOverrides<T extends WebsiteRendererPayload>(
   data: T,
   device: WebsiteRenderDevice,
 ): T {
   const overrides = parseWebsiteDeviceOverrides(data.customText);
+  const desktopTypography =
+    device === "mobile" ? overrides.desktop : undefined;
+  const sharedTypographyData = desktopTypography
+    ? ({
+        ...data,
+        customText: {
+          ...stripDeviceOverrideMarker(data.customText),
+          ...typographyOnlyCustomText(desktopTypography.customText),
+        },
+        textStyles: {
+          ...mergeTextStyleRecords(
+            data.textStyles,
+            typographyOnlyTextStyles(desktopTypography.textStyles),
+          ),
+        },
+      } as T)
+    : ({
+        ...data,
+        customText: stripDeviceOverrideMarker(data.customText) ?? data.customText,
+      } as T);
   const override = overrides[device];
   if (!override) {
+    return sharedTypographyData;
+  }
+
+  if (device === "desktop") {
     return {
       ...data,
-      customText: stripDeviceOverrideMarker(data.customText) ?? data.customText,
+      ...override,
+      colorPalette: override.colorPalette
+        ? { ...data.colorPalette, ...override.colorPalette }
+        : data.colorPalette,
+      sectionsEnabled: override.sectionsEnabled
+        ? { ...data.sectionsEnabled, ...override.sectionsEnabled }
+        : data.sectionsEnabled,
+      customText: {
+        ...stripDeviceOverrideMarker(data.customText),
+        ...stripDeviceOverrideMarker(override.customText),
+      },
+      textStyles: {
+        ...mergeTextStyleRecords(data.textStyles, override.textStyles),
+      },
+      textPositions: {
+        ...(data.textPositions ?? {}),
+        ...(override.textPositions ?? {}),
+      },
     };
   }
 
   return {
-    ...data,
-    ...override,
-    colorPalette: override.colorPalette
-      ? { ...data.colorPalette, ...override.colorPalette }
-      : data.colorPalette,
+    ...sharedTypographyData,
     sectionsEnabled: override.sectionsEnabled
-      ? { ...data.sectionsEnabled, ...override.sectionsEnabled }
-      : data.sectionsEnabled,
+      ? { ...sharedTypographyData.sectionsEnabled, ...override.sectionsEnabled }
+      : sharedTypographyData.sectionsEnabled,
     customText: {
-      ...stripDeviceOverrideMarker(data.customText),
+      ...stripDeviceOverrideMarker(sharedTypographyData.customText),
       ...layoutOnlyCustomText(override.customText),
     },
     textStyles: {
-      ...(data.textStyles ?? {}),
-      ...layoutOnlyTextStyles(override.textStyles),
+      ...mergeTextStyleRecords(
+        sharedTypographyData.textStyles,
+        layoutOnlyTextStyles(override.textStyles),
+      ),
     },
     textPositions: {
-      ...(data.textPositions ?? {}),
+      ...(sharedTypographyData.textPositions ?? {}),
       ...(override.textPositions ?? {}),
     },
   };
@@ -1793,9 +1893,13 @@ function HeroBackground({
   const fit = (heroFitValue === "cover" ? "cover" : "contain") as
     | "cover"
     | "contain";
+  // On real/mobile previews, couples expect the hero to fill the phone frame.
+  // Keep desktop's "show whole photo" option, but avoid flat letterbox bands
+  // on phones by using the same edge-to-edge crop the preview frame implies.
+  const effectiveFit = isMobileRender ? "cover" : fit;
   // When letterboxing in contain mode, fall back to the palette background
   // so the bars match the rest of the site instead of showing black.
-  const backdrop = fit === "contain" ? data.colorPalette.background : undefined;
+  const backdrop = effectiveFit === "contain" ? data.colorPalette.background : undefined;
 
   const sortedHeroImages = (data.heroImages ?? [])
     .slice()
@@ -1831,14 +1935,14 @@ function HeroBackground({
         >
           {strip.map((url, i) => {
             const focal = heroFocalFor(data, url);
-            const zoom = fit === "contain" ? 1 : heroZoomFor(data, url);
+            const zoom = effectiveFit === "contain" ? 1 : heroZoomFor(data, url);
             const slide = (
               <AuthBgSlide
                 url={url}
                 className="h-full w-full"
                 style={{
-                  backgroundPosition: fit === "contain" ? "center" : focal,
-                  backgroundSize: fit,
+                  backgroundPosition: effectiveFit === "contain" ? "center" : focal,
+                  backgroundSize: effectiveFit,
                   backgroundRepeat: "no-repeat",
                   filter: photoFilter,
                 }}
@@ -1908,11 +2012,11 @@ function HeroBackground({
     >
       {slideshowImages.map((url, i) => {
         const focal = heroFocalFor(data, url);
-        const zoom = fit === "contain" ? 1 : heroZoomFor(data, url);
+        const zoom = effectiveFit === "contain" ? 1 : heroZoomFor(data, url);
         const opacity = mode === "slideshow" ? (i === activeIdx ? 1 : 0) : 1;
         const transition =
           mode === "slideshow" ? "opacity 1s ease-in-out" : undefined;
-        if (fit === "contain") {
+        if (effectiveFit === "contain") {
           return (
             <div
               key={url + i}
@@ -1951,7 +2055,7 @@ function HeroBackground({
             className="absolute inset-0"
             style={{
               backgroundPosition: focal,
-              backgroundSize: fit,
+              backgroundSize: effectiveFit,
               backgroundRepeat: "no-repeat",
               opacity,
               transition,
@@ -1988,7 +2092,7 @@ function HeroBackground({
                 className="absolute inset-0"
                 style={{
                   backgroundPosition: focal,
-                  backgroundSize: fit,
+                  backgroundSize: effectiveFit,
                   backgroundRepeat: "no-repeat",
                   opacity: mode === "slideshow" ? (i === activeIdx ? 1 : 0) : 1,
                   transition:
@@ -4293,6 +4397,15 @@ function BrandingFooter() {
           className="hover:text-white transition-colors"
         >
           Data Handling
+        </a>
+        <span className="hidden opacity-40 sm:inline">Â·</span>
+        <a
+          href="https://aidowedding.net/for-vendors/apply"
+          target="_blank"
+          rel="noopener"
+          className="hover:text-white transition-colors"
+        >
+          Vendors
         </a>
       </nav>
       <p className="mx-auto max-w-[18rem] text-[10.5px] leading-relaxed opacity-85 sm:max-w-2xl sm:text-[11px]">

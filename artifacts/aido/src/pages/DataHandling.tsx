@@ -18,7 +18,7 @@ export default function DataHandling() {
         </Link>
         <div className="space-y-2 mb-10">
           <h1 className="font-serif text-4xl">Data Handling</h1>
-          <p className="text-sm text-[#6F3E54]">Last updated: May 20, 2026</p>
+          <p className="text-sm text-[#6F3E54]">Last updated: May 31, 2026</p>
         </div>
 
         <div className="space-y-8 leading-relaxed">
@@ -60,6 +60,19 @@ export default function DataHandling() {
               <li>
                 <strong>Vendor messages</strong> — drafted, sent, and received
                 emails (when wired through Resend).
+              </li>
+              <li>
+                <strong>Partner Network</strong> - partner inquiries, approved
+                partner listings, public partner profile content, badge links,
+                and saved-partner relationships when a user adds a partner to
+                their Vendor List.
+              </li>
+              <li>
+                <strong>Vendor partner applications</strong> - business name,
+                category, contact details, service area, website/social links,
+                public-facing about and services copy, starting price, logo,
+                service photos, review status, admin notes, and publishing
+                decisions.
               </li>
               <li>
                 <strong>Contracts</strong> — uploaded contract PDFs and
@@ -105,6 +118,12 @@ export default function DataHandling() {
                 custom text, hero photo, gallery, registry links, schedule, FAQ,
                 RSVP responses, optional password, desktop/mobile responsive
                 layout settings, and published/unpublished status.
+              </li>
+              <li>
+                <strong>Photo Drop</strong> - QR/share links, disposable-camera
+                settings, guest photo uploads, upload timestamps, owner approval
+                state, website publication state, and device/session signals
+                used to enforce shot limits.
               </li>
               <li>
                 <strong>Aria conversations</strong> — your messages to Aria and
@@ -159,7 +178,7 @@ export default function DataHandling() {
                     </td>
                     <td className="px-4 py-2.5 align-top">
                       Transactional email (RSVP confirmations, invite links,
-                      support replies, vendor emails)
+                      support replies, vendor emails, partner inquiries)
                     </td>
                     <td className="px-4 py-2.5 align-top text-[#3B1C2B]/80">
                       Sender, recipient, subject, body
@@ -254,8 +273,9 @@ export default function DataHandling() {
                 wedding data (profile, budget, checklist, timeline, vendors,
                 vendor contacts, contracts, Document Library files and metadata,
                 guest list, seating, wedding party, hotel blocks,
-                wedding website, AI conversations) is permanently deleted from
-                the primary database.
+                wedding website, Photo Drop uploads, vendor records, partner
+                messages, AI conversations) is permanently deleted from the
+                primary database.
               </li>
               <li>
                 Neon database backups and off-Neon logical backups are retained
@@ -320,7 +340,9 @@ export default function DataHandling() {
               may also include guest messages, meal choices, plus-one details,
               hotel needs, "already booked" hotel responses, and room counts.
               Guest collector submissions are stored in the guest list or
-              related request records.{" "}
+              related request records. Photo Drop submissions are stored in the
+              couple's portal and are only displayed on the wedding website when
+              the couple approves them for public display.{" "}
               Off-list submissions also receive a notes line indicating they
               should be verified. As the workspace
               owner, you are the controller of your guests' data — please honor
@@ -331,6 +353,22 @@ export default function DataHandling() {
               coordinator, you are responsible for providing notices and
               obtaining permissions required to share guest personal data with
               us and your collaborators.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl font-semibold">
+              Vendor Partner Data
+            </h2>
+            <p>
+              Vendors who submit the partner intake form provide information
+              intended for review and, if approved, public display. Approved
+              listings may show the business name, logo, service photos,
+              category, service area, price range, about copy, services,
+              website, social links, badge, and contact options. Unapproved or
+              rejected applications remain visible only to authorized admins
+              unless retained for operational, abuse-prevention, or legal
+              reasons.
             </p>
           </section>
 
@@ -349,13 +387,16 @@ export default function DataHandling() {
           </section>
         </div>
 
-        <div className="border-t border-[#E6A6B7]/45 pt-6 mt-12 flex items-center justify-between text-xs text-[#6F3E54]">
+        <div className="border-t border-[#E6A6B7]/45 pt-6 mt-12 flex flex-wrap items-center justify-between gap-3 text-xs text-[#6F3E54]">
           <p>
             © {new Date().getFullYear()} A.IDO — AI Wedding Planning OS. All
             rights reserved.
           </p>
           <Link href="/" className="hover:text-[#3B1C2B]">
             Home
+          </Link>
+          <Link href="/for-vendors/apply" className="hover:text-[#3B1C2B]">
+            Vendors
           </Link>
         </div>
       </div>

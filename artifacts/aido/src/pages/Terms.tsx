@@ -18,7 +18,7 @@ export default function Terms() {
         </Link>
         <div className="space-y-2 mb-10">
           <h1 className="font-serif text-4xl text-[#3B1C2B]">Terms of Service</h1>
-          <p className="text-sm text-[#6F3E54]">Last updated: May 20, 2026</p>
+          <p className="text-sm text-[#6F3E54]">Last updated: May 31, 2026</p>
         </div>
 
         <div className="space-y-8 leading-relaxed text-[#3B1C2B]">
@@ -69,6 +69,11 @@ export default function Terms() {
                 deposit milestones, and notes.
               </li>
               <li>
+                <strong>Partner Network</strong> - discover approved A.IDO
+                partner vendors, view public partner profiles, message partners,
+                and optionally add them to your Vendor List.
+              </li>
+              <li>
                 <strong>Document Library</strong> - upload, preview, organize,
                 summarize, extract key information from, share visibility for,
                 and download wedding-related documents such as contracts,
@@ -115,7 +120,14 @@ export default function Terms() {
               <li>
                 <strong>Wedding website</strong> — couples publish a public
                 guest site at a chosen URL with RSVP, schedule, registry,
-                gallery, etc.
+                gallery, Photo Drop, mobile/desktop previews, share links, and
+                QR codes.
+              </li>
+              <li>
+                <strong>Photo Drop</strong> - guests can use QR or shared links
+                to open a mobile disposable-camera experience, submit photos to
+                the couple's portal, and only display photos publicly when the
+                couple approves them for the website.
               </li>
               <li>
                 <strong>Aria</strong> — an AI planning assistant that can read
@@ -140,6 +152,14 @@ export default function Terms() {
               The Service is provided for personal, non-commercial use unless
               otherwise agreed in writing. Features may be added, modified, or
               removed during the beta period without notice.
+            </p>
+            <p>
+              Vendors may apply to be considered for the A.IDO Partner Network.
+              Submission does not guarantee approval, placement, leads, ranking,
+              exclusivity, or a commercial relationship. If approved, submitted
+              information, logos, photos, descriptions, services, price ranges,
+              social links, and contact details may be used to create a public
+              partner profile, badge, and related promotional materials.
             </p>
           </section>
 
@@ -194,8 +214,9 @@ export default function Terms() {
               contracts, documents, mood boards, vendor records, vendor contact
               records, guest lists, RSVPs, guest-submitted RSVP messages,
               hotel-room responses, guest-collector submissions, invitation
-              customizations, wedding-website edits, financial-report exports,
-              and language preferences). By uploading you grant A.IDO a
+              customizations, wedding-website edits, Photo Drop uploads, vendor
+              partner application materials, approved partner profile content,
+              financial-report exports, and language preferences). By uploading you grant A.IDO a
               non-exclusive license to host, process, transmit, display, and
               back up that content solely to operate the Service for you and
               your workspace collaborators. You are responsible for ensuring you
@@ -278,6 +299,14 @@ export default function Terms() {
               collecting guest data.
             </p>
             <p>
+              Photo Drop links and QR codes may allow guests to capture or
+              upload photos from mobile browsers. Those photos are stored in the
+              couple's private portal first. Couples decide which photos, if
+              any, are approved for the public wedding website. Guests should
+              assume submitted photos can be seen by the couple and workspace
+              collaborators.
+            </p>
+            <p>
               Invitation links and QR codes are provided for convenience. You
               are responsible for testing links, QR codes, email previews, and
               printed materials before sending or printing at scale. If you use
@@ -310,6 +339,11 @@ export default function Terms() {
               </li>
               <li>
                 Use the Service to operate a competing wedding-planning product.
+              </li>
+              <li>
+                Submit vendor partner applications, public profile content, or
+                Photo Drop uploads that are misleading, infringing, abusive, or
+                not yours to share.
               </li>
             </ul>
           </section>
@@ -458,13 +492,16 @@ export default function Terms() {
           </section>
         </div>
 
-        <div className="border-t border-[#E6A6B7]/45 pt-6 mt-12 flex items-center justify-between text-xs text-[#6F3E54]">
+        <div className="border-t border-[#E6A6B7]/45 pt-6 mt-12 flex flex-wrap items-center justify-between gap-3 text-xs text-[#6F3E54]">
           <p>
             © {new Date().getFullYear()} A.IDO — AI Wedding Planning OS. All
             rights reserved.
           </p>
           <Link href="/" className="hover:text-[#3B1C2B]">
             Home
+          </Link>
+          <Link href="/for-vendors/apply" className="hover:text-[#3B1C2B]">
+            Vendors
           </Link>
         </div>
       </div>

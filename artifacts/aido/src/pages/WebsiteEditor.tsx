@@ -56,6 +56,9 @@ interface WebsiteRecord extends WebsiteRendererPayload {
 type HotelOption = NonNullable<WebsiteRendererPayload["hotelOptions"]>[number];
 type ControlGroupId = "copy" | "design" | "elements" | "photos" | "animation" | "settings";
 
+const MOBILE_GUEST_PREVIEW_WIDTH = 430;
+const MOBILE_GUEST_PREVIEW_HEIGHT = 932;
+
 interface InvitationHotelSettings {
   rsvpAskHotel: boolean;
   rsvpHotelBlockId: string;
@@ -1873,8 +1876,12 @@ export default function WebsiteEditor() {
       {/* Mobile: live preview pinned to the top half so the user can see
           the page they're editing without flipping panels. lg+ shows it on
           the right via the sibling <main> below. */}
-      <div className="h-[42dvh] min-h-[280px] max-h-[420px] lg:hidden flex-shrink-0 border-b bg-muted/20 overflow-hidden">
-        <div ref={(el) => { if (el && !previewRef.current) previewRef.current = el; mobilePreviewRef.current = el; }} className="h-full overflow-y-auto">
+      <div className="h-[48dvh] min-h-[340px] max-h-[560px] lg:hidden flex-shrink-0 border-b bg-muted/20 overflow-hidden px-3 py-3">
+        <div
+          ref={(el) => { if (el && !previewRef.current) previewRef.current = el; mobilePreviewRef.current = el; }}
+          className="mx-auto h-full max-w-full overflow-y-auto rounded-[26px] bg-white shadow-sm ring-1 ring-border"
+          style={{ width: MOBILE_GUEST_PREVIEW_WIDTH }}
+        >
           {livePreview && (
             <WebsiteRenderer
               data={livePreview}
@@ -3580,10 +3587,17 @@ export default function WebsiteEditor() {
             ref={canvasRef}
             className={
               previewDevice === "mobile"
-                ? "relative w-[390px] max-w-full overflow-hidden rounded-[28px] bg-white shadow-2xl ring-1 ring-border"
+                ? "relative max-w-full overflow-hidden rounded-[28px] bg-white shadow-2xl ring-1 ring-border"
                 : "bg-white relative"
             }
-            style={previewDevice === "mobile" ? { minHeight: 844 } : undefined}
+            style={
+              previewDevice === "mobile"
+                ? {
+                    width: MOBILE_GUEST_PREVIEW_WIDTH,
+                    minHeight: MOBILE_GUEST_PREVIEW_HEIGHT,
+                  }
+                : undefined
+            }
           >
           <WebsiteRenderer
             data={livePreview!}
@@ -3828,16 +3842,32 @@ export default function WebsiteEditor() {
               </button>
             </div>
           </div>
-          <WebsiteRenderer
-            data={livePreview!}
-            renderDevice={previewDevice}
-            editable={false}
-            slug={editingRecord.slug ?? ""}
-            previewMode
-            scrollContainer={overlayEl}
-            currentSection={previewSection}
-            onSectionChange={setPreviewSection}
-          />
+          <div
+            className={
+              previewDevice === "mobile"
+                ? "mx-auto max-w-full overflow-hidden bg-white shadow-2xl ring-1 ring-border"
+                : undefined
+            }
+            style={
+              previewDevice === "mobile"
+                ? {
+                    width: MOBILE_GUEST_PREVIEW_WIDTH,
+                    minHeight: MOBILE_GUEST_PREVIEW_HEIGHT,
+                  }
+                : undefined
+            }
+          >
+            <WebsiteRenderer
+              data={livePreview!}
+              renderDevice={previewDevice}
+              editable={false}
+              slug={editingRecord.slug ?? ""}
+              previewMode
+              scrollContainer={overlayEl}
+              currentSection={previewSection}
+              onSectionChange={setPreviewSection}
+            />
+          </div>
         </div>
       )}
     </div>
