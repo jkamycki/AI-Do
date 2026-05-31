@@ -53,7 +53,7 @@ function locationLines(design: InvitationDesignDocument): string[] {
     [design.fields.venueCity, [design.fields.venueState, design.fields.venueZip].filter(Boolean).join(" ")]
       .filter(Boolean)
       .join(", "),
-  ].filter(Boolean);
+  ].filter((line): line is string => Boolean(line));
 }
 
 function formatHotelCutoffDate(value: string | null | undefined) {

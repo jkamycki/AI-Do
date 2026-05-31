@@ -259,14 +259,14 @@ function CardShell({
   const dotPat  = `radial-gradient(${accent}22 1px, transparent 1px)`;
 
   const panRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
-  const handleDown = (e: React.PointerEvent) => {
+  const handleDown = (e: React.PointerEvent<HTMLElement>) => {
     if (!onPhotoPositionChange) return;
     e.preventDefault();
     e.stopPropagation();
     panRef.current = { sx: e.clientX, sy: e.clientY, ox: photoPosition.x, oy: photoPosition.y };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
-  const handleMove = (e: React.PointerEvent) => {
+  const handleMove = (e: React.PointerEvent<HTMLElement>) => {
     if (!panRef.current || !onPhotoPositionChange) return;
     const dx = e.clientX - panRef.current.sx;
     const dy = e.clientY - panRef.current.sy;
@@ -276,7 +276,7 @@ function CardShell({
       y: clampPercent(panRef.current.oy - delta.y),
     });
   };
-  const handleUp = (e: React.PointerEvent) => {
+  const handleUp = (e: React.PointerEvent<HTMLElement>) => {
     panRef.current = null;
     try {
       (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);

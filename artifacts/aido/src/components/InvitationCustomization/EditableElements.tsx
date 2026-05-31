@@ -314,7 +314,7 @@ export function EditableImage({
   const panRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
   const panMovedRef = useRef(false);
 
-  const handlePointerDown = (e: React.PointerEvent) => {
+  const handlePointerDown = (e: React.PointerEvent<HTMLElement>) => {
     if (!editable) return;
     e.preventDefault();
     e.stopPropagation();
@@ -326,7 +326,7 @@ export function EditableImage({
     } catch { /* noop */ }
   };
 
-  const handlePointerMove = (e: React.PointerEvent) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLElement>) => {
     if (!panRef.current) return;
     const dx = e.clientX - panRef.current.sx;
     const dy = e.clientY - panRef.current.sy;
@@ -340,7 +340,7 @@ export function EditableImage({
     }
   };
 
-  const handlePointerUp = (e: React.PointerEvent) => {
+  const handlePointerUp = (e: React.PointerEvent<HTMLElement>) => {
     panRef.current = null;
     try {
       (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);

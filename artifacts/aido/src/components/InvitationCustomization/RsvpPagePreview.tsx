@@ -211,7 +211,7 @@ export function RsvpPagePreview({
     }
   }, [askHotel, hotelOptions, selectedHotelBlockId, selectedHotelId]);
 
-  const handlePhotoPanDown = (e: React.PointerEvent) => {
+  const handlePhotoPanDown = (e: React.PointerEvent<HTMLElement>) => {
     if (!onPhotoPositionChange) return;
     e.preventDefault();
     e.stopPropagation();
@@ -219,7 +219,7 @@ export function RsvpPagePreview({
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
 
-  const handlePhotoPanMove = (e: React.PointerEvent) => {
+  const handlePhotoPanMove = (e: React.PointerEvent<HTMLElement>) => {
     if (!panRef.current || !onPhotoPositionChange) return;
     const dx = e.clientX - panRef.current.sx;
     const dy = e.clientY - panRef.current.sy;
@@ -230,7 +230,7 @@ export function RsvpPagePreview({
     });
   };
 
-  const handlePhotoPanUp = (e: React.PointerEvent) => {
+  const handlePhotoPanUp = (e: React.PointerEvent<HTMLElement>) => {
     panRef.current = null;
     try {
       (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
