@@ -2,6 +2,7 @@ import {
   cloneElement,
   isValidElement,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
@@ -235,6 +236,18 @@ function stripDeviceOverrideMarker(customText: Record<string, string> | undefine
   return rest;
 }
 
+function layoutOnlyTextStyles(styles: WebsiteDeviceOverride["textStyles"]) {
+  if (!styles) return {};
+  return Object.fromEntries(
+    Object.entries(styles).map(([key, style]) => {
+      if (!style || typeof style !== "object") return [key, style];
+      const { fontFamily: _fontFamily, ...layoutStyle } = style as TextStyle;
+      void _fontFamily;
+      return [key, layoutStyle];
+    }),
+  );
+}
+
 export function applyWebsiteDeviceOverrides<T extends WebsiteRendererPayload>(
   data: T,
   device: WebsiteRenderDevice,
@@ -263,7 +276,7 @@ export function applyWebsiteDeviceOverrides<T extends WebsiteRendererPayload>(
     },
     textStyles: {
       ...(data.textStyles ?? {}),
-      ...(override.textStyles ?? {}),
+      ...layoutOnlyTextStyles(override.textStyles),
     },
     textPositions: {
       ...(data.textPositions ?? {}),
@@ -4590,10 +4603,24 @@ export function WebsiteRenderer({
   const bodyFontName = bodyFont(data);
   const faqQuestionFont = data.customText._faqQuestionFont ?? "";
   const faqAnswerFont = data.customText._faqAnswerFont ?? "";
+  const customElementFonts = useMemo(() => {
+    const fonts = new Set<string>();
+    Object.entries(data.customText).forEach(([key, value]) => {
+      if (key.endsWith("_font") && typeof value === "string" && value.trim()) {
+        fonts.add(value.trim());
+      }
+    });
+    Object.values(data.textStyles ?? {}).forEach((style) => {
+      const fontFamily = style?.fontFamily?.trim();
+      if (fontFamily) fonts.add(fontFamily);
+    });
+    return Array.from(fonts);
+  }, [data.customText, data.textStyles]);
+  const customElementFontKey = customElementFonts.join("\n");
   useEffect(() => {
     const families = Array.from(
       new Set(
-        [headingFontName, bodyFontName, faqQuestionFont, faqAnswerFont].filter(
+        [headingFontName, bodyFontName, faqQuestionFont, faqAnswerFont, ...customElementFonts].filter(
           Boolean,
         ),
       ),
@@ -4607,7 +4634,7 @@ export function WebsiteRenderer({
       link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family).replace(/%20/g, "+")}:wght@400;500;600;700&display=swap`;
       document.head.appendChild(link);
     });
-  }, [headingFontName, bodyFontName, faqQuestionFont, faqAnswerFont]);
+  }, [headingFontName, bodyFontName, faqQuestionFont, faqAnswerFont, customElementFontKey]);
 
   const pageMode = !!currentSection;
   const showAll = !pageMode;

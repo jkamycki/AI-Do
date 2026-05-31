@@ -526,7 +526,6 @@ export default function WebsiteEditor() {
   // inserted text box lands where the user right-clicked).
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; canvasX: number; canvasY: number } | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
-  const [urlModalOpen, setUrlModalOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -2180,6 +2179,18 @@ export default function WebsiteEditor() {
             side-by-side, so this is a plain form for the highest-impact
             text fields. Updates flow through the existing customText jsonb
             so the live preview reflects them when the user toggles back. */}
+        {currentControlGroup === "settings" && activeTab !== "publish" && (
+          <Section icon={<Link2 className="h-4 w-4" />} title={t("website_editor.section_url", { defaultValue: "Website URL" })}>
+            <SlugEditor
+              slug={editingRecord.slug}
+              published={editingRecord.published}
+              onSaved={(newSlug, lastUpdated) =>
+                setRecord((prev) => prev ? { ...prev, slug: newSlug, lastUpdated } : prev)
+              }
+            />
+          </Section>
+        )}
+
         {editingGroup("settings", "home") && (
           <Section icon={<Settings className="h-4 w-4" />} title={t("website_editor.section_quick_setup", { defaultValue: "Quick Setup" })}>
             <div className="space-y-3">
@@ -3451,17 +3462,6 @@ export default function WebsiteEditor() {
           </Section>
         )}
 
-        {/* Website URL */}
-        {inTab("publish") && <Section icon={<Link2 className="h-4 w-4" />} title={t("website_editor.section_url", { defaultValue: "Website URL" })}>
-          <SlugEditor
-            slug={editingRecord.slug}
-            published={editingRecord.published}
-            onSaved={(newSlug, lastUpdated) =>
-              setRecord((prev) => prev ? { ...prev, slug: newSlug, lastUpdated } : prev)
-            }
-          />
-        </Section>}
-
         {/* Password */}
         {inTab("publish") && <Section icon={<Lock className="h-4 w-4" />} title={t("website_editor.section_password", { defaultValue: "Password Protection" })}>
           <div className="space-y-2">
@@ -3568,17 +3568,6 @@ export default function WebsiteEditor() {
               </button>
             </div>
           </div>
-          {editingRecord.published && (
-            <button
-              type="button"
-              onClick={() => setUrlModalOpen(true)}
-              className="inline-flex items-center gap-1.5 font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity whitespace-nowrap"
-              style={{ color: "#8D294D" }}
-            >
-              <Link2 className="h-3 w-3" />
-              {t("website_editor.custom_url_cta", { defaultValue: "Click here to get your custom website URL" })}
-            </button>
-          )}
         </div>
         <div
           className={
@@ -3783,44 +3772,6 @@ export default function WebsiteEditor() {
                 Publish Website
               </Button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {urlModalOpen && (
-        <div
-          className="fixed inset-0 z-[10001] flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.5)" }}
-          onClick={() => setUrlModalOpen(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-xl border border-border bg-background p-5 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-base font-semibold flex items-center gap-2" style={{ color: "#8D294D" }}>
-                <Link2 className="h-4 w-4" />
-                {t("website_editor.custom_url_modal_title", { defaultValue: "Your custom website URL" })}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setUrlModalOpen(false)}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <p className="text-xs text-muted-foreground mb-4">
-              {t("website_editor.custom_url_modal_help", { defaultValue: "Pick a URL guests will type in their browser. Stick to letters, numbers, and dashes." })}
-            </p>
-            <SlugEditor
-              slug={editingRecord.slug}
-              published={editingRecord.published}
-              onSaved={(newSlug, lastUpdated) => {
-                setRecord((prev) => prev ? { ...prev, slug: newSlug, lastUpdated } : prev);
-              }}
-            />
           </div>
         </div>
       )}
