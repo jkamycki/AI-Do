@@ -12,14 +12,15 @@ import { AppState, Image, Linking, Modal, Platform, Pressable, ScrollView, Share
 
 import { getPlanningData, mergePlanningData } from './src/api/client';
 import { sendMobileAriaMessage } from './src/api/aria';
-import { syncDayOfChecklistCompletion, syncTaskCompletion } from './src/api/checklist';
-import { inviteMobileCollaborator, listMobileCollaborators } from './src/api/collaboration';
+import { createMobileTask, deleteMobileTask, syncDayOfChecklistCompletion, syncTaskCompletion, updateMobileTask } from './src/api/checklist';
+import { deleteMobileCollaborator, inviteMobileCollaborator, listMobileCollaborators } from './src/api/collaboration';
 import { listMobileContracts, type MobileContractRecord } from './src/api/contracts';
+import { syncDayOfEventCompletion } from './src/api/dayOf';
 import { listMobileDocuments, uploadMobileContract, uploadMobileDocument, type MobileDocumentRecord, type MobilePickedFile } from './src/api/documents';
 import { createMobileGuest, deleteMobileGuest, updateMobileGuest } from './src/api/guests';
 import { getGuestCampaignPreview, sendPendingRsvpReminders, sendRsvpInvitations, sendSaveTheDates, type GuestCampaign, type GuestCampaignPreview } from './src/api/guestMessaging';
 import { createMobileHotel, deleteMobileHotel, updateMobileHotel } from './src/api/hotels';
-import { saveMobileInvitationStudio, sendMobileInvitationTest } from './src/api/invitationStudio';
+import { saveMobileInvitationStudio } from './src/api/invitationStudio';
 import { hasMobileApiBase, mobileAuthFetch, saveMobileAuthToken, setMobileAuthTokenGetter } from './src/api/mobileAuth';
 import { deleteMobileGuestPhotoUpload, listMobileGuestPhotoDrop, saveMobileGuestPhotoDropSettings, updateMobileGuestPhotoUploadStatus } from './src/api/photoDrop';
 import { saveMobileProfile } from './src/api/profile';
@@ -37,7 +38,7 @@ import { getOrCreateMobileVendorConversation, listMobileVendorMessages, sendMobi
 import { createMobileWebsite, getMobileWebsite, publishMobileWebsite, saveMobileWebsiteQuickUpdate, saveMobileWebsiteSlug, type MobileWebsiteRecord } from './src/api/website';
 import { createMobileWeddingPartyMember, deleteMobileWeddingPartyMember, updateMobileWeddingPartyMember } from './src/api/weddingParty';
 import { samplePlanningData } from './src/data/sampleData';
-import type { Guest, GuestPhotoDropSettings, GuestPhotoUpload, Payment } from './src/types';
+import type { Guest, GuestPhotoDropSettings, GuestPhotoUpload, InvitationSuite, Payment, PlanningData, Task, TaskCategory } from './src/types';
 import { daysFromToday, formatCurrency, formatDeadlineLabel, formatLongDate, formatShortDate, isDateInputValid, parseDate } from './src/utils/format';
 
 const logo = require('./assets/aido-logo.png');
@@ -83,7 +84,7 @@ type MobileSeatingResult = {
 
 function buildGuestWebsiteHomeUrl(slug: string) {
   const cleanSlug = slug.trim().replace(/^\/+|\/+$/g, '');
-  return cleanSlug ? `${publicWebsiteOrigin}/w/${cleanSlug}/home` : '';
+  return cleanSlug ? `${publicWebsiteOrigin}/${cleanSlug}` : '';
 }
 
 function slugifyWeddingLabel(value: string) {
@@ -116,6 +117,30 @@ type GuestSendLink = {
   name: string;
   url: string;
 };
+
+function invitationMetricsForGuests(invitation: InvitationSuite, guests: Guest[]) {
+  const responses = guests.filter((guest) => guest.rsvp === 'Confirmed' || guest.rsvp === 'Declined').length;
+  const sent =
+    invitation.type === 'Save the Date'
+      ? guests.filter((guest) => guest.saveTheDateStatus === 'sent').length
+      : guests.filter((guest) => guest.invitationStatus === 'sent').length;
+
+  return {
+    ...invitation,
+    opened: invitation.type === 'Save the Date' ? sent : responses,
+    responses,
+    sent,
+    status: sent ? 'Sent' as const : invitation.status,
+  };
+}
+
+function withGuestDerivedInvitations(data: PlanningData, guests: Guest[]): PlanningData {
+  return {
+    ...data,
+    guests,
+    invitations: data.invitations.map((invitation) => invitationMetricsForGuests(invitation, guests)),
+  };
+}
 
 type AuthUser = {
   email: string;
@@ -370,6 +395,62 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
       }));
     });
   };
+  const addTask = (task: Omit<Task, 'id'>) => {
+    const localTask = { ...task, id: `task-new-${Date.now()}` };
+    setData((current) => ({ ...current, tasks: [localTask, ...current.tasks] }));
+    void createMobileTask(localTask)
+      .then((result) => {
+        if (!result.synced || !result.task) return;
+        setData((current) => ({
+          ...current,
+          tasks: current.tasks.map((item) => (item.id === localTask.id ? result.task! : item)),
+        }));
+      })
+      .catch((error) => {
+        setData((current) => ({ ...current, tasks: current.tasks.filter((item) => item.id !== localTask.id) }));
+        setMockAction({
+          title: 'Task not saved',
+          detail: error instanceof Error ? error.message : 'The checklist task could not be saved. Please try again.',
+          primaryLabel: 'Close',
+        });
+      });
+  };
+  const updateTask = (task: Task) => {
+    const previous = data.tasks.find((item) => item.id === task.id);
+    setData((current) => ({ ...current, tasks: current.tasks.map((item) => (item.id === task.id ? task : item)) }));
+    void updateMobileTask(task)
+      .then((result) => {
+        if (!result.synced || !result.task) return;
+        setData((current) => ({
+          ...current,
+          tasks: current.tasks.map((item) => (item.id === task.id ? result.task! : item)),
+        }));
+      })
+      .catch((error) => {
+        if (previous) {
+          setData((current) => ({ ...current, tasks: current.tasks.map((item) => (item.id === task.id ? previous : item)) }));
+        }
+        setMockAction({
+          title: 'Task not updated',
+          detail: error instanceof Error ? error.message : 'The checklist task could not be updated. Please try again.',
+          primaryLabel: 'Close',
+        });
+      });
+  };
+  const removeTask = (taskId: string) => {
+    const previous = data.tasks.find((item) => item.id === taskId);
+    setData((current) => ({ ...current, tasks: current.tasks.filter((item) => item.id !== taskId) }));
+    void deleteMobileTask(taskId).catch((error) => {
+      if (previous) {
+        setData((current) => ({ ...current, tasks: [previous, ...current.tasks] }));
+      }
+      setMockAction({
+        title: 'Task not deleted',
+        detail: error instanceof Error ? error.message : 'The checklist task could not be deleted. Please try again.',
+        primaryLabel: 'Close',
+      });
+    });
+  };
   const updateDayOfChecklistCompletion = (itemId: string, completed: boolean) => {
     const item = data.dayOfChecklist.find((entry) => entry.id === itemId);
     setData((current) => ({
@@ -381,6 +462,20 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
       setData((current) => ({
         ...current,
         dayOfChecklist: current.dayOfChecklist.map((entry) => (entry.id === itemId ? { ...entry, completed: !completed } : entry)),
+      }));
+    });
+  };
+  const updateDayOfEventCompletion = (eventId: string, completed: boolean) => {
+    const event = data.dayOf.find((entry) => entry.id === eventId);
+    setData((current) => ({
+      ...current,
+      dayOf: current.dayOf.map((item) => (item.id === eventId ? { ...item, completed } : item)),
+    }));
+    if (!event) return;
+    void syncDayOfEventCompletion(event, completed).catch(() => {
+      setData((current) => ({
+        ...current,
+        dayOf: current.dayOf.map((entry) => (entry.id === eventId ? { ...entry, completed: !completed } : entry)),
       }));
     });
   };
@@ -398,17 +493,14 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
   };
   const addGuest = (guest: Guest) => {
     const localGuest = { ...guest, id: guest.id.startsWith('mobile-new-') ? `mobile-${Date.now()}` : guest.id };
-    setData((current) => ({ ...current, guests: [localGuest, ...current.guests] }));
+    setData((current) => withGuestDerivedInvitations(current, [localGuest, ...current.guests]));
     void createMobileGuest(localGuest)
       .then((result) => {
         if (!result.synced || !result.guest) return;
-        setData((current) => ({
-          ...current,
-          guests: current.guests.map((item) => (item.id === localGuest.id ? result.guest! : item)),
-        }));
+        setData((current) => withGuestDerivedInvitations(current, current.guests.map((item) => (item.id === localGuest.id ? result.guest! : item))));
       })
       .catch((error) => {
-        setData((current) => ({ ...current, guests: current.guests.filter((item) => item.id !== localGuest.id) }));
+        setData((current) => withGuestDerivedInvitations(current, current.guests.filter((item) => item.id !== localGuest.id)));
         setMockAction({
           title: 'Guest not saved',
           detail: error instanceof Error ? error.message : 'The guest could not be saved. Please try again.',
@@ -418,24 +510,15 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
   };
   const updateGuest = (guest: Guest) => {
     const previous = data.guests.find((item) => item.id === guest.id);
-    setData((current) => ({
-      ...current,
-      guests: current.guests.map((item) => (item.id === guest.id ? guest : item)),
-    }));
+    setData((current) => withGuestDerivedInvitations(current, current.guests.map((item) => (item.id === guest.id ? guest : item))));
     void updateMobileGuest(guest)
       .then((result) => {
         if (!result.synced || !result.guest) return;
-        setData((current) => ({
-          ...current,
-          guests: current.guests.map((item) => (item.id === guest.id ? result.guest! : item)),
-        }));
+        setData((current) => withGuestDerivedInvitations(current, current.guests.map((item) => (item.id === guest.id ? result.guest! : item))));
       })
       .catch((error) => {
         if (previous) {
-          setData((current) => ({
-            ...current,
-            guests: current.guests.map((item) => (item.id === guest.id ? previous : item)),
-          }));
+          setData((current) => withGuestDerivedInvitations(current, current.guests.map((item) => (item.id === guest.id ? previous : item))));
         }
         setMockAction({
           title: 'Guest not updated',
@@ -446,10 +529,10 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
   };
   const removeGuest = (guestId: string) => {
     const previous = data.guests.find((item) => item.id === guestId);
-    setData((current) => ({ ...current, guests: current.guests.filter((item) => item.id !== guestId) }));
+    setData((current) => withGuestDerivedInvitations(current, current.guests.filter((item) => item.id !== guestId)));
     void deleteMobileGuest(guestId).catch((error) => {
       if (previous) {
-        setData((current) => ({ ...current, guests: [previous, ...current.guests] }));
+        setData((current) => withGuestDerivedInvitations(current, [previous, ...current.guests]));
       }
       setMockAction({
         title: 'Guest not deleted',
@@ -948,7 +1031,7 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
               onDeletePhotoUpload={deleteGuestPhotoUpload}
               onUpdateHotel={updateHotel}
               onUpdateGuest={updateGuest}
-              onUpdateGuests={(guests) => setData((current) => ({ ...current, guests }))}
+              onUpdateGuests={(guests) => setData((current) => withGuestDerivedInvitations(current, guests))}
               onUpdateGuestPhotoDropSettings={updateGuestPhotoDropSettings}
               onUpdateGuestPhotoUploadStatus={updateGuestPhotoUploadStatus}
               onHydrateGuestPhotoDrop={hydrateGuestPhotoDrop}
@@ -957,6 +1040,8 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
           ) : null}
           {activeTab === 'plan' ? (
             <PlanSection
+              onAddTask={addTask}
+              onDeleteTask={removeTask}
               onOpenFinance={() => openVendorHub('finance')}
               onOpenGuestHub={(view) => {
                 setGuestHubView(view);
@@ -970,7 +1055,9 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
               onDeleteWeddingPartyMember={removeWeddingPartyMember}
               onUpdateWeddingPartyMember={updateWeddingPartyMember}
               onToggleDayOfChecklist={updateDayOfChecklistCompletion}
+              onToggleDayOfEvent={updateDayOfEventCompletion}
               onToggleTask={updateTaskCompletion}
+              onUpdateTask={updateTask}
               progress={stats.progress}
             />
           ) : null}
@@ -4001,7 +4088,7 @@ function WebsiteMobilePreview({
                   <View style={styles.websiteDesktopDot} />
                   <View style={styles.websiteDesktopDot} />
                 </View>
-                <Text numberOfLines={1} style={styles.websiteDesktopUrl}>{guestWebsiteHomeUrl.replace(/^https?:\/\//, '') || 'aidowedding.net/w/our-wedding/home'}</Text>
+                <Text numberOfLines={1} style={styles.websiteDesktopUrl}>{guestWebsiteHomeUrl.replace(/^https?:\/\//, '') || 'aidowedding.net/our-wedding'}</Text>
               </View>
             ) : null}
             <ScrollView
@@ -4657,8 +4744,6 @@ function InvitationStudioPanel({ data }: { data: typeof samplePlanningData }) {
   const [studioSavedMessage, setStudioSavedMessage] = useState('');
   const [studioPreviewMessage, setStudioPreviewMessage] = useState('');
   const [studioSaving, setStudioSaving] = useState(false);
-  const [testEmail, setTestEmail] = useState('');
-  const [testSending, setTestSending] = useState(false);
   const [rsvpBy, setRsvpBy] = useState('2026-08-01');
   const isRsvp = mode === 'rsvp';
   const isDigital = sendType === 'digital';
@@ -4727,49 +4812,6 @@ function InvitationStudioPanel({ data }: { data: typeof samplePlanningData }) {
       setStudioSaving(false);
     }
   };
-  const sendStudioTest = async () => {
-    const email = testEmail.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setStudioSavedMessage('Enter a valid test email first.');
-      setActiveStudioTool('delivery');
-      return;
-    }
-    setTestSending(true);
-    setStudioSavedMessage('');
-    try {
-      await saveMobileInvitationStudio({
-        accent,
-        background,
-        coupleNames,
-        designFont,
-        designFontSize,
-        includeHotel,
-        message,
-        rsvpBy,
-        textColor,
-        type: mode,
-      });
-      await sendMobileInvitationTest({
-        accent,
-        background,
-        coupleNames,
-        designFont,
-        designFontSize,
-        email,
-        includeHotel,
-        message,
-        rsvpBy,
-        textColor,
-        type: mode,
-      });
-      setStudioSavedMessage(`Test ${invitationLabel} sent to ${email}.`);
-    } catch (error) {
-      setStudioSavedMessage(error instanceof Error ? error.message : 'Could not send test invitation.');
-    } finally {
-      setTestSending(false);
-    }
-  };
-
   return (
     <View style={styles.invitationStudioPanel}>
       <View style={styles.mobileStudioGuidance}>
@@ -5174,12 +5216,6 @@ function InvitationStudioPanel({ data }: { data: typeof samplePlanningData }) {
 
       {isDigital && activeStudioTool === 'delivery' ? <View style={styles.studioSettingsCard}>
         <Text style={styles.formLabel}>Delivery</Text>
-        <FormInput
-          label="Test email"
-          onChangeText={setTestEmail}
-          placeholder="you@example.com"
-          value={testEmail}
-        />
         <View style={styles.eventTypeRow}>
           {[
             ['sms', 'SMS'],
@@ -5194,7 +5230,7 @@ function InvitationStudioPanel({ data }: { data: typeof samplePlanningData }) {
             );
           })}
         </View>
-        <Text style={styles.hubDetail}>Send a real test email before messaging guests. Guest delivery still happens from the Guest Hub send buttons.</Text>
+        <Text style={styles.hubDetail}>Guest delivery happens from the Guest Hub send buttons using your saved digital invitation design.</Text>
       </View> : null}
 
       <View style={styles.websiteActions}>
@@ -5202,12 +5238,6 @@ function InvitationStudioPanel({ data }: { data: typeof samplePlanningData }) {
           <Ionicons color={colors.surface} name={studioSaving ? 'sync-outline' : 'save-outline'} size={18} />
           <Text style={styles.primaryActionText}>{studioSaving ? 'Saving...' : 'Save design'}</Text>
         </Pressable>
-        {isDigital ? (
-          <Pressable disabled={testSending} onPress={() => void sendStudioTest()} style={[styles.secondaryActionButton, testSending && styles.disabledActionButton]}>
-            <Ionicons color={colors.rose} name={testSending ? 'sync-outline' : 'paper-plane-outline'} size={18} />
-            <Text style={styles.secondaryActionText}>{testSending ? 'Sending...' : 'Send test'}</Text>
-          </Pressable>
-        ) : null}
       </View>
       {studioSavedMessage ? <SavedStrip label={studioSavedMessage} /> : null}
     </View>
@@ -5426,11 +5456,15 @@ function DottedPaper({ accent }: { accent: string }) {
 
 function PlanSection({
   data,
+  onAddTask,
   onAddWeddingPartyMember,
+  onDeleteTask,
   onDeleteWeddingPartyMember,
   onUpdateWeddingPartyMember,
   onToggleDayOfChecklist,
+  onToggleDayOfEvent,
   onToggleTask,
+  onUpdateTask,
   onOpenFinance,
   onOpenGuestHub,
   onOpenGuidedSetup,
@@ -5439,11 +5473,15 @@ function PlanSection({
   progress,
 }: {
   data: typeof samplePlanningData;
+  onAddTask: (task: Omit<Task, 'id'>) => void;
   onAddWeddingPartyMember: (member: (typeof samplePlanningData.weddingParty)[number]) => void;
+  onDeleteTask: (taskId: string) => void;
   onDeleteWeddingPartyMember: (memberId: string) => void;
   onUpdateWeddingPartyMember: (member: (typeof samplePlanningData.weddingParty)[number]) => void;
   onToggleDayOfChecklist: (itemId: string, completed: boolean) => void;
+  onToggleDayOfEvent: (eventId: string, completed: boolean) => void;
   onToggleTask: (taskId: string, completed: boolean) => void;
+  onUpdateTask: (task: Task) => void;
   onOpenFinance: () => void;
   onOpenGuestHub: (view: GuestHubView) => void;
   onOpenGuidedSetup: () => void;
@@ -5481,13 +5519,16 @@ function PlanSection({
         />
       ) : plannerView === 'checklist' ? (
         <PlannerChecklistSection
+          onAddTask={onAddTask}
+          onDeleteTask={onDeleteTask}
           onOpenGuidedSetup={onOpenGuidedSetup}
           data={data}
           onToggleTask={onToggleTask}
+          onUpdateTask={onUpdateTask}
           progress={progress}
         />
       ) : plannerView === 'timeline' ? (
-        <PlannerTimelineSection data={data} onToggleDayOfChecklist={onToggleDayOfChecklist} />
+        <PlannerTimelineSection data={data} onToggleDayOfChecklist={onToggleDayOfChecklist} onToggleDayOfEvent={onToggleDayOfEvent} />
       ) : (
         <WeddingPartySection
           data={data}
@@ -5502,18 +5543,30 @@ function PlanSection({
 
 function PlannerChecklistSection({
   data,
+  onAddTask,
+  onDeleteTask,
   onToggleTask,
+  onUpdateTask,
   onOpenGuidedSetup,
   progress,
 }: {
   data: typeof samplePlanningData;
+  onAddTask: (task: Omit<Task, 'id'>) => void;
+  onDeleteTask: (taskId: string) => void;
   onToggleTask: (taskId: string, completed: boolean) => void;
+  onUpdateTask: (task: Task) => void;
   onOpenGuidedSetup: () => void;
   progress: number;
 }) {
   const tasks = [...data.tasks].sort((a, b) => (daysFromToday(a.dueDate) ?? 999) - (daysFromToday(b.dueDate) ?? 999));
   const [selectedTaskId, setSelectedTaskId] = useState(tasks[0]?.id ?? '');
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
   const selectedTask = tasks.find((task) => task.id === selectedTaskId) ?? tasks[0] ?? null;
+  const openTaskModal = (task?: Task) => {
+    setEditingTask(task ?? null);
+    setTaskModalOpen(true);
+  };
 
   return (
     <Section title="Checklist" subtitle="Planning tasks, due dates, and setup progress.">
@@ -5532,7 +5585,13 @@ function PlannerChecklistSection({
       </Card>
 
       <Card>
-        <Text style={styles.cardTitle}>Tasks</Text>
+        <View style={styles.cardHeaderRow}>
+          <Text style={styles.cardTitle}>Tasks</Text>
+          <Pressable onPress={() => openTaskModal()} style={styles.addPaymentMiniButton}>
+            <Ionicons color={colors.rose} name="add" size={15} />
+            <Text style={styles.addPaymentMiniText}>Task</Text>
+          </Pressable>
+        </View>
         <View style={styles.calendarList}>
           {tasks.length ? tasks.map((task) => (
             <TaskRow
@@ -5559,9 +5618,32 @@ function PlannerChecklistSection({
               </Text>
             </View>
             <Text style={styles.hubDetail}>{selectedTask.detail}</Text>
+            <View style={styles.websiteActions}>
+              <Pressable onPress={() => openTaskModal(selectedTask)} style={styles.secondaryActionButton}>
+                <Ionicons color={colors.rose} name="create-outline" size={17} />
+                <Text style={styles.secondaryActionText}>Edit</Text>
+              </Pressable>
+              <Pressable onPress={() => onDeleteTask(selectedTask.id)} style={styles.secondaryActionButton}>
+                <Ionicons color={colors.rose} name="trash-outline" size={17} />
+                <Text style={styles.secondaryActionText}>Delete</Text>
+              </Pressable>
+            </View>
           </View>
         ) : null}
       </Card>
+      <TaskEditorModal
+        onClose={() => setTaskModalOpen(false)}
+        onSave={(task) => {
+          if (editingTask) {
+            onUpdateTask(task as Task);
+          } else {
+            onAddTask(task);
+          }
+          setTaskModalOpen(false);
+        }}
+        open={taskModalOpen}
+        task={editingTask}
+      />
     </Section>
   );
 }
@@ -5569,9 +5651,11 @@ function PlannerChecklistSection({
 function PlannerTimelineSection({
   data,
   onToggleDayOfChecklist,
+  onToggleDayOfEvent,
 }: {
   data: typeof samplePlanningData;
   onToggleDayOfChecklist: (itemId: string, completed: boolean) => void;
+  onToggleDayOfEvent: (eventId: string, completed: boolean) => void;
 }) {
   const [selectedTimelineId, setSelectedTimelineId] = useState(data.dayOf[0]?.id ?? '');
   const [selectedChecklistId, setSelectedChecklistId] = useState(data.dayOfChecklist[0]?.id ?? '');
@@ -5589,10 +5673,20 @@ function PlannerTimelineSection({
               onPress={() => setSelectedTimelineId(item.id)}
               style={[styles.timelineRow, selectedTimeline?.id === item.id && styles.documentLibraryRowActive]}
             >
+              <Pressable
+                accessibilityLabel={item.completed ? `Mark ${item.title} open` : `Mark ${item.title} complete`}
+                onPress={(event) => {
+                  event.stopPropagation();
+                  onToggleDayOfEvent(item.id, !item.completed);
+                }}
+                style={[styles.checkIcon, item.completed && styles.checkIconComplete]}
+              >
+                <Ionicons color={item.completed ? colors.surface : colors.rose} name={item.completed ? 'checkmark' : 'ellipse-outline'} size={18} />
+              </Pressable>
               <Text style={styles.timelineTime}>{item.time}</Text>
               <View style={styles.hubCopy}>
-                <Text style={styles.hubLabel}>{item.title}</Text>
-                <Text style={styles.hubDetail}>{item.owner} - {item.location}</Text>
+                <Text style={[styles.hubLabel, item.completed && styles.taskTitleComplete]}>{item.title}</Text>
+                <Text style={styles.hubDetail}>{item.completed ? 'Complete' : 'Open'} - {item.owner} - {item.location}</Text>
               </View>
               <Ionicons color={colors.muted} name="chevron-forward" size={18} />
             </Pressable>
@@ -6997,9 +7091,17 @@ function WorkspaceModal({
     }
   };
   const removeInvite = (inviteId: string) => {
+    const previousInvite = invites.find((invite) => invite.id === inviteId);
     setInvites((current) => current.filter((invite) => invite.id !== inviteId));
     onRemoveInvite(inviteId);
     setSyncMessage('Pending invite removed from this workspace.');
+    void deleteMobileCollaborator(inviteId).catch((error) => {
+      if (previousInvite) {
+        setInvites((current) => [previousInvite, ...current.filter((invite) => invite.id !== inviteId)]);
+        onAddInvite(previousInvite);
+      }
+      setSyncMessage(error instanceof Error ? `${error.message} Restored locally.` : 'Could not remove invite. Restored locally.');
+    });
   };
 
   return (
@@ -7816,26 +7918,7 @@ function ActionWorkspace({ action, data, saved }: { action: MockAction; data: ty
     );
   }
 
-  if (title.includes('invitation') || title.includes('campaign') || title.includes('send test')) {
-    if (title.includes('send test')) {
-      return (
-        <View style={styles.actionWorkspace}>
-          <TextInput
-            autoCapitalize="none"
-            keyboardType="email-address"
-            placeholder="Recipient email"
-            placeholderTextColor={colors.muted}
-            style={styles.formInput}
-          />
-          <View style={styles.eventTypeRow}>
-            {['Save Date', 'RSVP'].map((item) => <ActionChip key={item} label={item} active={item === 'RSVP'} />)}
-            {['Digital email'].map((item) => <ActionChip key={item} label={item} active />)}
-          </View>
-          {saved ? <SavedStrip label="Test invitation sent" /> : null}
-        </View>
-      );
-    }
-
+  if (title.includes('invitation') || title.includes('campaign')) {
     return (
       <View style={styles.actionWorkspace}>
         <View style={styles.eventTypeRow}>
@@ -8803,6 +8886,99 @@ function AddEventModal({
             <Pressable onPress={onSave} style={styles.primaryActionButton}>
               <Ionicons color={colors.surface} name="checkmark-outline" size={18} />
               <Text style={styles.primaryActionText}>Save event</Text>
+            </Pressable>
+            <Pressable onPress={onClose} style={styles.secondaryActionButton}>
+              <Text style={styles.secondaryActionText}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function TaskEditorModal({
+  onClose,
+  onSave,
+  open,
+  task,
+}: {
+  onClose: () => void;
+  onSave: (task: Omit<Task, 'id'> | Task) => void;
+  open: boolean;
+  task: Task | null;
+}) {
+  const [draft, setDraft] = useState({
+    category: 'Checklist' as TaskCategory,
+    detail: '',
+    dueDate: dateKey(new Date()),
+    title: '',
+  });
+  const categories: TaskCategory[] = ['Guests', 'Budget', 'Files', 'Vendors', 'Checklist', 'Timeline', 'Day Of', 'Website'];
+
+  useEffect(() => {
+    if (!open) return;
+    setDraft({
+      category: task?.category ?? 'Checklist',
+      detail: task?.detail ?? '',
+      dueDate: task?.dueDate || dateKey(new Date()),
+      title: task?.title ?? '',
+    });
+  }, [open, task?.id]);
+
+  const canSave = Boolean(draft.title.trim() && draft.dueDate.trim());
+
+  return (
+    <Modal animationType="slide" onRequestClose={onClose} transparent visible={open}>
+      <View style={styles.modalBackdrop}>
+        <Pressable style={styles.modalScrim} onPress={onClose} />
+        <View style={styles.vendorPanel}>
+          <View style={styles.cardHeaderRow}>
+            <View>
+              <Text style={styles.cardTitle}>{task ? 'Edit task' : 'Add task'}</Text>
+              <Text style={styles.hubDetail}>Keep mobile checklist changes synced with your website planner.</Text>
+            </View>
+            <Pressable onPress={onClose} style={styles.closeButton}>
+              <Ionicons color={colors.muted} name="close" size={22} />
+            </Pressable>
+          </View>
+
+          <View style={styles.formStack}>
+            <FormInput label="Title" onChangeText={(value) => setDraft((current) => ({ ...current, title: value }))} placeholder="Confirm photographer timeline" value={draft.title} />
+            <FormInput label="Due date" onChangeText={(value) => setDraft((current) => ({ ...current, dueDate: value }))} placeholder="YYYY-MM-DD" value={draft.dueDate} />
+            <FormInput label="Details" onChangeText={(value) => setDraft((current) => ({ ...current, detail: value }))} placeholder="What needs to happen?" value={draft.detail} />
+            <View>
+              <Text style={styles.formLabel}>Category</Text>
+              <View style={styles.eventTypeRow}>
+                {categories.map((category) => {
+                  const active = draft.category === category;
+                  return (
+                    <Pressable key={category} onPress={() => setDraft((current) => ({ ...current, category }))} style={[styles.eventTypePill, active && styles.eventTypePillActive]}>
+                      <Text style={[styles.eventTypeText, active && styles.eventTypeTextActive]}>{category}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.websiteActions}>
+            <Pressable
+              disabled={!canSave}
+              onPress={() => {
+                const nextTask = {
+                  category: draft.category,
+                  completed: task?.completed ?? false,
+                  detail: draft.detail.trim() || 'Review and complete this planning item.',
+                  dueDate: draft.dueDate.trim(),
+                  title: draft.title.trim(),
+                };
+                onSave(task ? { ...nextTask, id: task.id } : nextTask);
+              }}
+              style={[styles.primaryActionButton, !canSave && styles.disabledButton]}
+            >
+              <Ionicons color={colors.surface} name="checkmark-outline" size={18} />
+              <Text style={styles.primaryActionText}>{task ? 'Save task' : 'Add task'}</Text>
             </Pressable>
             <Pressable onPress={onClose} style={styles.secondaryActionButton}>
               <Text style={styles.secondaryActionText}>Cancel</Text>

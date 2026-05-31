@@ -1,4 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -9,6 +10,7 @@ import { FormSheet } from '../components/FormSheet';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { Screen } from '../components/Screen';
 import { SectionHeader } from '../components/SectionHeader';
+import { uploadMobileDocument, type MobilePickedFile } from '../api/documents';
 import { usePlanningData } from '../state/PlanningDataContext';
 import { fonts, radii, spacing, useAppTheme } from '../theme';
 import { DocumentItem } from '../types';
@@ -16,8 +18,10 @@ import { formatShortDate } from '../utils/format';
 
 export function FilesScreen() {
   const { colors } = useAppTheme();
-  const { addDocument, data, updateDocumentStatus } = usePlanningData();
+  const { addDocument, data, refresh, updateDocumentStatus } = usePlanningData();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState('');
   const [form, setForm] = useState({
     linkedTo: '',
     status: 'Needs Review' as DocumentItem['status'],
@@ -42,6 +46,39 @@ export function FilesScreen() {
     setSheetOpen(false);
   }
 
+  async function pickAndUploadDocument() {
+    setUploadMessage('');
+    setUploading(true);
+
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        copyToCacheDirectory: true,
+        multiple: false,
+        type: ['application/pdf', 'image/*', 'text/plain', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const asset = result.assets[0] as DocumentPicker.DocumentPickerAsset & { file?: Blob };
+      const pickedFile: MobilePickedFile = {
+        file: asset.file,
+        mimeType: asset.mimeType,
+        name: asset.name || 'Mobile document',
+        uri: asset.uri,
+      };
+
+      await uploadMobileDocument(pickedFile, 'Mobile Uploads');
+      await refresh();
+      setUploadMessage(`${pickedFile.name} was uploaded to your document library.`);
+    } catch (error) {
+      setUploadMessage(error instanceof Error ? error.message : 'Could not upload that document.');
+    } finally {
+      setUploading(false);
+    }
+  }
+
   return (
     <Screen>
       <SectionHeader subtitle="Contracts, receipts, inspiration boards, planning exports, AI summaries, and linked vendor documents." title="Documents" />
@@ -54,8 +91,17 @@ export function FilesScreen() {
           <Text style={[styles.uploadTitle, { color: colors.text }]}>Add a contract or receipt</Text>
           <Text style={[styles.uploadMeta, { color: colors.muted }]}>Store vendor documents in the same place as payments and tasks.</Text>
         </View>
-        <PrimaryButton icon="add" label="Add" onPress={() => setSheetOpen(true)} />
+        <View style={styles.uploadActions}>
+          <PrimaryButton icon="cloud-upload-outline" label={uploading ? 'Uploading...' : 'Upload'} onPress={() => void pickAndUploadDocument()} />
+          <PrimaryButton icon="add" label="Note" onPress={() => setSheetOpen(true)} variant="ghost" />
+        </View>
       </Card>
+
+      {uploadMessage ? (
+        <Card style={styles.noticeCard}>
+          <Text style={[styles.noticeText, { color: colors.muted }]}>{uploadMessage}</Text>
+        </Card>
+      ) : null}
 
       {data.documents.map((file) => (
         <Card key={file.id} style={styles.fileCard}>
@@ -114,6 +160,10 @@ const styles = StyleSheet.create({
   uploadCopy: {
     flex: 1,
   },
+  uploadActions: {
+    alignItems: 'flex-end',
+    gap: spacing.xs,
+  },
   uploadTitle: {
     fontFamily: fonts.headingSemi,
     fontSize: 22,
@@ -171,5 +221,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
+  },
+  noticeCard: {
+    marginBottom: spacing.lg,
+  },
+  noticeText: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 19,
   },
 });

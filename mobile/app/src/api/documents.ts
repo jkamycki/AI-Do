@@ -1,4 +1,5 @@
 import { mobileAuthFetch, mobileAuthJson } from './mobileAuth';
+import type { DocumentItem } from '../types';
 
 export type MobileDocumentRecord = {
   fileName?: string | null;
@@ -63,4 +64,15 @@ export async function uploadMobileContract(pickedFile: MobilePickedFile, options
   if (options.vendorId) form.append('vendorId', String(options.vendorId));
   form.append('syncToDocumentLibrary', options.syncToDocumentLibrary ? 'true' : 'false');
   return uploadForm('/api/contracts/upload', form);
+}
+
+export async function updateMobileDocumentStatus(documentId: string, status: DocumentItem['status']) {
+  if (!/^\d+$/.test(documentId)) return { synced: false };
+  const response = await mobileAuthFetch(`/api/documents/${documentId}`, {
+    body: JSON.stringify({ mobileStatus: status }),
+    method: 'PATCH',
+  });
+  if (!response) return { synced: false };
+  if (!response.ok) throw new Error('Could not update document status.');
+  return { synced: true };
 }

@@ -67,7 +67,26 @@ export async function getRemotePlanningData(): Promise<Partial<PlanningData> | n
     return bundled;
   }
 
-  const [profile, vendors, budget, guests, tasks, documents, contracts, weddingParty, hotels] = await Promise.all([
+  const [
+    profile,
+    vendors,
+    budget,
+    guests,
+    tasks,
+    documents,
+    contracts,
+    weddingParty,
+    hotels,
+    seating,
+    dayOf,
+    dayOfChecklist,
+    websiteSections,
+    invitations,
+    workspaceInvites,
+    activityLog,
+    guestPhotoDrop,
+    guestPhotoUploads,
+  ] = await Promise.all([
     readJson<PlanningData['profile']>('/api/mobile/profile'),
     readJson<PlanningData['vendors']>('/api/mobile/vendors'),
     readJson<PlanningData['budget']>('/api/mobile/budget'),
@@ -77,9 +96,37 @@ export async function getRemotePlanningData(): Promise<Partial<PlanningData> | n
     readJson<PlanningData['contracts']>('/api/mobile/contracts'),
     readJson<PlanningData['weddingParty']>('/api/mobile/wedding-party'),
     readJson<PlanningData['hotels']>('/api/mobile/hotels'),
+    readJson<PlanningData['seating']>('/api/mobile/seating'),
+    readJson<PlanningData['dayOf']>('/api/mobile/day-of'),
+    readJson<PlanningData['dayOfChecklist']>('/api/mobile/day-of-checklist'),
+    readJson<PlanningData['websiteSections']>('/api/mobile/website-sections'),
+    readJson<PlanningData['invitations']>('/api/mobile/invitations'),
+    readJson<PlanningData['workspaceInvites']>('/api/mobile/workspace-invites'),
+    readJson<PlanningData['activityLog']>('/api/mobile/activity-log'),
+    readJson<PlanningData['guestPhotoDrop']>('/api/mobile/guest-photo-drop'),
+    readJson<PlanningData['guestPhotoUploads']>('/api/mobile/guest-photo-uploads'),
   ]);
 
-  if (!profile && !vendors && !budget && !guests && !tasks && !documents && !contracts && !weddingParty && !hotels) {
+  if (
+    !profile &&
+    !vendors &&
+    !budget &&
+    !guests &&
+    !tasks &&
+    !documents &&
+    !contracts &&
+    !weddingParty &&
+    !hotels &&
+    !seating &&
+    !dayOf &&
+    !dayOfChecklist &&
+    !websiteSections &&
+    !invitations &&
+    !workspaceInvites &&
+    !activityLog &&
+    !guestPhotoDrop &&
+    !guestPhotoUploads
+  ) {
     return null;
   }
 
@@ -93,5 +140,14 @@ export async function getRemotePlanningData(): Promise<Partial<PlanningData> | n
     contracts: contracts ?? undefined,
     weddingParty: weddingParty ?? undefined,
     hotels: hotels ?? undefined,
+    seating: seating ?? undefined,
+    dayOf: dayOf ?? undefined,
+    dayOfChecklist: dayOfChecklist ?? undefined,
+    websiteSections: websiteSections ?? undefined,
+    invitations: invitations ?? undefined,
+    workspaceInvites: workspaceInvites ?? undefined,
+    activityLog: activityLog ?? undefined,
+    guestPhotoDrop: guestPhotoDrop ?? undefined,
+    guestPhotoUploads: guestPhotoUploads ?? undefined,
   };
 }

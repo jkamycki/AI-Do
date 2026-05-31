@@ -1074,21 +1074,41 @@ router.patch("/contracts/:id", requireAuth, async (req, res) => {
       return;
     }
     const id = parseInt(String(req.params["id"] ?? "0"), 10);
-    const { fileName } = req.body;
-    if (!fileName || typeof fileName !== "string" || !fileName.trim()) {
-      return res.status(400).json({ error: "fileName is required" });
+    const { fileName, mobileStatus } = req.body;
+    if (
+      (!fileName || typeof fileName !== "string" || !fileName.trim()) &&
+      (typeof mobileStatus !== "string" || !mobileStatus.trim())
+    ) {
+      return res.status(400).json({ error: "fileName or mobileStatus is required" });
     }
     const scope = await resolveContractScope(req);
     if (!scope) return res.status(404).json({ error: "Contract not found" });
-    const [updated] = await db
-      .update(vendorContracts)
-      .set({ fileName: fileName.trim() })
+    const [existing] = await db
+      .select({ analysis: vendorContracts.analysis, fileName: vendorContracts.fileName })
+      .from(vendorContracts)
       .where(and(
         eq(vendorContracts.id, id),
         eq(vendorContracts.userId, scope.userId),
         eq(vendorContracts.profileId, scope.profileId),
       ))
-      .returning({ id: vendorContracts.id, fileName: vendorContracts.fileName });
+      .limit(1);
+    if (!existing) return res.status(404).json({ error: "Contract not found" });
+    const nextAnalysis =
+      typeof mobileStatus === "string" && mobileStatus.trim()
+        ? { ...(existing.analysis ?? {}), _mobileStatus: mobileStatus.trim().slice(0, 40) }
+        : existing.analysis;
+    const [updated] = await db
+      .update(vendorContracts)
+      .set({
+        analysis: nextAnalysis,
+        fileName: typeof fileName === "string" && fileName.trim() ? fileName.trim() : existing.fileName,
+      })
+      .where(and(
+        eq(vendorContracts.id, id),
+        eq(vendorContracts.userId, scope.userId),
+        eq(vendorContracts.profileId, scope.profileId),
+      ))
+      .returning({ id: vendorContracts.id, fileName: vendorContracts.fileName, analysis: vendorContracts.analysis });
     if (!updated) return res.status(404).json({ error: "Contract not found" });
     res.json(updated);
   } catch {

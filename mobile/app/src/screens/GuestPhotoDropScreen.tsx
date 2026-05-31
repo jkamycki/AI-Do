@@ -58,7 +58,7 @@ export function GuestPhotoDropScreen() {
   const websiteHighlightSlotsLeft = Math.max(WEBSITE_HIGHLIGHT_LIMIT - approved, 0);
   const coupleSlug = slugifyCoupleName(data.profile.coupleName);
   const publicUrl = `https://aidowedding.net/wedding/${coupleSlug}/disposable`;
-  const weddingUrl = `https://aidowedding.net/w/${coupleSlug}/home`;
+  const weddingUrl = `https://aidowedding.net/${coupleSlug}`;
   const qrImageUrl = `https://quickchart.io/qr?size=260&margin=1&text=${encodeURIComponent(publicUrl)}`;
 
   useEffect(() => {

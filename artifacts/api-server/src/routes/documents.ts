@@ -619,6 +619,19 @@ router.patch("/documents/:id", requireAuth, async (req, res) => {
   if (typeof req.body.fileName === "string") patch.fileName = cleanFileName(req.body.fileName);
   if (typeof req.body.folder === "string") patch.folder = cleanFolderName(req.body.folder);
   if (Array.isArray(req.body.tags)) patch.tags = normalizeTags(req.body.tags);
+  if (typeof req.body.mobileStatus === "string") {
+    const normalizedStatus = req.body.mobileStatus.trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-").slice(0, 40);
+    const current = await db
+      .select({ tags: documents.tags })
+      .from(documents)
+      .where(and(eq(documents.id, id), eq(documents.profileId, profile.id)))
+      .limit(1);
+    if (!current[0]) return res.status(404).json({ error: "Document not found" });
+    patch.tags = [
+      ...normalizeTags(current[0].tags).filter((tag) => !tag.startsWith("mobile-status:")),
+      ...(normalizedStatus ? [`mobile-status:${normalizedStatus}`] : []),
+    ];
+  }
   if (Array.isArray(req.body.visibility)) patch.visibility = normalizeVisibility(req.body.visibility);
   if (req.body.linkedVendorId === null) patch.linkedVendorId = null;
   if (typeof req.body.linkedVendorId === "number") {

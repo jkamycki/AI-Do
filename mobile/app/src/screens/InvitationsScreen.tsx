@@ -18,7 +18,7 @@ type SendLink = { emailSent: boolean; guestId: number; name: string; url: string
 
 export function InvitationsScreen() {
   const { colors } = useAppTheme();
-  const { data, updateInvitationStatus } = usePlanningData();
+  const { data, refresh, updateInvitationStatus } = usePlanningData();
   const [sending, setSending] = useState<GuestCampaign | null>(null);
   const [sendMessage, setSendMessage] = useState('');
   const [manualLinks, setManualLinks] = useState<SendLink[]>([]);
@@ -39,7 +39,10 @@ export function InvitationsScreen() {
 
     try {
       const result = await sender();
-      updateInvitationStatus(suite.id, 'Sent');
+      if (result.attempted) {
+        updateInvitationStatus(suite.id, 'Sent');
+        await refresh();
+      }
       setManualLinks(result.links.filter((link) => !link.emailSent));
       if (!result.attempted) {
         setSendMessage(`No eligible guests for ${campaignLabel(campaign).toLowerCase()} right now.`);

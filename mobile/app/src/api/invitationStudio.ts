@@ -80,17 +80,3 @@ export async function saveMobileInvitationStudio(payload: InvitationStudioPayloa
     method: 'POST',
   });
 }
-
-type SendMobileInvitationTestPayload = InvitationStudioPayload & {
-  coupleNames: string;
-  email: string;
-  message: string;
-  type: 'saveTheDate' | 'rsvp';
-};
-
-export async function sendMobileInvitationTest(payload: SendMobileInvitationTestPayload) {
-  return mobileAuthJson<{ emailSent: boolean; email: string; id: string | null }>('/api/mobile/invitation-studio/test', {
-    body: JSON.stringify(payload),
-    method: 'POST',
-  });
-}

@@ -99,9 +99,11 @@ export default function PublicWebsite() {
   const slug = activeParams?.slug ?? "";
   const sectionSeg = matchedLegacySection
     ? legacySectionParams?.section
-    : matchedCleanSection
-      ? cleanSectionParams?.section
-      : undefined;
+    : matchedLegacySlug
+      ? undefined
+      : matchedCleanSection
+        ? cleanSectionParams?.section
+        : undefined;
   const isLegacyRoute = matchedLegacySlug || matchedLegacySection;
   // Default to the "home" page when no section is in the URL so a guest
   // landing on /:slug sees the same single-page Hero the couple sees in

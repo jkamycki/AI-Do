@@ -18,8 +18,8 @@ export function WebsiteEditorScreen() {
   const { data, updateGuestPhotoDropSettings, updateWebsiteSectionStatus } = usePlanningData();
   const ready = data.websiteSections.filter((section) => section.status !== 'Draft').length;
   const coupleSlug = slugifyCoupleName(data.profile.coupleName);
-  const websiteUrl = `https://aidowedding.net/w/${coupleSlug}/home`;
-  const rsvpUrl = `https://aidowedding.net/w/${coupleSlug}/rsvp`;
+  const websiteUrl = `https://aidowedding.net/${coupleSlug}`;
+  const rsvpUrl = `https://aidowedding.net/${coupleSlug}/rsvp`;
   const selectedQrUrl = data.guestPhotoDrop.selectedQrTarget === 'rsvp' ? rsvpUrl : websiteUrl;
   const approvedGuestUploads = data.guestPhotoUploads.filter((upload) => upload.status === 'Approved').length;
 
