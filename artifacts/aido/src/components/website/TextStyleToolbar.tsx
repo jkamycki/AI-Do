@@ -2,10 +2,21 @@ import { forwardRef, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AlignCenter, AlignLeft, AlignRight, Loader2, Smile, Sparkles, Strikethrough, Trash2, Underline } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { WebsiteTextStyle } from "@workspace/db";
 import { authFetch } from "@/lib/authFetch";
 
-export { type WebsiteTextStyle };
+export type WebsiteTextStyle = {
+  fontFamily?: string;
+  fontSize?: string;
+  color?: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  strikethrough?: boolean;
+  textAlign?: "left" | "center" | "right";
+  animation?: string;
+  width?: string;
+  height?: string;
+};
 
 const FONT_OPTIONS = [
   { label: "Default", value: "" },

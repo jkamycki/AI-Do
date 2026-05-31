@@ -102,7 +102,10 @@ type ManualExpenseWithSchedule = {
   notes?: string | null;
   receiptUrl?: string | null;
   receiptName?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 };
+type ManualExpenseRow = ManualExpenseWithSchedule;
 const PAYMENT_UNDO_MS = 8000;
 const HIDDEN_TABLE_SCROLLBAR_CLASS = "[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
@@ -626,7 +629,9 @@ export default function Budget() {
     refetchOnMount: true,
   });
 
-  const { data: manualExpenses = [], isLoading: isLoadingManual } = useListManualExpenses();
+  const manualExpensesQuery = useListManualExpenses();
+  const manualExpenses = (manualExpensesQuery.data ?? []) as ManualExpenseRow[];
+  const isLoadingManual = manualExpensesQuery.isLoading;
   const orderedVendorRows = useMemo(
     () => [...(vendorFinancials?.vendors ?? [])].sort((a, b) => a.id - b.id),
     [vendorFinancials?.vendors],
@@ -837,7 +842,7 @@ export default function Budget() {
     setEditingId(null);
     setIsAdding(true);
   };
-  const openEdit = (m: typeof manualExpenses[number], options?: { scheduleNextPayment?: boolean }) => {
+  const openEdit = (m: ManualExpenseRow, options?: { scheduleNextPayment?: boolean }) => {
     const isPaidInFull = (m.cost ?? 0) > 0 && (m.amountPaid ?? 0) >= (m.cost ?? 0);
     const remaining = Math.max(0, (m.cost ?? 0) - (m.amountPaid ?? 0));
     setForm({
@@ -1139,7 +1144,7 @@ export default function Budget() {
     undo.run();
   };
 
-  const undoManualExpenseUpdate = async (expense: typeof manualExpenses[number]) => {
+  const undoManualExpenseUpdate = async (expense: ManualExpenseRow) => {
     try {
       const r = await authFetch(`/api/manual-expenses/${expense.id}`, {
         method: "PUT",
@@ -1159,7 +1164,7 @@ export default function Budget() {
     }
   };
 
-  const showManualUndoToast = (expense: typeof manualExpenses[number], title: string) => {
+  const showManualUndoToast = (expense: ManualExpenseRow, title: string) => {
     let undoToast: ReturnType<typeof toast> | undefined;
     undoToast = toast({
       title,
@@ -1253,7 +1258,7 @@ export default function Budget() {
   // adds nextPaymentAmount to amountPaid and clears both next-payment fields.
   // Generated client doesn't have a hook for this endpoint yet; calling
   // authFetch directly keeps the implementation self-contained.
-  const handleMarkPaid = async (expenseOrId: typeof manualExpenses[number] | number) => {
+  const handleMarkPaid = async (expenseOrId: ManualExpenseRow | number) => {
     const expense = typeof expenseOrId === "number"
       ? manualExpenses.find((item) => item.id === expenseOrId)
       : expenseOrId;
@@ -1273,7 +1278,7 @@ export default function Budget() {
     }
   };
 
-  const handleManualPaidInFull = async (expense: typeof manualExpenses[number]) => {
+  const handleManualPaidInFull = async (expense: ManualExpenseRow) => {
     const cost = Number(expense.cost ?? 0);
     if (cost <= 0) return;
     if (!confirm(t("budget.confirm_mark_paid_in_full", { defaultValue: "Mark the remaining balance paid? This will set Paid to the total cost and clear the next payment date." }))) return;
