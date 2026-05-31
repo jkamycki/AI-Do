@@ -35,6 +35,7 @@ import { HeroPhotoPositionDialog } from "@/components/HeroPhotoPositionDialog";
 import { ImageCropDialog, type CropQueueItem } from "@/components/ImageCropDialog";
 import { qrSvgDataUrl } from "@/lib/localQr";
 import { publicAppOrigin, publishedWebsiteUrl } from "@/lib/publicUrls";
+import * as QRCode from "qrcode";
 import {
   DEFAULT_RSVP_MEAL_OPTIONS,
   normalizeMealOptions,
@@ -4152,15 +4153,34 @@ function QrCodeSection({ publicUrl, published }: { publicUrl: string; published:
   const [copied, setCopied] = useState(false);
   const [selectedSize, setSelectedSize] = useState(800);
   const [destination, setDestination] = useState<QrDestination>("website");
+  const [qrUrl, setQrUrl] = useState("");
   const cleanPublicUrl = useMemo(() => publicUrl.replace(/\/+$/, ""), [publicUrl]);
   const publicWebsiteBaseUrl = useMemo(() => cleanPublicUrl.replace(/\/(?:home|rsvp)$/, ""), [cleanPublicUrl]);
   const destinationUrl = destination === "rsvp" ? `${publicWebsiteBaseUrl}/rsvp` : `${publicWebsiteBaseUrl}/home`;
   const selectedDestination = QR_DESTINATIONS.find((item) => item.id === destination) ?? QR_DESTINATIONS[0];
 
-  const qrUrl = useMemo(
-    () => qrSvgDataUrl(destinationUrl, Math.max(2, Math.round(selectedSize / 100)), 4),
-    [destinationUrl, selectedSize],
-  );
+  useEffect(() => {
+    let cancelled = false;
+    setQrUrl("");
+    QRCode.toDataURL(destinationUrl, {
+      errorCorrectionLevel: "H",
+      margin: 4,
+      width: selectedSize,
+      color: {
+        dark: "#000000",
+        light: "#FFFFFF",
+      },
+    })
+      .then((url) => {
+        if (!cancelled) setQrUrl(url);
+      })
+      .catch(() => {
+        if (!cancelled) setQrUrl(qrSvgDataUrl(destinationUrl, Math.max(4, Math.round(selectedSize / 100)), 4));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [destinationUrl, selectedSize]);
 
   const copyLink = async () => {
     try {
@@ -4225,11 +4245,17 @@ function QrCodeSection({ publicUrl, published }: { publicUrl: string; published:
       {/* Preview */}
       <div className="flex justify-center">
         <div className="rounded-xl border-2 border-border bg-white p-3 shadow-sm inline-block">
-          <img
-            src={qrUrl}
-            alt={`${selectedDestination.label} preview`}
-            className="w-40 h-40 block"
-          />
+          {qrUrl ? (
+            <img
+              src={qrUrl}
+              alt={`${selectedDestination.label} preview`}
+              className="w-40 h-40 block"
+            />
+          ) : (
+            <div className="grid h-40 w-40 place-items-center text-muted-foreground">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          )}
         </div>
       </div>
 
@@ -4261,11 +4287,12 @@ function QrCodeSection({ publicUrl, published }: { publicUrl: string; published:
 
       {/* Download */}
       <a
-        href={qrUrl}
-        download={`wedding-${destination}-qr-${selectedSize}px.svg`}
+        href={qrUrl || "#"}
+        download={`wedding-${destination}-qr-${selectedSize}px.png`}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
+        aria-disabled={!qrUrl}
+        className={`flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-opacity ${qrUrl ? "hover:opacity-90" : "pointer-events-none opacity-60"}`}
         style={{ background: "hsl(var(--primary))" }}
       >
         <Download className="h-4 w-4" />

@@ -1765,9 +1765,9 @@ function HeroBackground({
   // backdrop filling the extra space). Default "cover" keeps the existing
   // bleed-edge look for sites that don't opt in.
   const heroFitValue = data.customText._heroFit;
-  const fit = (heroFitValue === "contain" || (isMobileRender && !heroFitValue)
-    ? "contain"
-    : "cover") as "cover" | "contain";
+  const fit = (heroFitValue === "contain" ? "contain" : "cover") as
+    | "cover"
+    | "contain";
   // When letterboxing in contain mode, fall back to the palette background
   // so the bars match the rest of the site instead of showing black.
   const backdrop = fit === "contain" ? data.colorPalette.background : undefined;
