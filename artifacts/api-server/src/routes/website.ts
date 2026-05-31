@@ -6,7 +6,7 @@ import { Readable } from "node:stream";
 import rateLimit from "express-rate-limit";
 import { db, weddingWebsites, weddingProfiles, guests, websiteRsvps, weddingParty, hotelBlocks, invitationCustomizations, guestPhotoUploads } from "@workspace/db";
 import type { WeddingProfile, WebsiteSectionsEnabled, WebsiteCustomText, WebsiteGalleryImage, WebsiteHeroImage, WebsiteTextStyles, WebsiteTextPositions } from "@workspace/db";
-import { and, eq, ilike, desc, not, sql } from "drizzle-orm";
+import { and, eq, ilike, desc, inArray, not, sql } from "drizzle-orm";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
 import { requireAuth } from "../middlewares/requireAuth";
 import { publicRsvpLimiter } from "../middlewares/rateLimiter";
@@ -427,27 +427,50 @@ function cleanGuestPhotoDeviceId(raw: unknown): string | null {
   return value;
 }
 
-function guestPhotoUploadKey(
-  req: Request,
-  site: typeof weddingWebsites.$inferSelect,
-  rawDeviceId: unknown,
-): string {
-  const deviceId = cleanGuestPhotoDeviceId(rawDeviceId);
+function cleanGuestPhotoDeviceFingerprint(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const value = raw.trim().slice(0, 800);
+  if (value.length < 24 || value === "unknown") return null;
+  return value;
+}
+
+function guestPhotoRemoteBasis(req: Request): string {
   const userAgent = String(req.headers["user-agent"] ?? "").slice(0, 220);
   const forwardedFor = String(req.headers["x-forwarded-for"] ?? "").split(",")[0]?.trim();
   const remoteAddress = forwardedFor || req.ip || req.socket.remoteAddress || "unknown";
-  const basis = deviceId ? `device:${deviceId}` : `fallback:${remoteAddress}:${userAgent}`;
+  return `fallback:${remoteAddress}:${userAgent}`;
+}
+
+function guestPhotoUploadKey(site: typeof weddingWebsites.$inferSelect, basis: string): string {
   return createHmac("sha256", invitationShareSecret())
     .update(`guest-photo:${site.id}:${site.slug}:${basis}`)
     .digest("base64url")
     .slice(0, 48);
 }
 
-async function countGuestPhotoUploadsForKey(websiteId: number, uploaderKey: string): Promise<number> {
+function guestPhotoUploadKeys(
+  req: Request,
+  site: typeof weddingWebsites.$inferSelect,
+  rawDeviceId: unknown,
+  rawDeviceFingerprint: unknown,
+): { all: string[]; primary: string } {
+  const deviceId = cleanGuestPhotoDeviceId(rawDeviceId);
+  const fingerprint = cleanGuestPhotoDeviceFingerprint(rawDeviceFingerprint);
+  const bases = [
+    fingerprint ? `fingerprint:${fingerprint}` : null,
+    deviceId ? `device:${deviceId}` : null,
+    guestPhotoRemoteBasis(req),
+  ].filter((value): value is string => Boolean(value));
+  const all = Array.from(new Set(bases.map((basis) => guestPhotoUploadKey(site, basis))));
+  return { all, primary: all[0] };
+}
+
+async function countGuestPhotoUploadsForKeys(websiteId: number, uploaderKeys: string[]): Promise<number> {
+  if (!uploaderKeys.length) return 0;
   const [row] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(guestPhotoUploads)
-    .where(and(eq(guestPhotoUploads.websiteId, websiteId), eq(guestPhotoUploads.uploaderKey, uploaderKey)));
+    .where(and(eq(guestPhotoUploads.websiteId, websiteId), inArray(guestPhotoUploads.uploaderKey, uploaderKeys)));
   return Number(row?.count ?? 0);
 }
 
@@ -2003,8 +2026,8 @@ router.post("/website/public/:slug/photo-drop/usage", guestPhotoUsageLimiter, as
     const settings = r.settings;
     if (!settings.enabled) return res.status(404).json({ error: "Guest photo sharing is not available for this wedding." });
 
-    const uploaderKey = guestPhotoUploadKey(req, r.site, req.body?.deviceId);
-    const uploadedCount = await countGuestPhotoUploadsForKey(r.site.id, uploaderKey);
+    const uploaderKeys = guestPhotoUploadKeys(req, r.site, req.body?.deviceId, req.body?.deviceFingerprint);
+    const uploadedCount = await countGuestPhotoUploadsForKeys(r.site.id, uploaderKeys.all);
     const usage = guestPhotoUsage(uploadedCount, settings.maxUploads);
     res.json({
       ...usage,
@@ -2040,8 +2063,8 @@ router.post("/website/public/:slug/photo-drop/upload-url", guestPhotoPublicLimit
     const detailError = validateGuestPhotoFileDetails(originalName, contentType, fileSize);
     if (detailError) return res.status(detailError.includes("5 MB") ? 413 : 400).json({ error: detailError });
 
-    const uploaderKey = guestPhotoUploadKey(req, r.site, req.body?.deviceId);
-    const uploadedCount = await countGuestPhotoUploadsForKey(r.site.id, uploaderKey);
+    const uploaderKeys = guestPhotoUploadKeys(req, r.site, req.body?.deviceId, req.body?.deviceFingerprint);
+    const uploadedCount = await countGuestPhotoUploadsForKeys(r.site.id, uploaderKeys.all);
     const usageBeforeUpload = guestPhotoUsage(uploadedCount, settings.maxUploads);
     if (usageBeforeUpload.remaining <= 0) {
       return res.status(409).json({
@@ -2094,8 +2117,9 @@ router.post("/website/public/:slug/photo-drop/complete", guestPhotoPublicLimiter
       return res.status(400).json({ error: "Invalid uploaded photo path." });
     }
 
-    const uploaderKey = guestPhotoUploadKey(req, r.site, req.body?.deviceId);
-    const uploadedCount = await countGuestPhotoUploadsForKey(r.site.id, uploaderKey);
+    const uploaderKeys = guestPhotoUploadKeys(req, r.site, req.body?.deviceId, req.body?.deviceFingerprint);
+    const uploaderKey = uploaderKeys.primary;
+    const uploadedCount = await countGuestPhotoUploadsForKeys(r.site.id, uploaderKeys.all);
     const usageBeforeUpload = guestPhotoUsage(uploadedCount, settings.maxUploads);
     if (usageBeforeUpload.remaining <= 0) {
       return res.status(409).json({
@@ -2191,8 +2215,9 @@ router.post(
       if (files.length > settings.maxUploads) {
         return res.status(400).json({ error: `Please upload no more than ${settings.maxUploads} photos at once.` });
       }
-      const uploaderKey = guestPhotoUploadKey(req, r.site, req.body?.deviceId);
-      const uploadedCount = await countGuestPhotoUploadsForKey(r.site.id, uploaderKey);
+      const uploaderKeys = guestPhotoUploadKeys(req, r.site, req.body?.deviceId, req.body?.deviceFingerprint);
+      const uploaderKey = uploaderKeys.primary;
+      const uploadedCount = await countGuestPhotoUploadsForKeys(r.site.id, uploaderKeys.all);
       const usageBeforeUpload = guestPhotoUsage(uploadedCount, settings.maxUploads);
       if (usageBeforeUpload.remaining <= 0) {
         return res.status(409).json({

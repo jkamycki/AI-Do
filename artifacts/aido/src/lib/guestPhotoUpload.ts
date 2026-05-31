@@ -7,6 +7,7 @@ type UploadGuestPhotoOptions = {
   guestEmail?: string;
   caption?: string;
   deviceId?: string;
+  deviceFingerprint?: string;
   password?: string;
 };
 
@@ -38,6 +39,7 @@ export async function uploadGuestPhoto(options: UploadGuestPhotoOptions): Promis
         guestEmail: options.guestEmail || undefined,
         caption: options.caption || undefined,
         deviceId: options.deviceId || undefined,
+        deviceFingerprint: options.deviceFingerprint || undefined,
         fileName: options.file.name,
         contentType: options.file.type || "image/jpeg",
         fileSize: options.file.size,
@@ -68,6 +70,7 @@ export async function uploadGuestPhoto(options: UploadGuestPhotoOptions): Promis
         guestEmail: options.guestEmail || undefined,
         caption: options.caption || undefined,
         deviceId: options.deviceId || undefined,
+        deviceFingerprint: options.deviceFingerprint || undefined,
         objectPath,
         originalName: String(createBody.originalName || options.file.name),
         contentType: options.file.type || "image/jpeg",

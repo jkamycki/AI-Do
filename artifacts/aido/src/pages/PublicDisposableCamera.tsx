@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { Camera, ExternalLink, ImagePlus, Link, Loader2, Lock, RefreshCw, RefreshCcw, Send, Zap, ZapOff, ZoomIn, ZoomOut } from "lucide-react";
 import { apiFetch } from "@/lib/authFetch";
-import { getGuestPhotoDeviceId } from "@/lib/guestPhotoDevice";
+import { getGuestPhotoDeviceFingerprint, getGuestPhotoDeviceId } from "@/lib/guestPhotoDevice";
 import { uploadGuestPhoto } from "@/lib/guestPhotoUpload";
 
 type FacingMode = "environment" | "user";
@@ -241,6 +241,7 @@ export default function PublicDisposableCamera() {
   const shutterTimeoutRef = useRef<number | null>(null);
 
   const [deviceId, setDeviceId] = useState("");
+  const [deviceFingerprint, setDeviceFingerprint] = useState("");
   const [facingMode, setFacingMode] = useState<FacingMode>("environment");
   const [status, setStatus] = useState<CameraStatus>("starting");
   const [shotLimit, setShotLimit] = useState(DEFAULT_SHOT_LIMIT);
@@ -275,6 +276,7 @@ export default function PublicDisposableCamera() {
     let active = true;
     const nextDeviceId = getGuestPhotoDeviceId(slug);
     setDeviceId(nextDeviceId);
+    setDeviceFingerprint(getGuestPhotoDeviceFingerprint());
     void apiFetch(`/api/website/public/${encodeURIComponent(slug)}/photo-drop`)
       .then(async (response) => {
         const body = await response.json().catch(() => ({}));
@@ -314,7 +316,7 @@ export default function PublicDisposableCamera() {
     void apiFetch(`/api/website/public/${encodeURIComponent(slug)}/photo-drop/usage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ deviceId }),
+      body: JSON.stringify({ deviceId, deviceFingerprint }),
     })
       .then(async (response) => {
         const body = await response.json().catch(() => ({}));
@@ -350,7 +352,7 @@ export default function PublicDisposableCamera() {
     return () => {
       active = false;
     };
-  }, [deviceId, shotLimit, slug]);
+  }, [deviceFingerprint, deviceId, shotLimit, slug]);
 
   const stopCamera = useCallback(() => {
     void applyTorch(streamRef.current, false);
@@ -444,6 +446,7 @@ export default function PublicDisposableCamera() {
       guestName: "Disposable Camera Guest",
       caption: "Captured with the disposable camera",
       deviceId,
+      deviceFingerprint,
     });
   }
 

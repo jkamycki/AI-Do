@@ -54,3 +54,23 @@ export function getGuestPhotoDeviceId(slug: string): string {
     return next;
   }
 }
+
+export function getGuestPhotoDeviceFingerprint(): string {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return "unknown";
+  const screenInfo = window.screen;
+  const parts = [
+    navigator.userAgent,
+    navigator.platform,
+    navigator.language,
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+    String(screenInfo?.width ?? ""),
+    String(screenInfo?.height ?? ""),
+    String(screenInfo?.availWidth ?? ""),
+    String(screenInfo?.availHeight ?? ""),
+    String(screenInfo?.colorDepth ?? ""),
+    String(window.devicePixelRatio ?? ""),
+    String(navigator.maxTouchPoints ?? ""),
+    String((navigator as Navigator & { hardwareConcurrency?: number }).hardwareConcurrency ?? ""),
+  ];
+  return parts.join("|").slice(0, 800);
+}
