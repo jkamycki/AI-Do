@@ -95,6 +95,10 @@ function coupleHeaderParts(data: WebsiteRendererPayload) {
   };
 }
 
+function hasInlineHtml(value: string) {
+  return /<\/?[a-z][\s\S]*>/i.test(value);
+}
+
 function stackedCoupleName(value: string) {
   if (hasInlineHtml(value)) return value;
   return value.replace(/\s+&\s+/g, "\n&\n");
