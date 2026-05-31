@@ -1417,6 +1417,17 @@ export default function WebsiteEditor() {
       setPublishSlugError("Enter at least 3 characters for your website link.");
       return;
     }
+    const guestPreviewWindow =
+      publishingNext && typeof window !== "undefined"
+        ? window.open("about:blank", "_blank")
+        : null;
+    try {
+      guestPreviewWindow?.document?.write?.(
+        "<!doctype html><title>Publishing website...</title><body style=\"font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;background:#fff7f2;color:#5b0f2a\"><div style=\"text-align:center\"><p style=\"letter-spacing:.16em;text-transform:uppercase;font-size:12px\">A.I DO</p><h1 style=\"font-size:28px;margin:8px 0\">Publishing your website...</h1><p>Your guest preview will open here in a moment.</p></div></body>",
+      );
+    } catch {
+      // Some browsers block writing to noopener windows; the tab can still be redirected below.
+    }
     const pendingPassword = passwordInput.trim();
     // Flush + save BEFORE flipping the publish flag. /api/website/publish
     // returns the full website row and we replace local state with it — if
@@ -1437,6 +1448,7 @@ export default function WebsiteEditor() {
         const savedPassword = await saveWebsitePassword(pendingPassword, true);
         if (!savedPassword) {
           toast({ title: "Couldn't save password before publishing", variant: "destructive" });
+          guestPreviewWindow?.close();
           return;
         }
       }
@@ -1459,6 +1471,7 @@ export default function WebsiteEditor() {
             ? `${err.status ? `HTTP ${err.status} — ` : ""}${err.message} (your work is backed up locally and will keep retrying)`
             : "Your work is backed up locally and will keep retrying in the background.";
           toast({ title: "Couldn't save before publishing", description: detail, variant: "destructive" });
+          guestPreviewWindow?.close();
           return;
         }
         if (timedOut) {
@@ -1479,6 +1492,7 @@ export default function WebsiteEditor() {
           const message = slugBody.error ?? "That website link could not be saved. Please try another one.";
           setPublishSlugError(message);
           toast({ title: "Could not save website link", description: message, variant: "destructive" });
+          guestPreviewWindow?.close();
           return;
         }
         setRecord((prev) =>
@@ -1504,9 +1518,13 @@ export default function WebsiteEditor() {
         setPreviewSection("home");
         setEditorSection("home");
         setActiveControlGroup("copy");
+        if (guestPreviewWindow) {
+          guestPreviewWindow.location.href = publishedWebsiteUrl(cleanBody.slug, "home");
+        }
       }
       toast({ title: cleanBody.published ? "Website published!" : "Website unpublished" });
     } catch {
+      guestPreviewWindow?.close();
       toast({ title: "Failed to update publish state", variant: "destructive" });
     } finally {
       setPublishing(false);
