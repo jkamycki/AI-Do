@@ -282,7 +282,7 @@ export default function Terms() {
               When you publish a wedding website, content you mark as published
               becomes publicly accessible at the URL you choose (e.g.{" "}
               <span className="font-mono text-[#6F3E54]">
-                aidowedding.net/w/your-slug
+                aidowedding.net/your-slug
               </span>
               ) and may be indexed by search engines unless you set a password.
               Information your guests submit through the public RSVP flow

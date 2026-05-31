@@ -577,6 +577,55 @@ function collectWebsiteMediaPaths(
 }
 
 const SLUG_ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789";
+const RESERVED_WEBSITE_SLUGS = new Set([
+  "admin",
+  "ai-wedding-planner",
+  "api",
+  "aria",
+  "beta",
+  "budget",
+  "calendar",
+  "checklist",
+  "collect",
+  "contracts",
+  "dashboard",
+  "data-handling",
+  "day-of",
+  "documents",
+  "for-vendors",
+  "guest-photo-drop",
+  "guests",
+  "help",
+  "hotels",
+  "invite",
+  "mood-board",
+  "operations-center",
+  "photo-drop",
+  "privacy",
+  "profile",
+  "promo",
+  "registry",
+  "rsvp",
+  "save-the-date",
+  "seating-chart",
+  "security",
+  "settings",
+  "sign-in",
+  "sign-up",
+  "sso-callback",
+  "terms",
+  "timeline",
+  "vendors",
+  "w",
+  "website-editor",
+  "wedding",
+  "wedding-party",
+  "wedding-photo-qr-code",
+  "wedding-planning-checklist",
+  "wedding-vendor-management",
+  "wedding-website-builder",
+  "workspace",
+]);
 
 function randomSuffix(len = 5): string {
   let out = "";
@@ -598,6 +647,7 @@ async function generateUniqueSlug(profile: WeddingProfile): Promise<string> {
   // Try the base slug first, then base-XXXXX suffixes
   for (let attempt = 0; attempt < 10; attempt++) {
     const candidate = attempt === 0 ? base : `${base}-${randomSuffix()}`;
+    if (RESERVED_WEBSITE_SLUGS.has(candidate)) continue;
     const [existing] = await db
       .select({ id: weddingWebsites.id })
       .from(weddingWebsites)
@@ -606,7 +656,8 @@ async function generateUniqueSlug(profile: WeddingProfile): Promise<string> {
     if (!existing) return candidate;
   }
   // Fallback — extremely unlikely
-  return `${base}-${Date.now().toString(36)}`;
+  const fallbackBase = RESERVED_WEBSITE_SLUGS.has(base) ? "wedding-site" : base;
+  return `${fallbackBase}-${Date.now().toString(36)}`;
 }
 
 function autoGenerateText(profile: WeddingProfile): WebsiteCustomText {
@@ -742,7 +793,7 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
 
   return {
     slug: row.slug,
-    publicWebsiteUrl: row.published && row.slug ? `/w/${row.slug}` : null,
+    publicWebsiteUrl: row.published && row.slug ? `/${row.slug}` : null,
     theme: row.theme,
     layoutStyle: row.layoutStyle,
     font: row.font,
@@ -848,7 +899,7 @@ async function buildInvitationSharePayload(profileId: number, frontendOrigin: st
     customText._rsvpHotelBlockId = String(invitationColors.rsvpHotelBlockId);
   }
   const publicWebsiteUrl = publishedWebsite?.published && publishedWebsite.slug
-    ? `${frontendOrigin.replace(/\/$/, "")}/w/${publishedWebsite.slug}`
+    ? `${frontendOrigin.replace(/\/$/, "")}/${publishedWebsite.slug}`
     : null;
   const isCustomInvitation = invitationCustomization?.useGeneratedInvitation === false;
   const digitalAccent = isCustomInvitation
@@ -1470,6 +1521,7 @@ router.put("/website/slug", requireAuth, async (req, res) => {
 
     if (!raw || raw.length < 3) return res.status(400).json({ error: "Slug must be at least 3 characters" });
     if (raw.length > 60) return res.status(400).json({ error: "Slug too long (max 60 characters)" });
+    if (RESERVED_WEBSITE_SLUGS.has(raw)) return res.status(400).json({ error: "That URL is reserved. Please try a different one." });
     if (raw === existing.slug) return res.json(serialize(existing));
 
     const [conflict] = await db

@@ -1971,17 +1971,93 @@ function PublicWeddingRouter() {
         <Route path="/wedding/:slug/disposable" component={PublicDisposableCamera} />
         <Route path="/w/:slug/:section" component={PublicWebsite} />
         <Route path="/w/:slug" component={PublicWebsite} />
+        <Route path="/:slug/:section" component={PublicWebsite} />
+        <Route path="/:slug" component={PublicWebsite} />
         <Route component={NotFound} />
       </Switch>
     </Suspense>
   );
 }
 
+const PUBLIC_WEBSITE_SECTION_SEGMENTS = new Set([
+  "home",
+  "story",
+  "schedule",
+  "travel",
+  "registry",
+  "wedding-party",
+  "gallery",
+  "guest-photo-drop",
+  "faq",
+  "rsvp",
+]);
+
+const RESERVED_PUBLIC_ROOT_SEGMENTS = new Set([
+  "",
+  "admin",
+  "ai-wedding-planner",
+  "api",
+  "aria",
+  "beta",
+  "budget",
+  "calendar",
+  "checklist",
+  "collect",
+  "contracts",
+  "dashboard",
+  "data-handling",
+  "day-of",
+  "documents",
+  "for-vendors",
+  "guest-photo-drop",
+  "guests",
+  "help",
+  "hotels",
+  "invite",
+  "mood-board",
+  "operations-center",
+  "photo-drop",
+  "privacy",
+  "profile",
+  "promo",
+  "registry",
+  "rsvp",
+  "save-the-date",
+  "seating-chart",
+  "security",
+  "settings",
+  "sign-in",
+  "sign-up",
+  "sso-callback",
+  "terms",
+  "timeline",
+  "vendors",
+  "w",
+  "website-editor",
+  "wedding",
+  "wedding-party",
+  "wedding-photo-qr-code",
+  "wedding-planning-checklist",
+  "wedding-vendor-management",
+  "wedding-website-builder",
+  "workspace",
+]);
+
+function isCleanPublicWebsiteRoute(path: string) {
+  const parts = path.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
+  if (parts.length < 1 || parts.length > 2) return false;
+  const [slug, section] = parts.map((part) => part.toLowerCase());
+  if (!slug || RESERVED_PUBLIC_ROOT_SEGMENTS.has(slug)) return false;
+  if (section && !PUBLIC_WEBSITE_SECTION_SEGMENTS.has(section)) return false;
+  return true;
+}
+
 function isPublicWeddingRoute(path: string) {
   return (
     path.startsWith("/w/") ||
     path.startsWith("/photo-drop/") ||
-    /^\/wedding\/[^/]+\/disposable\/?$/.test(path)
+    /^\/wedding\/[^/]+\/disposable\/?$/.test(path) ||
+    isCleanPublicWebsiteRoute(path)
   );
 }
 

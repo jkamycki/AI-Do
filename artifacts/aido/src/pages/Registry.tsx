@@ -83,7 +83,7 @@ export default function Registry() {
 
   const publicUrl = useMemo(() => {
     if (!data?.slug) return "";
-    return `${window.location.origin}/w/${data.slug}/registry`;
+    return `${window.location.origin}/${data.slug}/registry`;
   }, [data?.slug]);
 
   const hasChanges = !!data && (

@@ -56,7 +56,7 @@ export function Scene7() {
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-[#E6A6B7]/38 bg-white/58">
-            <div className="truncate border-b border-[#E6A6B7]/35 px-3 py-2 text-xs text-[#B16C8E]">aidowedding.net/w/mia-noah</div>
+            <div className="truncate border-b border-[#E6A6B7]/35 px-3 py-2 text-xs text-[#B16C8E]">aidowedding.net/mia-noah</div>
             <div className="p-3 sm:p-4">
               <div className="mb-3 flex h-20 items-center justify-center rounded-xl bg-[linear-gradient(120deg,#FFF7F2,#F2E2C6,#E6A6B7)] font-serif text-lg text-[#8D294D] shadow-inner sm:h-28 sm:text-xl">
                 Mia & Noah

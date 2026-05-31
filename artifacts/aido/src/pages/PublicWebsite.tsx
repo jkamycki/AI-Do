@@ -84,18 +84,29 @@ function PasswordGate({
 }
 
 export default function PublicWebsite() {
-  const [matchedSlug, slugParams] = useRoute("/w/:slug");
-  const [matchedSection, sectionParams] = useRoute("/w/:slug/:section");
-  const slug = (matchedSection ? sectionParams?.slug : slugParams?.slug) ?? "";
-  const sectionSeg = matchedSection ? sectionParams?.section : undefined;
+  const [matchedLegacySlug, legacySlugParams] = useRoute("/w/:slug");
+  const [matchedLegacySection, legacySectionParams] = useRoute("/w/:slug/:section");
+  const [, cleanSlugParams] = useRoute("/:slug");
+  const [matchedCleanSection, cleanSectionParams] = useRoute("/:slug/:section");
+  const activeParams = matchedLegacySection
+    ? legacySectionParams
+    : matchedLegacySlug
+      ? legacySlugParams
+      : matchedCleanSection
+        ? cleanSectionParams
+        : cleanSlugParams;
+  const slug = activeParams?.slug ?? "";
+  const sectionSeg = matchedLegacySection
+    ? legacySectionParams?.section
+    : matchedCleanSection
+      ? cleanSectionParams?.section
+      : undefined;
+  const isLegacyRoute = matchedLegacySlug || matchedLegacySection;
   // Default to the "home" page when no section is in the URL so a guest
-  // landing on /w/:slug sees the same single-page Hero the couple sees in
+  // landing on /:slug sees the same single-page Hero the couple sees in
   // their editor preview, instead of the entire site rendered as one long
   // scroll. Specific sections come from the URL segment.
-  const currentSection = matchedSection ? sectionFromUrlSegment(sectionSeg) : "home";
-  // Reference matchedSlug to suppress unused-var warning while keeping it
-  // available for future use.
-  void matchedSlug;
+  const currentSection = sectionSeg ? sectionFromUrlSegment(sectionSeg) : "home";
 
   const [password, setPassword] = useState<string | null>(null);
   const [data, setData] = useState<PublicSitePayload | null>(null);
@@ -201,12 +212,17 @@ export default function PublicWebsite() {
   }, [sectionSeg]);
 
   useEffect(() => {
-    if (!slug || sectionSeg !== "home") return;
-    window.history.replaceState(null, "", `/w/${slug}`);
-  }, [sectionSeg, slug]);
+    if (!slug) return;
+    if (isLegacyRoute) {
+      const cleanSection = sectionSeg && sectionSeg !== "home" ? `/${sectionSeg}` : "";
+      window.history.replaceState(null, "", `/${slug}${cleanSection}`);
+      return;
+    }
+    if (sectionSeg === "home") window.history.replaceState(null, "", `/${slug}`);
+  }, [isLegacyRoute, sectionSeg, slug]);
 
   // Once the site data first loads, force the page to the very top so
-  // /w/:slug (no section) always lands on Home — even if the browser
+  // /:slug (no section) always lands on Home — even if the browser
   // restored a prior scroll position from a cached tab.
   useEffect(() => {
     if (!data || sectionSeg) return;

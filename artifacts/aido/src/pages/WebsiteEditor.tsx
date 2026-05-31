@@ -3749,7 +3749,7 @@ export default function WebsiteEditor() {
                   Choose your website link
                 </h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  This is the part guests see after <span className="font-mono">/w/</span>. Pick something easy to share before publishing.
+                  This is the part guests see after your domain. Pick something easy to share before publishing.
                 </p>
               </div>
               <button
@@ -3767,7 +3767,7 @@ export default function WebsiteEditor() {
               <Label htmlFor="publish-slug">Guest website URL</Label>
               <div className="flex items-center text-sm font-mono rounded-md border border-border bg-background overflow-hidden focus-within:ring-2 focus-within:ring-primary/30">
                 <span className="px-3 py-2 bg-muted text-muted-foreground border-r border-border whitespace-nowrap">
-                  {publicAppOrigin().replace(/^https?:\/\//, "")}/w/
+                  {publicAppOrigin().replace(/^https?:\/\//, "")}/
                 </span>
                 <input
                   id="publish-slug"
@@ -3944,7 +3944,7 @@ function SlugEditor({
   };
 
   const fullUrl = publishedWebsiteQrUrl(slug);
-  const host = fullUrl.replace(/^https?:\/\//, "").replace(/\/w\/.*$/, "");
+  const host = publicAppOrigin().replace(/^https?:\/\//, "");
   const [copied, setCopied] = useState(false);
 
   const copyLink = async () => {
@@ -3961,7 +3961,7 @@ function SlugEditor({
         <p className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">Guest website link</p>
         <div className="flex items-center gap-2">
           <p className="text-xs font-mono break-all flex-1">
-            <span className="opacity-60">{host}/w/</span><span className="text-foreground">{slug}</span>
+            <span className="opacity-60">{host}/</span><span className="text-foreground">{slug}</span>
           </p>
           <Button
             type="button"
@@ -3983,7 +3983,7 @@ function SlugEditor({
       {editing && !locked ? (
         <div className="space-y-2">
           <div className="flex items-center text-xs font-mono rounded-md border border-border bg-background overflow-hidden focus-within:ring-2 focus-within:ring-primary/30">
-            <span className="px-2.5 py-1.5 bg-muted text-muted-foreground border-r border-border whitespace-nowrap">{host}/w/</span>
+            <span className="px-2.5 py-1.5 bg-muted text-muted-foreground border-r border-border whitespace-nowrap">{host}/</span>
             <input
               value={input}
               onChange={(e) => { setInput(sanitize(e.target.value)); setError(null); }}
@@ -4162,20 +4162,35 @@ function QrCodeSection({ publicUrl, published }: { publicUrl: string; published:
   const [qrUrl, setQrUrl] = useState("");
   const cleanPublicUrl = useMemo(() => publicUrl.replace(/\/+$/, ""), [publicUrl]);
   const publicWebsiteBaseUrl = useMemo(() => {
+    const sectionSegments = new Set([
+      "home",
+      "story",
+      "schedule",
+      "travel",
+      "registry",
+      "wedding-party",
+      "gallery",
+      "guest-photo-drop",
+      "faq",
+      "rsvp",
+    ]);
     try {
       const url = new URL(cleanPublicUrl);
       const parts = url.pathname.split("/").filter(Boolean);
-      if (parts[0] === "w" && parts[1]) {
-        url.pathname = `/w/${parts[1]}`;
+      const slugPart = parts[0] === "w" ? parts[1] : parts[0];
+      if (slugPart) {
+        url.pathname = `/${slugPart}`;
         url.search = "";
         url.hash = "";
         return url.toString().replace(/\/+$/, "");
       }
     } catch {
       const match = cleanPublicUrl.match(/^(.*\/w\/[^/]+)(?:\/.*)?$/);
-      if (match?.[1]) return match[1].replace(/\/+$/, "");
+      if (match?.[1]) return match[1].replace(/\/w\//, "/").replace(/\/+$/, "");
     }
-    return cleanPublicUrl.replace(/\/(?:home|story|schedule|travel|registry|wedding-party|gallery|guest-photo-drop|faq|rsvp)$/, "");
+    const parts = cleanPublicUrl.split("/");
+    const last = parts[parts.length - 1]?.toLowerCase();
+    return last && sectionSegments.has(last) ? parts.slice(0, -1).join("/") : cleanPublicUrl;
   }, [cleanPublicUrl]);
   const websiteQrUrl = publicWebsiteBaseUrl;
   const rsvpQrUrl = `${publicWebsiteBaseUrl}/rsvp`;

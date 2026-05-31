@@ -450,8 +450,8 @@ test.describe('A.IDO user journey', () => {
 
     await clickIfVisible(page.getByRole('button', { name: /^settings$/i }).last());
     await expect(page.getByText(/guest website link/i)).toBeVisible({ timeout: 10_000 });
-    await expect(page.locator('body')).toContainText(/\/w\/old-published-link/i);
-    await expect(page.locator('body')).not.toContainText(/\/w\/old-published-link\/home/i);
+    await expect(page.locator('body')).toContainText(/old-published-link/i);
+    await expect(page.locator('body')).not.toContainText(/\/w\/old-published-link/i);
 
     const editUrlButton = page.getByRole('button', { name: /edit url/i });
     await expect(editUrlButton).toBeEnabled();
@@ -476,7 +476,7 @@ test.describe('A.IDO user journey', () => {
           layoutStyle: 'classic',
           font: 'Playfair Display',
           accentColor: '#8D294D',
-          publicWebsiteUrl: '/w/clean-home-link',
+          publicWebsiteUrl: '/clean-home-link',
           colorPalette: {
             primary: '#8D294D',
             secondary: '#D86F67',
@@ -522,9 +522,9 @@ test.describe('A.IDO user journey', () => {
 
     const response = await page.goto('/w/clean-home-link/home', { waitUntil: 'domcontentloaded' });
     expect(response?.ok(), 'Public website HTTP response').toBeTruthy();
-    await expect(page).toHaveURL(/\/w\/clean-home-link$/);
+    await expect(page).toHaveURL(/\/clean-home-link$/);
     await expect(page.locator('body')).toContainText(/Gabriela|Joseph|Clean URL wedding website home page/i);
-    await expect(page.locator('body')).not.toContainText(/\/w\/clean-home-link\/home/i);
+    await expect(page.locator('body')).not.toContainText(/\/w\/clean-home-link/i);
   });
 
   test('documents and contracts expose upload/download paths safely', async ({ page }) => {

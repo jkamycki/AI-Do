@@ -4694,7 +4694,7 @@ function TopNav({
     }
     if (slug) {
       const seg = urlSegmentForSection(it.id);
-      const href = seg ? `/w/${slug}/${seg}` : `/w/${slug}`;
+      const href = seg ? `/${slug}/${seg}` : `/${slug}`;
       return (
         <Link key={it.id} href={href} className={className} style={style}>
           {it.label}
@@ -4713,7 +4713,7 @@ function TopNav({
     );
   };
 
-  const homeHref = slug && !onSectionChange ? `/w/${slug}` : undefined;
+  const homeHref = slug && !onSectionChange ? `/${slug}` : undefined;
   // Show the Share button only on the real public site (not editor preview / live preview)
   const showShare = !!slug && !onSectionChange;
   const headerParts = coupleHeaderParts(data);
