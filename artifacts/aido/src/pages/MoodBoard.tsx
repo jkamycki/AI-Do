@@ -1368,7 +1368,7 @@ export default function MoodBoard() {
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7"
-                onClick={() => generateSummaryMutation.mutate()}
+                onClick={() => generateSummaryMutation.mutate(board)}
                 disabled={generateSummaryMutation.isPending}
                 title={t("moodboard.regenerate", { defaultValue: "Regenerate" })}
               >
@@ -1391,7 +1391,7 @@ export default function MoodBoard() {
                   variant="outline"
                   size="sm"
                   className="w-full text-xs"
-                  onClick={() => generateSummaryMutation.mutate()}
+                  onClick={() => generateSummaryMutation.mutate(board)}
                   disabled={generateSummaryMutation.isPending}
                 >
                   {generateSummaryMutation.isPending
