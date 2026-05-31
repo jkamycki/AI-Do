@@ -196,8 +196,14 @@ test.describe('A.IDO safe CRUD workflows', () => {
 
       const tableInput = page.getByLabel(`Table assignment for ${guestName}`);
       await expect(tableInput).toBeVisible();
+      const tableUpdate = page.waitForResponse((response) => (
+        response.url().includes('/api/guests/') &&
+        response.request().method() === 'PUT' &&
+        response.ok()
+      ));
       await tableInput.fill('Table 99');
       await tableInput.press('Enter');
+      await tableUpdate;
       await expect(tableInput).toHaveValue('Table 99');
       await page.reload({ waitUntil: 'domcontentloaded' });
       await expect(page.getByLabel(`Table assignment for ${guestName}`)).toHaveValue('Table 99');

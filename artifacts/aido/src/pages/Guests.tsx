@@ -2541,22 +2541,37 @@ export default function Guests({
     if (next === current) return;
 
     optimisticUpdate(guest.id, { tableAssignment: next || null });
-    authFetch(`/api/guests/${guest.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tableAssignment: next }),
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error();
-        invalidate();
-      })
-      .catch(() => {
-        optimisticUpdate(guest.id, { tableAssignment: guest.tableAssignment });
-        toast({
-          title: "Failed to update table assignment",
-          variant: "destructive",
-        });
-      });
+    updateGuest.mutate(
+      {
+        id: guest.id,
+        data: {
+          name: guest.name,
+          email: guest.email ?? undefined,
+          invitationStatus: guest.invitationStatus ?? "pending",
+          rsvpStatus: guest.rsvpStatus as
+            | "pending"
+            | "attending"
+            | "maybe"
+            | "declined",
+          mealChoice: guest.mealChoice ?? undefined,
+          guestGroup: guest.guestGroup ?? undefined,
+          plusOne: guest.plusOne,
+          plusOneName: guest.plusOneName ?? undefined,
+          tableAssignment: next,
+          notes: guest.notes ?? undefined,
+        },
+      },
+      {
+        onSuccess: () => invalidate(),
+        onError: () => {
+          optimisticUpdate(guest.id, { tableAssignment: guest.tableAssignment });
+          toast({
+            title: "Failed to update table assignment",
+            variant: "destructive",
+          });
+        },
+      },
+    );
   }
 
   function handleAdd(data: GuestFormValues) {
