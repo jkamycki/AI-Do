@@ -7,7 +7,7 @@ import {
   useGetTimeline,
   useListVendors,
 } from "@workspace/api-client-react";
-import type { BudgetItem, ChecklistItem, Vendor, VendorPayment } from "@workspace/api-client-react";
+import type { BudgetItem, ChecklistItem, Vendor, VendorPayment, WeddingProfile } from "@workspace/api-client-react";
 import { authFetch } from "@/lib/authFetch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -167,7 +167,7 @@ function buildEvents({
   checklistItems: ChecklistItem[];
   customEvents: CustomCalendarEvent[];
   hotels: HotelBlock[];
-  profile: ReturnType<typeof useGetProfile>["data"];
+  profile: WeddingProfile | undefined;
   timeline: unknown;
   vendors: Vendor[];
 }): CalendarEvent[] {

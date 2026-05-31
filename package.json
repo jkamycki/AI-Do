@@ -9,7 +9,7 @@
     "test:e2e:ci": "playwright test tests/aido-smoke.spec.ts tests/aido-user-journey.spec.ts",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:report": "playwright show-report",
-    "typecheck": "tsc -p artifacts/aido/tsconfig.json --noEmit"
+    "typecheck": "tsc -b lib/api-client-react/tsconfig.json lib/object-storage-web/tsconfig.json && tsc -p artifacts/aido/tsconfig.json --noEmit"
   },
   "private": true,
   "packageManager": "pnpm@10.26.1",
