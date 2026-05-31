@@ -2136,6 +2136,10 @@ class AppErrorBoundary extends Component<
       if (isStale) {
         return <RouteLoading />;
       }
+      const errorDetails = [
+        this.state.message,
+        this.state.componentStack || this.state.stack,
+      ].filter(Boolean).join("\n\n").slice(0, 2000);
       return (
         <div className="flex min-h-screen items-center justify-center bg-[#FFF7F2] p-8 text-center text-[#2D1B22]">
           <div className="w-full max-w-xl rounded-[20px] border border-[#8D294D]/20 bg-white/85 px-7 py-9 shadow-[0_20px_60px_rgba(91,15,42,0.12)]">
@@ -2152,6 +2156,21 @@ class AppErrorBoundary extends Component<
             >
               Try again
             </button>
+            {errorDetails && (
+              <div className="mx-auto mt-5 max-w-md rounded-xl border border-[#8D294D]/15 bg-[#FFF7F2] p-3 text-left">
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#8D294D]">Error details</p>
+                <p className="mt-1 break-words font-mono text-xs leading-5 text-[#6F3E54]">
+                  {this.state.message}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard?.writeText(errorDetails).catch(() => {})}
+                  className="mt-3 inline-flex min-h-9 items-center justify-center rounded-full border border-[#8D294D]/20 bg-white px-4 text-xs font-bold text-[#8D294D] hover:bg-[#F9E7EE]"
+                >
+                  Copy error details
+                </button>
+              </div>
+            )}
             <p className="mt-5 text-xs leading-6 text-[#7A5867]">
               If this keeps happening, please contact support at{" "}
               <a className="font-bold text-[#8D294D] underline-offset-4 hover:underline" href="mailto:support@aidowedding.net">
