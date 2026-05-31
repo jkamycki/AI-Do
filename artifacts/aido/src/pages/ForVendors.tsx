@@ -26,6 +26,7 @@ import { apiFetch } from "@/lib/authFetch";
 import { Button } from "@/components/ui/button";
 import { ImageCropDialog, type CropQueueItem } from "@/components/ImageCropDialog";
 import { qrSvgDataUrl } from "@/lib/localQr";
+import { publicAppOrigin } from "@/lib/publicUrls";
 
 const CATEGORIES = [
   "Venue",
@@ -131,12 +132,13 @@ const MAX_PHOTO_BYTES = MAX_PHOTO_MB * 1024 * 1024;
 const VENDOR_LOGO_MAX_DIMENSION = 700;
 const VENDOR_SERVICE_PHOTO_MAX_DIMENSION = 1200;
 const VENDOR_OPTIMIZED_IMAGE_QUALITY = 0.72;
-type VendorPartnerPage = "home" | "vendors" | "how-it-works" | "apply";
+type VendorPartnerPage = "home" | "vendors" | "how-it-works" | "apply" | "sample-profile";
 
 function getVendorPartnerPage(path: string): VendorPartnerPage {
   if (path.endsWith("/vendors")) return "vendors";
   if (path.endsWith("/how-it-works")) return "how-it-works";
   if (path.endsWith("/apply")) return "apply";
+  if (path.endsWith("/sample-profile")) return "sample-profile";
   return "vendors";
 }
 
@@ -329,6 +331,14 @@ export default function ForVendors() {
       </header>
 
       <main>
+        {page === "sample-profile" && (
+          <section className="bg-[#FFF7F2] px-4 py-10 sm:px-8">
+            <div className="mx-auto max-w-6xl">
+              <MockDirectoryPreview compact />
+            </div>
+          </section>
+        )}
+
         {page === "home" && (
         <section className="relative min-h-[620px] overflow-hidden sm:min-h-[560px]">
           <img
@@ -722,8 +732,9 @@ function VendorBadge({ size = "default" }: { size?: "default" | "large" }) {
   );
 }
 
-function MockDirectoryPreview() {
-  const mockQrUrl = qrSvgDataUrl("https://aidowedding.net/vendors/everly-rose-photo", 7, 3);
+function MockDirectoryPreview({ compact = false }: { compact?: boolean }) {
+  const demoProfileUrl = `${publicAppOrigin()}/for-vendors/sample-profile`;
+  const mockQrUrl = qrSvgDataUrl(demoProfileUrl, 7, 3);
   const services = [
     "Full wedding day coverage",
     "Engagement session",
@@ -734,7 +745,8 @@ function MockDirectoryPreview() {
   ];
 
   return (
-    <div className="mt-14 text-left">
+    <div id="partner-profile-preview" className={`${compact ? "mt-0" : "mt-14"} text-left`}>
+      {!compact && (
       <div className="mx-auto max-w-3xl text-center">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#B16C8E]">Directory preview</p>
         <h3 className="mt-2 font-serif text-3xl font-bold text-[#8D294D] sm:text-4xl">
@@ -744,12 +756,13 @@ function MockDirectoryPreview() {
           Vendors fill out the intake once, upload their logo and service photos, and A.I DO turns it into a clean profile couples can understand quickly.
         </p>
       </div>
+      )}
 
       <div className="mt-8 rounded-[1.25rem] border border-[#E8DDE8] bg-[#FFF7F2] p-4 shadow-[0_24px_55px_rgba(90,80,124,0.12)] sm:p-6">
-        <div className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-[#8D294D]">
+        <Link href="/for-vendors/how-it-works#partner-profile-preview" className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-[#8D294D] hover:underline">
           <span aria-hidden="true">&lt;-</span>
           Back to partner network
-        </div>
+        </Link>
 
         <div className="grid gap-5 lg:grid-cols-[1fr_18rem]">
           <div className="space-y-5">
@@ -833,6 +846,7 @@ function MockDirectoryPreview() {
                 <img
                   src={mockQrUrl}
                   alt="Mock A.I DO partner profile QR code"
+                  title={demoProfileUrl}
                   className="h-16 w-16 shrink-0 rounded bg-white p-1 shadow-sm"
                 />
               </div>

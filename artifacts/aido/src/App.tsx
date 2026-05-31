@@ -59,7 +59,8 @@ const NotFound = lazy(() => import("@/pages/not-found"));
 const VideoTemplate = lazy(() => import("@/components/video/VideoTemplate"));
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+const rawClerkProxyUrl = String(import.meta.env.VITE_CLERK_PROXY_URL ?? "").trim().replace(/\/+$/, "");
+const clerkProxyUrl = rawClerkProxyUrl.replace(/\/clerk$/, "/api/__clerk");
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 setBaseUrl(import.meta.env.VITE_API_URL || null);
