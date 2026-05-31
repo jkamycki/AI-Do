@@ -512,6 +512,7 @@ export default function WebsiteEditor() {
   const [publishSlugInput, setPublishSlugInput] = useState("");
   const [publishSlugError, setPublishSlugError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"setup" | "design" | "sections" | "rsvp" | "publish">("setup");
+  const [activeControlGroup, setActiveControlGroup] = useState<"copy" | "design" | "elements" | "photos" | "animation" | "settings">("copy");
   const inTab = (t: typeof activeTab) => activeTab === t;
   const [emojiFieldOpen, setEmojiFieldOpen] = useState<string | null>(null);
   const [translatedWebsiteText, setTranslatedWebsiteText] = useState<Record<string, string> | null>(null);
@@ -987,12 +988,6 @@ export default function WebsiteEditor() {
   const livePreview = useMemo<WebsiteRendererPayload | null>(() => {
     if (!record) return null;
     const previewCustomText = safeWebsiteCustomText(record.customText);
-    if (hotelBlocks.length > 0) {
-      previewCustomText._rsvpAskHotel = "true";
-      if (invitationHotelSettings?.rsvpHotelBlockId && invitationHotelSettings.rsvpHotelBlockId !== "all") {
-        previewCustomText._rsvpHotelBlockId = invitationHotelSettings.rsvpHotelBlockId;
-      }
-    }
     if (translatedWebsiteText) {
       Object.assign(previewCustomText, translatedWebsiteText);
     }
@@ -1776,12 +1771,6 @@ export default function WebsiteEditor() {
     );
   }
 
-  const inheritedHotelAsk = hotelBlocks.length > 0;
-  const editorHotelAskEnabled = hotelBlocks.length > 0 || editingRecord.customText._rsvpAskHotel === "true" || inheritedHotelAsk;
-  const editorHotelBlockId =
-    editingRecord.customText._rsvpHotelBlockId ||
-    (invitationHotelSettings?.rsvpHotelBlockId !== "all" ? invitationHotelSettings?.rsvpHotelBlockId : undefined) ||
-    "all";
   const editorMealOptions = normalizeMealOptions(invitationHotelSettings?.rsvpMealOptions ?? DEFAULT_RSVP_MEAL_OPTIONS);
   const activeEditorPage = editorSection || "home";
   const pageNavItems = [
@@ -1790,6 +1779,36 @@ export default function WebsiteEditor() {
   ] as Array<{ id: string; label: string; icon: React.ElementType }>;
   const activePageLabel = pageNavItems.find((item) => item.id === activeEditorPage)?.label ?? "Home";
   const editingPage = (...ids: string[]) => activeTab !== "publish" && ids.includes(activeEditorPage);
+  const allControlGroups = [
+    { id: "copy", label: "Copy", icon: Type },
+    { id: "design", label: "Design", icon: Palette },
+    { id: "elements", label: "Elements", icon: ToggleLeft },
+    { id: "photos", label: "Photos", icon: ImageIcon },
+    { id: "animation", label: "Animation", icon: Sparkles },
+    { id: "settings", label: "Settings", icon: Settings },
+  ] as const;
+  const controlGroupIdsByPage: Record<string, Array<(typeof allControlGroups)[number]["id"]>> = {
+    home: ["copy", "design", "elements", "photos", "animation", "settings"],
+    welcome: ["copy", "design"],
+    story: ["copy", "design"],
+    schedule: ["copy", "elements", "design"],
+    travel: ["copy", "elements", "design"],
+    registry: ["copy", "elements", "design"],
+    faq: ["copy", "elements", "design"],
+    gallery: ["copy", "photos", "animation", "design"],
+    weddingParty: ["copy", "elements", "design"],
+    rsvp: ["copy", "settings", "design"],
+  };
+  const pageControlGroups = allControlGroups.filter((group) =>
+    (controlGroupIdsByPage[activeEditorPage] ?? ["copy"]).includes(group.id),
+  );
+  const currentControlGroup = pageControlGroups.some((group) => group.id === activeControlGroup)
+    ? activeControlGroup
+    : pageControlGroups[0]?.id ?? "copy";
+  const editingGroup = (
+    group: typeof currentControlGroup,
+    ...ids: string[]
+  ) => editingPage(...ids) && currentControlGroup === group;
   const isWebsiteSectionPage = activeEditorPage !== "home" && activeEditorPage in editingRecord.sectionsEnabled;
   const pageCopyFields = (() => {
     const textFields: Array<{ key: string; label: string; multiline?: boolean; placeholder?: string }> = {
@@ -1836,10 +1855,7 @@ export default function WebsiteEditor() {
       ],
       rsvp: [
         { key: "rsvp_title", label: "Section title", placeholder: "RSVP" },
-        { key: "rsvp_subtitle", label: "RSVP subtitle", multiline: true },
-        { key: "rsvp_intro", label: "RSVP intro", multiline: true },
         { key: "rsvp_deadline", label: "RSVP deadline", placeholder: "May 1, 2025" },
-        { key: "rsvp_thankyou", label: "RSVP thank-you message", multiline: true },
       ],
     }[activeEditorPage];
     return textFields ?? [];
@@ -1864,6 +1880,7 @@ export default function WebsiteEditor() {
               onSectionChange={(id) => {
                 setEditorSection(id);
                 setActiveTab("setup");
+                setActiveControlGroup("copy");
                 mobilePreviewRef.current?.scrollTo({ top: 0, behavior: "auto" });
               }}
               onTextChange={(key, value) => patchRecord((prev) => ({ customText: { ...prev.customText, [key]: value } }))}
@@ -2113,6 +2130,7 @@ export default function WebsiteEditor() {
                     onClick={() => {
                       setActiveTab("setup");
                       setEditorSection(item.id);
+                      setActiveControlGroup("copy");
                       previewRef.current?.scrollTo({ top: 0, behavior: "smooth" });
                       mobilePreviewRef.current?.scrollTo({ top: 0, behavior: "smooth" });
                     }}
@@ -2124,13 +2142,37 @@ export default function WebsiteEditor() {
                 );
               })}
             </div>
+            {activeTab !== "publish" && (
+              <div className="mt-3 border-t border-[#E8CBD3] pt-3">
+                <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Options
+                </p>
+                <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
+                  {pageControlGroups.map((group) => {
+                    const GroupIcon = group.icon;
+                    const active = currentControlGroup === group.id;
+                    return (
+                      <button
+                        key={group.id}
+                        type="button"
+                        onClick={() => setActiveControlGroup(group.id)}
+                        className={`flex min-w-0 items-center justify-start gap-1.5 rounded-lg px-2 py-2 text-[11px] font-semibold transition-colors ${active ? "bg-[#8D294D] text-white shadow-sm" : "text-muted-foreground hover:bg-background/70 hover:text-foreground"}`}
+                      >
+                        <GroupIcon className="h-3.5 w-3.5" />
+                        <span className="truncate">{group.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
         {/* Mobile-only Content editor — phones can't show preview + sidebar
             side-by-side, so this is a plain form for the highest-impact
             text fields. Updates flow through the existing customText jsonb
             so the live preview reflects them when the user toggles back. */}
-        {editingPage("home") && (
+        {editingGroup("settings", "home") && (
           <Section icon={<Settings className="h-4 w-4" />} title={t("website_editor.section_quick_setup", { defaultValue: "Quick Setup" })}>
             <div className="space-y-3">
               <div className="rounded-lg border border-[#E6B1A6]/60 bg-[#FFF7F2] p-3 text-[#3A1826]">
@@ -2161,7 +2203,7 @@ export default function WebsiteEditor() {
           </Section>
         )}
 
-        {activeTab !== "publish" && pageCopyFields.length > 0 && (
+        {currentControlGroup === "copy" && activeTab !== "publish" && pageCopyFields.length > 0 && (
           <Section icon={<Type className="h-4 w-4" />} title={`${activePageLabel} Copy`}>
             <div className="space-y-4">
               {isWebsiteSectionPage && (
@@ -2343,7 +2385,7 @@ export default function WebsiteEditor() {
         })()}
 
         {/* Design guide */}
-        {editingPage("home") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_quick_design", { defaultValue: "Quick Design" })}>
+        {editingGroup("design", "home") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_quick_design", { defaultValue: "Quick Design" })}>
           <div className="rounded-lg border border-[#E6B1A6]/60 bg-[#FFF7F2] p-3 text-[#3A1826]">
             <p className="text-sm font-semibold">
               {t("website_editor.quick_design_title", { defaultValue: "Start here, then fine tune." })}
@@ -2366,7 +2408,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Theme picker */}
-        {editingPage("home") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_theme", { defaultValue: "Pick a Style" })}>
+        {editingGroup("design", "home") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_theme", { defaultValue: "Pick a Style" })}>
           <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
             {t("website_editor.theme_hint", { defaultValue: "Styles update fonts, colors, and section backgrounds together." })}
           </p>
@@ -2401,7 +2443,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Colors */}
-        {editingPage("home") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_colors", { defaultValue: "Fine-tune Colors" })}>
+        {editingGroup("design", "home") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_colors", { defaultValue: "Fine-tune Colors" })}>
           <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
             {t("website_editor.colors_hint", { defaultValue: "Use these when you want one part of the website to have a custom color." })}
           </p>
@@ -2440,32 +2482,6 @@ export default function WebsiteEditor() {
           </div>
         </Section>}
 
-        {/* Text tools */}
-        {activeTab !== "publish" && <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_text_tools", { defaultValue: "Text Editing" })}>
-          <div className="space-y-3">
-            <div className="grid gap-2 text-xs text-muted-foreground">
-              <div className="rounded-lg border bg-background px-3 py-2">
-                {t("website_editor.text_tools_click_hint", { defaultValue: "Click any text in the preview to edit it directly." })}
-              </div>
-              <div className="rounded-lg border bg-background px-3 py-2">
-                {t("website_editor.text_tools_hint", { defaultValue: "Right-click the preview to add a new text box." })}
-              </div>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              className="w-full justify-start gap-2 text-destructive hover:text-destructive"
-              onClick={() => {
-                if (!window.confirm("Reset all text edits, styles, and positions to defaults?")) return;
-                update({ customText: {}, textStyles: {}, textPositions: {} });
-              }}
-            >
-              <X className="h-3.5 w-3.5" />
-              {t("website_editor.reset_all_to_default", { defaultValue: "Reset text and positions" })}
-            </Button>
-          </div>
-        </Section>}
-
         {/* Sections */}
         {false && inTab("sections") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_sections", { defaultValue: "Sections" })}>
           <div className="space-y-2.5">
@@ -2497,7 +2513,7 @@ export default function WebsiteEditor() {
         {/* Hero elements — toggles for the rows that drag-to-trash hides
             (date, venue, countdown). Lets the user bring them back without
             needing to hit Undo. */}
-        {editingPage("home") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_hero_elements", { defaultValue: "Home Elements" })}>
+        {editingGroup("elements", "home") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_hero_elements", { defaultValue: "Home Elements" })}>
           <div className="space-y-2.5">
             {[
               { key: "_announcementHidden", label: t("website_editor.hero_announcement", { defaultValue: "Announcement Banner" }) },
@@ -2543,7 +2559,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Schedule event toggles */}
-        {editingPage("travel") && editingRecord.sectionsEnabled.travel && <Section icon={<MapPin className="h-4 w-4" />} title="Travel & Venue Items">
+        {editingGroup("elements", "travel") && editingRecord.sectionsEnabled.travel && <Section icon={<MapPin className="h-4 w-4" />} title="Travel & Venue Items">
           <div className="space-y-4">
             {[
               { key: "_travelVenueHidden",  label: "Venue" },
@@ -2634,7 +2650,7 @@ export default function WebsiteEditor() {
           </div>
         </Section>}
 
-        {editingPage("schedule") && editingRecord.sectionsEnabled.schedule && <Section icon={<Clock className="h-4 w-4" />} title="Schedule Events">
+        {editingGroup("elements", "schedule") && editingRecord.sectionsEnabled.schedule && <Section icon={<Clock className="h-4 w-4" />} title="Schedule Events">
           <div className="space-y-4">
             {[
               { hiddenKey: "_scheduleCeremonyHidden",  timeKey: "_scheduleCeremonyTime",  labelKey: "_scheduleCeremonyLabel",  defaultLabel: "Ceremony" },
@@ -2686,7 +2702,7 @@ export default function WebsiteEditor() {
             FAQ block as a single paragraph. Stored as JSON in
             customText.faq_items_json for backward compat with the legacy
             single-string customText.faq. */}
-        {editingPage("faq") && editingRecord.sectionsEnabled.faq && <Section icon={<HelpCircle className="h-4 w-4" />} title={t("website_editor.section_faq_items", { defaultValue: "FAQ Questions" })}>
+        {editingGroup("elements", "faq") && editingRecord.sectionsEnabled.faq && <Section icon={<HelpCircle className="h-4 w-4" />} title={t("website_editor.section_faq_items", { defaultValue: "FAQ Questions" })}>
           {(() => {
             type FaqItem = { question: string; answer: string };
             const QUESTION_MAX = 400;
@@ -2834,7 +2850,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* FAQ style — font, size, color, bold/italic for questions and answers */}
-        {editingPage("faq") && editingRecord.sectionsEnabled.faq && <Section icon={<HelpCircle className="h-4 w-4" />} title="FAQ Style">
+        {editingGroup("design", "faq") && editingRecord.sectionsEnabled.faq && <Section icon={<HelpCircle className="h-4 w-4" />} title="FAQ Style">
           {(["question", "answer"] as const).map((part) => {
             const fontKey  = part === "question" ? "_faqQuestionFont"   : "_faqAnswerFont";
             const sizeKey  = part === "question" ? "_faqQuestionSize"   : "_faqAnswerSize";
@@ -2911,7 +2927,7 @@ export default function WebsiteEditor() {
 
 
         {/* Announcement animation */}
-        {editingPage("home") && <Section icon={<Sparkles className="h-4 w-4" />} title={t("website_editor.section_announcement_animation", { defaultValue: "Announcement Banner Animation" })}>
+        {editingGroup("animation", "home") && <Section icon={<Sparkles className="h-4 w-4" />} title={t("website_editor.section_announcement_animation", { defaultValue: "Announcement Banner Animation" })}>
           <div className="space-y-2.5">
             <div className="flex items-center justify-between gap-3 py-1.5">
               <div>
@@ -2945,7 +2961,7 @@ export default function WebsiteEditor() {
 
 
         {/* Hero animation */}
-        {editingPage("home") && <Section icon={<Sparkles className="h-4 w-4" />} title={t("website_editor.section_hero_animation", { defaultValue: "Hero Animation" })}>
+        {editingGroup("animation", "home") && <Section icon={<Sparkles className="h-4 w-4" />} title={t("website_editor.section_hero_animation", { defaultValue: "Hero Animation" })}>
           <div className="space-y-3">
             <div>
               <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.style_label", { defaultValue: "Style" })}</Label>
@@ -2982,7 +2998,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Gallery animation */}
-        {editingPage("gallery") && <Section icon={<ImageIcon className="h-4 w-4" />} title={t("website_editor.section_gallery_animation", { defaultValue: "Gallery Animation" })}>
+        {editingGroup("animation", "gallery") && <Section icon={<ImageIcon className="h-4 w-4" />} title={t("website_editor.section_gallery_animation", { defaultValue: "Gallery Animation" })}>
           <div className="space-y-3">
             <div>
               <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.style_label", { defaultValue: "Style" })}</Label>
@@ -3017,7 +3033,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Photo effects */}
-        {editingPage("home", "gallery") && <Section icon={<ImageIcon className="h-4 w-4" />} title={t("website_editor.section_photo_effects", { defaultValue: "Photo Effects" })}>
+        {editingGroup("photos", "home", "gallery") && <Section icon={<ImageIcon className="h-4 w-4" />} title={t("website_editor.section_photo_effects", { defaultValue: "Photo Effects" })}>
           <div className="space-y-2">
             <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.filter_label", { defaultValue: "Filter (applied to hero + gallery)" })}</Label>
             <div className="grid grid-cols-3 gap-2">
@@ -3052,7 +3068,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Home Page Photos — primary background + extras for slideshow/marquee */}
-        {editingPage("home") && <Section icon={<ImageIcon className="h-4 w-4" />} title="Home Page Photos">
+        {editingGroup("photos", "home") && <Section icon={<ImageIcon className="h-4 w-4" />} title="Home Page Photos">
           <p className="text-[11px] text-muted-foreground mb-2 leading-relaxed">
             Photos shown on the home page background. Add multiple for slideshows and marquees. These are separate from the Gallery section.
           </p>
@@ -3164,7 +3180,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Gallery */}
-        {editingPage("gallery") && <Section icon={<ImageIcon className="h-4 w-4" />} title="Gallery">
+        {editingGroup("photos", "gallery") && <Section icon={<ImageIcon className="h-4 w-4" />} title="Gallery">
           <div className="grid grid-cols-3 gap-2 mb-3 items-start">
             {editingRecord.galleryImages.map((img, i) => (
               <div key={i} className="flex flex-col gap-1">
@@ -3212,7 +3228,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Registry Links */}
-        {editingPage("registry") && <Section icon={<Link2 className="h-4 w-4" />} title="Registry Links">
+        {editingGroup("elements", "registry") && <Section icon={<Link2 className="h-4 w-4" />} title="Registry Links">
           <RegistryLinksEditor
             links={parseRegistryLinks(editingRecord.customText._registryLinks)}
             onChange={(next) =>
@@ -3222,7 +3238,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Wedding Party — read-only on the website editor; managed in the portal */}
-        {editingPage("weddingParty") && <Section icon={<Heart className="h-4 w-4" />} title="Wedding Party">
+        {editingGroup("elements", "weddingParty") && <Section icon={<Heart className="h-4 w-4" />} title="Wedding Party">
           {editingRecord.portalParty && editingRecord.portalParty.length > 0 ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-50 dark:bg-emerald-950/30 text-xs text-emerald-800 dark:text-emerald-200">
@@ -3251,7 +3267,7 @@ export default function WebsiteEditor() {
 
 
         {/* RSVP settings — responses are tracked in the portal, not here */}
-        {editingPage("rsvp") && !editingRecord.sectionsEnabled.rsvp && (
+        {editingGroup("settings", "rsvp") && !editingRecord.sectionsEnabled.rsvp && (
           <Section icon={<Heart className="h-4 w-4" />} title="RSVP Section">
             <div className="rounded-lg border bg-muted/30 p-3">
               <p className="text-sm font-medium">RSVP is currently hidden.</p>
@@ -3268,7 +3284,7 @@ export default function WebsiteEditor() {
             </div>
           </Section>
         )}
-        {editingPage("rsvp") && editingRecord.sectionsEnabled.rsvp && (
+        {editingGroup("settings", "rsvp") && editingRecord.sectionsEnabled.rsvp && (
           <Section icon={<Heart className="h-4 w-4" />} title={t("website_editor.section_rsvp_settings", { defaultValue: "RSVP Settings" })}>
             <div className="space-y-2">
               <div>
@@ -3281,79 +3297,6 @@ export default function WebsiteEditor() {
                   placeholder={t("website_editor.rsvp_deadline_placeholder", { defaultValue: "e.g. October 1, 2025" })}
                   className="h-8 text-sm"
                 />
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground mb-1 block">Thank-you message (shown after submit)</Label>
-                <Input
-                  value={editingRecord.customText.rsvp_thankyou ?? ""}
-                  onChange={(e) =>
-                    update({ customText: { ...editingRecord.customText, rsvp_thankyou: e.target.value } })
-                  }
-                  placeholder={t("website_editor.rsvp_thankyou_placeholder", { defaultValue: "We'll send you more details closer to the day." })}
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div className="rounded-md border bg-muted/30 p-3 space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-medium">Ask if guests need a hotel</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Shows on the website RSVP form when at least one hotel block exists and updates the guest-list hotel dropdown.
-                        </p>
-                      </div>
-                      <Switch
-                        checked={editorHotelAskEnabled}
-                        onCheckedChange={(checked) =>
-                          update({
-                            customText: {
-                              ...editingRecord.customText,
-                              _rsvpAskHotel: checked ? "true" : "false",
-                            },
-                          })
-                        }
-                        aria-label="Ask website RSVP guests if they need a hotel"
-                      />
-                    </div>
-                    {editorHotelAskEnabled && invitationHotelSettings?.rsvpAskHotel && editingRecord.customText._rsvpAskHotel !== "true" && (
-                      <p className="text-xs text-emerald-700 dark:text-emerald-300">
-                        Showing because Invitation Studio has RSVP hotel questions turned on.
-                      </p>
-                    )}
-                    {editorHotelAskEnabled && hotelBlocks.length > 0 && (
-                      <div className="space-y-2">
-                        <Label className="text-xs text-muted-foreground block">
-                          Hotel booking link shown to guests
-                        </Label>
-                        <Select
-                          value={editorHotelBlockId}
-                          onValueChange={(value) =>
-                            update({
-                              customText: {
-                                ...editingRecord.customText,
-                                _rsvpHotelBlockId: value,
-                              },
-                            })
-                          }
-                        >
-                          <SelectTrigger className="h-8 text-sm">
-                            <SelectValue placeholder="Choose hotel block" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Let guests choose from all hotel blocks</SelectItem>
-                            {hotelBlocks.map((hotel) => (
-                              <SelectItem key={hotel.id} value={String(hotel.id)}>
-                                {hotel.hotelName || "Unnamed Hotel"}{hotel.bookingLink ? " - booking link" : ""}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                    {editorHotelAskEnabled && hotelBlocks.length === 0 && (
-                      <p className="text-xs text-amber-700 dark:text-amber-300">
-                        This is turned on, but guests will not see the hotel question until you add a hotel block in the Hotels tab.
-                      </p>
-                    )}
               </div>
               <div className="rounded-md border bg-muted/30 p-3 space-y-3">
                 <div>
@@ -3636,6 +3579,7 @@ export default function WebsiteEditor() {
             onSectionChange={(id) => {
               setEditorSection(id);
               setActiveTab("setup");
+              setActiveControlGroup("copy");
               // Reset preview scroll to top when switching pages
               previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
             }}
@@ -4349,6 +4293,7 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
     </div>
   );
 }
+
 
 
 

@@ -1204,8 +1204,6 @@ function websiteHotelDateRange(checkIn: string | null | undefined, checkOut: str
   return [websiteHotelCutoffDate(checkIn), websiteHotelCutoffDate(checkOut)].filter(Boolean).join(" to ");
 }
 
-type HotelResponse = "no" | "yes" | "booked";
-
 function RsvpSection({
   data,
   ctx,
@@ -1220,24 +1218,10 @@ function RsvpSection({
   const [plusOne, setPlusOne] = useState(0);
   const [dietary, setDietary] = useState("");
   const [message, setMessage] = useState("");
-  const [hotelNeeded, setHotelNeeded] = useState(false);
-  const [hotelResponse, setHotelResponse] = useState<HotelResponse>("no");
-  const [hotelBlockId, setHotelBlockId] = useState("");
-  const [hotelRoomCount, setHotelRoomCount] = useState("1");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const labelColor = sectionTextColor(data, "rsvp");
-  const preferredHotelId = data.customText._rsvpHotelBlockId && data.customText._rsvpHotelBlockId !== "all"
-    ? data.customText._rsvpHotelBlockId
-    : "";
-  const hotelOptions = preferredHotelId
-    ? [...(data.hotelOptions ?? [])].sort((a, b) => (String(a.id) === preferredHotelId ? -1 : String(b.id) === preferredHotelId ? 1 : 0))
-    : (data.hotelOptions ?? []);
-  const showHotelQuestion = hotelOptions.length > 0;
-  const effectiveHotelNeeded = ctx.editable && showHotelQuestion ? true : hotelNeeded;
-  const selectedHotelId = hotelBlockId || (hotelResponse === "yes" ? preferredHotelId : "") || (ctx.editable ? String(hotelOptions[0]?.id ?? "") : "");
-  const selectedHotel = hotelOptions.find((hotel) => String(hotel.id) === selectedHotelId) ?? null;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -1262,9 +1246,9 @@ function RsvpSection({
             plusOneCount: plusOne,
             dietaryRestrictions: dietary.trim() || undefined,
             message: message.trim() || undefined,
-            hotelNeeded: attending === "yes" ? hotelNeeded : false,
-            bookedHotelBlockId: hotelNeeded && hotelBlockId ? Number(hotelBlockId) : null,
-            bookedHotelRoomCount: hotelNeeded ? Number(hotelRoomCount || "1") : null,
+            hotelNeeded: false,
+            bookedHotelBlockId: null,
+            bookedHotelRoomCount: null,
           }),
         },
       );
@@ -1296,23 +1280,6 @@ function RsvpSection({
     fontFamily: "inherit",
   };
 
-  const handleHotelResponseChange = (value: HotelResponse) => {
-    const needsHotel = value !== "no";
-    setHotelResponse(value);
-    setHotelNeeded(needsHotel);
-    if (!needsHotel) {
-      setHotelBlockId("");
-      return;
-    }
-    if (value === "booked") {
-      setHotelBlockId("");
-      return;
-    }
-    if (value === "yes" && preferredHotelId && !hotelBlockId) {
-      setHotelBlockId(preferredHotelId);
-    }
-  };
-
   return (
     <SectionShell
       id="rsvp"
@@ -1324,10 +1291,10 @@ function RsvpSection({
     >
       <EditableText
         as="div"
-        editable={ctx.editable}
-        value={data.customText.rsvp_subtitle ?? ""}
-        defaultValue="We'd love to know if you can make it"
-        onCommit={(v) => ctx.onTextChange("rsvp_subtitle", v)}
+        editable={false}
+        value=""
+        defaultValue={t("rsvp.generic_subtitle", { defaultValue: "Please let us know if you can celebrate with us." })}
+        onCommit={() => {}}
         className="block text-center text-3xl sm:text-4xl mb-10"
         style={{ fontFamily: fontStack(headingFont(data)), color: labelColor }}
         {...withBaseColor(tsp(ctx, "rsvp_subtitle"), labelColor)}
@@ -1370,10 +1337,7 @@ function RsvpSection({
           <EditableText
             as="p"
             editable={false}
-            value={
-              data.customText.rsvp_thankyou ??
-              t("rsvp.more_details_later", { defaultValue: "We'll send you more details closer to the day." })
-            }
+            value={t("rsvp.more_details_later", { defaultValue: "We'll send you more details closer to the day." })}
             defaultValue={t("rsvp.more_details_later", { defaultValue: "We'll send you more details closer to the day." })}
             onCommit={() => {}}
             className="text-sm font-medium text-center max-w-sm"
@@ -1491,92 +1455,6 @@ function RsvpSection({
                   placeholder="Vegetarian, gluten-free…"
                 />
               </div>
-            </div>
-          )}
-
-          {attending !== "no" && showHotelQuestion && (
-            <div className="rounded-lg border p-4 space-y-3" style={{ borderColor: `${data.colorPalette.primary}44`, background: `${data.colorPalette.primary}0d` }}>
-              <div>
-                <label className="block text-xs font-semibold mb-1.5" style={{ color: labelColor }}>
-                  {t("rsvp.need_hotel_question", { defaultValue: "Will you need a hotel room?" })}
-                </label>
-                <select
-                  style={inputStyle}
-                  value={ctx.editable && showHotelQuestion ? "yes" : hotelResponse}
-                  onChange={(e) => handleHotelResponseChange(e.target.value as HotelResponse)}
-                  disabled={ctx.editable}
-                >
-                  <option value="no">{t("common.no", { defaultValue: "No" })}</option>
-                  <option value="yes">{t("common.yes", { defaultValue: "Yes" })}</option>
-                  <option value="booked">{t("rsvp.hotel_already_booked", { defaultValue: "I've already booked" })}</option>
-                </select>
-              </div>
-
-              {effectiveHotelNeeded && (
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: labelColor }}>
-                    {hotelResponse === "booked"
-                      ? t("rsvp.hotel_block_booked", { defaultValue: "Which hotel did you book?" })
-                      : t("rsvp.hotel_block", { defaultValue: "Hotel block" })}
-                  </label>
-                  <select
-                    style={inputStyle}
-                    value={selectedHotelId}
-                    onChange={(e) => setHotelBlockId(e.target.value)}
-                    disabled={ctx.editable}
-                  >
-                    <option value="">
-                      {hotelResponse === "booked"
-                        ? t("rsvp.hotel_not_listed", { defaultValue: "I booked outside this block / not listed" })
-                        : t("rsvp.hotel_decide_later", { defaultValue: "I will decide later" })}
-                    </option>
-                    {hotelOptions.map((hotel) => (
-                      <option key={hotel.id} value={hotel.id}>
-                        {hotel.hotelName || t("rsvp.hotel_block", { defaultValue: "Hotel block" })}
-                      </option>
-                    ))}
-                  </select>
-
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: labelColor }}>
-                    {hotelResponse === "booked"
-                      ? t("rsvp.hotel_rooms_booked", { defaultValue: "How many rooms did you book?" })
-                      : t("rsvp.hotel_room_count", { defaultValue: "How many rooms?" })}
-                  </label>
-                  <select
-                    style={inputStyle}
-                    value={hotelRoomCount}
-                    onChange={(e) => setHotelRoomCount(e.target.value)}
-                    disabled={ctx.editable}
-                  >
-                    <option value="1">{t("rsvp.one_room", { defaultValue: "1 room" })}</option>
-                    <option value="2">{t("rsvp.two_rooms", { defaultValue: "2 rooms" })}</option>
-                  </select>
-
-                  {selectedHotel && (
-                    <div className="rounded-lg border p-3 text-sm" style={{ color: labelColor, borderColor: `${data.colorPalette.primary}33`, background: `${data.colorPalette.background}cc` }}>
-                      <p className="font-semibold">{selectedHotel.hotelName || t("rsvp.hotel_block", { defaultValue: "Hotel block" })}</p>
-                      {websiteHotelAddressLine(selectedHotel) && (
-                        <p className="mt-1 text-xs font-medium">{websiteHotelAddressLine(selectedHotel)}</p>
-                      )}
-                      {selectedHotel.groupName && (
-                        <p className="mt-2 text-xs opacity-85"><span className="font-semibold">{t("rsvp.wedding_block", { defaultValue: "Wedding block:" })}</span> {selectedHotel.groupName}</p>
-                      )}
-                      {selectedHotel.discountCode && (
-                        <p className="mt-1 text-xs opacity-85"><span className="font-semibold">{t("rsvp.group_code", { defaultValue: "Group code:" })}</span> <span className="font-mono font-semibold">{selectedHotel.discountCode}</span></p>
-                      )}
-                      {selectedHotel.cutoffDate && (
-                        <p className="mt-1 text-xs opacity-85"><span className="font-semibold">{t("rsvp.book_by", { defaultValue: "Cutoff Date to Book:" })}</span> {websiteHotelCutoffDate(selectedHotel.cutoffDate)}</p>
-                      )}
-                      <p className="mt-1 text-xs opacity-85"><span className="font-semibold">{t("rsvp.rooms", { defaultValue: "Rooms:" })}</span> {hotelRoomCount === "2" ? t("rsvp.two_rooms", { defaultValue: "2 rooms" }) : t("rsvp.one_room", { defaultValue: "1 room" })}</p>
-                      {selectedHotel.bookingLink && (
-                        <div className="mt-3 rounded-md px-3 py-2 text-center text-xs font-semibold text-white" style={{ background: data.colorPalette.primary }}>
-                          {t("rsvp.open_booking_link", { defaultValue: "Open booking link" })}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           )}
 
