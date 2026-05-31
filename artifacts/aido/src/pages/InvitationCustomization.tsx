@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useAuth, useUser } from "@clerk/react";
+import { useAuth } from "@clerk/react";
 import { useRoute } from "wouter";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { authFetch } from "@/lib/authFetch";
@@ -280,7 +280,6 @@ export default function InvitationCustomizationPage({
   onOpenGuestList,
 }: InvitationCustomizationProps = {}) {
   const { getToken } = useAuth();
-  const { user } = useUser();
   const { toast } = useToast();
   const { activeWorkspace } = useWorkspace();
   const queryClient = useQueryClient();
@@ -298,8 +297,6 @@ export default function InvitationCustomizationPage({
   const [printSide, setPrintSide] = useState<PrintInvitationSide>("front");
   const [includePrintQr, setIncludePrintQr] = useState(true);
   const [exportingPrintPdf, setExportingPrintPdf] = useState(false);
-  const [testRecipientEmail, setTestRecipientEmail] = useState("");
-  const [isSendingTestInvitation, setIsSendingTestInvitation] = useState(false);
   const [customDesign, setCustomDesign] = useState<CustomDesignState>({
     saveTheDate: { backgroundColor: AIDO_BRAND_COLORS.ivory, accentColor: AIDO_BRAND_COLORS.burgundy, fontFamily: "Playfair Display", fontSize: "16", fontColor: AIDO_BRAND_COLORS.ink },
     rsvpInvitation: { backgroundColor: AIDO_BRAND_COLORS.ivory, accentColor: AIDO_BRAND_COLORS.burgundy, fontFamily: "Playfair Display", fontSize: "16", fontColor: AIDO_BRAND_COLORS.ink },
@@ -1482,68 +1479,6 @@ export default function InvitationCustomizationPage({
     setPreviewRefreshNonce((current) => current + 1);
   };
 
-  useEffect(() => {
-    const email = user?.primaryEmailAddress?.emailAddress ?? "";
-    if (!testRecipientEmail && email) {
-      setTestRecipientEmail(email);
-    }
-  }, [testRecipientEmail, user?.primaryEmailAddress?.emailAddress]);
-
-  const sendTestInvitation = async () => {
-    if (deliveryMode !== "digital") {
-      toast({
-        title: "Digital invitations only",
-        description: "Switch Send Type to Digital before sending a test invitation.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const email = testRecipientEmail.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      toast({
-        title: "Enter a valid email",
-        description: "Add the email address that should receive the test invitation.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsSendingTestInvitation(true);
-    try {
-      const response = await authedFetch("/api/invitation-studio/test", {
-        method: "POST",
-        body: JSON.stringify({
-          email,
-          type: previewTab,
-          coupleNames: activeDesignDocument.couple,
-          message: activeDesignDocument.message,
-          rsvpBy: activeDesignDocument.fields.rsvpByDate,
-          accent: activeDesignDocument.style.accentColor,
-          textColor: activeDesignDocument.style.textColor,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({ error: "Could not send test email." }));
-        throw new Error((errorBody as { error?: string }).error || "Could not send test email.");
-      }
-
-      toast({
-        title: "Test invitation sent",
-        description: `${isSTD ? "Save the Date" : "RSVP invitation"} test sent to ${email}.`,
-      });
-    } catch (error) {
-      toast({
-        title: "Test invitation failed",
-        description: error instanceof Error ? error.message : "Could not send the test invitation.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSendingTestInvitation(false);
-    }
-  };
-
   return (
     <div className="max-w-7xl mx-auto p-3 sm:p-4 space-y-4 sm:space-y-6">
       <div>
@@ -1636,37 +1571,6 @@ export default function InvitationCustomizationPage({
             </Button>
           </div>
         </div>
-
-        {deliveryMode === "digital" && (
-          <div className="rounded-md border border-primary/20 bg-primary/5 p-3 sm:p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="flex-1">
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">
-                  Send test invitation
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Send this {isSTD ? "Save the Date" : "RSVP invitation"} preview to any email before sending from the guest list.
-                </p>
-                <Input
-                  type="email"
-                  value={testRecipientEmail}
-                  onChange={(event) => setTestRecipientEmail(event.target.value)}
-                  placeholder="Enter test recipient email"
-                  className="mt-3 h-10 bg-background"
-                />
-              </div>
-              <Button
-                type="button"
-                className="gap-2 sm:w-auto"
-                onClick={sendTestInvitation}
-                disabled={isSendingTestInvitation}
-              >
-                {isSendingTestInvitation ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                {isSendingTestInvitation ? "Sending..." : "Send test invitation"}
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
