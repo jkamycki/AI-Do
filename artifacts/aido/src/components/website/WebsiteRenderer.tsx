@@ -175,7 +175,7 @@ export interface WebsiteRendererPayload {
     venueState: string | null;
     venueZip?: string | null;
   };
-  // timeline removed — wedding website schedule is entered directly by the couple
+  // timeline removed â€” wedding website schedule is entered directly by the couple
 }
 
 export type WebsiteRenderDevice = "desktop" | "mobile";
@@ -353,7 +353,7 @@ function tspStyle(ctx: EditCtx, key: string) {
   };
 }
 
-// Style-only, no delete, no drag — for hero elements that must stay
+// Style-only, no delete, no drag â€” for hero elements that must stay
 // centered. Visibility is controlled exclusively via sidebar toggles.
 function tspNoDelete(ctx: EditCtx, key: string, aiEnabled = false) {
   if (!ctx.editable) return { textStyle: ctx.textStyles?.[key] };
@@ -710,7 +710,7 @@ function DraggableRow({
 
   const handlePointerDown = (e: React.PointerEvent) => {
     // If the user pressed inside an inner EditableText (contenteditable),
-    // don't hijack the pointer — let the inner element get focus and open
+    // don't hijack the pointer â€” let the inner element get focus and open
     // its own toolbar / inline drag. DraggableRow only captures pointer
     // events that originate on its own padding / icons.
     const target = e.target as HTMLElement | null;
@@ -818,7 +818,7 @@ function DraggableRow({
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => onPositionChange({ x: 0, y: 0 })}
         >
-          ×
+          Ã—
         </span>
       )}
       {children}
@@ -1462,7 +1462,7 @@ function RsvpSection({
                   style={inputStyle}
                   value={dietary}
                   onChange={(e) => setDietary(e.target.value)}
-                  placeholder="Vegetarian, gluten-free…"
+                  placeholder="Vegetarian, gluten-freeâ€¦"
                 />
               </div>
             </div>
@@ -1850,7 +1850,7 @@ function HeroBackground({
           />
         );
         // Static / slideshow can take the user's zoom directly on the slide.
-        // Kenburns / pan-lr already use `transform` for their CSS animation —
+        // Kenburns / pan-lr already use `transform` for their CSS animation â€”
         // wrap them so the user's scale layers without clobbering the keyframes.
         if (zoom === 1)
           return (
@@ -2030,7 +2030,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   );
 }
 
-// Custom floating text boxes — rendered at the page level (not inside any
+// Custom floating text boxes â€” rendered at the page level (not inside any
 // one section) so the user can drag them anywhere on the website and they
 // stay visible regardless of which section is currently scrolled to. The
 // outer wrapper is marked position:relative so absolute positioning here
@@ -2065,7 +2065,7 @@ function CustomTextBoxes({
             if (scope !== "global" && scope !== currentSection) return false;
           }
           if (!ctx.editable)
-            return !!v?.trim() && v.trim() !== "New text — click to edit";
+            return !!v?.trim() && v.trim() !== "New text â€” click to edit";
           return true;
         })
         .map(([key, val], idx) => (
@@ -2083,9 +2083,9 @@ function CustomTextBoxes({
               as="div"
               editable={ctx.editable}
               value={val}
-              defaultValue="New text — click to edit"
+              defaultValue="New text â€” click to edit"
               onCommit={(v) =>
-                ctx.onTextChange(key, v || "New text — click to edit")
+                ctx.onTextChange(key, v || "New text â€” click to edit")
               }
               style={{
                 display: "inline-block",
@@ -2242,7 +2242,7 @@ function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const text = data.customText.story ?? "";
   const isMobileRender = ctx.renderDevice === "mobile";
   // The section is gated by sectionsEnabled.story upstream; if the user
-  // enabled it, render it everywhere — editor, preview, and published —
+  // enabled it, render it everywhere â€” editor, preview, and published â€”
   // so the layout is consistent even before the body has been filled in.
   const labelColor = sectionTextColor(data, "story");
   const storySubtitleProps = withBaseColor(tsp(ctx, "story_subtitle"), labelColor);
@@ -2456,7 +2456,7 @@ function Schedule({
           value={customSchedule}
           defaultValue={
             ctx.editable
-              ? "Add any extra schedule notes — dress code, parking, after-party, etc."
+              ? "Add any extra schedule notes â€” dress code, parking, after-party, etc."
               : ""
           }
           onCommit={(v) => ctx.onTextChange("schedule", v)}
@@ -2712,7 +2712,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           value={text}
           defaultValue={
             ctx.editable
-              ? "Add parking info, directions, or other travel notes…"
+              ? "Add parking info, directions, or other travel notesâ€¦"
               : ""
           }
           onCommit={(v) => ctx.onTextChange("travel", v)}
@@ -2967,7 +2967,7 @@ function Faq({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
 
       {items.length === 0 && !legacyText && ctx.editable && (
         <p className="text-center text-sm text-muted-foreground max-w-2xl mx-auto">
-          Add FAQ questions in the sidebar (Pages tab → FAQ Questions).
+          Add FAQ questions in the sidebar (Pages tab â†’ FAQ Questions).
         </p>
       )}
     </SectionShell>
@@ -3007,13 +3007,13 @@ function Gallery({
     speed === "slow" ? 6000 : speed === "fast" ? 2500 : 4000;
   const marqueeDuration =
     speed === "slow" ? "60s" : speed === "fast" ? "20s" : "40s";
-  // Grid mode always uses the puzzle fade entrance — ignore _galleryEntrance
+  // Grid mode always uses the puzzle fade entrance â€” ignore _galleryEntrance
   const entrance: "none" | "fade-in" | "slide-up" | "zoom-in" | "puzzle" =
     animation === "grid" ? "puzzle" : "none";
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [guestLightboxIndex, setGuestLightboxIndex] = useState<number | null>(null);
 
-  // Slideshow auto-advance. Hooks must run unconditionally — bail out inside.
+  // Slideshow auto-advance. Hooks must run unconditionally â€” bail out inside.
   const [activeIdx, setActiveIdx] = useState(0);
   useEffect(() => {
     if (animation !== "slideshow" || images.length < 2) return;
@@ -3106,7 +3106,7 @@ function Gallery({
         as="div"
         editable={ctx.editable}
         value={caption ?? ""}
-        defaultValue={ctx.editable ? "Add a caption…" : ""}
+        defaultValue={ctx.editable ? "Add a captionâ€¦" : ""}
         onCommit={(v) => ctx.onGalleryCaptionChange?.(imageUrl, v)}
         aiEnabled={false}
         textStyle={data.textStyles?.[styleKey]}
@@ -3732,7 +3732,7 @@ export interface WeddingPartyMember {
   name: string;
   role: string;
   side?: WeddingPartySide;
-  // Photo focal point as percentages 0–100. Defaults to 50/50 (centered).
+  // Photo focal point as percentages 0â€“100. Defaults to 50/50 (centered).
   photoX?: number;
   photoY?: number;
 }
@@ -3939,7 +3939,7 @@ function WeddingParty({
           className="text-center text-sm font-medium"
           style={{ color: labelColor }}
         >
-          No wedding party members yet — add some from the sidebar.
+          No wedding party members yet â€” add some from the sidebar.
         </p>
       ) : (
         <div className="space-y-16">
@@ -4125,26 +4125,28 @@ function Footer({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
 function BrandingFooter() {
   const year = new Date().getFullYear();
   return (
-    <div className="py-8 px-6 text-center bg-[#5B0F2A] text-[#F7E7D6]/85 space-y-4">
+    <div className="py-8 px-5 text-center bg-[#5B0F2A] text-[#F7E7D6]/85 space-y-5 sm:px-6">
       <a
         href="https://aidowedding.net?utm_source=wedding_website&utm_medium=footer"
         target="_blank"
         rel="noopener"
-        className="inline-flex items-center gap-2.5 text-sm hover:text-white transition-colors group"
+        className="mx-auto flex max-w-[18rem] flex-col items-center justify-center gap-1.5 text-sm hover:text-white transition-colors group sm:max-w-none sm:flex-row sm:gap-2.5"
       >
-        <span className="font-medium">Built with</span>
-        <img src="/logo.png" alt="A.IDO" className="h-10 w-auto object-contain" />
-        <span
-          className="font-semibold tracking-wide text-base"
-          style={{ color: "#F3C6D3" }}
-        >
-          A.IDO
+        <span className="text-xs font-medium uppercase tracking-[0.18em] sm:normal-case sm:tracking-normal">Built with</span>
+        <span className="inline-flex items-center justify-center gap-2.5">
+          <img src="/logo.png" alt="A.IDO" className="h-10 w-auto object-contain" />
+          <span
+            className="font-semibold tracking-wide text-base"
+            style={{ color: "#F3C6D3" }}
+          >
+            A.IDO
+          </span>
         </span>
-        <span className="font-medium opacity-90 group-hover:opacity-100 transition-opacity">
-          — Plan your wedding too →
+        <span className="max-w-[13rem] text-xs font-medium leading-snug opacity-90 transition-opacity group-hover:opacity-100 sm:max-w-none sm:text-sm">
+          Plan your wedding too &rarr;
         </span>
       </a>
-      <nav className="flex items-center justify-center flex-wrap gap-x-4 gap-y-1 text-xs">
+      <nav className="mx-auto grid max-w-xs grid-cols-2 gap-x-3 gap-y-2 text-xs sm:flex sm:max-w-none sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-4 sm:gap-y-1">
         <a
           href="https://aidowedding.net/privacy"
           target="_blank"
@@ -4153,7 +4155,7 @@ function BrandingFooter() {
         >
           Privacy
         </a>
-        <span className="opacity-40">·</span>
+        <span className="hidden opacity-40 sm:inline">·</span>
         <a
           href="https://aidowedding.net/terms"
           target="_blank"
@@ -4162,7 +4164,7 @@ function BrandingFooter() {
         >
           Terms &amp; Conditions
         </a>
-        <span className="opacity-40">·</span>
+        <span className="hidden opacity-40 sm:inline">·</span>
         <a
           href="https://aidowedding.net/security"
           target="_blank"
@@ -4171,7 +4173,7 @@ function BrandingFooter() {
         >
           Security
         </a>
-        <span className="opacity-40">·</span>
+        <span className="hidden opacity-40 sm:inline">·</span>
         <a
           href="https://aidowedding.net/data-handling"
           target="_blank"
@@ -4181,7 +4183,7 @@ function BrandingFooter() {
           Data Handling
         </a>
       </nav>
-      <p className="text-[11px] opacity-85 max-w-2xl mx-auto leading-relaxed">
+      <p className="mx-auto max-w-[18rem] text-[10.5px] leading-relaxed opacity-85 sm:max-w-2xl sm:text-[11px]">
         © {year} A.IDO. All rights reserved. A.IDO is the platform that hosts
         this wedding website. Photos, names, schedules, and other content shown
         here are provided by the wedding couple and are their sole
@@ -4474,7 +4476,7 @@ export function WebsiteRenderer({
   onGalleryCaptionChange?: (imageUrl: string, caption: string) => void;
   currentSection?: string;
   // When provided alongside currentSection, the TopNav drives navigation
-  // through this callback instead of routing or scrolling — used by the
+  // through this callback instead of routing or scrolling â€” used by the
   // editor's Guest Preview to render one section at a time without changing
   // the URL.
   onSectionChange?: (id: string) => void;

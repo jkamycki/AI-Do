@@ -489,6 +489,166 @@ function withDevicePatch(
   };
 }
 
+function writePublishedPreviewShell(targetWindow: Window | null, publicUrl: string) {
+  if (!targetWindow) return;
+  const safeUrl = JSON.stringify(publicUrl);
+  try {
+    targetWindow.document.open();
+    targetWindow.document.write(`<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>A.I DO guest website preview</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #fff7f2;
+      color: #5b0f2a;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .bar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid #ead0d8;
+      background: rgba(255, 247, 242, 0.94);
+      backdrop-filter: blur(14px);
+    }
+    .brand {
+      min-width: 0;
+    }
+    .eyebrow {
+      margin: 0 0 2px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: #9f2858;
+    }
+    h1 {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.2;
+    }
+    .actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px;
+      border: 1px solid #ead0d8;
+      border-radius: 999px;
+      background: #fff;
+      box-shadow: 0 8px 24px rgba(91, 15, 42, .08);
+    }
+    button, a.open {
+      appearance: none;
+      border: 0;
+      border-radius: 999px;
+      padding: 9px 14px;
+      background: transparent;
+      color: #8d294d;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 800;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    button.active {
+      background: #8d294d;
+      color: #fff7f2;
+      box-shadow: 0 4px 14px rgba(141, 41, 77, .22);
+    }
+    a.open {
+      border: 1px solid #ead0d8;
+      background: #fff;
+    }
+    .stage {
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+    .frameWrap {
+      width: min(100%, 1240px);
+      height: calc(100vh - 106px);
+      overflow: hidden;
+      border: 1px solid #ead0d8;
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: 0 20px 60px rgba(91, 15, 42, .14);
+      transition: width .2s ease, border-radius .2s ease;
+    }
+    .frameWrap.mobile {
+      width: min(390px, calc(100vw - 24px));
+      border-radius: 28px;
+    }
+    iframe {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #fff;
+    }
+    @media (max-width: 640px) {
+      .bar { justify-content: center; text-align: center; }
+      .actions { width: 100%; justify-content: center; }
+      .stage { padding: 12px; }
+      .frameWrap { height: calc(100vh - 150px); }
+    }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">
+      <p class="eyebrow">A.I DO</p>
+      <h1>Guest website preview</h1>
+    </div>
+    <div class="actions" aria-label="Preview size">
+      <button id="desktopBtn" class="active" type="button">Desktop</button>
+      <button id="mobileBtn" type="button">Mobile</button>
+      <a class="open" href="${publicUrl}" target="_blank" rel="noopener">Open live</a>
+    </div>
+  </header>
+  <main class="stage">
+    <div id="frameWrap" class="frameWrap">
+      <iframe src="${publicUrl}" title="Guest website preview"></iframe>
+    </div>
+  </main>
+  <script>
+    const publicUrl = ${safeUrl};
+    const frameWrap = document.getElementById("frameWrap");
+    const desktopBtn = document.getElementById("desktopBtn");
+    const mobileBtn = document.getElementById("mobileBtn");
+    function setMode(mode) {
+      const mobile = mode === "mobile";
+      frameWrap.classList.toggle("mobile", mobile);
+      desktopBtn.classList.toggle("active", !mobile);
+      mobileBtn.classList.toggle("active", mobile);
+    }
+    desktopBtn.addEventListener("click", () => setMode("desktop"));
+    mobileBtn.addEventListener("click", () => setMode("mobile"));
+  </script>
+</body>
+</html>`);
+    targetWindow.document.close();
+  } catch {
+    try {
+      targetWindow.location.href = publicUrl;
+    } catch {
+      // Ignore: popup may have been blocked or closed.
+    }
+  }
+}
+
 // ---------- main ----------
 
 export default function WebsiteEditor() {
@@ -1519,7 +1679,7 @@ export default function WebsiteEditor() {
         setEditorSection("home");
         setActiveControlGroup("copy");
         if (guestPreviewWindow) {
-          guestPreviewWindow.location.href = publishedWebsiteUrl(cleanBody.slug, "home");
+          writePublishedPreviewShell(guestPreviewWindow, publishedWebsiteUrl(cleanBody.slug, "home"));
         }
       }
       toast({ title: cleanBody.published ? "Website published!" : "Website unpublished" });

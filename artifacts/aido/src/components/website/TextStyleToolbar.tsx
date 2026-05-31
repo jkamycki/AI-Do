@@ -116,7 +116,7 @@ interface Props {
   // splices it into the current selection and commits.
   onInsertText?: (text: string) => void;
   onInlineCommand?: (
-    command: "bold" | "italic" | "underline" | "strikeThrough" | "foreColor" | "fontName" | "fontSize",
+    command: "bold" | "italic" | "underline" | "strikeThrough" | "foreColor" | "fontName" | "fontSize" | "justifyLeft" | "justifyCenter" | "justifyRight",
     value?: string,
   ) => boolean;
 }
@@ -319,6 +319,10 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
             { value: "right" as const, icon: AlignRight, label: "Align right" },
           ].map(({ value, icon: Icon, label }) => {
             const active = style.textAlign === value;
+            const command =
+              value === "left" ? "justifyLeft" :
+              value === "center" ? "justifyCenter" :
+              "justifyRight";
             return (
               <button
                 key={value}
@@ -327,7 +331,7 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
                   active ? "bg-[#1F242C] text-[#FFFDF8]" : "bg-[#FFFDF8] text-[#1F242C] hover:bg-[#F3E8DC]"
                 }`}
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => patch({ textAlign: active ? undefined : value })}
+                onClick={() => inlineOrPatch(command, undefined, { textAlign: active ? undefined : value })}
                 title={t(`text_toolbar.${value}`, { defaultValue: label })}
               >
                 <Icon className="h-3.5 w-3.5" />
