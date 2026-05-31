@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, ReactNode, useState } from "react";
+import { ChangeEvent, FormEvent, ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   BadgeCheck,
@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { ImageCropDialog, type CropQueueItem } from "@/components/ImageCropDialog";
 import { qrSvgDataUrl } from "@/lib/localQr";
 import { publicAppOrigin } from "@/lib/publicUrls";
+import { organizationSchema, setSeo } from "@/lib/seo";
 
 const CATEGORIES = [
   "Venue",
@@ -143,7 +144,7 @@ function getVendorPartnerPage(path: string): VendorPartnerPage {
 }
 
 function vendorPartnerNavClass(isActive: boolean) {
-  return `rounded-full px-3 py-2 transition ${
+  return `shrink-0 rounded-full px-3 py-2 transition ${
     isActive
       ? "bg-[#FFF7F2] text-[#8D294D]"
       : "text-[#6F3E54] hover:bg-[#FFF7F2] hover:text-[#8D294D]"
@@ -160,6 +161,29 @@ export default function ForVendors() {
   const [cropMode, setCropMode] = useState<"logo" | "service" | null>(null);
   const [cropQueue, setCropQueue] = useState<File[]>([]);
   const [cropTotal, setCropTotal] = useState(0);
+
+  useEffect(() => {
+    const titleByPage: Record<VendorPartnerPage, string> = {
+      home: "Wedding Vendor Directory & Partner Program | A.I DO",
+      vendors: "Wedding Vendor Directory & Partner Program | A.I DO",
+      "how-it-works": "How A.I DO Vendor Partnerships Work",
+      apply: "Apply to Join the A.I DO Wedding Vendor Directory",
+      "sample-profile": "Sample Wedding Vendor Profile | A.I DO",
+    };
+    const descriptionByPage: Record<VendorPartnerPage, string> = {
+      home: "Join the A.I DO wedding vendor directory and reach couples using AI wedding planning tools for budgets, guest lists, timelines, and vendor decisions.",
+      vendors: "Join the A.I DO wedding vendor directory and reach couples using AI wedding planning tools for budgets, guest lists, timelines, and vendor decisions.",
+      "how-it-works": "See how A.I DO helps wedding vendors get discovered by couples planning budgets, timelines, guest lists, and wedding websites.",
+      apply: "Apply for a free A.I DO wedding vendor profile and get discovered by couples actively planning venues, photography, florals, music, catering, and more.",
+      "sample-profile": "Preview a sample A.I DO wedding vendor profile with service details, contact links, photos, QR code sharing, and partner badge placement.",
+    };
+    setSeo({
+      title: titleByPage[page],
+      description: descriptionByPage[page],
+      path: page === "vendors" ? "/for-vendors" : `/for-vendors/${page}`,
+      jsonLd: organizationSchema(),
+    });
+  }, [page]);
 
   const updateField = (field: VendorPartnerTextField, value: string) => {
     setForm(current => ({ ...current, [field]: value }));
@@ -299,11 +323,11 @@ export default function ForVendors() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFF7F2] text-[#3B1C2B]">
-      <header className="sticky top-0 z-20 border-b border-[#E8DDE8] bg-white/95 px-4 py-3 shadow-sm backdrop-blur sm:px-8">
+    <div className="min-h-screen overflow-x-hidden bg-[#FFF7F2] text-[#3B1C2B]">
+      <header className="sticky top-0 z-20 border-b border-[#E8DDE8] bg-white/95 px-4 py-2 shadow-sm backdrop-blur sm:px-8 sm:py-3">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
           <Link href="/" className="flex items-center gap-3">
-            <img src="/logo.png" alt="A.I DO" className="h-12 w-auto object-contain sm:h-14" />
+            <img src="/logo.png" alt="A.I DO" className="h-10 w-auto object-contain sm:h-14" />
           </Link>
           <nav className="hidden items-center gap-2 text-sm font-bold md:flex">
             <Link href="/" className={vendorPartnerNavClass(false)}>Home</Link>
@@ -313,7 +337,7 @@ export default function ForVendors() {
           </nav>
           <div className="flex items-center gap-2">
             <Button asChild className="h-10 rounded-lg bg-[#8D294D] px-3 text-sm text-white hover:bg-[#762140] sm:px-5">
-              <Link href="/for-vendors/apply">Partner With Us</Link>
+              <Link href="/for-vendors/apply"><span className="sm:hidden">Partner</span><span className="hidden sm:inline">Partner With Us</span></Link>
             </Button>
             <Link href="/sign-in">
               <Button variant="ghost" size="icon" className="hidden text-[#6F3E54] hover:bg-[#FFF7F2] sm:inline-flex">
@@ -322,7 +346,7 @@ export default function ForVendors() {
             </Link>
           </div>
         </div>
-        <nav className="mx-auto mt-3 flex max-w-6xl gap-2 overflow-x-auto text-sm font-bold md:hidden" aria-label="Vendor partner sections">
+        <nav className="mx-auto mt-2 flex max-w-6xl gap-2 overflow-x-auto pb-1 text-xs font-bold [scrollbar-width:none] md:hidden [&::-webkit-scrollbar]:hidden" aria-label="Vendor partner sections">
           <Link href="/" className={vendorPartnerNavClass(false)}>Home</Link>
           <Link href="/for-vendors/vendors" className={vendorPartnerNavClass(page === "vendors")}>Benefits</Link>
           <Link href="/for-vendors/how-it-works" className={vendorPartnerNavClass(page === "how-it-works")}>How It Works</Link>
@@ -340,30 +364,30 @@ export default function ForVendors() {
         )}
 
         {page === "home" && (
-        <section className="relative min-h-[620px] overflow-hidden sm:min-h-[560px]">
+        <section className="relative min-h-[520px] overflow-hidden sm:min-h-[560px]">
           <img
             src="/images/default-wedding-couple.jpg"
             alt="Wedding couple"
             className="absolute inset-0 h-full w-full object-cover"
           />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,247,242,0.98)_0%,rgba(255,247,242,0.9)_54%,rgba(255,247,242,0.32)_100%)] sm:bg-[linear-gradient(90deg,rgba(255,247,242,0.96)_0%,rgba(255,247,242,0.86)_43%,rgba(255,247,242,0.18)_100%)]" />
-          <div className="relative mx-auto flex min-h-[620px] max-w-6xl items-center px-4 py-12 sm:min-h-[560px] sm:px-8 sm:py-16">
+          <div className="relative mx-auto flex min-h-[520px] max-w-6xl items-center px-4 py-10 sm:min-h-[560px] sm:px-8 sm:py-16">
             <div className="max-w-xl">
-              <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#E6C7D0] bg-white/75 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-[#B16C8E]">
+              <p className="mb-4 inline-flex max-w-full items-center gap-2 rounded-full border border-[#E6C7D0] bg-white/75 px-3 py-2 text-xs font-bold uppercase tracking-[0.16em] text-[#B16C8E] sm:px-4 sm:tracking-[0.22em]">
                 <Sparkles className="h-4 w-4" />
                 Partner With Us
               </p>
-              <h1 className="font-serif text-4xl font-bold leading-tight text-[#8D294D] sm:text-6xl">
+              <h1 className="font-serif text-[2.6rem] font-bold leading-[1.05] text-[#8D294D] sm:text-6xl">
                 Partner with A.I DO
               </h1>
-              <p className="mt-5 max-w-lg text-base leading-7 text-[#3B1C2B] sm:text-lg sm:leading-8">
+              <p className="mt-4 max-w-lg text-base leading-7 text-[#3B1C2B] sm:mt-5 sm:text-lg sm:leading-8">
                 Get listed with A.I DO, reach couples as they plan, and share a trusted badge on your site or socials.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Button asChild className="h-12 rounded-lg bg-[#8D294D] px-8 text-base font-bold text-white shadow-lg shadow-[#8D294D]/25 hover:bg-[#762140]">
+                <Button asChild className="h-12 w-full rounded-lg bg-[#8D294D] px-8 text-base font-bold text-white shadow-lg shadow-[#8D294D]/25 hover:bg-[#762140] sm:w-auto">
                   <Link href="/for-vendors/apply">Partner With Us</Link>
                 </Button>
-                <Button asChild variant="outline" className="h-12 rounded-lg border-[#E6A6B7] bg-white/80 px-8 text-base font-bold text-[#6F3E54] hover:bg-white">
+                <Button asChild variant="outline" className="h-12 w-full rounded-lg border-[#E6A6B7] bg-white/80 px-8 text-base font-bold text-[#6F3E54] hover:bg-white sm:w-auto">
                   <Link href="/for-vendors/vendors">See Benefits</Link>
                 </Button>
               </div>
@@ -378,7 +402,7 @@ export default function ForVendors() {
         {(page === "home" || page === "vendors") && (
         <section id="benefits" className="bg-white px-4 py-14 sm:px-8">
           <div className="mx-auto max-w-6xl">
-            <h2 className="text-center font-serif text-4xl font-bold text-[#8D294D]">
+            <h2 className="text-center font-serif text-3xl font-bold leading-tight text-[#8D294D] sm:text-4xl">
               Why Partner With Us?
             </h2>
             <div className="mt-9 grid gap-5 md:grid-cols-4">
@@ -402,8 +426,8 @@ export default function ForVendors() {
         {(page === "home" || page === "how-it-works") && (
         <section id="how-it-works" className="bg-[#FAF9FC] px-4 py-16 sm:px-8">
           <div className="mx-auto max-w-6xl text-center">
-            <h2 className="font-serif text-4xl font-bold text-[#8D294D]">How It Works</h2>
-            <p className="mt-3 text-lg text-[#3B1C2B]">We create a profile page for your business.</p>
+            <h2 className="font-serif text-3xl font-bold leading-tight text-[#8D294D] sm:text-4xl">How It Works</h2>
+            <p className="mt-3 text-base leading-7 text-[#3B1C2B] sm:text-lg">We create a profile page for your business.</p>
             <div className="mt-10 grid gap-6 md:grid-cols-3">
               {STEPS.map((step) => {
                 const Icon = step.icon;
@@ -429,8 +453,8 @@ export default function ForVendors() {
           <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
             <div className="space-y-6">
               <div>
-                <h2 className="font-serif text-4xl font-bold text-[#8D294D]">Ready to Partner?</h2>
-                <p className="mt-3 text-lg text-[#3B1C2B]">
+                <h2 className="font-serif text-3xl font-bold leading-tight text-[#8D294D] sm:text-4xl">Ready to Partner?</h2>
+                <p className="mt-3 text-base leading-7 text-[#3B1C2B] sm:text-lg">
                   Tell us about your business and we will review your fit for the A.I DO partner network.
                 </p>
               </div>
@@ -648,7 +672,7 @@ export default function ForVendors() {
           <div className="mx-auto max-w-6xl">
             <div className="mb-8 flex items-center gap-5">
               <div className="h-px flex-1 bg-[#EEE7F0]" />
-              <h2 className="text-center font-serif text-3xl font-bold text-[#8D294D]">Built for Wedding Professionals</h2>
+              <h2 className="text-center font-serif text-2xl font-bold leading-tight text-[#8D294D] sm:text-3xl">Built for Wedding Professionals</h2>
               <div className="h-px flex-1 bg-[#EEE7F0]" />
             </div>
             <div className="grid gap-6 md:grid-cols-2">

@@ -116,9 +116,37 @@ function stackedFooterCoupleName(value: string, data: WebsiteRendererPayload) {
   return pattern.test(value) ? value.replace(pattern, `\n${lastLine}`) : value;
 }
 
+function firstInitial(name: string) {
+  const match = name.trim().match(/[A-Za-zÀ-ÖØ-öø-ÿ0-9]/u);
+  return match?.[0]?.toUpperCase() ?? "";
+}
+
+function coupleInitials(data: WebsiteRendererPayload) {
+  const brideInitial = firstInitial(data.couple.partner2Name);
+  const groomInitial = firstInitial(data.couple.partner1Name);
+  return [brideInitial, groomInitial].filter(Boolean).join(" & ") || "G & J";
+}
+
 function defaultFooterCoupleName(data: WebsiteRendererPayload) {
+  return coupleInitials(data);
+}
+
+function footerCoupleValue(value: string, data: WebsiteRendererPayload) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
   const { firstLine, lastLine } = coupleHeaderParts(data);
-  return lastLine ? `${firstLine}\n${lastLine}` : firstLine;
+  const oldFullName = lastLine ? `${firstLine}\n${lastLine}` : firstLine;
+  const oldStackedName = stackedFooterCoupleName(trimmed, data);
+  if (
+    trimmed === oldFullName ||
+    trimmed === oldStackedName ||
+    trimmed.replace(/\s+/g, " ") === oldFullName.replace(/\s+/g, " ")
+  ) {
+    return coupleInitials(data);
+  }
+
+  return trimmed;
 }
 
 export interface WebsiteRendererPayload {
@@ -4366,7 +4394,7 @@ function Footer({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         <EditableText
           as="div"
           editable={ctx.editable}
-          value={stackedFooterCoupleName(data.customText._footerCoupleName ?? "", data)}
+          value={footerCoupleValue(data.customText._footerCoupleName ?? "", data)}
           defaultValue={footerCouple}
           onCommit={(v) => ctx.onTextChange("_footerCoupleName", v)}
           className="text-2xl mb-2 whitespace-pre-line leading-tight"

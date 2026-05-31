@@ -18,3 +18,7 @@ export function publishedWebsiteUrl(slug: string, section = "home") {
   const cleanSection = section?.trim().replace(/^\/+|\/+$/g, "");
   return `${publicAppOrigin()}/w/${cleanSlug}${cleanSection ? `/${cleanSection}` : ""}`;
 }
+
+export function publishedWebsiteQrUrl(slug: string) {
+  return publishedWebsiteUrl(slug, "home");
+}

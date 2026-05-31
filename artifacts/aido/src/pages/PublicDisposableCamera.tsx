@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type TouchEvent } from "react";
 import { useLocation, useRoute } from "wouter";
-import { Camera, ExternalLink, ImagePlus, Link, Loader2, Lock, RefreshCw, RefreshCcw, Send, Zap, ZapOff, ZoomIn, ZoomOut } from "lucide-react";
+import { Camera, ExternalLink, ImagePlus, Link, Loader2, Lock, RefreshCw, RefreshCcw, Send, Zap, ZapOff } from "lucide-react";
 import { apiFetch } from "@/lib/authFetch";
 import { getGuestPhotoDeviceFingerprint, getGuestPhotoDeviceId } from "@/lib/guestPhotoDevice";
 import { uploadGuestPhoto } from "@/lib/guestPhotoUpload";
@@ -13,7 +13,6 @@ const DEFAULT_SHOT_LIMIT = 10;
 const DEVELOPING_DELAY_MS = 2400;
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 3;
-const ZOOM_STEP = 0.25;
 
 const FILM_EFFECTS: Array<{
   id: FilmEffectId;
@@ -123,6 +122,13 @@ function getFilmEffect(effectId: FilmEffectId) {
 
 function clampZoom(value: number) {
   return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Number(value.toFixed(2))));
+}
+
+function touchDistance(touches: TouchList) {
+  const first = touches.item(0);
+  const second = touches.item(1);
+  if (!first || !second) return null;
+  return Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY);
 }
 
 async function setWidestSupportedCameraZoom(stream: MediaStream) {
@@ -239,6 +245,7 @@ export default function PublicDisposableCamera() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const flashEnabledRef = useRef(false);
   const shutterTimeoutRef = useRef<number | null>(null);
+  const pinchRef = useRef<{ distance: number; zoom: number } | null>(null);
 
   const [deviceId, setDeviceId] = useState("");
   const [deviceFingerprint, setDeviceFingerprint] = useState("");
@@ -573,16 +580,32 @@ export default function PublicDisposableCamera() {
     }
   }
 
-  function zoomIn() {
-    setZoom((current) => clampZoom(current + ZOOM_STEP));
-  }
-
-  function zoomOut() {
-    setZoom((current) => clampZoom(current - ZOOM_STEP));
-  }
-
   function resetZoom() {
     setZoom(1);
+    pinchRef.current = null;
+  }
+
+  function handleCameraTouchStart(event: TouchEvent<HTMLElement>) {
+    if (event.touches.length < 2 || uploading || showUploadPrompt || rollSubmitted) return;
+    const distance = touchDistance(event.touches);
+    if (!distance) return;
+    event.preventDefault();
+    pinchRef.current = { distance, zoom };
+  }
+
+  function handleCameraTouchMove(event: TouchEvent<HTMLElement>) {
+    if (event.touches.length < 2 || !pinchRef.current || uploading || showUploadPrompt || rollSubmitted) return;
+    const distance = touchDistance(event.touches);
+    if (!distance) return;
+    event.preventDefault();
+    const nextZoom = clampZoom((distance / pinchRef.current.distance) * pinchRef.current.zoom);
+    setZoom(nextZoom);
+  }
+
+  function handleCameraTouchEnd(event: TouchEvent<HTMLElement>) {
+    if (event.touches.length < 2) {
+      pinchRef.current = null;
+    }
   }
 
   function triggerShutterEffect() {
@@ -626,7 +649,14 @@ export default function PublicDisposableCamera() {
   const flashModeLabel = torchSupported && facingMode === "environment" ? "Camera flash" : "Screen flash";
 
   return (
-      <main className="fixed inset-0 overflow-hidden bg-[#070203] text-white">
+      <main
+        className="fixed inset-0 overflow-hidden bg-[#070203] text-white"
+        onTouchStart={handleCameraTouchStart}
+        onTouchMove={handleCameraTouchMove}
+        onTouchEnd={handleCameraTouchEnd}
+        onTouchCancel={handleCameraTouchEnd}
+        style={{ touchAction: "none" }}
+      >
       <style>{`
         @keyframes aido-shutter-backdrop {
           0% { opacity: 0; }
@@ -756,30 +786,13 @@ export default function PublicDisposableCamera() {
         </button>
         <button
           type="button"
-          aria-label="Zoom in"
-          onClick={zoomIn}
-          disabled={uploading || showUploadPrompt || zoom >= MAX_ZOOM}
-          className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/12 bg-black/45 text-white shadow-lg backdrop-blur transition active:scale-95 disabled:opacity-40"
-        >
-          <ZoomIn className="h-5 w-5" />
-        </button>
-        <button
-          type="button"
           aria-label="Reset zoom"
+          title="Reset zoom"
           onClick={resetZoom}
           disabled={uploading || showUploadPrompt || zoom === 1}
           className="min-w-12 rounded-full border border-white/12 bg-black/45 px-3 py-2 text-xs font-black text-white shadow-lg backdrop-blur transition active:scale-95 disabled:opacity-40"
         >
           {zoom.toFixed(zoom % 1 === 0 ? 0 : 2)}x
-        </button>
-        <button
-          type="button"
-          aria-label="Zoom out"
-          onClick={zoomOut}
-          disabled={uploading || showUploadPrompt || zoom <= MIN_ZOOM}
-          className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/12 bg-black/45 text-white shadow-lg backdrop-blur transition active:scale-95 disabled:opacity-40"
-        >
-          <ZoomOut className="h-5 w-5" />
         </button>
       </div>
 

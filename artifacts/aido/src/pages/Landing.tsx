@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { LanguagePicker } from "@/components/LanguagePicker";
 import VideoTemplate from "@/components/video/VideoTemplate";
 import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
+import { organizationSchema, setSeo, softwareSchema } from "@/lib/seo";
 
 const LANG_CODE_TO_NAME: Record<string, string> = Object.fromEntries(
   Object.entries(LANG_NAME_TO_CODE).map(([name, code]) => [code, name])
@@ -124,6 +125,22 @@ export default function Landing() {
   const { t } = useTranslation();
 
   useEffect(() => {
+    setSeo({
+      title: "AI Wedding Planner App | A.I DO Wedding Planning Assistant",
+      description: "Plan your wedding with A.I DO: an AI wedding planner app for guest lists, RSVP QR codes, wedding websites, budgets, vendors, checklists, contracts, and day-of timelines.",
+      path: "/",
+      jsonLd: [
+        organizationSchema(),
+        softwareSchema(
+          "A.I DO AI Wedding Planner",
+          "AI wedding planning software for budgets, guest lists, RSVPs, websites, vendors, contracts, seating charts, and day-of timelines.",
+          "/",
+        ),
+      ],
+    });
+  }, []);
+
+  useEffect(() => {
     let vid = localStorage.getItem("aido_vid");
     if (!vid) {
       vid = crypto.randomUUID();
@@ -137,10 +154,21 @@ export default function Landing() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#FFF7F2] text-[#8D294D]">
-      <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-2 border-b border-[#E6A6B7]/70 bg-[#FFF7F2]/[0.92] px-3 shadow-[0_1px_0_rgba(141,41,77,0.06)] backdrop-blur-md sm:h-[72px] sm:px-8">
-        <LandingLanguagePicker />
-        <nav className="flex min-w-0 items-center gap-1.5 sm:gap-10">
+    <div className="min-h-screen overflow-x-hidden bg-[#FFF7F2] text-[#8D294D]">
+      <header className="sticky top-0 z-40 border-b border-[#E6A6B7]/70 bg-[#FFF7F2]/[0.94] px-3 py-2 shadow-[0_1px_0_rgba(141,41,77,0.06)] backdrop-blur-md sm:px-8 sm:py-3">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2">
+          <LandingLanguagePicker />
+          <nav className="flex min-w-0 items-center justify-end gap-1.5 sm:gap-10">
+          <Link href="/ai-wedding-planner">
+            <Button variant="ghost" className="hidden h-10 px-2 text-base font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E] md:inline-flex">
+              AI Planner
+            </Button>
+          </Link>
+          <Link href="/wedding-website-builder">
+            <Button variant="ghost" className="hidden h-10 px-2 text-base font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E] lg:inline-flex">
+              Website Builder
+            </Button>
+          </Link>
           <Link href="/for-vendors">
             <Button variant="ghost" className="h-10 px-1.5 text-sm font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E] sm:px-2 sm:text-base">
               <span className="sm:hidden">Partners</span>
@@ -153,10 +181,18 @@ export default function Landing() {
             </Button>
           </Link>
           <Link href="/sign-up">
-            <Button className="h-10 max-w-[46vw] rounded-full bg-[linear-gradient(110deg,#E6A6B7_0%,#F2CFC6_52%,#E9A6A0_100%)] px-3 text-sm font-semibold leading-tight text-[#8D294D] shadow-[0_10px_18px_rgba(141,41,77,0.16)] hover:opacity-95 sm:h-11 sm:max-w-none sm:px-7 sm:text-base">
-              {t("landing.get_started", { defaultValue: "Get Started Free" })}
+            <Button className="h-10 rounded-full bg-[linear-gradient(110deg,#E6A6B7_0%,#F2CFC6_52%,#E9A6A0_100%)] px-3 text-sm font-semibold leading-tight text-[#8D294D] shadow-[0_10px_18px_rgba(141,41,77,0.16)] hover:opacity-95 sm:h-11 sm:px-7 sm:text-base">
+              <span className="sm:hidden">Start Free</span>
+              <span className="hidden sm:inline">{t("landing.get_started", { defaultValue: "Get Started Free" })}</span>
             </Button>
           </Link>
+        </nav>
+        </div>
+        <nav className="mx-auto mt-2 grid max-w-7xl grid-cols-4 gap-1.5 pb-1 text-center text-[11px] font-bold text-[#6F3E54] md:hidden" aria-label="Popular A.I DO tools">
+          <Link href="/ai-wedding-planner" className="rounded-full border border-[#E6A6B7]/45 bg-white/70 px-2 py-2">AI</Link>
+          <Link href="/wedding-website-builder" className="rounded-full border border-[#E6A6B7]/45 bg-white/70 px-2 py-2">Website</Link>
+          <Link href="/wedding-photo-qr-code" className="rounded-full border border-[#E6A6B7]/45 bg-white/70 px-2 py-2">Photo QR</Link>
+          <Link href="/wedding-planning-checklist" className="rounded-full border border-[#E6A6B7]/45 bg-white/70 px-2 py-2">Checklist</Link>
         </nav>
       </header>
 
@@ -164,38 +200,38 @@ export default function Landing() {
         <section className="relative isolate overflow-hidden border-b border-[#F2E2C6] bg-[#FFF7F2]">
           <div className="absolute inset-x-0 top-0 h-1.5 bg-[linear-gradient(90deg,#8D294D,#E6A6B7,#F2E2C6,#B16C8E)]" />
           <HeroSparkles />
-          <div className="relative z-10 mx-auto flex min-h-[calc(100vh-210px)] max-w-5xl flex-col items-center px-4 pb-8 pt-6 text-center sm:min-h-[calc(100vh-330px)] sm:px-8 sm:pb-8 sm:pt-8">
+          <div className="relative z-10 mx-auto flex min-h-[calc(100svh-132px)] max-w-5xl flex-col items-center px-4 pb-7 pt-5 text-center sm:min-h-[calc(100vh-330px)] sm:px-8 sm:pb-8 sm:pt-8">
             <img
               src="/logo.png"
               alt="A.I Do - AI Wedding Planner Assistant"
-              className="h-32 w-auto object-contain drop-shadow-[0_22px_38px_rgba(141,41,77,0.16)] sm:h-40"
+              className="h-24 w-auto object-contain drop-shadow-[0_22px_38px_rgba(141,41,77,0.16)] min-[390px]:h-28 sm:h-40"
             />
-            <div className="mt-3 rounded-full border border-[#B16C8E] bg-white/[0.55] px-5 py-1.5 text-sm font-bold uppercase tracking-[0.16em] text-[#B16C8E] shadow-sm sm:text-lg sm:tracking-[0.18em]">
+            <div className="mt-2 rounded-full border border-[#B16C8E] bg-white/[0.55] px-4 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-[#B16C8E] shadow-sm sm:mt-3 sm:px-5 sm:text-lg sm:tracking-[0.18em]">
               {t("landing.beta", { defaultValue: "Beta" })}
             </div>
 
-            <div className="mt-4 inline-flex max-w-full items-center justify-center gap-2 rounded-full bg-[#F2E2C6]/[0.55] px-4 py-2.5 text-sm font-medium leading-snug text-[#B16C8E] shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_12px_28px_rgba(141,41,77,0.08)] sm:mt-5 sm:gap-3 sm:px-10 sm:py-3 sm:text-xl">
+            <div className="mt-3 inline-flex max-w-full items-center justify-center gap-2 rounded-full bg-[#F2E2C6]/[0.55] px-4 py-2 text-xs font-medium leading-snug text-[#B16C8E] shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_12px_28px_rgba(141,41,77,0.08)] min-[390px]:text-sm sm:mt-5 sm:gap-3 sm:px-10 sm:py-3 sm:text-xl">
               <Sparkles className="h-4 w-4 shrink-0 text-[#E6A6B7] sm:h-5 sm:w-5" />
               <span className="min-w-0 text-balance">{t("landing.badge", { defaultValue: "AI Wedding Planner Assistant" })}</span>
             </div>
 
-            <h1 className="mt-5 max-w-[22rem] text-balance font-serif text-[2.25rem] leading-[1.04] tracking-normal text-[#8D294D] min-[390px]:text-[2.5rem] sm:mt-6 sm:max-w-4xl sm:text-[3.7rem] sm:leading-[1.02] md:text-[4.35rem] lg:text-[4.6rem]">
-              {t("landing.hero_line1", { defaultValue: "Plan your perfect day," })}
+            <h1 className="mt-4 max-w-[22rem] text-balance font-serif text-[2.15rem] leading-[1.04] tracking-normal text-[#8D294D] min-[390px]:text-[2.5rem] sm:mt-6 sm:max-w-4xl sm:text-[3.7rem] sm:leading-[1.02] md:text-[4.35rem] lg:text-[4.6rem]">
+              {t("landing.hero_line1", { defaultValue: "AI wedding planner for" })}
               <br />
-              <span className="italic text-[#C39B70]">{t("landing.hero_line2", { defaultValue: "effortlessly." })}</span>
+              <span className="italic text-[#C39B70]">{t("landing.hero_line2", { defaultValue: "your perfect day." })}</span>
             </h1>
             <div className="mt-4 flex items-center gap-2 text-[#C39B70]" aria-hidden="true">
               <span className="h-px w-20 bg-[linear-gradient(90deg,transparent,#C39B70)]" />
               <Heart className="h-4 w-4 fill-[#E6A6B7] text-[#E6A6B7]" />
               <span className="h-px w-20 bg-[linear-gradient(90deg,#C39B70,transparent)]" />
             </div>
-            <p className="mt-3 max-w-[42rem] text-pretty px-1 text-[0.95rem] leading-7 text-[#6F3E54] sm:mt-4 sm:px-0 sm:text-xl sm:leading-8">
-              {t("landing.hero_desc", { defaultValue: "Build your wedding plan faster with AI help for budgets, timelines, vendor emails, contracts, guests, and day-of coordination." })}
+            <p className="mt-3 max-w-[42rem] text-pretty px-1 text-[0.94rem] leading-6 text-[#6F3E54] sm:mt-4 sm:px-0 sm:text-xl sm:leading-8">
+              {t("landing.hero_desc", { defaultValue: "Use A.I DO to manage your wedding website, RSVP QR codes, guest list, budget, vendors, contracts, seating chart, checklist, and day-of timeline from one AI-powered workspace." })}
             </p>
 
             <div className="mt-6 flex w-full max-w-3xl flex-col gap-3 px-1 sm:flex-row sm:justify-center sm:px-0">
               <Link href="/sign-up">
-                <Button className="h-14 w-full rounded-full bg-[linear-gradient(110deg,#E6A6B7_0%,#D88A96_42%,#F4C9C2_100%)] px-4 text-base font-semibold leading-tight text-white shadow-[0_20px_36px_rgba(141,41,77,0.22)] hover:opacity-95 sm:h-16 sm:min-w-72 sm:text-xl">
+                <Button className="h-[52px] w-full rounded-full bg-[linear-gradient(110deg,#E6A6B7_0%,#D88A96_42%,#F4C9C2_100%)] px-4 text-base font-semibold leading-tight text-white shadow-[0_20px_36px_rgba(141,41,77,0.22)] hover:opacity-95 sm:h-16 sm:min-w-72 sm:text-xl">
                   <Sparkles className="mr-1.5 h-4 w-4 shrink-0 sm:mr-2 sm:h-5 sm:w-5" />
                   <span className="min-w-0 truncate">{t("landing.cta_start", { defaultValue: "Start Planning Free" })}</span>
                   <Sparkles className="ml-1.5 h-4 w-4 shrink-0 sm:ml-2 sm:h-5 sm:w-5" />
@@ -204,7 +240,7 @@ export default function Landing() {
               <Button
                 asChild
                 variant="outline"
-                className="h-14 w-full rounded-full border-[#B16C8E]/60 bg-white/45 px-4 text-base font-semibold leading-tight text-[#8D294D] shadow-[0_14px_28px_rgba(141,41,77,0.1)] hover:bg-white/65 sm:h-16 sm:w-auto sm:min-w-56 sm:text-lg"
+                className="h-[52px] w-full rounded-full border-[#B16C8E]/60 bg-white/45 px-4 text-base font-semibold leading-tight text-[#8D294D] shadow-[0_14px_28px_rgba(141,41,77,0.1)] hover:bg-white/65 sm:h-16 sm:w-auto sm:min-w-56 sm:text-lg"
               >
                 <a href="#preview">
                   <span>{t("landing.cta_preview", { defaultValue: "See the preview" })}</span>
@@ -223,7 +259,7 @@ export default function Landing() {
             </div>
           </div>
 
-          <div className="relative z-10 border-t border-[#E6A6B7]/30 bg-white/[0.5] px-4 py-10 backdrop-blur-sm">
+          <div className="relative z-10 border-t border-[#E6A6B7]/30 bg-white/[0.5] px-4 py-9 backdrop-blur-sm sm:py-10">
             <div className="mx-auto max-w-7xl">
               <div className="mb-8 text-center">
                 <h2 className="font-serif text-3xl leading-tight text-[#8D294D] sm:text-4xl">
@@ -233,20 +269,20 @@ export default function Landing() {
                   {t("landing.top_features_subtitle", { defaultValue: "Simple to use. Powerful where it matters." })}
                 </p>
               </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
                 {HERO_FEATURES.map(({ icon: Icon, titleKey, descKey, fallbackTitle, fallbackDesc }) => (
                   <div
                     key={titleKey}
-                    className="group flex min-h-64 flex-col rounded-[28px] border border-[#E6A6B7]/35 bg-[#FFFDFB]/88 p-6 text-left text-[#8D294D] shadow-[0_16px_38px_rgba(141,41,77,0.08)] transition duration-300 hover:-translate-y-1 hover:border-[#D4A373]/55 hover:shadow-[0_24px_54px_rgba(141,41,77,0.13)]"
+                    className="group flex min-h-0 flex-col rounded-2xl border border-[#E6A6B7]/35 bg-[#FFFDFB]/88 p-5 text-left text-[#8D294D] shadow-[0_16px_38px_rgba(141,41,77,0.08)] transition duration-300 hover:-translate-y-1 hover:border-[#D4A373]/55 hover:shadow-[0_24px_54px_rgba(141,41,77,0.13)] sm:min-h-64 sm:rounded-[28px] sm:p-6"
                   >
-                    <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F7DDE2] text-[#C39B70] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_22px_rgba(141,41,77,0.1)] transition duration-300 group-hover:bg-[#F2E2C6] group-hover:text-[#8D294D]">
-                      <Icon className="h-8 w-8 stroke-[1.6]" />
+                    <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F7DDE2] text-[#C39B70] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_22px_rgba(141,41,77,0.1)] transition duration-300 group-hover:bg-[#F2E2C6] group-hover:text-[#8D294D] sm:h-14 sm:w-14">
+                      <Icon className="h-7 w-7 stroke-[1.6] sm:h-8 sm:w-8" />
                     </span>
-                    <h3 className="mt-5 text-balance font-serif text-2xl font-bold leading-tight text-[#6F1D3D]">
+                    <h3 className="mt-4 text-balance font-serif text-xl font-bold leading-tight text-[#6F1D3D] sm:mt-5 sm:text-2xl">
                       {t(titleKey, { defaultValue: fallbackTitle })}
                     </h3>
-                    <div className="my-4 h-px w-full bg-[#E6A6B7]/35" />
-                    <p className="text-pretty text-base leading-7 text-[#6F3E54]">
+                    <div className="my-3 h-px w-full bg-[#E6A6B7]/35 sm:my-4" />
+                    <p className="text-pretty text-sm leading-6 text-[#6F3E54] sm:text-base sm:leading-7">
                       {t(descKey, { defaultValue: fallbackDesc })}
                     </p>
                   </div>
@@ -262,6 +298,13 @@ export default function Landing() {
                       "Aria planning support, wedding profile, RSVPs, document storage, reminders, exports, and polished tools that keep the whole plan easy to manage.",
                   })}
                 </p>
+              </div>
+              <div className="mt-6 grid gap-3 text-sm font-semibold text-[#6F3E54] sm:grid-cols-2 lg:grid-cols-5">
+                <Link href="/ai-wedding-planner" className="rounded-2xl border border-[#E6A6B7]/35 bg-white/70 p-4 hover:border-[#8D294D] hover:text-[#8D294D]">AI wedding planner</Link>
+                <Link href="/wedding-website-builder" className="rounded-2xl border border-[#E6A6B7]/35 bg-white/70 p-4 hover:border-[#8D294D] hover:text-[#8D294D]">Wedding website builder</Link>
+                <Link href="/wedding-photo-qr-code" className="rounded-2xl border border-[#E6A6B7]/35 bg-white/70 p-4 hover:border-[#8D294D] hover:text-[#8D294D]">Wedding photo QR code</Link>
+                <Link href="/wedding-planning-checklist" className="rounded-2xl border border-[#E6A6B7]/35 bg-white/70 p-4 hover:border-[#8D294D] hover:text-[#8D294D]">Wedding checklist</Link>
+                <Link href="/wedding-vendor-management" className="rounded-2xl border border-[#E6A6B7]/35 bg-white/70 p-4 hover:border-[#8D294D] hover:text-[#8D294D]">Vendor management</Link>
               </div>
             </div>
           </div>
@@ -297,6 +340,8 @@ export default function Landing() {
             <Link href="/security" className="underline-offset-4 hover:underline">Security</Link>
             <Link href="/data-handling" className="underline-offset-4 hover:underline">Data Handling</Link>
             <Link href="/for-vendors/apply" className="underline-offset-4 hover:underline">Vendors</Link>
+            <Link href="/wedding-website-builder" className="underline-offset-4 hover:underline">Wedding Website Builder</Link>
+            <Link href="/wedding-photo-qr-code" className="underline-offset-4 hover:underline">Photo QR Code</Link>
           </div>
         </div>
       </footer>

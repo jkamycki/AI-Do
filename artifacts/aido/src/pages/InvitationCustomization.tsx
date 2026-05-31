@@ -299,6 +299,7 @@ export default function InvitationCustomizationPage({
   const [includePrintQr, setIncludePrintQr] = useState(true);
   const [exportingPrintPdf, setExportingPrintPdf] = useState(false);
   const [testRecipientEmail, setTestRecipientEmail] = useState("");
+  const [isSendingTestInvitation, setIsSendingTestInvitation] = useState(false);
   const [customDesign, setCustomDesign] = useState<CustomDesignState>({
     saveTheDate: { backgroundColor: AIDO_BRAND_COLORS.ivory, accentColor: AIDO_BRAND_COLORS.burgundy, fontFamily: "Playfair Display", fontSize: "16", fontColor: AIDO_BRAND_COLORS.ink },
     rsvpInvitation: { backgroundColor: AIDO_BRAND_COLORS.ivory, accentColor: AIDO_BRAND_COLORS.burgundy, fontFamily: "Playfair Display", fontSize: "16", fontColor: AIDO_BRAND_COLORS.ink },
@@ -1488,7 +1489,16 @@ export default function InvitationCustomizationPage({
     }
   }, [testRecipientEmail, user?.primaryEmailAddress?.emailAddress]);
 
-  const sendTestInvitation = () => {
+  const sendTestInvitation = async () => {
+    if (deliveryMode !== "digital") {
+      toast({
+        title: "Digital invitations only",
+        description: "Switch Send Type to Digital before sending a test invitation.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const email = testRecipientEmail.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       toast({
@@ -1499,10 +1509,39 @@ export default function InvitationCustomizationPage({
       return;
     }
 
-    toast({
-      title: "Test invitation sent",
-      description: `${isSTD ? "Save the Date" : "RSVP invitation"} test sent to ${email}.`,
-    });
+    setIsSendingTestInvitation(true);
+    try {
+      const response = await authedFetch("/api/mobile/invitation-studio/test", {
+        method: "POST",
+        body: JSON.stringify({
+          email,
+          type: previewTab,
+          coupleNames: activeDesignDocument.couple,
+          message: activeDesignDocument.message,
+          rsvpBy: activeDesignDocument.fields.rsvpByDate,
+          accent: activeDesignDocument.style.accentColor,
+          textColor: activeDesignDocument.style.textColor,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({ error: "Could not send test email." }));
+        throw new Error((errorBody as { error?: string }).error || "Could not send test email.");
+      }
+
+      toast({
+        title: "Test invitation sent",
+        description: `${isSTD ? "Save the Date" : "RSVP invitation"} test sent to ${email}.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Test invitation failed",
+        description: error instanceof Error ? error.message : "Could not send the test invitation.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingTestInvitation(false);
+    }
   };
 
   return (
@@ -1517,7 +1556,7 @@ export default function InvitationCustomizationPage({
       </div>
 
       <div className="rounded-lg border bg-card p-3 sm:p-4 space-y-4">
-        <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-[1fr_1fr_1.35fr_1fr]">
+        <div className="grid gap-3 lg:grid-cols-3">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">Invitation</p>
             <div className="mt-2 grid grid-cols-2 gap-2">
@@ -1566,29 +1605,6 @@ export default function InvitationCustomizationPage({
               >
                 <Printer className="h-4 w-4" />
                 Print
-              </Button>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">Send Test Invitation</p>
-            <div className="mt-2 flex gap-2">
-              <Input
-                type="email"
-                value={testRecipientEmail}
-                onChange={(event) => setTestRecipientEmail(event.target.value)}
-                placeholder="you@example.com"
-                className="h-9 text-sm"
-              />
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="shrink-0 gap-2"
-                onClick={sendTestInvitation}
-              >
-                <Send className="h-4 w-4" />
-                Send Test
               </Button>
             </div>
           </div>
@@ -1643,9 +1659,10 @@ export default function InvitationCustomizationPage({
                 type="button"
                 className="gap-2 sm:w-auto"
                 onClick={sendTestInvitation}
+                disabled={isSendingTestInvitation}
               >
-                <Send className="h-4 w-4" />
-                Send test invitation
+                {isSendingTestInvitation ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {isSendingTestInvitation ? "Sending..." : "Send test invitation"}
               </Button>
             </div>
           </div>

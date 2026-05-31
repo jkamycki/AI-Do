@@ -34,7 +34,7 @@ import { EDITABLE_HIDDEN_MARKER, isEditableHiddenMarker } from "@/components/web
 import { HeroPhotoPositionDialog } from "@/components/HeroPhotoPositionDialog";
 import { ImageCropDialog, type CropQueueItem } from "@/components/ImageCropDialog";
 import { qrSvgDataUrl } from "@/lib/localQr";
-import { publicAppOrigin, publishedWebsiteUrl } from "@/lib/publicUrls";
+import { publicAppOrigin, publishedWebsiteQrUrl, publishedWebsiteUrl } from "@/lib/publicUrls";
 import * as QRCode from "qrcode";
 import {
   DEFAULT_RSVP_MEAL_OPTIONS,
@@ -1735,7 +1735,7 @@ export default function WebsiteEditor() {
 
   const publicUrl = useMemo(() => {
     if (!record) return "";
-    return publishedWebsiteUrl(record.slug, "home");
+    return publishedWebsiteQrUrl(record.slug);
   }, [record]);
 
   const copyLink = async () => {
@@ -3924,7 +3924,7 @@ function SlugEditor({
     }
   };
 
-  const fullUrl = publishedWebsiteUrl(slug, "home");
+  const fullUrl = publishedWebsiteQrUrl(slug);
   const host = fullUrl.replace(/^https?:\/\//, "").replace(/\/w\/.*$/, "");
   const [copied, setCopied] = useState(false);
 
@@ -4158,7 +4158,9 @@ function QrCodeSection({ publicUrl, published }: { publicUrl: string; published:
     }
     return cleanPublicUrl.replace(/\/(?:home|story|schedule|travel|registry|wedding-party|gallery|guest-photo-drop|faq|rsvp)$/, "");
   }, [cleanPublicUrl]);
-  const destinationUrl = destination === "rsvp" ? `${publicWebsiteBaseUrl}/rsvp` : `${publicWebsiteBaseUrl}/home`;
+  const websiteQrUrl = `${publicWebsiteBaseUrl}/home`;
+  const rsvpQrUrl = `${publicWebsiteBaseUrl}/rsvp`;
+  const destinationUrl = destination === "rsvp" ? rsvpQrUrl : websiteQrUrl;
   const selectedDestination = QR_DESTINATIONS.find((item) => item.id === destination) ?? QR_DESTINATIONS[0];
 
   useEffect(() => {

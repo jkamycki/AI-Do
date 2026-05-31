@@ -16,6 +16,7 @@ import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 import { MaintenanceNotice } from "@/components/MaintenanceNotice";
 
 const Landing = lazy(() => import("@/pages/Landing"));
+const SeoMarketingPage = lazy(() => import("@/pages/SeoMarketingPage"));
 const ForVendors = lazy(() => import("@/pages/ForVendors"));
 const PublicVendorProfile = lazy(() => import("@/pages/PublicVendorProfile"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
@@ -1900,6 +1901,11 @@ function Router() {
     <Suspense fallback={<RouteLoading />}>
       <Switch>
         <Route path="/" component={HomeRedirect} />
+        <Route path="/ai-wedding-planner" component={SeoMarketingPage} />
+        <Route path="/wedding-website-builder" component={SeoMarketingPage} />
+        <Route path="/wedding-photo-qr-code" component={SeoMarketingPage} />
+        <Route path="/wedding-planning-checklist" component={SeoMarketingPage} />
+        <Route path="/wedding-vendor-management" component={SeoMarketingPage} />
         <Route path="/vendors/:partnerId" component={PublicVendorProfile} />
         <Route path="/for-vendors/:section" component={ForVendors} />
         <Route path="/for-vendors" component={ForVendors} />

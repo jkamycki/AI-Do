@@ -912,3 +912,14 @@ export const guestPhotoUploads = pgTable("guest_photo_uploads", {
 });
 
 export type GuestPhotoUpload = typeof guestPhotoUploads.$inferSelect;
+
+export const guestPhotoUploadLocks = pgTable("guest_photo_upload_locks", {
+  id: serial("id").primaryKey(),
+  websiteId: integer("website_id").notNull(),
+  uploaderKey: text("uploader_key").notNull(),
+  submittedAt: timestamp("submitted_at").defaultNow().notNull(),
+}, (table) => ({
+  websiteUploaderKeyIdx: uniqueIndex("guest_photo_upload_locks_website_uploader_key_idx").on(table.websiteId, table.uploaderKey),
+}));
+
+export type GuestPhotoUploadLock = typeof guestPhotoUploadLocks.$inferSelect;

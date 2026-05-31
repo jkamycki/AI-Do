@@ -4,7 +4,7 @@ import { scrypt, randomBytes, timingSafeEqual, createHmac } from "node:crypto";
 import { promisify } from "node:util";
 import { Readable } from "node:stream";
 import rateLimit from "express-rate-limit";
-import { db, weddingWebsites, weddingProfiles, guests, websiteRsvps, weddingParty, hotelBlocks, invitationCustomizations, guestPhotoUploads } from "@workspace/db";
+import { db, weddingWebsites, weddingProfiles, guests, websiteRsvps, weddingParty, hotelBlocks, invitationCustomizations, guestPhotoUploads, guestPhotoUploadLocks } from "@workspace/db";
 import type { WeddingProfile, WebsiteSectionsEnabled, WebsiteCustomText, WebsiteGalleryImage, WebsiteHeroImage, WebsiteTextStyles, WebsiteTextPositions } from "@workspace/db";
 import { and, eq, ilike, desc, inArray, not, sql } from "drizzle-orm";
 import { openai, getModel } from "@workspace/integrations-openai-ai-server";
@@ -472,6 +472,25 @@ async function countGuestPhotoUploadsForKeys(websiteId: number, uploaderKeys: st
     .from(guestPhotoUploads)
     .where(and(eq(guestPhotoUploads.websiteId, websiteId), inArray(guestPhotoUploads.uploaderKey, uploaderKeys)));
   return Number(row?.count ?? 0);
+}
+
+async function hasGuestPhotoUploadLock(websiteId: number, uploaderKeys: string[]): Promise<boolean> {
+  if (!uploaderKeys.length) return false;
+  const [row] = await db
+    .select({ id: guestPhotoUploadLocks.id })
+    .from(guestPhotoUploadLocks)
+    .where(and(eq(guestPhotoUploadLocks.websiteId, websiteId), inArray(guestPhotoUploadLocks.uploaderKey, uploaderKeys)))
+    .limit(1);
+  return Boolean(row);
+}
+
+async function lockGuestPhotoUploaderKeys(websiteId: number, uploaderKeys: string[]): Promise<void> {
+  const uniqueKeys = Array.from(new Set(uploaderKeys.filter(Boolean)));
+  if (!uniqueKeys.length) return;
+  await db
+    .insert(guestPhotoUploadLocks)
+    .values(uniqueKeys.map((uploaderKey) => ({ websiteId, uploaderKey })))
+    .onConflictDoNothing();
 }
 
 function guestPhotoUsage(uploadedCount: number, totalLimit: number) {
@@ -2027,11 +2046,24 @@ router.post("/website/public/:slug/photo-drop/usage", guestPhotoUsageLimiter, as
     if (!settings.enabled) return res.status(404).json({ error: "Guest photo sharing is not available for this wedding." });
 
     const uploaderKeys = guestPhotoUploadKeys(req, r.site, req.body?.deviceId, req.body?.deviceFingerprint);
+    const locked = await hasGuestPhotoUploadLock(r.site.id, uploaderKeys.all);
+    if (locked) {
+      const usage = guestPhotoUsage(settings.maxUploads, settings.maxUploads);
+      return res.json({
+        ...usage,
+        maxPerUpload: 0,
+        submitted: true,
+      });
+    }
     const uploadedCount = await countGuestPhotoUploadsForKeys(r.site.id, uploaderKeys.all);
     const usage = guestPhotoUsage(uploadedCount, settings.maxUploads);
+    if (usage.remaining <= 0) {
+      await lockGuestPhotoUploaderKeys(r.site.id, uploaderKeys.all);
+    }
     res.json({
       ...usage,
       maxPerUpload: Math.max(0, Math.min(settings.maxUploads, usage.remaining)),
+      submitted: usage.remaining <= 0,
     });
   } catch (err) {
     req.log.error(err, "guestPhotoDropUsage failed");
@@ -2064,12 +2096,23 @@ router.post("/website/public/:slug/photo-drop/upload-url", guestPhotoPublicLimit
     if (detailError) return res.status(detailError.includes("5 MB") ? 413 : 400).json({ error: detailError });
 
     const uploaderKeys = guestPhotoUploadKeys(req, r.site, req.body?.deviceId, req.body?.deviceFingerprint);
+    const locked = await hasGuestPhotoUploadLock(r.site.id, uploaderKeys.all);
+    if (locked) {
+      const usage = guestPhotoUsage(settings.maxUploads, settings.maxUploads);
+      return res.status(409).json({
+        error: `This phone has already submitted its ${usage.limit}-photo disposable camera roll for this wedding.`,
+        usage,
+        submitted: true,
+      });
+    }
     const uploadedCount = await countGuestPhotoUploadsForKeys(r.site.id, uploaderKeys.all);
     const usageBeforeUpload = guestPhotoUsage(uploadedCount, settings.maxUploads);
     if (usageBeforeUpload.remaining <= 0) {
+      await lockGuestPhotoUploaderKeys(r.site.id, uploaderKeys.all);
       return res.status(409).json({
-        error: `This phone has already uploaded ${usageBeforeUpload.limit} photos for this wedding.`,
+        error: `This phone has already submitted its ${usageBeforeUpload.limit}-photo disposable camera roll for this wedding.`,
         usage: usageBeforeUpload,
+        submitted: true,
       });
     }
 
@@ -2119,12 +2162,23 @@ router.post("/website/public/:slug/photo-drop/complete", guestPhotoPublicLimiter
 
     const uploaderKeys = guestPhotoUploadKeys(req, r.site, req.body?.deviceId, req.body?.deviceFingerprint);
     const uploaderKey = uploaderKeys.primary;
+    const locked = await hasGuestPhotoUploadLock(r.site.id, uploaderKeys.all);
+    if (locked) {
+      const usage = guestPhotoUsage(settings.maxUploads, settings.maxUploads);
+      return res.status(409).json({
+        error: `This phone has already submitted its ${usage.limit}-photo disposable camera roll for this wedding.`,
+        usage,
+        submitted: true,
+      });
+    }
     const uploadedCount = await countGuestPhotoUploadsForKeys(r.site.id, uploaderKeys.all);
     const usageBeforeUpload = guestPhotoUsage(uploadedCount, settings.maxUploads);
     if (usageBeforeUpload.remaining <= 0) {
+      await lockGuestPhotoUploaderKeys(r.site.id, uploaderKeys.all);
       return res.status(409).json({
-        error: `This phone has already uploaded ${usageBeforeUpload.limit} photos for this wedding.`,
+        error: `This phone has already submitted its ${usageBeforeUpload.limit}-photo disposable camera roll for this wedding.`,
         usage: usageBeforeUpload,
+        submitted: true,
       });
     }
 
@@ -2165,11 +2219,17 @@ router.post("/website/public/:slug/photo-drop/complete", guestPhotoPublicLimiter
       })
       .returning();
 
+    const usageAfterUpload = guestPhotoUsage(uploadedCount + 1, settings.maxUploads);
+    if (usageAfterUpload.remaining <= 0) {
+      await lockGuestPhotoUploaderKeys(r.site.id, uploaderKeys.all);
+    }
+
     res.status(201).json({
       success: true,
       status,
       upload: serializeGuestPhotoUpload(created, r.site, false, false),
-      usage: guestPhotoUsage(uploadedCount + 1, settings.maxUploads),
+      usage: usageAfterUpload,
+      submitted: usageAfterUpload.remaining <= 0,
       message: "Thanks! Your photos were uploaded and are waiting for the couple to approve.",
     });
   } catch (err) {
@@ -2217,12 +2277,23 @@ router.post(
       }
       const uploaderKeys = guestPhotoUploadKeys(req, r.site, req.body?.deviceId, req.body?.deviceFingerprint);
       const uploaderKey = uploaderKeys.primary;
+      const locked = await hasGuestPhotoUploadLock(r.site.id, uploaderKeys.all);
+      if (locked) {
+        const usage = guestPhotoUsage(settings.maxUploads, settings.maxUploads);
+        return res.status(409).json({
+          error: `This phone has already submitted its ${usage.limit}-photo disposable camera roll for this wedding.`,
+          usage,
+          submitted: true,
+        });
+      }
       const uploadedCount = await countGuestPhotoUploadsForKeys(r.site.id, uploaderKeys.all);
       const usageBeforeUpload = guestPhotoUsage(uploadedCount, settings.maxUploads);
       if (usageBeforeUpload.remaining <= 0) {
+        await lockGuestPhotoUploaderKeys(r.site.id, uploaderKeys.all);
         return res.status(409).json({
-          error: `This phone has already uploaded ${usageBeforeUpload.limit} photos for this wedding.`,
+          error: `This phone has already submitted its ${usageBeforeUpload.limit}-photo disposable camera roll for this wedding.`,
           usage: usageBeforeUpload,
+          submitted: true,
         });
       }
       if (files.length > usageBeforeUpload.remaining) {
@@ -2275,11 +2346,17 @@ router.post(
         createdRows.push(created);
       }
 
+      const usageAfterUpload = guestPhotoUsage(uploadedCount + createdRows.length, settings.maxUploads);
+      if (usageAfterUpload.remaining <= 0) {
+        await lockGuestPhotoUploaderKeys(r.site.id, uploaderKeys.all);
+      }
+
       res.status(201).json({
         success: true,
         status,
         count: createdRows.length,
-        usage: guestPhotoUsage(uploadedCount + createdRows.length, settings.maxUploads),
+        usage: usageAfterUpload,
+        submitted: usageAfterUpload.remaining <= 0,
         message: "Thanks! Your photos were uploaded and are waiting for the couple to approve.",
       });
     } catch (err) {
