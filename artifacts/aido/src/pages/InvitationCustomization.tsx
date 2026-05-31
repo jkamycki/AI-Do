@@ -1511,7 +1511,7 @@ export default function InvitationCustomizationPage({
 
     setIsSendingTestInvitation(true);
     try {
-      const response = await authedFetch("/api/mobile/invitation-studio/test", {
+      const response = await authedFetch("/api/invitation-studio/test", {
         method: "POST",
         body: JSON.stringify({
           email,

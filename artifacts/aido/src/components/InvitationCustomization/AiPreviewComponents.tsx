@@ -403,13 +403,6 @@ export function AiSaveDatePreview({
   photoEffect?: string | null;
   hotelOptions?: SaveTheDateHotelInfo[];
 }) {
-  const [hotelResponse, setHotelResponse] = useState<"no" | "yes" | "booked">("no");
-  const [hotelBlockId, setHotelBlockId] = useState("");
-  const [hotelRoomCount, setHotelRoomCount] = useState("1");
-  const [hotelPreviewSaved, setHotelPreviewSaved] = useState(false);
-  const selectedHotel = hotelOptions.find((hotel) => String(hotel.id) === hotelBlockId) ?? null;
-  const hasSelectedHotelBlock = !!selectedHotel;
-
   if (fullPhoto) {
     return (
       <FullPhotoSaveDatePreview
@@ -442,23 +435,14 @@ export function AiSaveDatePreview({
   const couple    = [profile.partner2Name, profile.partner1Name].filter(Boolean).join(" & ") || "The Couple";
   const dateStr   = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const cityLine  = [profile.venueCity, profile.venueState].filter(Boolean).join(", ");
-  const hotelFieldStyle: CSSProperties = {
-    width: "100%",
-    border: `1px solid ${cardBdr}`,
-    borderRadius: 8,
-    background: "rgba(255,255,255,.78)",
-    color: text,
-    padding: "8px 9px",
-    fontFamily: labelFont,
-    fontSize: 11 * sc,
-  };
-  const renderSelectedHotelDetails = (hotel: SaveTheDateHotelInfo) => {
+  const renderHotelDetails = (hotel: SaveTheDateHotelInfo) => {
     const dateRange = formatHotelDateRange(hotel.checkInDate, hotel.checkOutDate);
     const rate = formatHotelMoney(hotel.pricePerNight);
     return (
       <div
+        key={hotel.id}
         style={{
-          marginTop: 8,
+          marginTop: 10,
           padding: "10px 11px",
           borderRadius: 9,
           border: `1px solid ${cardBdr}`,
@@ -570,97 +554,10 @@ export function AiSaveDatePreview({
               Hotel Accommodations
             </p>
           </div>
-          <label style={{ display: "block", marginBottom: 5, fontFamily: labelFont, fontSize: 10 * sc, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: text }}>
-            Will you need a hotel room?
-          </label>
           <p style={{ margin: "0 0 8px", fontFamily: labelFont, fontSize: 9.5 * sc, color: muted, lineHeight: 1.45 }}>
-            Let the couple know if you need a room, already booked one, or do not need hotel accommodations.
+            Hotel block details are below. Guests can use the booking link when they are ready to reserve.
           </p>
-          <select
-            value={hotelResponse}
-            onChange={(event) => {
-              const value = event.target.value as "no" | "yes" | "booked";
-              setHotelResponse(value);
-              setHotelPreviewSaved(false);
-              if (value === "no") setHotelBlockId("");
-            }}
-            style={hotelFieldStyle}
-          >
-            <option value="no">No</option>
-            <option value="yes">Yes</option>
-            <option value="booked">I've already booked</option>
-          </select>
-          {hotelResponse !== "no" && (
-            <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
-              <label style={{ display: "block", marginBottom: -4, fontFamily: labelFont, fontSize: 9.5 * sc, color: muted }}>
-                {hotelResponse === "booked" ? "Which hotel did you book?" : "Which hotel block will you book?"}
-              </label>
-              <select
-                value={hotelBlockId}
-                onChange={(event) => {
-                  setHotelBlockId(event.target.value);
-                  setHotelPreviewSaved(false);
-                }}
-                style={hotelFieldStyle}
-              >
-                <option value="">{hotelResponse === "booked" ? "Booked outside the block / not listed" : "Decide later"}</option>
-                {hotelOptions.map((hotel) => (
-                  <option key={hotel.id} value={String(hotel.id)}>
-                    {hotel.hotelName || "Hotel block"}
-                  </option>
-                ))}
-              </select>
-              {hasSelectedHotelBlock && (
-                <>
-                  <label style={{ display: "block", marginBottom: -4, fontFamily: labelFont, fontSize: 9.5 * sc, color: muted }}>
-                    {hotelResponse === "booked" ? "How many rooms did you book?" : "How many rooms will you need?"}
-                  </label>
-                  <select
-                    value={hotelRoomCount}
-                    onChange={(event) => {
-                      setHotelRoomCount(event.target.value);
-                      setHotelPreviewSaved(false);
-                    }}
-                    style={hotelFieldStyle}
-                  >
-                    <option value="1">1 room</option>
-                    <option value="2">2 rooms</option>
-                  </select>
-                </>
-              )}
-              {selectedHotel && renderSelectedHotelDetails(selectedHotel)}
-              <p style={{ margin: 0, fontFamily: labelFont, fontSize: 9.5 * sc, color: muted, lineHeight: 1.45 }}>
-                In the real guest link, this saves to the guest list hotel fields.
-              </p>
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={() => setHotelPreviewSaved(true)}
-            style={{
-              marginTop: 9,
-              width: "100%",
-              border: 0,
-              borderRadius: 8,
-              background: accent,
-              color: isLightHex(accent) ? text : BG,
-              cursor: "pointer",
-              fontFamily: labelFont,
-              fontSize: 10.5 * sc,
-              fontWeight: 800,
-              padding: "9px 10px",
-              textAlign: "center",
-              opacity: 0.86,
-            }}
-          >
-            Preview save hotel response
-          </button>
-          {hotelPreviewSaved && (
-            <p style={{ margin: "7px 0 0", fontFamily: labelFont, fontSize: 9.5 * sc, color: accent, lineHeight: 1.45 }}>
-              Hotel response saved in preview.
-              {hotelResponse !== "no" && selectedHotel ? ` ${selectedHotel.hotelName || "Hotel block"} - ${hotelRoomCount === "2" ? "2 rooms" : "1 room"}.` : ""}
-            </p>
-          )}
+          {hotelOptions.map(renderHotelDetails)}
         </div>
       )}
 

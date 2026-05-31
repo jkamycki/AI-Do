@@ -632,6 +632,7 @@ interface AiSaveTheDateOpts {
   photoObjectPos: string;
   photoZoom?: number;
   photoEffect?: string | null;
+  hotelOptions?: Awaited<ReturnType<typeof listSaveTheDateHotelOptions>>;
   logoBase64: string | null;
   // Optional color overrides for custom design mode; omit to use the default A.IDO brand palette.
   overrideBg?: string;
@@ -643,6 +644,72 @@ interface AiSaveTheDateOpts {
   overrideCoupleFont?: string;
   // Font size override: base size in px (e.g. "18"). Scales all text proportionally.
   overrideFontSize?: string;
+}
+
+function saveTheDateHotelEmailHtml({
+  hotels,
+  bg,
+  accent,
+  text,
+  muted,
+  cardBdr,
+  labelFont,
+  scale,
+}: {
+  hotels: Awaited<ReturnType<typeof listSaveTheDateHotelOptions>>;
+  bg: string;
+  accent: string;
+  text: string;
+  muted: string;
+  cardBdr: string;
+  labelFont: string;
+  scale: number;
+}): string {
+  const visibleHotels = hotels.filter((hotel) => hotel.hotelName || hotel.bookingLink || hotel.discountCode || hotel.groupName);
+  if (!visibleHotels.length) return "";
+  const rows = visibleHotels.map((hotel) => {
+    const address = [
+      hotel.address,
+      [hotel.city, hotel.state].filter(Boolean).join(", "),
+      hotel.zip,
+    ].filter(Boolean).join(" ");
+    const dateRange = [formatHotelEmailDate(hotel.checkInDate), formatHotelEmailDate(hotel.checkOutDate)].filter(Boolean).join(" to ");
+    const rate = hotel.pricePerNight != null && Number.isFinite(Number(hotel.pricePerNight))
+      ? `$${Number(hotel.pricePerNight).toLocaleString("en-US", { maximumFractionDigits: 0 })}/night`
+      : "";
+    const buttonText = isLightColor(accent) ? "#000000" : "#ffffff";
+    return `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px;border:1px solid ${cardBdr};border-radius:9px;background:rgba(255,255,255,0.62);">
+        <tr>
+          <td style="padding:10px 11px;text-align:left;font-family:${labelFont};font-size:${Math.round(10*scale)}px;line-height:1.45;color:${text};">
+            <p style="margin:0;font-weight:800;">${escapeHtml(hotel.hotelName || "Hotel block")}</p>
+            ${address ? `<p style="margin:2px 0 0;color:${muted};">${escapeHtml(address)}</p>` : ""}
+            ${hotel.groupName ? `<p style="margin:6px 0 0;color:${muted};"><strong>Wedding block:</strong> ${escapeHtml(hotel.groupName)}</p>` : ""}
+            ${dateRange ? `<p style="margin:2px 0 0;color:${muted};"><strong>Book these dates:</strong> ${escapeHtml(dateRange)}</p>` : ""}
+            ${hotel.distanceFromVenue ? `<p style="margin:2px 0 0;color:${muted};"><strong>Distance:</strong> ${escapeHtml(hotel.distanceFromVenue)}</p>` : ""}
+            ${rate ? `<p style="margin:2px 0 0;color:${muted};"><strong>Rate:</strong> ${escapeHtml(rate)}</p>` : ""}
+            ${hotel.discountCode ? `<p style="margin:2px 0 0;color:${muted};"><strong>Group code:</strong> ${escapeHtml(hotel.discountCode)}</p>` : ""}
+            ${hotel.cutoffDate ? `<p style="margin:2px 0 0;color:${muted};"><strong>Cutoff Date to Book:</strong> ${escapeHtml(formatHotelEmailDate(hotel.cutoffDate) || hotel.cutoffDate)}</p>` : ""}
+            ${dateRange ? `<p style="margin:6px 0 0;font-weight:800;color:${accent};">Select the check-in/check-out dates above when booking.</p>` : ""}
+            ${hotel.bookingLink ? `<a href="${escapeHtml(hotel.bookingLink)}" style="display:block;margin-top:8px;padding:8px 10px;border-radius:8px;background:${accent};color:${buttonText};font-weight:800;text-align:center;text-decoration:none;">Open booking link</a>` : ""}
+          </td>
+        </tr>
+      </table>`;
+  }).join("");
+  return `
+        <tr>
+          <td bgcolor="${bg}" style="background:${bg};padding:16px 24px 0;text-align:left;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${cardBdr};border-radius:10px;background:${accent}10;">
+              <tr>
+                <td style="padding:12px 14px;font-family:${labelFont};color:${text};">
+                  <p style="margin:0 0 7px;font-size:${Math.round(10*scale)}px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:${accent};">Hotel Accommodations</p>
+                  <p style="margin:0 0 8px;font-size:${Math.round(10*scale)}px;line-height:1.5;color:${muted};">Hotel block details are below. Use the booking link when you are ready to reserve.</p>
+                  ${rows}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>`;
 }
 
 function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
@@ -667,6 +734,16 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
   // Declare colour scheme so email clients (Gmail, Apple Mail) don't auto-invert
   // a light custom design into a dark one.
   const COLOR_SCHEME = isLightColor(BG) ? "light" : "dark";
+  const hotelHtml = saveTheDateHotelEmailHtml({
+    hotels: opts.hotelOptions ?? [],
+    bg: BG,
+    accent: ACCENT,
+    text: TEXT_COL,
+    muted: MUTED,
+    cardBdr: CARD_BDR,
+    labelFont: LABEL_FONT,
+    scale: sc,
+  });
 
   return `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
@@ -746,6 +823,8 @@ function aiSaveTheDateHtml(opts: AiSaveTheDateOpts): string {
             <p style="margin:0;font-family:${SERIF};font-size:${Math.round(12*sc)}px;font-style:italic;color:${MUTED};">Formal invitation to follow</p>
           </td>
         </tr>
+
+        ${hotelHtml}
 
         <tr>
           <td bgcolor="${BG}" style="background:${BG};padding:16px 24px 28px;text-align:center;">
@@ -2113,6 +2192,13 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
         profile.venueCity,
         profile.venueState,
       ].filter(Boolean).join(", ");
+      const stdCustomColors = (customization?.customColors ?? {}) as Record<string, unknown>;
+      const allSaveTheDateHotelOptions = await listSaveTheDateHotelOptions(profile.id);
+      const saveTheDateHotelOptions = stdCustomColors.saveTheDateShowHotel === true
+        ? stdCustomColors.saveTheDateHotelBlockId && stdCustomColors.saveTheDateHotelBlockId !== "all"
+          ? allSaveTheDateHotelOptions.filter((hotel) => hotel.id === Number(stdCustomColors.saveTheDateHotelBlockId))
+          : allSaveTheDateHotelOptions
+        : [];
       let html: string;
       if (useGenerated) {
         html = aiSaveTheDateHtml({
@@ -2129,6 +2215,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           photoObjectPos: stdPhotoObjectPos,
           photoZoom: stdPhotoZoom,
           photoEffect: stdPhotoEffect,
+          hotelOptions: saveTheDateHotelOptions,
           logoBase64,
         });
       } else {
@@ -2146,6 +2233,7 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
           photoObjectPos: stdPhotoObjectPos,
           photoZoom: stdPhotoZoom,
           photoEffect: stdPhotoEffect,
+          hotelOptions: saveTheDateHotelOptions,
           logoBase64,
           overrideBg: STD_EMAIL_BG,
           // Page sits behind the card. Keep it neutral so changing the card
@@ -2182,6 +2270,224 @@ router.post("/guests/:id/send-save-the-date", requireAuth, async (req, res) => {
     const errorMsg = err instanceof Error ? err.message : String(err);
     req.log.error({ error: errorMsg, stack: err instanceof Error ? err.stack : undefined }, "Failed to send save-the-date");
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/invitation-studio/test", requireAuth, async (req, res) => {
+  try {
+    const callerRole = await resolveCallerRole(req);
+    if (!hasMinRole(callerRole, "planner")) return res.status(403).json({ error: "Insufficient permissions." });
+
+    const profile = await resolveProfile(req);
+    if (!profile) return res.status(400).json({ error: "No wedding profile found." });
+
+    const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: "Enter a valid test email address." });
+    }
+
+    const type = req.body?.type === "saveTheDate" ? "saveTheDate" : "rsvp";
+    const [customization = null] = await db
+      .select()
+      .from(invitationCustomizations)
+      .where(eq(invitationCustomizations.profileId, profile.id))
+      .limit(1);
+    const useGenerated = customization?.useGeneratedInvitation !== false;
+    if (!useGenerated) {
+      const completeness = evaluateCustomDesignCompleteness({ customization, profile });
+      if (!completeness.isComplete) {
+        return res.status(422).json({
+          error: "Your custom design is not finished. Please complete your customization or switch to an AI-generated design before sending.",
+          missing: completeness.missing,
+          code: "custom_design_incomplete",
+        });
+      }
+    }
+
+    const formatDateLong = (value: string | null | undefined) => {
+      if (!value) return null;
+      const [y, m, d] = value.split("-").map(Number);
+      const date = y && m && d ? new Date(y, m - 1, d) : new Date(value);
+      if (Number.isNaN(date.getTime())) return null;
+      return date.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    };
+    const formatDateMonthDay = (value: string | null | undefined) => {
+      if (!value) return null;
+      const [y, m, d] = value.split("-").map(Number);
+      const date = y && m && d ? new Date(y, m - 1, d) : new Date(value);
+      if (Number.isNaN(date.getTime())) return null;
+      return date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+    };
+    const formatTime12h = (timeStr: string | null | undefined): string | null => {
+      if (!timeStr) return null;
+      const [h, m] = timeStr.split(":").map(Number);
+      if (Number.isNaN(h) || Number.isNaN(m)) return timeStr;
+      const ampm = h >= 12 ? "PM" : "AM";
+      const h12 = h % 12 || 12;
+      return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+    };
+    const publicPhoto = async (rawUrl: string | null | undefined): Promise<string | null> => {
+      if (!rawUrl || rawUrl.startsWith("blob:")) return null;
+      if (rawUrl.startsWith("http")) return rawUrl;
+      if (rawUrl.startsWith("/api/storage/public-objects/") || rawUrl.startsWith("/storage/public-objects/")) {
+        return `${buildOrigin(req)}${rawUrl}`;
+      }
+      return getImageAsBase64(rawUrl);
+    };
+
+    const frontendOrigin = buildFrontendOrigin(req);
+    const logoBase64 = `${frontendOrigin}/logo.png`;
+    const couple = coupleDisplayName(profile);
+    const weddingDateStr = formatDateLong(profile.weddingDate);
+    const ceremonyTimeStr = formatTime12h(profile.ceremonyTime);
+    const receptionTimeStr = formatTime12h(profile.receptionTime);
+    const basePalette = (!useGenerated && customization?.colorPalette)
+      ? customization.colorPalette as typeof DEFAULT_COLORS
+      : DEFAULT_COLORS;
+    const colors = !useGenerated && customization?.customColors
+      ? { ...basePalette, ...(customization.customColors as Partial<typeof DEFAULT_COLORS>) }
+      : basePalette;
+    const customColors = (customization?.customColors ?? {}) as Record<string, unknown>;
+    const overrides = (!useGenerated
+      ? (customization?.textOverrides as Record<string, {
+          text?: string;
+          objectX?: number;
+          objectY?: number;
+        }> | null) ?? {}
+      : {}) as Record<string, { text?: string; objectX?: number; objectY?: number }>;
+    const websiteUrl = await buildPublishedWebsiteUrl(req, profile.id);
+
+    let html: string;
+    let subject: string;
+    let text: string;
+    if (type === "saveTheDate") {
+      const headingFont = !useGenerated
+        ? sanitizeFont(customization?.saveTheDateFont || customization?.selectedFont, "Playfair Display")
+        : "Playfair Display";
+      const photoUrl = customization?.saveTheDatePhotoUrl ?? profile.saveTheDatePhotoUrl ?? profile.invitationPhotoUrl ?? null;
+      const photoPos = (customization?.saveTheDatePhotoPosition as { x?: number; y?: number } | null) ?? null;
+      const photoOverride = overrides["std:photo"] ?? {};
+      const photoObjectPos = `${photoPos?.x ?? photoOverride.objectX ?? 50}% ${photoPos?.y ?? photoOverride.objectY ?? 50}%`;
+      const photoImgSrc = await publicPhoto(photoUrl);
+      const bg = !useGenerated && customization?.saveTheDateBackground ? customization.saveTheDateBackground : AI_BG;
+      const bgIsLight = isLightColor(bg);
+      const allHotels = await listSaveTheDateHotelOptions(profile.id);
+      const hotelOptions = customColors.saveTheDateShowHotel === true
+        ? customColors.saveTheDateHotelBlockId && customColors.saveTheDateHotelBlockId !== "all"
+          ? allHotels.filter((hotel) => hotel.id === Number(customColors.saveTheDateHotelBlockId))
+          : allHotels
+        : [];
+      html = aiSaveTheDateHtml({
+        couple: useGenerated ? couple : overrides["std:couple"]?.text || couple,
+        weddingDateStr: useGenerated ? weddingDateStr : overrides["std:date"]?.text || weddingDateStr,
+        venue: useGenerated ? profile.venue : null,
+        venueAddress: useGenerated ? profile.location : null,
+        cityStateZip: [profile.venueCity, profile.venueState].filter(Boolean).join(", "),
+        ceremonyTimeStr: useGenerated ? ceremonyTimeStr : null,
+        receptionTimeStr: useGenerated ? receptionTimeStr : null,
+        saveTheDateMessage: useGenerated
+          ? (profile as any).saveTheDateMessage || null
+          : overrides["std:message"]?.text || (profile as any).saveTheDateMessage || null,
+        viewUrl: websiteUrl ?? `${frontendOrigin}/save-the-date/shared/${profile.id}`,
+        photoImgSrc,
+        photoObjectPos,
+        photoZoom: photoZoomFromCustomColors(customization?.customColors, "saveTheDatePhotoZoom"),
+        photoEffect: photoEffectFromCustomColors(customization?.customColors, "saveTheDatePhotoEffect"),
+        hotelOptions,
+        logoBase64,
+        ...(useGenerated ? {} : {
+          overrideBg: bg,
+          overridePageBg: bgIsLight ? AI_PAGE_BG : "#1a1a1a",
+          overrideAccent: customization?.saveTheDateAccentColor
+            ?? (customization?.customColors as Record<string, string> | null)?.saveTheDateAccent
+            ?? colors.accent,
+          overrideText: customization?.saveTheDateFontColor ?? (bgIsLight ? "#1a1a1a" : "#ffffff"),
+          overrideMuted: bgIsLight ? "rgba(0,0,0,0.58)" : "rgba(255,255,255,0.58)",
+          overrideCardBdr: bgIsLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)",
+          overrideCoupleFont: headingFont,
+          overrideFontSize: customization?.saveTheDateFontSize ?? undefined,
+        }),
+      });
+      subject = `Save the Date test - ${couple}`;
+      text = `A.I DO test\n\nSave the Date\n${couple}\n${weddingDateStr ?? ""}`;
+    } else {
+      const headingFont = !useGenerated
+        ? sanitizeFont(customization?.digitalInvitationFont || customization?.selectedFont, "Playfair Display")
+        : "Playfair Display";
+      const photoUrl = customization?.digitalInvitationPhotoUrl ?? profile.digitalInvitationPhotoUrl ?? profile.invitationPhotoUrl ?? null;
+      const photoPos = (customization?.digitalInvitationPhotoPosition as { x?: number; y?: number } | null) ?? null;
+      const photoOverride = overrides["dig:photo"] ?? {};
+      const photoObjectPos = `${photoPos?.x ?? photoOverride.objectX ?? 50}% ${photoPos?.y ?? photoOverride.objectY ?? 50}%`;
+      const photoImgSrc = await publicPhoto(photoUrl);
+      const cityStateZip = [
+        profile.venueCity,
+        [profile.venueState, profile.venueZip].filter(Boolean).join(" "),
+      ].filter(Boolean).join(", ");
+      const rsvpByDateStr = formatDateMonthDay(customization?.rsvpByDate);
+      const bg = !useGenerated && customization?.digitalInvitationBackground ? customization.digitalInvitationBackground : AI_BG;
+      const bgIsLight = isLightColor(bg);
+      const emailHotelRows = await db
+        .select({
+          id: hotelBlocks.id,
+          hotelName: hotelBlocks.hotelName,
+          groupName: hotelBlocks.groupName,
+          discountCode: hotelBlocks.discountCode,
+          cutoffDate: hotelBlocks.cutoffDate,
+        })
+        .from(hotelBlocks)
+        .where(eq(hotelBlocks.profileId, profile.id));
+      html = aiDigitalInvitationHtml({
+        couple: useGenerated ? couple : overrides["dig:couple"]?.text || `${couple}'s Wedding`,
+        guestName: "Test Guest",
+        weddingDateStr: useGenerated ? weddingDateStr : overrides["dig:date-value"]?.text || weddingDateStr,
+        venue: useGenerated ? profile.venue : overrides["dig:venue-value"]?.text || profile.venue || null,
+        venueAddress: useGenerated ? profile.location : overrides["dig:location"]?.text || profile.location || null,
+        cityStateZip: useGenerated ? cityStateZip : overrides["dig:city-state-zip"]?.text || cityStateZip,
+        ceremonyTimeStr,
+        receptionTimeStr,
+        invitationMessage: useGenerated
+          ? profile.invitationMessage
+          : overrides["dig:message"]?.text || profile.invitationMessage || null,
+        rsvpByDateStr,
+        hotelRsvpText: buildHotelRsvpEmailText(emailHotelRows, customColors.rsvpHotelBlockId as number | string | null | undefined),
+        websiteUrl,
+        rsvpUrl: websiteUrl ?? frontendOrigin,
+        photoImgSrc,
+        photoObjectPos,
+        photoZoom: photoZoomFromCustomColors(customization?.customColors, "digitalInvitationPhotoZoom"),
+        photoEffect: photoEffectFromCustomColors(customization?.customColors, "digitalInvitationPhotoEffect"),
+        logoBase64,
+        ...(useGenerated ? {} : {
+          overrideBg: bg,
+          overridePageBg: bgIsLight ? AI_PAGE_BG : "#1a1a1a",
+          overrideAccent: customization?.digitalInvitationAccentColor
+            ?? (customization?.customColors as Record<string, string> | null)?.digitalInvitationAccent
+            ?? colors.accent,
+          overrideText: customization?.digitalInvitationFontColor ?? (bgIsLight ? "#1a1a1a" : "#ffffff"),
+          overrideMuted: bgIsLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)",
+          overrideCardBdr: bgIsLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)",
+          overrideCoupleFont: headingFont,
+          overrideFontSize: customization?.digitalInvitationFontSize ?? undefined,
+        }),
+      });
+      subject = `RSVP Invitation test - ${couple}`;
+      text = `A.I DO test\n\nYou're invited\n${couple}\n${weddingDateStr ?? ""}`;
+    }
+
+    const result = await sendEmail({
+      to: email,
+      replyTo: FROM_EMAIL,
+      fromName: `${couple} via A.IDO`,
+      subject,
+      text,
+      html,
+    });
+
+    if (!result.ok) return res.status(502).json({ error: result.error || "Could not send test email." });
+    res.json({ emailSent: true, email, id: result.id ?? null });
+  } catch (err) {
+    req.log.error(err, "Failed to send invitation studio test");
+    res.status(500).json({ error: "Could not send test email." });
   }
 });
 
