@@ -1665,41 +1665,76 @@ function AuthBgSlide({
   );
 }
 
+function heroImageLookupKeys(url: string): string[] {
+  const keys = new Set<string>();
+  const add = (value: string | null | undefined) => {
+    const clean = value?.trim();
+    if (!clean) return;
+    keys.add(clean);
+    try {
+      keys.add(decodeURIComponent(clean));
+    } catch {
+      // Keep the original value when malformed encoding is present.
+    }
+  };
+
+  add(url);
+  try {
+    const parsed = new URL(url, typeof window !== "undefined" ? window.location.origin : "https://aidowedding.net");
+    add(parsed.pathname);
+    const marker = "/media/";
+    const mediaIndex = parsed.pathname.indexOf(marker);
+    if (mediaIndex >= 0) {
+      const mediaPath = parsed.pathname.slice(mediaIndex + marker.length);
+      add(mediaPath);
+      add(mediaPath.replace(/^\/+/, ""));
+    }
+  } catch {
+    const [pathOnly] = url.split("?");
+    add(pathOnly);
+  }
+
+  return Array.from(keys);
+}
+
+function lookupHeroImageSetting<T>(
+  raw: string | undefined,
+  url: string,
+  validate: (value: unknown) => T | null,
+): T | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    const map = parsed as Record<string, unknown>;
+    for (const key of heroImageLookupKeys(url)) {
+      const value = validate(map[key]);
+      if (value !== null) return value;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // Per-URL focal points the user picks via HeroPhotoPositionDialog. Stored
 // as a JSON map under customText._heroFocals so a single key covers every
 // hero photo. Falls back to "center" when missing or malformed.
 function heroFocalFor(data: WebsiteRendererPayload, url: string): string {
-  const raw = data.customText._heroFocals;
-  if (!raw) return "center";
-  try {
-    const parsed = JSON.parse(raw);
-    const value =
-      parsed && typeof parsed === "object"
-        ? (parsed as Record<string, unknown>)[url]
-        : undefined;
-    return typeof value === "string" && value.trim() ? value : "center";
-  } catch {
-    return "center";
-  }
+  return lookupHeroImageSetting(data.customText._heroFocals, url, (value) =>
+    typeof value === "string" && value.trim() ? value : null,
+  ) ?? "center";
 }
 
 // Per-URL zoom levels (1.0 = native cover, 4.0 = max). Same JSON-map shape
 // as _heroFocals. Returns 1 when missing/malformed so non-zoomed photos
 // don't get a redundant transform.
 function heroZoomFor(data: WebsiteRendererPayload, url: string): number {
-  const raw = data.customText._heroZooms;
-  if (!raw) return 1;
-  try {
-    const parsed = JSON.parse(raw);
-    const value =
-      parsed && typeof parsed === "object"
-        ? (parsed as Record<string, unknown>)[url]
-        : undefined;
-    if (typeof value !== "number" || !Number.isFinite(value)) return 1;
+  const zoom = lookupHeroImageSetting(data.customText._heroZooms, url, (value) => {
+    if (typeof value !== "number" || !Number.isFinite(value)) return null;
     return Math.max(1, Math.min(4, value));
-  } catch {
-    return 1;
-  }
+  });
+  return zoom ?? 1;
 }
 
 function HeroBackground({
@@ -2542,6 +2577,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
     borderRadius: 12,
     padding: isMobileRender ? "16px" : "18px 20px",
     overflowWrap: "break-word",
+    textAlign: isMobileRender ? "center" : undefined,
   };
   const iconWrap: React.CSSProperties = {
     width: 36,
@@ -2583,16 +2619,16 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         {...withBaseColor(tsp(ctx, "travel_subtitle"), labelColor)}
       />
 
-      <div className={`${isMobileRender ? "grid grid-cols-1" : "grid sm:grid-cols-2"} gap-4 max-w-3xl mx-auto mb-6`}>
+      <div className={`${isMobileRender ? "grid grid-cols-1 justify-items-center" : "grid sm:grid-cols-2"} gap-4 max-w-3xl mx-auto mb-6`}>
         {/* Venue */}
         {data.couple.venue &&
           !isEditableHiddenMarker(data.customText._travelVenueHidden) && (
-            <div style={cardStyle}>
-              <div className={isMobileRender ? "flex flex-col items-start gap-3 mb-4" : "flex items-start gap-3 mb-3"}>
+            <div className={isMobileRender ? "w-full max-w-[18rem]" : undefined} style={cardStyle}>
+              <div className={isMobileRender ? "flex flex-col items-center gap-3 mb-4" : "flex items-start gap-3 mb-3"}>
                 <div style={iconWrap}>
                   <MapPin className="h-4 w-4" />
                 </div>
-                <div>
+                <div className={isMobileRender ? "w-full text-center" : undefined}>
                   <EditableText
                     as="div"
                     editable={ctx.editable}
@@ -2643,12 +2679,12 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         {/* Hotel */}
         {(hasHotel || ctx.editable) &&
           !isEditableHiddenMarker(data.customText._travelHotelHidden) && (
-            <div style={cardStyle}>
-              <div className={isMobileRender ? "flex flex-col items-start gap-3 mb-4" : "flex items-start gap-3 mb-3"}>
+            <div className={isMobileRender ? "w-full max-w-[18rem]" : undefined} style={cardStyle}>
+              <div className={isMobileRender ? "flex flex-col items-center gap-3 mb-4" : "flex items-start gap-3 mb-3"}>
                 <div style={iconWrap}>
                   <Bed className="h-4 w-4" />
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className={`flex-1 min-w-0 ${isMobileRender ? "w-full text-center" : ""}`}>
                   <EditableText
                     as="div"
                     editable={ctx.editable}
@@ -2682,7 +2718,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   )}
                 </div>
               </div>
-              <div className={isMobileRender ? "flex flex-col items-start gap-2" : "flex flex-wrap items-center gap-x-4 gap-y-2"}>
+              <div className={isMobileRender ? "flex flex-col items-center gap-2" : "flex flex-wrap items-center gap-x-4 gap-y-2"}>
                 {hasHotel && (
                   <a
                     href={`https://www.google.com/maps/search/${hotelQuery}`}
@@ -2709,7 +2745,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                 )}
               </div>
               {(syncedHotel?.groupName || syncedHotel?.discountCode || syncedHotel?.cutoffDate || syncedHotel?.checkInDate || syncedHotel?.checkOutDate) && (
-                <div className="mt-3 space-y-1 rounded-lg px-3 py-2 text-xs" style={{ background: `${data.colorPalette.primary}10`, color: labelColor }}>
+                <div className="mt-3 space-y-1 rounded-lg px-3 py-2 text-xs" style={{ background: `${data.colorPalette.primary}10`, color: labelColor, textAlign: isMobileRender ? "center" : undefined }}>
                   {(syncedHotel.checkInDate || syncedHotel.checkOutDate) && <p><span className="font-semibold">Block dates:</span> {websiteHotelDateRange(syncedHotel.checkInDate, syncedHotel.checkOutDate)}</p>}
                   {syncedHotel.groupName && <p><span className="font-semibold">Wedding block:</span> {syncedHotel.groupName}</p>}
                   {syncedHotel.discountCode && <p><span className="font-semibold">Group code:</span> <span className="font-mono font-semibold">{syncedHotel.discountCode}</span></p>}
