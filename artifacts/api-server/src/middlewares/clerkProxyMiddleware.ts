@@ -55,6 +55,8 @@ export function clerkProxyMiddleware(): RequestHandler {
 
         proxyReq.setHeader("Clerk-Proxy-Url", proxyUrl);
         proxyReq.setHeader("Clerk-Secret-Key", secretKey);
+        proxyReq.setHeader("Origin", `${protocol}://${host}`);
+        proxyReq.setHeader("Referer", `${protocol}://${host}/`);
 
         const xff = req.headers["x-forwarded-for"];
         const clientIp =

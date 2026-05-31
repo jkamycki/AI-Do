@@ -60,7 +60,11 @@ const VideoTemplate = lazy(() => import("@/components/video/VideoTemplate"));
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const rawClerkProxyUrl = String(import.meta.env.VITE_CLERK_PROXY_URL ?? "").trim().replace(/\/+$/, "");
-const clerkProxyUrl = rawClerkProxyUrl.replace(/\/clerk$/, "/api/__clerk");
+const publicOrigin = String(import.meta.env.VITE_PUBLIC_APP_URL ?? "https://aidowedding.net").trim().replace(/\/+$/, "");
+const normalizedClerkProxyUrl = rawClerkProxyUrl.replace(/\/clerk$/, "/api/__clerk");
+const clerkProxyUrl = /^https:\/\/ai-do\.onrender\.com\/api\/__clerk$/i.test(normalizedClerkProxyUrl)
+  ? `${publicOrigin}/api/__clerk`
+  : normalizedClerkProxyUrl;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 setBaseUrl(import.meta.env.VITE_API_URL || null);
