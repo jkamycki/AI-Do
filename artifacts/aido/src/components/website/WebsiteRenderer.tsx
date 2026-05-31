@@ -100,7 +100,12 @@ function hasInlineHtml(value: string) {
 }
 
 function stackedCoupleName(value: string) {
-  if (hasInlineHtml(value)) return value;
+  if (hasInlineHtml(value)) {
+    return value.replace(
+      /\s*(?:&amp;|&)\s*/gi,
+      '<br><span style="display: block; width: 100%; text-align: center">&amp;</span><br>',
+    );
+  }
   return value.replace(/\s+&\s+/g, "\n&\n");
 }
 
@@ -2192,6 +2197,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
           className="text-4xl sm:text-6xl md:text-8xl mb-6 leading-tight whitespace-pre-line break-words [overflow-wrap:anywhere]"
           style={{
             fontFamily: fontStack(headingFont(data)),
+            textAlign: "center",
             color:
               data.heroImage || (data.heroImages?.length ?? 0) > 0
                 ? "#fff"
