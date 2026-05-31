@@ -1,4 +1,5 @@
 import type { InvitationCustomization, PreviewTab, WeddingProfileData } from "@/types/invitations";
+import { coupleFirstNames } from "@/lib/coupleNames";
 
 export type InvitationDeliveryMode = "digital" | "print";
 export type InvitationDesignMode = "ai" | "custom";
@@ -87,7 +88,7 @@ export function buildInvitationDesignDocument({
   rsvpByDate,
   hotelOptions = [],
 }: BuildInvitationDesignDocumentInput): InvitationDesignDocument {
-  const couple = [profile.partner2Name, profile.partner1Name].filter(Boolean).join(" & ") || "The Couple";
+  const couple = coupleFirstNames(profile.partner2Name, profile.partner1Name);
   const isSaveTheDate = kind === "saveTheDate";
   const accentColor = isSaveTheDate
     ? customization?.saveTheDateAccentColor

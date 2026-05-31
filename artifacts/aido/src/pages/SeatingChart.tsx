@@ -5,6 +5,7 @@ import { useGetGuests, useGetProfile, getGetGuestsQueryKey, getGetDashboardSumma
 import type { Guest as GuestListGuest } from "@workspace/api-client-react";
 import { authFetch } from "@/lib/authFetch";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
+import { coupleFirstNames } from "@/lib/coupleNames";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1421,7 +1422,7 @@ export default function SeatingChartPage() {
       };
 
       const couple = profile
-        ? `${profile.partner2Name ?? ""} & ${profile.partner1Name ?? ""}`.trim()
+        ? coupleFirstNames(profile.partner2Name, profile.partner1Name, "")
         : "";
       const weddingDate = profile?.weddingDate
         ? (() => {

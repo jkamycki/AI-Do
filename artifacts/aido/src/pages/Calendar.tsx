@@ -9,6 +9,7 @@ import {
 } from "@workspace/api-client-react";
 import type { BudgetItem, ChecklistItem, Vendor, VendorPayment, WeddingProfile } from "@workspace/api-client-react";
 import { authFetch } from "@/lib/authFetch";
+import { coupleFirstNames } from "@/lib/coupleNames";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -178,7 +179,7 @@ function buildEvents({
     events.push({
       id: "wedding-date",
       type: "wedding",
-      title: `${profile?.partner1Name ?? "Wedding"} & ${profile?.partner2Name ?? "Celebration"}`,
+      title: profile ? coupleFirstNames(profile.partner2Name, profile.partner1Name) : "Wedding Celebration",
       date: weddingDate,
       time: profile?.ceremonyTime || undefined,
       detail: profile?.venue ? `Wedding day at ${profile.venue}` : "Wedding day",

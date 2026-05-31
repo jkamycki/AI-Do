@@ -4,6 +4,7 @@ import { AuthMediaImage } from "@/components/AuthMediaImage";
 import type { ColorPalette } from "@/types/invitations";
 import type { PhotoPosition } from "@/components/InvitationCustomization/AiPreviewComponents";
 import { DEFAULT_RSVP_MEAL_OPTIONS, type MealOption } from "@/lib/mealOptions";
+import { coupleFirstNames } from "@/lib/coupleNames";
 
 interface RsvpPagePreviewProps {
   colors: ColorPalette;
@@ -161,7 +162,7 @@ export function RsvpPagePreview({
   const cardBg = isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)";
   const cardBorder = isLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)";
   const accentText = isLightColor(accent) ? "#1a1a1a" : "#ffffff";
-  const couple = [partner2Name, partner1Name].filter(Boolean).join(" & ") || "The Couple";
+  const couple = coupleFirstNames(partner2Name, partner1Name);
   const dateStr = weddingDate ? formatDate(weddingDate) : "Wedding Day";
   // Apply custom font family to all text when set; falls back to defaults.
   const serifStack = font

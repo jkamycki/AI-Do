@@ -4,6 +4,7 @@ import { useRoute, useLocation } from "wouter";
 import { useAuth, useUser, useClerk } from "@clerk/react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
+import { coupleFirstNames } from "@/lib/coupleNames";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -397,7 +398,7 @@ export default function InviteAcceptPage() {
           {/* Wedding info */}
           <div className="text-center space-y-1">
             <h2 className="text-2xl font-serif text-primary">
-              {invite.partner2Name} & {invite.partner1Name}
+              {coupleFirstNames(invite.partner2Name, invite.partner1Name)}
             </h2>
             {(invite.weddingDate || invite.venue) && (
               <p className="text-muted-foreground text-sm">

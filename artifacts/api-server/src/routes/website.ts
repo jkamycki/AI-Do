@@ -661,7 +661,11 @@ async function generateUniqueSlug(profile: WeddingProfile): Promise<string> {
 }
 
 function autoGenerateText(profile: WeddingProfile): WebsiteCustomText {
-  const couple = `${profile.partner2Name} & ${profile.partner1Name}`;
+  const firstName = (name?: string | null) => {
+    const parts = String(name ?? "").trim().split(/\s+/).filter(Boolean);
+    return parts.length <= 1 ? parts[0] ?? "" : parts.slice(0, -1).join(" ");
+  };
+  const couple = [firstName(profile.partner2Name), firstName(profile.partner1Name)].filter(Boolean).join(" & ") || "The Couple";
   const venueLine = profile.venue ? `${profile.venue}${profile.location ? `, ${profile.location}` : ""}` : "";
   return {
     welcome: `Welcome to our wedding website! We can't wait to celebrate with you on ${profile.weddingDate}${venueLine ? ` at ${venueLine}` : ""}. Browse the site for everything you need to know.`,

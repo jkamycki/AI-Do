@@ -13,6 +13,7 @@ import { useGetTimeline, useGenerateTimeline, useGetProfile, getGetTimelineQuery
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { authFetch } from "@/lib/authFetch";
 import { getCurrentLanguageCode, getCurrentLanguageName } from "@/lib/languagePreference";
+import { coupleFirstNames } from "@/lib/coupleNames";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
@@ -877,7 +878,7 @@ export default function Timeline() {
     if (!localEvents.length) return;
     setIsDownloadingPdf(true);
     try {
-      const coupleName = profile ? `${profile.partner2Name} & ${profile.partner1Name}` : undefined;
+      const coupleName = profile ? coupleFirstNames(profile.partner2Name, profile.partner1Name) : undefined;
       const eventsForPdf = visibleEvents.map(e => ({
         time: e.startTime ? formatTime(e.startTime) : "",
         title: e.title,

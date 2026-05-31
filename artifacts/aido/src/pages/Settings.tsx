@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { LanguagePicker } from "@/components/LanguagePicker";
+import { coupleFirstNames } from "@/lib/coupleNames";
 import { useGetProfile, useSaveProfile, getGetProfileQueryKey } from "@workspace/api-client-react";
 import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 import { useTranslation } from "react-i18next";
@@ -1357,7 +1358,7 @@ export default function SettingsPage() {
   const myRole = data?.myRole ?? (sharedProfileId ? activeWorkspace?.role ?? "viewer" : "owner");
   const canManage = myRole === "owner" || myRole === "partner";
   const activeWorkspaceName = data?.workspaceName
-    ?? (activeWorkspace ? `${activeWorkspace.partner2Name} & ${activeWorkspace.partner1Name}` : null)
+    ?? (activeWorkspace ? coupleFirstNames(activeWorkspace.partner2Name, activeWorkspace.partner1Name) : null)
     ?? "My Workspace";
 
   useEffect(() => {

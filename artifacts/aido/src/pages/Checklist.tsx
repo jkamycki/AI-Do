@@ -9,6 +9,7 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { authFetch } from "@/lib/authFetch";
 import { getCurrentLanguageCode, getCurrentLanguageName } from "@/lib/languagePreference";
+import { coupleFirstNames } from "@/lib/coupleNames";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -347,7 +348,7 @@ export default function Checklist() {
     if (!visibleItems.length) return;
     setIsDownloadingPdf(true);
     try {
-      const coupleName = profile ? `${profile.partner2Name} & ${profile.partner1Name}` : undefined;
+      const coupleName = profile ? coupleFirstNames(profile.partner2Name, profile.partner1Name) : undefined;
       const response = await authFetch(`${API}/api/pdf/checklist`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

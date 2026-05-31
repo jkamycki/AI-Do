@@ -6,6 +6,7 @@ import { apiFetch } from "@/lib/authFetch";
 import { getGuestPhotoDeviceId } from "@/lib/guestPhotoDevice";
 import { uploadGuestPhoto } from "@/lib/guestPhotoUpload";
 import { publishedWebsiteUrl } from "@/lib/publicUrls";
+import { coupleFirstNames } from "@/lib/coupleNames";
 
 type PublicPhotoDropPayload = {
   slug: string;
@@ -48,7 +49,7 @@ const PORTAL_ONLY_INSTRUCTIONS =
 
 function coupleName(data: PublicPhotoDropPayload | null) {
   if (!data) return "A.I Do";
-  return `${data.couple.partner2Name} & ${data.couple.partner1Name}`;
+  return coupleFirstNames(data.couple.partner2Name, data.couple.partner1Name);
 }
 
 function formatFileSize(size: number) {

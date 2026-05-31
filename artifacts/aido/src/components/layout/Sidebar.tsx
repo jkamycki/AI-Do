@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { authFetch } from "@/lib/authFetch";
+import { coupleFirstNames } from "@/lib/coupleNames";
 import { useTracking } from "@/hooks/useTracking";
 
 const AvatarCropDialog = lazy(() =>
@@ -147,7 +148,7 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
   const ownWorkspaces = data?.ownProfile ? [{ ...data.ownProfile, role: "owner" }] : [];
 
   const workspaceLabel = (ws: { workstationName?: string | null; partner1Name: string; partner2Name: string }) =>
-    ws.workstationName?.trim() || `${ws.partner2Name} & ${ws.partner1Name}`;
+    ws.workstationName?.trim() || coupleFirstNames(ws.partner2Name, ws.partner1Name);
 
   if (sharedWorkspaces.length === 0) return null;
 
@@ -254,7 +255,7 @@ function WorkspaceSwitcher({ onClose }: { onClose: () => void }) {
             >
               <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <div className="truncate">{ws.partner2Name} & {ws.partner1Name}</div>
+                <div className="truncate">{coupleFirstNames(ws.partner2Name, ws.partner1Name)}</div>
                 <div className="text-[10px] text-muted-foreground capitalize">{ws.role}</div>
               </div>
               {activeWorkspace?.profileId === ws.profileId && (
@@ -596,7 +597,7 @@ export function Sidebar() {
               {activeWorkspace.role === "owner" ? t("sidebar.viewing_client", { defaultValue: "Viewing Client" }) : t("sidebar.viewing_shared")}
             </p>
             <p className="text-xs text-foreground font-medium truncate mt-0.5">
-              {activeWorkspace.workstationName || `${activeWorkspace.partner2Name} & ${activeWorkspace.partner1Name}`}
+              {activeWorkspace.workstationName || coupleFirstNames(activeWorkspace.partner2Name, activeWorkspace.partner1Name)}
             </p>
           </div>
         )}

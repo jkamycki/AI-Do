@@ -1,6 +1,7 @@
 import { Component, useEffect, useRef, useState } from "react";
 import type { ComponentType } from "react";
 import { authFetch } from "@/lib/authFetch";
+import { coupleFirstNames } from "@/lib/coupleNames";
 import {
   getGetTimelineQueryKey,
   useEmergencyAdvice,
@@ -1797,7 +1798,7 @@ function DayOfInner() {
     if (!editableEvents.length) return;
     setIsExportingTimelinePdf(true);
     try {
-      const coupleName = profile ? `${profile.partner2Name} & ${profile.partner1Name}` : undefined;
+      const coupleName = profile ? coupleFirstNames(profile.partner2Name, profile.partner1Name) : undefined;
       const eventsForPdf = editableEvents.map((event, index) => ({
         time: event.time,
         title: event.title,
@@ -1868,7 +1869,7 @@ function DayOfInner() {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
       doc.setTextColor(muted);
-      doc.text(`${profile?.partner2Name ?? "Partner"} & ${profile?.partner1Name ?? "Partner"} | ${profile?.weddingDate ?? "Wedding date TBD"} | ${profile?.venue ?? "Venue TBD"}`, margin, y);
+      doc.text(`${profile ? coupleFirstNames(profile.partner2Name, profile.partner1Name) : "Partner & Partner"} | ${profile?.weddingDate ?? "Wedding date TBD"} | ${profile?.venue ?? "Venue TBD"}`, margin, y);
       y += 28;
 
       doc.setFont("times", "bold");
@@ -2041,7 +2042,7 @@ function DayOfInner() {
   const weddingDate = profile?.weddingDate ? new Date(profile.weddingDate + "T00:00:00") : new Date();
   const dateStr = format(weddingDate, "EEEE, MMMM do");
   const ceremonyDisplay = formatProfileTime((profile as any)?.ceremonyTime);
-  const coupleName = profile ? `${profile.partner2Name} & ${profile.partner1Name}` : "Your wedding";
+  const coupleName = profile ? coupleFirstNames(profile.partner2Name, profile.partner1Name) : "Your wedding";
   const venueLabel = profile?.venue || (profile as any)?.location || "Venue TBD";
   const packedCount = packingItems.filter((item) => item.completed).length;
   const completedTimelineCount = completedSet.size;
@@ -2133,7 +2134,7 @@ function DayOfInner() {
 
       {activeWorkspace && activeWorkspace.role !== "owner" && (
         <div className="mt-4 rounded-2xl border border-[#F1D6DD] bg-white px-4 py-3 text-sm text-[#7B5364]">
-          You are viewing {activeWorkspace.partner2Name} &amp; {activeWorkspace.partner1Name}'s shared wedding workspace.
+          You are viewing {coupleFirstNames(activeWorkspace.partner2Name, activeWorkspace.partner1Name)}'s shared wedding workspace.
         </div>
       )}
 

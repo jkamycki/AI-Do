@@ -13,6 +13,7 @@ import {
 import type { ColorPalette } from "@/types/invitations";
 import { MaintenanceNotice } from "@/components/MaintenanceNotice";
 import { usePublicMaintenance } from "@/hooks/usePublicMaintenance";
+import { coupleFirstNames } from "@/lib/coupleNames";
 
 interface PublicSitePayload extends WebsiteRendererPayload {
   slug: string;
@@ -73,7 +74,7 @@ export default function SharedRsvp() {
       document.title = "RSVP";
       return;
     }
-    const couple = `${data.couple.partner2Name} & ${data.couple.partner1Name}`;
+    const couple = coupleFirstNames(data.couple.partner2Name, data.couple.partner1Name);
     const description = "Find your name on the guest list and RSVP.";
     document.title = `${couple} - RSVP`;
     setMeta("description", description);

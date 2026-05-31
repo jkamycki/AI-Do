@@ -1,6 +1,7 @@
 import { Component, lazy, Suspense, type ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
+import { coupleFirstNames } from "@/lib/coupleNames";
 import { Heart } from "lucide-react";
 
 const SupportChat = lazy(() =>
@@ -33,7 +34,7 @@ export function AppLayout({ children, fullWidth = false }: AppLayoutProps) {
   const { activeWorkspace } = useWorkspace();
   const isVendorWorkspace = activeWorkspace?.role === "vendor";
   const workspaceLabel = activeWorkspace
-    ? activeWorkspace.workstationName || `${activeWorkspace.partner2Name} & ${activeWorkspace.partner1Name}`
+    ? activeWorkspace.workstationName || coupleFirstNames(activeWorkspace.partner2Name, activeWorkspace.partner1Name)
     : "";
 
   return (

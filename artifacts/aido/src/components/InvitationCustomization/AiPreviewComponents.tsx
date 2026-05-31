@@ -3,6 +3,7 @@ import { Heart, MapPin, Download, Hotel } from "lucide-react";
 import type { ColorPalette } from "@/types/invitations";
 import { AuthMediaImage } from "@/components/AuthMediaImage";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { coupleFirstNames } from "@/lib/coupleNames";
 
 export interface WeddingInfo {
   partner1Name?: string | null;
@@ -432,7 +433,7 @@ export function AiSaveDatePreview({
   // In custom mode apply the user's font everywhere, including labels.
   const labelFont = customColors ? displayFont : jakarta;
 
-  const couple    = [profile.partner2Name, profile.partner1Name].filter(Boolean).join(" & ") || "The Couple";
+  const couple    = coupleFirstNames(profile.partner2Name, profile.partner1Name);
   const dateStr   = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const cityLine  = [profile.venueCity, profile.venueState].filter(Boolean).join(", ");
   const renderHotelDetails = (hotel: SaveTheDateHotelInfo) => {
@@ -790,7 +791,7 @@ export function AiDigitalInvitationPreview({
   // In custom mode apply the user's font everywhere, including labels.
   const labelFont = customColors ? displayFont : jakarta;
 
-  const couple    = [profile.partner2Name, profile.partner1Name].filter(Boolean).join(" & ") || "The Couple";
+  const couple    = coupleFirstNames(profile.partner2Name, profile.partner1Name);
   const guestName = profile.guestName || "Guest";
   const dateStr   = formatDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const cityLine  = [profile.venueCity, [profile.venueState, profile.venueZip].filter(Boolean).join(" ")].filter(Boolean).join(", ");

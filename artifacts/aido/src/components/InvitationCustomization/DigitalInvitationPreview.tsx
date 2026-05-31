@@ -10,6 +10,7 @@ import {
   EditableToolbar,
 } from "./EditableElements";
 import { LayoutDecorations } from "./LayoutDecorations";
+import { coupleFirstNames } from "@/lib/coupleNames";
 
 interface DigitalInvitationPreviewProps {
   photoUrl: string | null;
@@ -97,10 +98,7 @@ export const DigitalInvitationPreview = forwardRef<
     }
     return weddingDate || "";
   })();
-  const couple =
-    partner1Name && partner2Name
-      ? `${partner2Name} & ${partner1Name}`
-      : partner2Name || partner1Name || "Couple Names";
+  const couple = coupleFirstNames(partner2Name, partner1Name, "Couple Names");
 
   const updateOverride = (id: string, patch: ElementOverride) => {
     const cur = textOverrides[id] || {};

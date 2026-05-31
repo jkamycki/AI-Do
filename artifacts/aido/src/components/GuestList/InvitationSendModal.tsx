@@ -23,6 +23,7 @@ import { AiSaveDatePreview, AiDigitalInvitationPreview, type CustomColors } from
 import { evaluateCustomDesignCompleteness } from "@/lib/customDesignValidation";
 import { DEFAULT_RSVP_MEAL_OPTIONS, normalizeMealOptions } from "@/lib/mealOptions";
 import { publishedWebsiteUrl } from "@/lib/publicUrls";
+import { coupleFirstNames } from "@/lib/coupleNames";
 
 interface Customization {
   useGeneratedInvitation: boolean;
@@ -147,7 +148,7 @@ function RsvpSimulation({ guest, profile }: { guest: Guest; profile: Profile }) 
   const plusOne = form.watch("plusOne");
   const mealOptions = DEFAULT_RSVP_MEAL_OPTIONS;
 
-  const couple = [profile.partner2Name, profile.partner1Name].filter(Boolean).join(" & ") || "The Couple";
+  const couple = coupleFirstNames(profile.partner2Name, profile.partner1Name);
   const weddingDateStr = formatWeddingDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const ceremonyTimeStr = formatTime(profile.ceremonyTime);
   const receptionTimeStr = formatTime(profile.receptionTime);

@@ -5,6 +5,7 @@ import { Loader2, Lock } from "lucide-react";
 import { WebsiteRenderer, type WebsiteRendererPayload, sectionFromUrlSegment } from "@/components/website/WebsiteRenderer";
 import { MaintenanceNotice } from "@/components/MaintenanceNotice";
 import { usePublicMaintenance } from "@/hooks/usePublicMaintenance";
+import { coupleFirstNames } from "@/lib/coupleNames";
 
 interface PublicSitePayload extends WebsiteRendererPayload {
   slug: string;
@@ -231,7 +232,7 @@ export default function PublicWebsite() {
 
   useEffect(() => {
     if (data) {
-      const couple = `${data.couple.partner2Name} & ${data.couple.partner1Name}`;
+      const couple = coupleFirstNames(data.couple.partner2Name, data.couple.partner1Name);
       const description = (data.customText.welcome || data.customText.story || `Join us as we celebrate our wedding.`).slice(0, 160);
       const previewImage = `${window.location.origin}/opengraph.jpg`;
       document.title = `${couple} — Wedding`;

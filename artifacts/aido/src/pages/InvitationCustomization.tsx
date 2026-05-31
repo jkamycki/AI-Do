@@ -28,6 +28,7 @@ import {
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { qrPngDataUrl } from "@/lib/localQr";
 import { publishedWebsiteUrl } from "@/lib/publicUrls";
+import { coupleFirstNames } from "@/lib/coupleNames";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -754,9 +755,7 @@ export default function InvitationCustomizationPage({
   // ── Load messages from wedding profile ────────────────────────────────────
   useEffect(() => {
     if (weddingProfile) {
-      const couple = [weddingProfile.partner2Name, weddingProfile.partner1Name]
-        .filter(Boolean)
-        .join(" & ");
+      const couple = coupleFirstNames(weddingProfile.partner2Name, weddingProfile.partner1Name, "");
       setSaveTheDateMessage(
         weddingProfile.saveTheDateMessage ||
           (couple

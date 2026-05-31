@@ -25,6 +25,7 @@ import { photoEffectToFilter } from "@/components/InvitationCustomization/AiPrev
 import { DEFAULT_RSVP_MEAL_OPTIONS, normalizeMealOptions, type MealOption } from "@/lib/mealOptions";
 import { MaintenanceNotice } from "@/components/MaintenanceNotice";
 import { usePublicMaintenance } from "@/hooks/usePublicMaintenance";
+import { coupleFirstNames } from "@/lib/coupleNames";
 
 const schema = z.object({
   attendance: z.enum(["attending", "declined"], { required_error: "Please select Accept or Decline." }),
@@ -310,7 +311,7 @@ export default function Rsvp() {
   const fitWholePhoto = photoZoom < 1;
   const photoObjectPosition = info?.photoObjectPosition ?? "50% 58%";
 
-  const couple = [info?.partner2Name, info?.partner1Name].filter(Boolean).join(" & ") || "The Couple";
+  const couple = coupleFirstNames(info?.partner2Name, info?.partner1Name);
   const groomFirst = String(info?.partner1Name || "").trim().split(/\s+/)[0] || "Partner";
   const brideFirst = String(info?.partner2Name || "").trim().split(/\s+/)[0] || "Partner";
 

@@ -156,37 +156,40 @@ export default function Landing() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#FFF7F2] text-[#8D294D]">
       <header className="sticky top-0 z-40 border-b border-[#E6A6B7]/70 bg-[#FFF7F2]/[0.94] px-3 py-2 shadow-[0_1px_0_rgba(141,41,77,0.06)] backdrop-blur-md sm:px-8 sm:py-3">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2">
-          <LandingLanguagePicker />
-          <nav className="flex min-w-0 items-center justify-end gap-1.5 sm:gap-10">
-          <Link href="/ai-wedding-planner">
-            <Button variant="ghost" className="hidden h-10 px-2 text-base font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E] md:inline-flex">
-              AI Planner
-            </Button>
-          </Link>
-          <Link href="/wedding-website-builder">
-            <Button variant="ghost" className="hidden h-10 px-2 text-base font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E] lg:inline-flex">
-              Website Builder
-            </Button>
-          </Link>
-          <Link href="/for-vendors">
-            <Button variant="ghost" className="h-10 px-1.5 text-sm font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E] sm:px-2 sm:text-base">
-              <span className="sm:hidden">Partners</span>
-              <span className="hidden sm:inline">Partner With Us</span>
-            </Button>
-          </Link>
-          <Link href="/sign-in">
-            <Button variant="ghost" className="h-10 px-1 text-sm font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E] sm:px-2 sm:text-base">
-              {t("landing.cta_signin", { defaultValue: "Sign In" })}
-            </Button>
-          </Link>
-          <Link href="/sign-up">
-            <Button className="h-10 rounded-full bg-[linear-gradient(110deg,#E6A6B7_0%,#F2CFC6_52%,#E9A6A0_100%)] px-3 text-sm font-semibold leading-tight text-[#8D294D] shadow-[0_10px_18px_rgba(141,41,77,0.16)] hover:opacity-95 sm:h-11 sm:px-7 sm:text-base">
-              <span className="sm:hidden">Start Free</span>
-              <span className="hidden sm:inline">{t("landing.get_started", { defaultValue: "Get Started Free" })}</span>
-            </Button>
-          </Link>
-        </nav>
+        <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto_1fr] items-center gap-2">
+          <div className="justify-self-start">
+            <LandingLanguagePicker />
+          </div>
+          <nav className="hidden min-w-0 items-center justify-center gap-8 justify-self-center md:flex lg:gap-10" aria-label="Main navigation">
+            <Link href="/ai-wedding-planner">
+              <Button variant="ghost" className="h-10 px-2 text-base font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E]">
+                AI Planner
+              </Button>
+            </Link>
+            <Link href="/wedding-website-builder">
+              <Button variant="ghost" className="h-10 px-2 text-base font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E]">
+                Website Builder
+              </Button>
+            </Link>
+            <Link href="/for-vendors">
+              <Button variant="ghost" className="h-10 px-2 text-base font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E]">
+                Partner With Us
+              </Button>
+            </Link>
+          </nav>
+          <nav className="flex min-w-0 items-center justify-end gap-1.5 justify-self-end sm:gap-3" aria-label="Account navigation">
+            <Link href="/sign-up">
+              <Button className="h-10 rounded-full bg-[linear-gradient(110deg,#E6A6B7_0%,#F2CFC6_52%,#E9A6A0_100%)] px-3 text-sm font-semibold leading-tight text-[#8D294D] shadow-[0_10px_18px_rgba(141,41,77,0.16)] hover:opacity-95 sm:h-11 sm:px-7 sm:text-base">
+                <span className="sm:hidden">Start Free</span>
+                <span className="hidden sm:inline">{t("landing.get_started", { defaultValue: "Get Started Free" })}</span>
+              </Button>
+            </Link>
+            <Link href="/sign-in">
+              <Button variant="ghost" className="h-10 px-1 text-sm font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E] sm:px-2 sm:text-base">
+                {t("landing.cta_signin", { defaultValue: "Sign In" })}
+              </Button>
+            </Link>
+          </nav>
         </div>
         <nav className="mx-auto mt-2 grid max-w-7xl grid-cols-4 gap-1.5 pb-1 text-center text-[11px] font-bold text-[#6F3E54] md:hidden" aria-label="Popular A.I DO tools">
           <Link href="/ai-wedding-planner" className="rounded-full border border-[#E6A6B7]/45 bg-white/70 px-2 py-2">AI</Link>

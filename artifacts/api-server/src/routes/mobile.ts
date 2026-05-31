@@ -158,10 +158,16 @@ router.get("/mobile/planning", requireAuth, async (req, res) => {
     const heroImages = Array.isArray(website?.heroImages) ? website.heroImages : [];
     const sortedHeroImages = [...heroImages].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     const coverPhotoUrl = website?.heroImage || sortedHeroImages[0]?.url || undefined;
+    const firstName = (name?: string | null) => {
+      const parts = String(name ?? "").trim().split(/\s+/).filter(Boolean);
+      return parts.length <= 1 ? parts[0] ?? "" : parts.slice(0, -1).join(" ");
+    };
+    const coupleName = [firstName(profile.partner1Name), firstName(profile.partner2Name)].filter(Boolean).join(" & ");
+
     res.json({
       profile: {
         coverPhotoUrl,
-        coupleName: `${profile.partner1Name} & ${profile.partner2Name}`,
+        coupleName,
         partnerOne: profile.partner1Name,
         partnerTwo: profile.partner2Name,
         weddingDate: profile.weddingDate,

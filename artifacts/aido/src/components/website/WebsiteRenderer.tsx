@@ -44,6 +44,7 @@ import { resolveMediaUrl, isMediaAuthRequired } from "@/lib/mediaUrl";
 import { downloadMediaFile, guestPhotoDownloadName } from "@/lib/mediaDownload";
 import { getGuestPhotoDeviceId } from "@/lib/guestPhotoDevice";
 import { publishedWebsiteUrl } from "@/lib/publicUrls";
+import { coupleFirstNames, displayFirstName } from "@/lib/coupleNames";
 import { AuthMediaImage } from "@/components/AuthMediaImage";
 
 // camelCase section id <-> kebab-case URL slug
@@ -73,25 +74,16 @@ export function sectionFromUrlSegment(seg: string | undefined): string {
 }
 
 function splitDisplayName(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length <= 1) return { first: parts[0] ?? "", last: "" };
-  return {
-    first: parts.slice(0, -1).join(" "),
-    last: parts[parts.length - 1],
-  };
+  return { first: displayFirstName(name), last: "" };
 }
 
 function coupleHeaderParts(data: WebsiteRendererPayload) {
   const partner2 = splitDisplayName(data.couple.partner2Name);
   const partner1 = splitDisplayName(data.couple.partner1Name);
   const firstLine = [partner2.first, partner1.first].filter(Boolean).join(" & ");
-  const sharedLast =
-    partner1.last && (!partner2.last || partner1.last.toLowerCase() === partner2.last.toLowerCase())
-      ? partner1.last
-      : "";
   return {
-    firstLine: firstLine || `${data.couple.partner2Name} & ${data.couple.partner1Name}`.trim(),
-    lastLine: sharedLast,
+    firstLine: firstLine || coupleFirstNames(data.couple.partner2Name, data.couple.partner1Name),
+    lastLine: "",
   };
 }
 
@@ -129,6 +121,23 @@ function coupleInitials(data: WebsiteRendererPayload) {
 
 function defaultFooterCoupleName(data: WebsiteRendererPayload) {
   return coupleInitials(data);
+}
+
+function fullCoupleName(data: WebsiteRendererPayload) {
+  return [data.couple.partner2Name, data.couple.partner1Name].filter(Boolean).join(" & ");
+}
+
+function displayCoupleName(data: WebsiteRendererPayload) {
+  return coupleFirstNames(data.couple.partner2Name, data.couple.partner1Name);
+}
+
+function coupleTextValue(value: string, data: WebsiteRendererPayload) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const firstNames = displayCoupleName(data);
+  const oldFullName = fullCoupleName(data);
+  if (trimmed.replace(/\s+/g, " ") === oldFullName.replace(/\s+/g, " ")) return firstNames;
+  return trimmed;
 }
 
 function footerCoupleValue(value: string, data: WebsiteRendererPayload) {
@@ -1292,7 +1301,7 @@ function buildIcs(
 function AddToCalendarButton({ data }: { data: WebsiteRendererPayload }) {
   const [open, setOpen] = useState(false);
   if (!data.couple.weddingDate) return null;
-  const couple = `${data.couple.partner2Name} & ${data.couple.partner1Name}`;
+  const couple = displayCoupleName(data);
 
   function downloadIcs() {
     const ics = buildIcs(
@@ -2199,7 +2208,7 @@ function HeroBackground({
 }
 
 function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
-  const couple = `${data.couple.partner2Name} & ${data.couple.partner1Name}`;
+  const couple = displayCoupleName(data);
   const dateStr = formatWeddingDate(data.couple.weddingDate);
   const isMobileRender = ctx.renderDevice === "mobile";
   return (
@@ -2242,7 +2251,7 @@ function Hero({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         <EditableText
           as="div"
           editable={ctx.editable}
-          value={stackedCoupleName(data.customText._coupleName ?? "")}
+          value={stackedCoupleName(coupleTextValue(data.customText._coupleName ?? "", data))}
           defaultValue={stackedCoupleName(couple)}
           onCommit={(v) => ctx.onTextChange("_coupleName", v)}
           className="text-4xl sm:text-6xl md:text-8xl mb-6 leading-tight whitespace-pre-line break-words [overflow-wrap:anywhere]"

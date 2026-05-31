@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { getCurrentLanguageCode, getCurrentLanguageName } from "@/lib/languagePreference";
+import { coupleFirstNames } from "@/lib/coupleNames";
 import {
   Loader2, Save, Globe, Eye, Copy, Check, Image as ImageIcon, X,
   Lock, Type, Palette, ToggleLeft, FileText, Heart, MapPin, Clock, Gift, HelpCircle,
@@ -2228,7 +2229,7 @@ export default function WebsiteEditor() {
               </div>
               <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
                 {[
-                  { label: "Couple", value: [previewExtra?.couple.partner2Name, previewExtra?.couple.partner1Name].filter(Boolean).join(" & ") || "Not set" },
+                  { label: "Couple", value: previewExtra?.couple ? coupleFirstNames(previewExtra.couple.partner2Name, previewExtra.couple.partner1Name, "Not set") : "Not set" },
                   { label: "Date", value: previewExtra?.couple.weddingDate || "Not set" },
                   { label: "Ceremony", value: formatProfileTime(previewExtra?.couple.ceremonyTime) },
                   { label: "Reception", value: formatProfileTime(previewExtra?.couple.receptionTime) },

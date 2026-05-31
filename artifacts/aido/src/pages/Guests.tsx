@@ -16,6 +16,7 @@ import {
 import type { Guest } from "@workspace/api-client-react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { coupleFirstNames } from "@/lib/coupleNames";
 import {
   Card,
   CardContent,
@@ -1327,7 +1328,7 @@ function GuestCollectorCard() {
     : null;
 
   const coupleNames = profile
-    ? `${profile.partner2Name ?? "Bride"} & ${profile.partner1Name ?? "Groom"}`
+    ? coupleFirstNames(profile.partner2Name, profile.partner1Name, "Bride & Groom")
     : "Your names";
   const previewTitle = `${coupleNames} - Contact Info Request`;
   const previewHost = collectorUrl
@@ -1959,9 +1960,7 @@ export default function Guests({
       | { partner1Name?: string | null; partner2Name?: string | null }
       | null
       | undefined;
-    return [profile?.partner2Name, profile?.partner1Name]
-      .filter(Boolean)
-      .join(" & ");
+    return coupleFirstNames(profile?.partner2Name, profile?.partner1Name, "");
   };
   const buildBulkTextMessage = (
     mode: BulkSendMode,

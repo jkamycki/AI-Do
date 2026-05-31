@@ -10,6 +10,7 @@ import {
   EditableToolbar,
 } from "./EditableElements";
 import { LayoutDecorations } from "./LayoutDecorations";
+import { coupleFirstNames } from "@/lib/coupleNames";
 
 interface SaveTheDatePreviewProps {
   photoUrl: string | null;
@@ -70,10 +71,7 @@ export const SaveTheDatePreview = forwardRef<HTMLDivElement, SaveTheDatePreviewP
       }
       return weddingDate || "";
     })();
-    const couple =
-      partner1Name && partner2Name
-        ? `${partner2Name} & ${partner1Name}`
-        : partner2Name || partner1Name || "Couple Names";
+    const couple = coupleFirstNames(partner2Name, partner1Name, "Couple Names");
     const cityState = [venueCity, venueState].filter(Boolean).join(", ");
 
     const updateOverride = (id: string, patch: ElementOverride) => {

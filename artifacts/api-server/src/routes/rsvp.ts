@@ -110,7 +110,11 @@ function escapeHtml(value: string | null | undefined): string {
 }
 
 function coupleDisplayName(profile: { partner1Name?: string | null; partner2Name?: string | null }, separator = " & ") {
-  return [profile.partner2Name, profile.partner1Name].filter(Boolean).join(separator) || "The Couple";
+  const firstName = (name?: string | null) => {
+    const parts = String(name ?? "").trim().split(/\s+/).filter(Boolean);
+    return parts.length <= 1 ? parts[0] ?? "" : parts.slice(0, -1).join(" ");
+  };
+  return [firstName(profile.partner2Name), firstName(profile.partner1Name)].filter(Boolean).join(separator) || "The Couple";
 }
 
 function isLightColor(hex: string): boolean {

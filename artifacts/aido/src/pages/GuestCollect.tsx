@@ -12,6 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Heart, CheckCircle2, AlertCircle, Loader2, MapPin } from "lucide-react";
 import { MaintenanceNotice } from "@/components/MaintenanceNotice";
 import { usePublicMaintenance } from "@/hooks/usePublicMaintenance";
+import { coupleFirstNames } from "@/lib/coupleNames";
 
 const schema = z.object({
   name: z.string().min(1, "Your full name is required"),
@@ -86,6 +87,7 @@ export default function GuestCollect() {
     enabled: !!token,
     retry: false,
   });
+  const couple = wedding ? coupleFirstNames(wedding.partner2Name, wedding.partner1Name) : "";
 
   const form = useForm<FormInput, unknown, FormData>({
     resolver: zodResolver(schema),
@@ -164,7 +166,7 @@ export default function GuestCollect() {
                 Got it, thank you!
               </h2>
               <p className="text-sm leading-relaxed text-[#6F3E54]">
-                <span className="font-semibold text-[#3B1C2B]">{wedding.partner2Name} & {wedding.partner1Name}</span>{" "}
+                <span className="font-semibold text-[#3B1C2B]">{couple}</span>{" "}
                 now have your info and will be in touch.
               </p>
             </div>
@@ -201,7 +203,7 @@ export default function GuestCollect() {
                 Contact Info Request
               </p>
               <h1 className="font-serif text-3xl font-bold leading-tight text-[#3B1C2B] sm:text-4xl">
-                {wedding.partner2Name} & {wedding.partner1Name}
+                {couple}
               </h1>
               <p className="mx-auto mt-2 max-w-sm text-base leading-relaxed text-[#6F3E54]">
                 are collecting addresses for their wedding invitations
@@ -214,7 +216,7 @@ export default function GuestCollect() {
             <CardContent className="space-y-5 px-5 pb-7 pt-6 sm:px-8 sm:pb-8">
               <p className="text-sm leading-relaxed text-[#6F3E54]">
                 Please share your mailing address and contact details so{" "}
-                <span className="font-semibold text-[#3B1C2B]">{wedding.partner2Name} & {wedding.partner1Name}</span>{" "}
+                <span className="font-semibold text-[#3B1C2B]">{couple}</span>{" "}
                 can send you an invitation.
               </p>
 

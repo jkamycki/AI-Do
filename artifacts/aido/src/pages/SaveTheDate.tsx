@@ -8,6 +8,7 @@ import { AnimatedInvitationShell } from "@/components/InvitationCustomization/An
 import { photoEffectToFilter } from "@/components/InvitationCustomization/AiPreviewComponents";
 import { MaintenanceNotice } from "@/components/MaintenanceNotice";
 import { usePublicMaintenance } from "@/hooks/usePublicMaintenance";
+import { coupleFirstNames } from "@/lib/coupleNames";
 
 interface SaveTheDateInfo {
   guestName: string;
@@ -164,7 +165,7 @@ export default function SaveTheDate() {
     retry: false,
   });
 
-  const couple = [info?.partner2Name, info?.partner1Name].filter(Boolean).join(" & ") || "The Couple";
+  const couple = coupleFirstNames(info?.partner2Name, info?.partner1Name);
 
   const weddingDateStr = info?.weddingDate
     ? (() => {

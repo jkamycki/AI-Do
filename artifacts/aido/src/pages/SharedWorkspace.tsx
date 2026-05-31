@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth, useClerk } from "@clerk/react";
 import { useRoute } from "wouter";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
+import { coupleFirstNames } from "@/lib/coupleNames";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -226,7 +227,7 @@ export default function SharedWorkspacePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           events: eventsForPdf,
-          coupleName: `${workspace.partner2Name} & ${workspace.partner1Name}`,
+          coupleName: coupleFirstNames(workspace.partner2Name, workspace.partner1Name),
           weddingDate: workspace.weddingDate,
           venue: profile?.venue,
         }),
@@ -255,7 +256,7 @@ export default function SharedWorkspacePage() {
               <div className="flex items-center gap-2">
                 <Heart className="h-5 w-5 fill-primary text-primary" />
                 <h1 className="font-serif text-3xl text-primary md:text-4xl">
-                  {workspace.partner2Name} & {workspace.partner1Name}
+                  {coupleFirstNames(workspace.partner2Name, workspace.partner1Name)}
                 </h1>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -385,7 +386,7 @@ export default function SharedWorkspacePage() {
           <div className="flex items-center gap-2 mb-1">
             <Heart className="h-5 w-5 fill-primary text-primary" />
             <h1 className="text-3xl font-serif text-primary">
-              {workspace.partner2Name} & {workspace.partner1Name}
+              {coupleFirstNames(workspace.partner2Name, workspace.partner1Name)}
             </h1>
           </div>
           <div className="flex items-center gap-3 flex-wrap">

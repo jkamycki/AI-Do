@@ -46,7 +46,11 @@ function roleLabel(role: string): string {
 function workspaceName(profile: { workstationName?: string | null; partner1Name?: string | null; partner2Name?: string | null }): string {
   const custom = profile.workstationName?.trim();
   if (custom) return custom;
-  const names = [profile.partner1Name, profile.partner2Name].map((name) => name?.trim()).filter(Boolean);
+  const firstName = (name?: string | null) => {
+    const parts = String(name ?? "").trim().split(/\s+/).filter(Boolean);
+    return parts.length <= 1 ? parts[0] ?? "" : parts.slice(0, -1).join(" ");
+  };
+  const names = [profile.partner2Name, profile.partner1Name].map(firstName).filter(Boolean);
   return names.length ? names.join(" & ") : "a wedding workspace";
 }
 
@@ -236,7 +240,7 @@ router.get("/collaborators", requireAuth, async (req, res) => {
           inviterUserId: c.inviterUserId,
         };
       }),
-      workspaceName: profile.workstationName || `${profile.partner2Name} & ${profile.partner1Name}`,
+      workspaceName: workspaceName(profile),
       workstationName: profile.workstationName,
       profileId: profile.id,
       myRole,
