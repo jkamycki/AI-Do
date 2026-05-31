@@ -805,7 +805,7 @@ export default function Timeline() {
         if (languageCode !== "en" && (body as any)?.language === "English") {
           throw new Error("Timeline translation returned English");
         }
-        const events = Array.isArray((body as any).events) ? (body as any).events.map(normalizeEvent) : null;
+        const events: TimelineEvent[] | null = Array.isArray((body as any).events) ? (body as any).events.map(normalizeEvent) : null;
         if (!events || events.length !== localEvents.length || cancelled) return;
         const changedText = events.some((event, index) => {
           const source = localEvents[index];

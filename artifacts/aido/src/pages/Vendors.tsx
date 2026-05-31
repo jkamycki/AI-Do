@@ -133,6 +133,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 type VendorManagementTab = "vendors" | "messages" | "contacts" | "directory";
+type VendorWithPrimaryContact = Vendor & { primaryContact?: string | null };
 
 const VENDOR_DIRECTORY_PREVIEW_EMAIL = "kamyckijoseph@gmail.com";
 
@@ -324,6 +325,10 @@ function vendorCategoryBadgeClass(category: string | null | undefined) {
 function vendorDisplayName(vendor: Pick<Vendor, "id" | "name"> | null | undefined) {
   const name = typeof vendor?.name === "string" ? vendor.name.trim() : "";
   return name || `Vendor ${vendor?.id ?? ""}`.trim();
+}
+
+function vendorPrimaryContact(vendor: Vendor | null | undefined) {
+  return ((vendor as VendorWithPrimaryContact | null | undefined)?.primaryContact ?? "").trim();
 }
 
 function formatCurrency(n: number | null | undefined) {
@@ -1617,7 +1622,7 @@ function VendorContactDialog({
     if (choice !== "primary" || !selectedVendor) return;
     setForm((current) => ({
       ...current,
-      name: selectedVendor.primaryContact?.trim() || current.name || selectedVendor.name,
+      name: vendorPrimaryContact(selectedVendor) || current.name || selectedVendor.name,
       businessName: selectedVendor.name,
       phone: joinContactValues([selectedVendor.phone, additionalPhone]),
       email: joinContactValues([selectedVendor.email, additionalEmail]),
@@ -1777,9 +1782,9 @@ function VendorContactDialog({
                         <SelectItem value="manual">
                           {t("vendors.add_different_contact_name", { defaultValue: "Add a different contact name" })}
                         </SelectItem>
-                        {selectedVendor.primaryContact?.trim() && (
+                        {vendorPrimaryContact(selectedVendor) && (
                           <SelectItem value="primary">
-                            {selectedVendor.primaryContact.trim()}
+                            {vendorPrimaryContact(selectedVendor)}
                           </SelectItem>
                         )}
                       </SelectContent>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -131,7 +131,7 @@ function isPhotoComplete(url: string | null | undefined): boolean {
 
 function RsvpSimulation({ guest, profile }: { guest: Guest; profile: Profile }) {
   const form = useForm<RsvpFormData>({
-    resolver: zodResolver(rsvpSchema),
+    resolver: zodResolver(rsvpSchema) as Resolver<RsvpFormData>,
     defaultValues: {
       attendance: undefined,
       mealChoice: "",
@@ -145,6 +145,7 @@ function RsvpSimulation({ guest, profile }: { guest: Guest; profile: Profile }) 
 
   const attendance = form.watch("attendance");
   const plusOne = form.watch("plusOne");
+  const mealOptions = DEFAULT_RSVP_MEAL_OPTIONS;
 
   const couple = [profile.partner2Name, profile.partner1Name].filter(Boolean).join(" & ") || "The Couple";
   const weddingDateStr = formatWeddingDate(profile.weddingDate, { weekday: "long", year: "numeric", month: "long", day: "numeric" });

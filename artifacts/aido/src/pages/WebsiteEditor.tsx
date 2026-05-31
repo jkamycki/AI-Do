@@ -54,6 +54,9 @@ interface WebsiteRecord extends WebsiteRendererPayload {
 }
 
 type HotelOption = NonNullable<WebsiteRendererPayload["hotelOptions"]>[number];
+type WebsiteTextStyles = NonNullable<WebsiteRecord["textStyles"]>;
+type WebsiteTextPositions = NonNullable<WebsiteRecord["textPositions"]>;
+type PageCopyField = { key: string; label: string; multiline?: boolean; placeholder?: string };
 type ControlGroupId = "copy" | "design" | "elements" | "photos" | "animation" | "settings";
 
 const MOBILE_GUEST_PREVIEW_WIDTH = 430;
@@ -471,10 +474,10 @@ function withDevicePatch(
       ...splitCustomText.layout,
     },
     textStyles: patchTextStyles
-      ? { ...((existingOverrides.mobile?.textStyles as Record<string, unknown> | undefined) ?? {}), ...patchTextStyles }
+      ? { ...((existingOverrides.mobile?.textStyles as WebsiteTextStyles | undefined) ?? {}), ...patchTextStyles }
       : existingOverrides.mobile?.textStyles,
     textPositions: patchTextPositions
-      ? { ...((existingOverrides.mobile?.textPositions as Record<string, unknown> | undefined) ?? {}), ...patchTextPositions }
+      ? { ...((existingOverrides.mobile?.textPositions as WebsiteTextPositions | undefined) ?? {}), ...patchTextPositions }
       : existingOverrides.mobile?.textPositions,
   };
   const overrides: WebsiteDeviceOverrides = {
@@ -1827,7 +1830,7 @@ export default function WebsiteEditor() {
   ) => editingPage(...ids) && currentControlGroup === group;
   const isWebsiteSectionPage = activeEditorPage !== "home" && activeEditorPage in editingRecord.sectionsEnabled;
   const pageCopyFields = (() => {
-    const textFields: Array<{ key: string; label: string; multiline?: boolean; placeholder?: string }> = {
+    const textFieldMap: Partial<Record<string, PageCopyField[]>> = {
       home: [
         { key: "_heroTagline", label: "Hero tagline", placeholder: "We're getting married" },
         { key: "_coupleName", label: "Couple name", placeholder: "Alex & Jordan" },
@@ -1873,8 +1876,8 @@ export default function WebsiteEditor() {
         { key: "rsvp_title", label: "Section title", placeholder: "RSVP" },
         { key: "rsvp_deadline", label: "RSVP deadline", placeholder: "May 1, 2025" },
       ],
-    }[activeEditorPage];
-    return textFields ?? [];
+    };
+    return textFieldMap[activeEditorPage] ?? [];
   })();
   const orderedHeroImages = (editingRecord.heroImages ?? [])
     .slice()
@@ -2300,7 +2303,7 @@ export default function WebsiteEditor() {
           </Section>
         )}
 
-        {false && inTab("setup") && (() => {
+        {editingRecord && false && inTab("setup") && (() => {
           const CONTENT_EMOJIS = [
             "😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂", "🙂", "🙃",
             "😉", "😊", "😇", "🤩", "😗", "☺️", "😚", "😋", "😎", "🥲",
@@ -2351,8 +2354,8 @@ export default function WebsiteEditor() {
                   { key: "_heroDate",     label: t("website_editor.content_hero_date", { defaultValue: "Hero date" }), placeholder: "Saturday, June 15, 2025" },
                   { key: "_announcement", label: t("website_editor.content_announcement", { defaultValue: "Announcement banner" }), placeholder: "" },
                 ] as const).map(({ key, label, placeholder }) => {
-                  const currentValue = editableTextFieldValue(editingRecord.customText[key]);
-                  const onChange = (v: string) => update({ customText: { ...editingRecord.customText, [key]: v } });
+                  const currentValue = editableTextFieldValue(editingRecord!.customText[key]);
+                  const onChange = (v: string) => update({ customText: { ...editingRecord!.customText, [key]: v } });
                   return (
                     <div key={key}>
                       <div className="flex items-center justify-between mb-1">
@@ -2382,8 +2385,8 @@ export default function WebsiteEditor() {
                   { key: "rsvp_subtitle",  label: t("website_editor.content_rsvp_subtitle", { defaultValue: "RSVP subtitle" }) },
                   { key: "rsvp_thankyou",  label: t("website_editor.content_rsvp_thankyou", { defaultValue: "RSVP thank-you message" }) },
                 ] as const).map(({ key, label }) => {
-                  const currentValue = editableTextFieldValue(editingRecord.customText[key]);
-                  const onChange = (v: string) => update({ customText: { ...editingRecord.customText, [key]: v } });
+                  const currentValue = editableTextFieldValue(editingRecord!.customText[key]);
+                  const onChange = (v: string) => update({ customText: { ...editingRecord!.customText, [key]: v } });
                   return (
                     <div key={key}>
                       <div className="flex items-center justify-between mb-1">
@@ -2413,9 +2416,9 @@ export default function WebsiteEditor() {
                     {t("website_editor.content_rsvp_deadline", { defaultValue: "RSVP deadline" })}
                   </label>
                   <Input
-                    value={editingRecord.customText.rsvp_deadline ?? ""}
+                    value={editingRecord!.customText.rsvp_deadline ?? ""}
                     placeholder="May 1, 2025"
-                    onChange={(e) => update({ customText: { ...editingRecord.customText, rsvp_deadline: e.target.value } })}
+                    onChange={(e) => update({ customText: { ...editingRecord!.customText, rsvp_deadline: e.target.value } })}
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -2525,7 +2528,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Sections */}
-        {false && inTab("sections") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_sections", { defaultValue: "Sections" })}>
+        {editingRecord && false && inTab("sections") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_sections", { defaultValue: "Sections" })}>
           <div className="space-y-2.5">
             {SECTION_LIST.map((s) => {
               const Icon = s.icon;
@@ -2536,9 +2539,9 @@ export default function WebsiteEditor() {
                     <Label className="text-sm cursor-pointer">{s.label}</Label>
                   </div>
                   <Switch
-                    checked={editingRecord.sectionsEnabled[s.id]}
+                    checked={editingRecord!.sectionsEnabled[s.id]}
                     onCheckedChange={(checked) => {
-                      update({ sectionsEnabled: { ...editingRecord.sectionsEnabled, [s.id]: checked } });
+                      update({ sectionsEnabled: { ...editingRecord!.sectionsEnabled, [s.id]: checked } });
                       // Jump the preview to the section the user just clicked,
                       // regardless of whether they toggled it on or off, so
                       // they're always looking at what their click affected.

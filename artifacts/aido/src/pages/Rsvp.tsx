@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { apiFetch } from "@/lib/authFetch";
 import { useRoute } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
@@ -188,7 +188,7 @@ export default function Rsvp() {
   });
 
   const form = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as Resolver<FormData>,
     defaultValues: {
       attendance: undefined,
       mealChoice: "",

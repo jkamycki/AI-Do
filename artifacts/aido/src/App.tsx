@@ -1442,6 +1442,7 @@ type PortalMaintenanceSection =
   | "portal-website-editor";
 
 type LazyRouteComponent = ComponentType | LazyExoticComponent<ComponentType>;
+const SharedWorkspaceRoute = SharedWorkspace as LazyRouteComponent;
 
 function RouteLoading() {
   return <div className="min-h-screen bg-background" aria-hidden="true" />;
@@ -1949,13 +1950,13 @@ function Router() {
         <Route path="/aria" component={() => <ProtectedRoute component={Aria} maintenanceSection="portal-aria" />} />
         <Route path="/registry" component={() => <ProtectedRoute component={Registry} maintenanceSection="portal-website-editor" />} />
         <Route path="/website-editor" component={() => <ProtectedRoute component={WebsiteEditor} fullWidth maintenanceSection="portal-website-editor" />} />
-        <Route path="/workspace/:profileId" component={() => <ProtectedRoute component={SharedWorkspace} fullWidth />} />
+        <Route path="/workspace/:profileId" component={() => <ProtectedRoute component={SharedWorkspaceRoute} fullWidth />} />
         <Route path="/terms" component={Terms} />
         <Route path="/privacy" component={Privacy} />
         <Route path="/beta" component={BetaDisclaimer} />
         <Route path="/security" component={Security} />
         <Route path="/data-handling" component={DataHandling} />
-        <Route path="/promo" component={VideoTemplate} />
+        <Route path="/promo" component={() => <VideoTemplate />} />
         <Route component={NotFound} />
       </Switch>
     </Suspense>
@@ -2060,7 +2061,7 @@ class AppErrorBoundary extends Component<
   { children: ReactNode; resetKey: string },
   { hasError: boolean; message: string; stack: string; componentStack: string; autoRecoveringChunk: boolean; showError: boolean; resetKey: string }
 > {
-  private revealTimer: ReturnType<typeof window.setTimeout> | null = null;
+  private revealTimer: number | null = null;
 
   constructor(props: { children: ReactNode; resetKey: string }) {
     super(props);

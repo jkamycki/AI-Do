@@ -124,7 +124,7 @@ function clampZoom(value: number) {
   return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Number(value.toFixed(2))));
 }
 
-function touchDistance(touches: TouchList) {
+function touchDistance(touches: TouchEvent<HTMLElement>["touches"]) {
   const first = touches.item(0);
   const second = touches.item(1);
   if (!first || !second) return null;
