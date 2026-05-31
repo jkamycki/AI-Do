@@ -464,6 +464,69 @@ test.describe('A.IDO user journey', () => {
     await expectHealthyPage(page, 'Website URL edit after unpublish', collectPageFailures(page));
   });
 
+  test('public wedding website home uses the clean slug URL', async ({ page }) => {
+    await page.route('**/api/website/public/clean-home-link', async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback();
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          slug: 'clean-home-link',
+          theme: 'classic',
+          layoutStyle: 'classic',
+          font: 'Playfair Display',
+          accentColor: '#8D294D',
+          publicWebsiteUrl: '/w/clean-home-link',
+          colorPalette: {
+            primary: '#8D294D',
+            secondary: '#D86F67',
+            accent: '#F2B8A0',
+            neutral: '#F8EFEA',
+            background: '#FFF9F6',
+            text: '#3A1826',
+          },
+          sectionsEnabled: {
+            welcome: true,
+            story: true,
+            schedule: true,
+            travel: true,
+            registry: true,
+            faq: true,
+            gallery: true,
+            weddingParty: true,
+            rsvp: true,
+          },
+          customText: {
+            welcome: 'Clean URL wedding website home page',
+          },
+          textStyles: {},
+          textPositions: {},
+          galleryImages: [],
+          heroImages: [],
+          heroImage: null,
+          couple: {
+            partner1Name: 'Joseph',
+            partner2Name: 'Gabriela',
+            weddingDate: '2027-04-24',
+            ceremonyTime: '16:00',
+            receptionTime: '18:00',
+            venue: 'The Venue',
+            location: 'Garfield, NJ',
+            venueCity: 'Garfield',
+            venueState: 'NJ',
+            venueZip: '07026',
+          },
+        }),
+      });
+    });
+
+    const response = await page.goto('/w/clean-home-link/home', { waitUntil: 'domcontentloaded' });
+    expect(response?.ok(), 'Public website HTTP response').toBeTruthy();
+    await expect(page).toHaveURL(/\/w\/clean-home-link$/);
+    await expect(page.locator('body')).toContainText(/Gabriela|Joseph|Clean URL wedding website home page/i);
+    await expect(page.locator('body')).not.toContainText(/\/w\/clean-home-link\/home/i);
+  });
+
   test('documents and contracts expose upload/download paths safely', async ({ page }) => {
     await visitFeature(page, '/documents', 'Documents', /document|upload|download|folder/i);
     await expect(page.locator('body')).toContainText(/upload|download|folder|organize/i);
