@@ -2240,10 +2240,25 @@ function Welcome({
 
 function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const text = data.customText.story ?? "";
+  const isMobileRender = ctx.renderDevice === "mobile";
   // The section is gated by sectionsEnabled.story upstream; if the user
   // enabled it, render it everywhere — editor, preview, and published —
   // so the layout is consistent even before the body has been filled in.
   const labelColor = sectionTextColor(data, "story");
+  const storySubtitleProps = withBaseColor(tsp(ctx, "story_subtitle"), labelColor);
+  const storyBodyProps = withBaseColor(tsp(ctx, "story"), labelColor);
+  if (isMobileRender) {
+    storySubtitleProps.textStyle = {
+      ...(storySubtitleProps.textStyle ?? {}),
+      textAlign: "center",
+      width: "100%",
+    };
+    storyBodyProps.textStyle = {
+      ...(storyBodyProps.textStyle ?? {}),
+      textAlign: "center",
+      width: "100%",
+    };
+  }
   return (
     <SectionShell
       id="story"
@@ -2260,7 +2275,7 @@ function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         value={data.customText.story_subtitle ?? ""}
         defaultValue="How we got here"
         onCommit={(v) => ctx.onTextChange("story_subtitle", v)}
-        className="block text-center text-3xl sm:text-4xl mb-8"
+        className="block w-full text-center text-3xl sm:text-4xl mb-8"
         style={{
           fontFamily: elementFontStack(
             data,
@@ -2269,8 +2284,9 @@ function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             "heading",
           ),
           color: labelColor,
+          maxWidth: isMobileRender ? "100%" : undefined,
         }}
-        {...withBaseColor(tsp(ctx, "story_subtitle"), labelColor)}
+        {...storySubtitleProps}
       />
       <EditableText
         as="div"
@@ -2283,15 +2299,16 @@ function Story({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
             : ""
         }
         onCommit={(v) => ctx.onTextChange("story", v)}
-        className="text-center text-base sm:text-lg leading-relaxed max-w-3xl mx-auto px-4 whitespace-pre-line break-words"
+        className="block w-full text-center text-base sm:text-lg leading-relaxed max-w-3xl mx-auto px-4 whitespace-pre-line break-words"
         style={{
           color: labelColor,
           fontFamily: bodyFontStack(bodyFont(data)),
           textAlign: "center",
           marginLeft: "auto",
           marginRight: "auto",
+          maxWidth: isMobileRender ? "100%" : undefined,
         }}
-        {...withBaseColor(tsp(ctx, "story"), labelColor)}
+        {...storyBodyProps}
       />
     </SectionShell>
   );
@@ -3789,12 +3806,15 @@ function PartyMemberCard({
         )}
       </div>
       <div
-        className={`${compact ? "text-xl" : "text-2xl sm:text-3xl"} mb-1 max-w-full leading-tight`}
+        className={`${compact ? "text-xl" : "text-2xl sm:text-3xl"} mb-1 w-full leading-tight`}
         style={{
           fontFamily: fontStack(headingFont(data)),
           color: data.colorPalette.primary,
-          overflowWrap: "anywhere",
-          wordBreak: "normal",
+          maxWidth: compact ? "10rem" : "12rem",
+          overflowWrap: "break-word",
+          wordBreak: "keep-all",
+          hyphens: "manual",
+          textWrap: "balance",
         }}
       >
         {member.name || "Name"}
