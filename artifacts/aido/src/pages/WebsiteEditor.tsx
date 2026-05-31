@@ -1525,7 +1525,7 @@ export default function WebsiteEditor() {
         setEditorSection("home");
         setActiveControlGroup("copy");
         if (guestPreviewWindow) {
-          guestPreviewWindow.location.href = publishedWebsiteUrl(cleanBody.slug, "home");
+          guestPreviewWindow.location.href = publishedWebsiteUrl(cleanBody.slug);
         }
       }
       toast({ title: cleanBody.published ? "Website published!" : "Website unpublished" });
@@ -3961,7 +3961,7 @@ function SlugEditor({
         <p className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">Guest website link</p>
         <div className="flex items-center gap-2">
           <p className="text-xs font-mono break-all flex-1">
-            <span className="opacity-60">{host}/w/</span><span className="text-foreground">{slug}</span><span className="opacity-60">/home</span>
+            <span className="opacity-60">{host}/w/</span><span className="text-foreground">{slug}</span>
           </p>
           <Button
             type="button"
@@ -4177,7 +4177,7 @@ function QrCodeSection({ publicUrl, published }: { publicUrl: string; published:
     }
     return cleanPublicUrl.replace(/\/(?:home|story|schedule|travel|registry|wedding-party|gallery|guest-photo-drop|faq|rsvp)$/, "");
   }, [cleanPublicUrl]);
-  const websiteQrUrl = `${publicWebsiteBaseUrl}/home`;
+  const websiteQrUrl = publicWebsiteBaseUrl;
   const rsvpQrUrl = `${publicWebsiteBaseUrl}/rsvp`;
   const destinationUrl = destination === "rsvp" ? rsvpQrUrl : websiteQrUrl;
   const selectedDestination = QR_DESTINATIONS.find((item) => item.id === destination) ?? QR_DESTINATIONS[0];

@@ -201,8 +201,8 @@ export default function PublicWebsite() {
   }, [sectionSeg]);
 
   useEffect(() => {
-    if (!slug || sectionSeg) return;
-    window.history.replaceState(null, "", `/w/${slug}/home`);
+    if (!slug || sectionSeg !== "home") return;
+    window.history.replaceState(null, "", `/w/${slug}`);
   }, [sectionSeg, slug]);
 
   // Once the site data first loads, force the page to the very top so

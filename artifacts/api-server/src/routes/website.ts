@@ -742,7 +742,7 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
 
   return {
     slug: row.slug,
-    publicWebsiteUrl: row.published && row.slug ? `/w/${row.slug}/home` : null,
+    publicWebsiteUrl: row.published && row.slug ? `/w/${row.slug}` : null,
     theme: row.theme,
     layoutStyle: row.layoutStyle,
     font: row.font,
@@ -848,7 +848,7 @@ async function buildInvitationSharePayload(profileId: number, frontendOrigin: st
     customText._rsvpHotelBlockId = String(invitationColors.rsvpHotelBlockId);
   }
   const publicWebsiteUrl = publishedWebsite?.published && publishedWebsite.slug
-    ? `${frontendOrigin.replace(/\/$/, "")}/w/${publishedWebsite.slug}/home`
+    ? `${frontendOrigin.replace(/\/$/, "")}/w/${publishedWebsite.slug}`
     : null;
   const isCustomInvitation = invitationCustomization?.useGeneratedInvitation === false;
   const digitalAccent = isCustomInvitation

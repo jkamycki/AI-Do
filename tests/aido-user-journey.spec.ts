@@ -450,6 +450,8 @@ test.describe('A.IDO user journey', () => {
 
     await clickIfVisible(page.getByRole('button', { name: /^settings$/i }).last());
     await expect(page.getByText(/guest website link/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('body')).toContainText(/\/w\/old-published-link/i);
+    await expect(page.locator('body')).not.toContainText(/\/w\/old-published-link\/home/i);
 
     const editUrlButton = page.getByRole('button', { name: /edit url/i });
     await expect(editUrlButton).toBeEnabled();

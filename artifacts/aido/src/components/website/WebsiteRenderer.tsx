@@ -4713,7 +4713,7 @@ function TopNav({
     );
   };
 
-  const homeHref = slug && !onSectionChange ? `/w/${slug}/home` : undefined;
+  const homeHref = slug && !onSectionChange ? `/w/${slug}` : undefined;
   // Show the Share button only on the real public site (not editor preview / live preview)
   const showShare = !!slug && !onSectionChange;
   const headerParts = coupleHeaderParts(data);
