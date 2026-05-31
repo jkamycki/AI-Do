@@ -126,6 +126,8 @@ export interface WebsiteRendererPayload {
     discountCode?: string | null;
     groupName?: string | null;
     cutoffDate?: string | null;
+    checkInDate?: string | null;
+    checkOutDate?: string | null;
     address?: string | null;
     city?: string | null;
     state?: string | null;
@@ -174,7 +176,7 @@ export interface WebsiteRendererPayload {
 export type WebsiteRenderDevice = "desktop" | "mobile";
 export const WEBSITE_DEVICE_OVERRIDES_KEY = "_deviceOverrides";
 
-type WebsiteDeviceOverride = Partial<
+export type WebsiteDeviceOverride = Partial<
   Pick<
     WebsiteRendererPayload,
     | "theme"
@@ -1196,6 +1198,10 @@ function websiteHotelCutoffDate(value: string | null | undefined) {
   const date = yy && mm && dd ? new Date(yy, mm - 1, dd) : new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
+function websiteHotelDateRange(checkIn: string | null | undefined, checkOut: string | null | undefined) {
+  return [websiteHotelCutoffDate(checkIn), websiteHotelCutoffDate(checkOut)].filter(Boolean).join(" to ");
 }
 
 type HotelResponse = "no" | "yes" | "booked";
@@ -2758,8 +2764,9 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   </a>
                 )}
               </div>
-              {(syncedHotel?.groupName || syncedHotel?.discountCode || syncedHotel?.cutoffDate) && (
+              {(syncedHotel?.groupName || syncedHotel?.discountCode || syncedHotel?.cutoffDate || syncedHotel?.checkInDate || syncedHotel?.checkOutDate) && (
                 <div className="mt-3 space-y-1 rounded-lg px-3 py-2 text-xs" style={{ background: `${data.colorPalette.primary}10`, color: labelColor }}>
+                  {(syncedHotel.checkInDate || syncedHotel.checkOutDate) && <p><span className="font-semibold">Block dates:</span> {websiteHotelDateRange(syncedHotel.checkInDate, syncedHotel.checkOutDate)}</p>}
                   {syncedHotel.groupName && <p><span className="font-semibold">Wedding block:</span> {syncedHotel.groupName}</p>}
                   {syncedHotel.discountCode && <p><span className="font-semibold">Group code:</span> <span className="font-mono font-semibold">{syncedHotel.discountCode}</span></p>}
                   {syncedHotel.cutoffDate && <p><span className="font-semibold">Book by:</span> {websiteHotelCutoffDate(syncedHotel.cutoffDate)}</p>}

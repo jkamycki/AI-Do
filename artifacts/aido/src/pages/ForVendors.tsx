@@ -25,6 +25,7 @@ import {
 import { apiFetch } from "@/lib/authFetch";
 import { Button } from "@/components/ui/button";
 import { ImageCropDialog, type CropQueueItem } from "@/components/ImageCropDialog";
+import { qrSvgDataUrl } from "@/lib/localQr";
 
 const CATEGORIES = [
   "Venue",
@@ -722,6 +723,7 @@ function VendorBadge({ size = "default" }: { size?: "default" | "large" }) {
 }
 
 function MockDirectoryPreview() {
+  const mockQrUrl = qrSvgDataUrl("https://aidowedding.net/vendors/everly-rose-photo", 7, 3);
   const services = [
     "Full wedding day coverage",
     "Engagement session",
@@ -828,11 +830,11 @@ function MockDirectoryPreview() {
                   <p className="font-serif text-2xl leading-none text-[#8D294D]">A.I DO</p>
                   <p className="text-[10px] text-[#6F3E54]">AI Wedding Planner Assistant</p>
                 </div>
-                <div className="grid h-16 w-16 shrink-0 grid-cols-4 grid-rows-4 gap-0.5 rounded bg-white p-1 shadow-sm" aria-hidden="true">
-                  {Array.from({ length: 16 }).map((_, index) => (
-                    <span key={index} className={(index + Math.floor(index / 4)) % 3 === 0 ? "bg-[#24171D]" : "bg-[#F5E1EC]"} />
-                  ))}
-                </div>
+                <img
+                  src={mockQrUrl}
+                  alt="Mock A.I DO partner profile QR code"
+                  className="h-16 w-16 shrink-0 rounded bg-white p-1 shadow-sm"
+                />
               </div>
               <div className="border-t border-[#E6C7D0] bg-[#FFF7F2] px-4 py-3 text-center text-sm font-medium text-[#6F3E54]">
                 Scan to view this profile

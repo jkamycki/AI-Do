@@ -16,12 +16,15 @@ import {
   Loader2, Save, Globe, Eye, Copy, Check, Image as ImageIcon, X,
   Lock, Type, Palette, ToggleLeft, FileText, Heart, MapPin, Clock, Gift, HelpCircle,
   QrCode, Download, Link2, Plus, Users, Undo2, Sparkles, Settings, Trash2, Smile,
-  Laptop, Move, Smartphone,
+  GripVertical, Laptop, Move, Smartphone,
 } from "lucide-react";
 import {
   WebsiteRenderer,
   WEBSITE_DEVICE_OVERRIDES_KEY,
+  parseWebsiteDeviceOverrides,
   type WebsiteRendererPayload,
+  type WebsiteDeviceOverride,
+  type WebsiteDeviceOverrides,
   type WebsiteRenderDevice,
   parseRegistryLinks,
   type RegistryLink,
@@ -335,6 +338,30 @@ function stripDeviceOverridesFromText(customText: unknown): Record<string, strin
   return rest;
 }
 
+function serializeWebsiteDeviceOverrides(overrides: WebsiteDeviceOverrides): string | undefined {
+  const cleaned: WebsiteDeviceOverrides = {};
+  for (const device of ["desktop", "mobile"] as const) {
+    const override = overrides[device];
+    if (!override) continue;
+    const next: WebsiteDeviceOverride = {};
+    if (override.customText && Object.keys(override.customText).length) next.customText = override.customText;
+    if (override.textStyles && Object.keys(override.textStyles).length) next.textStyles = override.textStyles;
+    if (override.textPositions && Object.keys(override.textPositions).length) next.textPositions = override.textPositions;
+    if (Object.keys(next).length) cleaned[device] = next;
+  }
+  return Object.keys(cleaned).length ? JSON.stringify(cleaned) : undefined;
+}
+
+function withSerializedDeviceOverrides(
+  customText: Record<string, string>,
+  overrides: WebsiteDeviceOverrides,
+): Record<string, string> {
+  const text = stripDeviceOverridesFromText(customText);
+  const serialized = serializeWebsiteDeviceOverrides(overrides);
+  if (serialized) text[WEBSITE_DEVICE_OVERRIDES_KEY] = serialized;
+  return text;
+}
+
 function stripDeviceOverridesFromRecord<T extends WebsiteRendererPayload>(rec: T): T {
   const rawColorPalette = safePlainObject(rec.colorPalette);
   const colorPalette = { ...DEFAULT_WEBSITE_COLOR_PALETTE };
@@ -354,7 +381,7 @@ function stripDeviceOverridesFromRecord<T extends WebsiteRendererPayload>(rec: T
     ...rec,
     colorPalette,
     sectionsEnabled,
-    customText: stripDeviceOverridesFromText(rec.customText),
+    customText: safeWebsiteCustomText(rec.customText),
     textStyles: safePlainObject(rec.textStyles) as T["textStyles"],
     textPositions: safePlainObject(rec.textPositions) as T["textPositions"],
     galleryImages: Array.isArray(rec.galleryImages) ? rec.galleryImages : [],
@@ -365,19 +392,98 @@ function stripDeviceOverridesFromRecord<T extends WebsiteRendererPayload>(rec: T
   };
 }
 
+function baseRecordWithoutDeviceOverrides<T extends WebsiteRendererPayload>(rec: T): T {
+  return {
+    ...stripDeviceOverridesFromRecord(rec),
+    customText: stripDeviceOverridesFromText(rec.customText),
+  };
+}
+
+function isDeviceLayoutCustomTextKey(key: string): boolean {
+  if (key === WEBSITE_DEVICE_OVERRIDES_KEY) return false;
+  return (
+    key === "_heroFocals" ||
+    key === "_heroZooms" ||
+    key === "_sectionsBg" ||
+    key === "_photoFilter" ||
+    key === "_heroAnimation" ||
+    key === "_heroAnimationSpeed" ||
+    key === "_galleryAnimation" ||
+    key === "_galleryAnimationSpeed" ||
+    key === "_announcementMarquee" ||
+    key === "_navLinkColor" ||
+    key === "_navCoupleColor" ||
+    key === "_footerColor" ||
+    key.endsWith("Bg") ||
+    key.endsWith("Hidden")
+  );
+}
+
+function splitMobileCustomTextPatch(customText: unknown): {
+  shared: Record<string, string>;
+  layout: Record<string, string>;
+} {
+  const shared: Record<string, string> = {};
+  const layout: Record<string, string> = {};
+  for (const [key, value] of Object.entries(stripDeviceOverridesFromText(customText))) {
+    if (isDeviceLayoutCustomTextKey(key)) layout[key] = value;
+    else shared[key] = value;
+  }
+  return { shared, layout };
+}
+
 function withDevicePatch(
   prev: WebsiteRecord,
-  _device: WebsiteRenderDevice,
+  device: WebsiteRenderDevice,
   patch: Partial<WebsiteRecord>,
 ): WebsiteRecord {
-  const base = stripDeviceOverridesFromRecord(prev);
+  const existingOverrides = parseWebsiteDeviceOverrides(safeWebsiteCustomText(prev.customText));
+  const base = baseRecordWithoutDeviceOverrides(prev);
+  if (device !== "mobile") {
+    const next = {
+      ...base,
+      ...patch,
+    };
+    return {
+      ...next,
+      customText: withSerializedDeviceOverrides(
+        stripDeviceOverridesFromText(patch.customText ?? base.customText),
+        existingOverrides,
+      ),
+    };
+  }
+
+  const { textStyles: patchTextStyles, textPositions: patchTextPositions, customText, ...sharedPatch } = patch;
+  const splitCustomText = customText ? splitMobileCustomTextPatch(customText) : { shared: {}, layout: {} };
+  const nextBaseCustomText = customText
+    ? { ...base.customText, ...splitCustomText.shared }
+    : base.customText;
+  const nextMobileOverride: WebsiteDeviceOverride = {
+    ...(existingOverrides.mobile ?? {}),
+    customText: {
+      ...((existingOverrides.mobile?.customText as Record<string, string> | undefined) ?? {}),
+      ...splitCustomText.layout,
+    },
+    textStyles: patchTextStyles
+      ? { ...((existingOverrides.mobile?.textStyles as Record<string, unknown> | undefined) ?? {}), ...patchTextStyles }
+      : existingOverrides.mobile?.textStyles,
+    textPositions: patchTextPositions
+      ? { ...((existingOverrides.mobile?.textPositions as Record<string, unknown> | undefined) ?? {}), ...patchTextPositions }
+      : existingOverrides.mobile?.textPositions,
+  };
+  const overrides: WebsiteDeviceOverrides = {
+    ...existingOverrides,
+    mobile: nextMobileOverride,
+  };
   const next = {
     ...base,
-    ...patch,
+    ...sharedPatch,
   };
   return {
     ...next,
-    customText: stripDeviceOverridesFromText(patch.customText ?? base.customText),
+    textStyles: base.textStyles,
+    textPositions: base.textPositions,
+    customText: withSerializedDeviceOverrides(nextBaseCustomText, overrides),
   };
 }
 
@@ -757,7 +863,7 @@ export default function WebsiteEditor() {
   const patchRecord = useCallback((fn: (prev: WebsiteRecord) => Partial<WebsiteRecord>) => {
     if (!recordRef.current) return;
     const prev = recordRef.current;
-    const activePrev = stripDeviceOverridesFromRecord(prev);
+    const activePrev = baseRecordWithoutDeviceOverrides(prev);
     const next = withDevicePatch(prev, previewDevice, fn(activePrev));
     queueHistory(prev);
     recordRef.current = next;
@@ -783,6 +889,7 @@ export default function WebsiteEditor() {
     try {
       const r = await authFetch("/api/invitation-customizations", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ profileId, customColors }),
       });
       if (!r.ok) throw new Error("Failed to save meal choices");
@@ -923,7 +1030,7 @@ export default function WebsiteEditor() {
 
   const editingRecord = useMemo<WebsiteRecord | null>(() => {
     if (!record) return null;
-    return stripDeviceOverridesFromRecord(record);
+    return baseRecordWithoutDeviceOverrides(record);
   }, [record]);
 
   const [saveError, setSaveError] = useState(false);
@@ -940,7 +1047,7 @@ export default function WebsiteEditor() {
     accentColor: rec.accentColor,
     colorPalette: rec.colorPalette,
     sectionsEnabled: rec.sectionsEnabled,
-    customText: stripDeviceOverridesFromText(rec.customText),
+    customText: safeWebsiteCustomText(rec.customText),
     textStyles: rec.textStyles ?? {},
     textPositions: rec.textPositions ?? {},
     galleryImages: rec.galleryImages,
@@ -1676,6 +1783,67 @@ export default function WebsiteEditor() {
     (invitationHotelSettings?.rsvpHotelBlockId !== "all" ? invitationHotelSettings?.rsvpHotelBlockId : undefined) ||
     "all";
   const editorMealOptions = normalizeMealOptions(invitationHotelSettings?.rsvpMealOptions ?? DEFAULT_RSVP_MEAL_OPTIONS);
+  const activeEditorPage = editorSection || "home";
+  const pageNavItems = [
+    { id: "home", label: "Home", icon: Heart },
+    ...SECTION_LIST,
+  ] as Array<{ id: string; label: string; icon: React.ElementType }>;
+  const activePageLabel = pageNavItems.find((item) => item.id === activeEditorPage)?.label ?? "Home";
+  const editingPage = (...ids: string[]) => activeTab !== "publish" && ids.includes(activeEditorPage);
+  const isWebsiteSectionPage = activeEditorPage !== "home" && activeEditorPage in editingRecord.sectionsEnabled;
+  const pageCopyFields = (() => {
+    const textFields: Array<{ key: string; label: string; multiline?: boolean; placeholder?: string }> = {
+      home: [
+        { key: "_heroTagline", label: "Hero tagline", placeholder: "We're getting married" },
+        { key: "_coupleName", label: "Couple name", placeholder: "Alex & Jordan" },
+        { key: "_heroDate", label: "Hero date", placeholder: "Saturday, June 15, 2025" },
+        { key: "_announcement", label: "Announcement banner" },
+      ],
+      welcome: [
+        { key: "welcome_title", label: "Section title", placeholder: "Welcome" },
+        { key: "welcome", label: "Welcome message", multiline: true },
+      ],
+      story: [
+        { key: "story_title", label: "Section title", placeholder: "Our Story" },
+        { key: "story_subtitle", label: "Section subtitle", placeholder: "How we got here" },
+        { key: "story", label: "Story copy", multiline: true },
+      ],
+      schedule: [
+        { key: "schedule_title", label: "Section title", placeholder: "Schedule" },
+        { key: "schedule_subtitle", label: "Section subtitle", placeholder: "The day of" },
+      ],
+      travel: [
+        { key: "travel_title", label: "Section title", placeholder: "Travel & Venue" },
+        { key: "travel_subtitle", label: "Section subtitle", placeholder: "Where & how to get there" },
+        { key: "travel", label: "Travel notes", multiline: true },
+      ],
+      registry: [
+        { key: "registry_title", label: "Section title", placeholder: "Registry" },
+        { key: "registry_subtitle", label: "Section subtitle", placeholder: "With love" },
+        { key: "registry", label: "Registry note", multiline: true },
+      ],
+      faq: [
+        { key: "faq_title", label: "Section title", placeholder: "FAQ" },
+        { key: "faq_subtitle", label: "Section subtitle", placeholder: "Good to know" },
+      ],
+      gallery: [
+        { key: "gallery_title", label: "Section title", placeholder: "Gallery" },
+        { key: "gallery_subtitle", label: "Section subtitle", placeholder: "Moments" },
+      ],
+      weddingParty: [
+        { key: "weddingParty_title", label: "Section title", placeholder: "Wedding Party" },
+        { key: "weddingParty_subtitle", label: "Section subtitle", placeholder: "Meet our family & friends standing with us" },
+      ],
+      rsvp: [
+        { key: "rsvp_title", label: "Section title", placeholder: "RSVP" },
+        { key: "rsvp_subtitle", label: "RSVP subtitle", multiline: true },
+        { key: "rsvp_intro", label: "RSVP intro", multiline: true },
+        { key: "rsvp_deadline", label: "RSVP deadline", placeholder: "May 1, 2025" },
+        { key: "rsvp_thankyou", label: "RSVP thank-you message", multiline: true },
+      ],
+    }[activeEditorPage];
+    return textFields ?? [];
+  })();
 
   return (
     <div className="flex min-h-[100dvh] flex-col overflow-x-hidden lg:h-screen lg:min-h-0 lg:flex-row relative">
@@ -1695,6 +1863,7 @@ export default function WebsiteEditor() {
               currentSection={editorSection}
               onSectionChange={(id) => {
                 setEditorSection(id);
+                setActiveTab("setup");
                 mobilePreviewRef.current?.scrollTo({ top: 0, behavior: "auto" });
               }}
               onTextChange={(key, value) => patchRecord((prev) => ({ customText: { ...prev.customText, [key]: value } }))}
@@ -1750,7 +1919,9 @@ export default function WebsiteEditor() {
               </Button>
             </div>
             <span className="hidden text-[11px] font-medium text-muted-foreground sm:inline">
-              Previewing {previewDevice === "mobile" ? "mobile" : "desktop"} layout. Edits stay synced.
+              {previewDevice === "mobile"
+                ? "Mobile layout mode. Content stays synced; photo position, text size, and placement save for mobile."
+                : "Desktop layout mode. Content edits stay synced across desktop and mobile."}
             </span>
           </div>
           <div className="mb-3 flex gap-2 rounded-xl border border-[#E6D2D8] bg-[#FFF8F4] p-3 text-[#5B0F2A] lg:hidden">
@@ -1762,7 +1933,7 @@ export default function WebsiteEditor() {
               <p className="text-xs leading-relaxed text-[#6F3E54]">
                 {t("website_editor.mobile_control_center_copy", {
                   defaultValue:
-                    "Use the app for previewing, publishing, quick copy changes, section toggles, and photo updates. Full layout design, drag ordering, and theme polish are best on desktop.",
+                    "Use mobile preview to polish spacing, text placement, and photo crops without changing the shared website content.",
                 })}
               </p>
             </div>
@@ -1887,7 +2058,7 @@ export default function WebsiteEditor() {
           )}
 
           {/* Tab rail */}
-          <div className="mt-4 grid grid-cols-5 gap-1 rounded-xl border bg-muted/30 p-1">
+          <div className="hidden">
             {([
               // "content" is mobile-only — phones can't show the live preview
               // and the sidebar at the same time, so a plain form-based content
@@ -1914,11 +2085,52 @@ export default function WebsiteEditor() {
           </div>
         </div>
 
+          <div className="mt-4 rounded-xl border bg-muted/30 p-2">
+            <div className="mb-2 flex items-center justify-between gap-2 px-1">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Editing page</p>
+                <p className="text-sm font-semibold text-foreground">{activeTab === "publish" ? "Publish settings" : activePageLabel}</p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant={activeTab === "publish" ? "default" : "outline"}
+                className="h-8 px-3 text-xs"
+                onClick={() => setActiveTab(activeTab === "publish" ? "setup" : "publish")}
+              >
+                <Globe className="mr-1.5 h-3.5 w-3.5" />
+                Publish
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
+              {pageNavItems.map((item) => {
+                const PageIcon = item.icon;
+                const active = activeTab !== "publish" && activeEditorPage === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("setup");
+                      setEditorSection(item.id);
+                      previewRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                      mobilePreviewRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    className={`flex min-w-0 items-center justify-start gap-1.5 rounded-lg px-2 py-2 text-[11px] font-semibold transition-colors ${active ? "bg-background text-[#24171D] shadow-sm ring-1 ring-border dark:text-[#F7E7D6]" : "text-muted-foreground hover:bg-background/70 hover:text-foreground"}`}
+                  >
+                    <PageIcon className="h-3.5 w-3.5" />
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
         {/* Mobile-only Content editor — phones can't show preview + sidebar
             side-by-side, so this is a plain form for the highest-impact
             text fields. Updates flow through the existing customText jsonb
             so the live preview reflects them when the user toggles back. */}
-        {inTab("setup") && (
+        {editingPage("home") && (
           <Section icon={<Settings className="h-4 w-4" />} title={t("website_editor.section_quick_setup", { defaultValue: "Quick Setup" })}>
             <div className="space-y-3">
               <div className="rounded-lg border border-[#E6B1A6]/60 bg-[#FFF7F2] p-3 text-[#3A1826]">
@@ -1949,7 +2161,62 @@ export default function WebsiteEditor() {
           </Section>
         )}
 
-        {inTab("setup") && (() => {
+        {activeTab !== "publish" && pageCopyFields.length > 0 && (
+          <Section icon={<Type className="h-4 w-4" />} title={`${activePageLabel} Copy`}>
+            <div className="space-y-4">
+              {isWebsiteSectionPage && (
+                <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/20 px-3 py-2">
+                  <div>
+                    <p className="text-sm font-medium">Show {activePageLabel}</p>
+                    <p className="text-xs text-muted-foreground">Turn this page on or off on the guest website.</p>
+                  </div>
+                  <Switch
+                    checked={Boolean(editingRecord.sectionsEnabled[activeEditorPage as keyof WebsiteRecord["sectionsEnabled"]])}
+                    onCheckedChange={(checked) =>
+                      update({
+                        sectionsEnabled: {
+                          ...editingRecord.sectionsEnabled,
+                          [activeEditorPage]: checked,
+                        },
+                      })
+                    }
+                  />
+                </div>
+              )}
+              {pageCopyFields.map((field) => {
+                const currentValue = editableTextFieldValue(editingRecord.customText[field.key]);
+                const onChange = (value: string) => update({ customText: { ...editingRecord.customText, [field.key]: value } });
+                return (
+                  <div key={field.key}>
+                    <Label className="mb-1 block text-xs font-medium text-muted-foreground">{field.label}</Label>
+                    {field.multiline ? (
+                      <textarea
+                        ref={(el) => { contentInputRefs.current[field.key] = el; }}
+                        value={currentValue}
+                        onChange={(event) => onChange(event.target.value)}
+                        placeholder={field.placeholder}
+                        rows={4}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    ) : (
+                      <Input
+                        ref={(el) => { contentInputRefs.current[field.key] = el; }}
+                        value={currentValue}
+                        onChange={(event) => onChange(event.target.value)}
+                        placeholder={field.placeholder}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+              <p className="text-xs text-muted-foreground">
+                Click directly on the preview for detailed text styling and positioning. These fields only edit the current page.
+              </p>
+            </div>
+          </Section>
+        )}
+
+        {false && inTab("setup") && (() => {
           const CONTENT_EMOJIS = [
             "😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂", "🙂", "🙃",
             "😉", "😊", "😇", "🤩", "😗", "☺️", "😚", "😋", "😎", "🥲",
@@ -2076,7 +2343,7 @@ export default function WebsiteEditor() {
         })()}
 
         {/* Design guide */}
-        {inTab("design") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_quick_design", { defaultValue: "Quick Design" })}>
+        {editingPage("home") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_quick_design", { defaultValue: "Quick Design" })}>
           <div className="rounded-lg border border-[#E6B1A6]/60 bg-[#FFF7F2] p-3 text-[#3A1826]">
             <p className="text-sm font-semibold">
               {t("website_editor.quick_design_title", { defaultValue: "Start here, then fine tune." })}
@@ -2099,7 +2366,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Theme picker */}
-        {inTab("design") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_theme", { defaultValue: "Pick a Style" })}>
+        {editingPage("home") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_theme", { defaultValue: "Pick a Style" })}>
           <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
             {t("website_editor.theme_hint", { defaultValue: "Styles update fonts, colors, and section backgrounds together." })}
           </p>
@@ -2134,7 +2401,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Colors */}
-        {inTab("design") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_colors", { defaultValue: "Fine-tune Colors" })}>
+        {editingPage("home") && <Section icon={<Palette className="h-4 w-4" />} title={t("website_editor.section_colors", { defaultValue: "Fine-tune Colors" })}>
           <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
             {t("website_editor.colors_hint", { defaultValue: "Use these when you want one part of the website to have a custom color." })}
           </p>
@@ -2174,7 +2441,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Text tools */}
-        {inTab("design") && <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_text_tools", { defaultValue: "Text Editing" })}>
+        {activeTab !== "publish" && <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_text_tools", { defaultValue: "Text Editing" })}>
           <div className="space-y-3">
             <div className="grid gap-2 text-xs text-muted-foreground">
               <div className="rounded-lg border bg-background px-3 py-2">
@@ -2200,7 +2467,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Sections */}
-        {inTab("sections") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_sections", { defaultValue: "Sections" })}>
+        {false && inTab("sections") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_sections", { defaultValue: "Sections" })}>
           <div className="space-y-2.5">
             {SECTION_LIST.map((s) => {
               const Icon = s.icon;
@@ -2230,7 +2497,7 @@ export default function WebsiteEditor() {
         {/* Hero elements — toggles for the rows that drag-to-trash hides
             (date, venue, countdown). Lets the user bring them back without
             needing to hit Undo. */}
-        {inTab("sections") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_hero_elements", { defaultValue: "Home Elements" })}>
+        {editingPage("home") && <Section icon={<ToggleLeft className="h-4 w-4" />} title={t("website_editor.section_hero_elements", { defaultValue: "Home Elements" })}>
           <div className="space-y-2.5">
             {[
               { key: "_announcementHidden", label: t("website_editor.hero_announcement", { defaultValue: "Announcement Banner" }) },
@@ -2276,7 +2543,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Schedule event toggles */}
-        {inTab("sections") && editingRecord.sectionsEnabled.travel && <Section icon={<MapPin className="h-4 w-4" />} title="Travel & Venue Items">
+        {editingPage("travel") && editingRecord.sectionsEnabled.travel && <Section icon={<MapPin className="h-4 w-4" />} title="Travel & Venue Items">
           <div className="space-y-4">
             {[
               { key: "_travelVenueHidden",  label: "Venue" },
@@ -2304,7 +2571,7 @@ export default function WebsiteEditor() {
               <div>
                 <p className="text-sm font-medium">Hotel booking details</p>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  Add the booking URL, group code, and cutoff date in the Hotels tab. The website Travel card will show the booking button and block details automatically.
+                  Add the booking URL, room block dates, group code, and cutoff date in the Hotels tab. The website Travel card will show the booking button and block details automatically.
                 </p>
               </div>
               {hotelBlocks.length > 0 ? (
@@ -2354,7 +2621,7 @@ export default function WebsiteEditor() {
                 </div>
               ) : (
                 <p className="text-xs text-amber-700 dark:text-amber-300">
-                  No hotel blocks yet. Go to Hotels to add the hotel name, address, booking link, group code, and cutoff date.
+                  No hotel blocks yet. Go to Hotels to add the hotel name, address, booking link, block dates, group code, and cutoff date.
                 </p>
               )}
               <Button asChild variant="outline" size="sm" className="w-full">
@@ -2367,7 +2634,7 @@ export default function WebsiteEditor() {
           </div>
         </Section>}
 
-        {inTab("sections") && editingRecord.sectionsEnabled.schedule && <Section icon={<Clock className="h-4 w-4" />} title="Schedule Events">
+        {editingPage("schedule") && editingRecord.sectionsEnabled.schedule && <Section icon={<Clock className="h-4 w-4" />} title="Schedule Events">
           <div className="space-y-4">
             {[
               { hiddenKey: "_scheduleCeremonyHidden",  timeKey: "_scheduleCeremonyTime",  labelKey: "_scheduleCeremonyLabel",  defaultLabel: "Ceremony" },
@@ -2419,7 +2686,7 @@ export default function WebsiteEditor() {
             FAQ block as a single paragraph. Stored as JSON in
             customText.faq_items_json for backward compat with the legacy
             single-string customText.faq. */}
-        {inTab("sections") && editingRecord.sectionsEnabled.faq && <Section icon={<HelpCircle className="h-4 w-4" />} title={t("website_editor.section_faq_items", { defaultValue: "FAQ Questions" })}>
+        {editingPage("faq") && editingRecord.sectionsEnabled.faq && <Section icon={<HelpCircle className="h-4 w-4" />} title={t("website_editor.section_faq_items", { defaultValue: "FAQ Questions" })}>
           {(() => {
             type FaqItem = { question: string; answer: string };
             const QUESTION_MAX = 400;
@@ -2449,6 +2716,14 @@ export default function WebsiteEditor() {
               saveItems(next);
             };
 
+            const moveItem = (from: number, to: number) => {
+              if (from === to || from < 0 || to < 0 || from >= items.length || to >= items.length) return;
+              const next = items.slice();
+              const [moved] = next.splice(from, 1);
+              next.splice(to, 0, moved);
+              saveItems(next);
+            };
+
             const addItem = () => {
               saveItems([...items, { question: "", answer: "" }]);
             };
@@ -2461,20 +2736,66 @@ export default function WebsiteEditor() {
                   </p>
                 )}
                 {items.map((item, i) => (
-                  <div key={i} className="rounded-md border border-border bg-muted/20 p-3 space-y-2">
+                  <div
+                    key={i}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = "move";
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      const from = Number(event.dataTransfer.getData("text/plain"));
+                      if (Number.isInteger(from)) moveItem(from, i);
+                    }}
+                    className="rounded-md border border-border bg-muted/20 p-3 space-y-2 transition hover:border-primary/40"
+                  >
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <Label className="text-xs">
-                          {t("website_editor.faq_question", { defaultValue: "Question" })} <span className="text-destructive">*</span>
-                        </Label>
-                        <button
-                          type="button"
-                          onClick={() => removeItem(i)}
-                          className="text-xs text-muted-foreground hover:text-destructive transition-colors"
-                          title={t("website_editor.faq_remove", { defaultValue: "Remove question" })}
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <span
+                            draggable
+                            onDragStart={(event) => {
+                              event.dataTransfer.effectAllowed = "move";
+                              event.dataTransfer.setData("text/plain", String(i));
+                            }}
+                            className="inline-flex h-7 w-7 cursor-grab items-center justify-center rounded-md border border-border bg-background text-muted-foreground active:cursor-grabbing"
+                            title="Drag to reorder"
+                            aria-label={`Drag FAQ question ${i + 1} to reorder`}
+                          >
+                            <GripVertical className="h-4 w-4" />
+                          </span>
+                          <Label className="text-xs">
+                            {t("website_editor.faq_question", { defaultValue: "Question" })} {i + 1} <span className="text-destructive">*</span>
+                          </Label>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => moveItem(i, i - 1)}
+                            disabled={i === 0}
+                            className="rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-35"
+                            title="Move question up"
+                          >
+                            Up
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveItem(i, i + 1)}
+                            disabled={i === items.length - 1}
+                            className="rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-35"
+                            title="Move question down"
+                          >
+                            Down
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeItem(i)}
+                            className="rounded-md p-1 text-xs text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                            title={t("website_editor.faq_remove", { defaultValue: "Remove question" })}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </div>
                       <Input
                         value={item.question}
@@ -2513,7 +2834,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* FAQ style — font, size, color, bold/italic for questions and answers */}
-        {inTab("sections") && editingRecord.sectionsEnabled.faq && <Section icon={<HelpCircle className="h-4 w-4" />} title="FAQ Style">
+        {editingPage("faq") && editingRecord.sectionsEnabled.faq && <Section icon={<HelpCircle className="h-4 w-4" />} title="FAQ Style">
           {(["question", "answer"] as const).map((part) => {
             const fontKey  = part === "question" ? "_faqQuestionFont"   : "_faqAnswerFont";
             const sizeKey  = part === "question" ? "_faqQuestionSize"   : "_faqAnswerSize";
@@ -2582,7 +2903,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Inline-edit hint */}
-        {inTab("design") && <Section icon={<FileText className="h-4 w-4" />} title={t("website_editor.section_edit_text", { defaultValue: "Edit Text" })}>
+        {false && inTab("design") && <Section icon={<FileText className="h-4 w-4" />} title={t("website_editor.section_edit_text", { defaultValue: "Edit Text" })}>
           <p className="text-xs text-muted-foreground leading-relaxed">
             {t("website_editor.edit_text_hint_1", { defaultValue: "Click any heading or paragraph in the preview to edit it directly. Press" })} <strong>{t("website_editor.edit_text_hint_enter", { defaultValue: "Enter" })}</strong> {t("website_editor.edit_text_hint_2", { defaultValue: "on a heading or click outside to commit. Use this sidebar for theme, layout, photos, and section toggles." })}
           </p>
@@ -2590,7 +2911,7 @@ export default function WebsiteEditor() {
 
 
         {/* Announcement animation */}
-        {inTab("design") && <Section icon={<Sparkles className="h-4 w-4" />} title={t("website_editor.section_announcement_animation", { defaultValue: "Announcement Banner Animation" })}>
+        {editingPage("home") && <Section icon={<Sparkles className="h-4 w-4" />} title={t("website_editor.section_announcement_animation", { defaultValue: "Announcement Banner Animation" })}>
           <div className="space-y-2.5">
             <div className="flex items-center justify-between gap-3 py-1.5">
               <div>
@@ -2624,7 +2945,7 @@ export default function WebsiteEditor() {
 
 
         {/* Hero animation */}
-        {inTab("design") && <Section icon={<Sparkles className="h-4 w-4" />} title={t("website_editor.section_hero_animation", { defaultValue: "Hero Animation" })}>
+        {editingPage("home") && <Section icon={<Sparkles className="h-4 w-4" />} title={t("website_editor.section_hero_animation", { defaultValue: "Hero Animation" })}>
           <div className="space-y-3">
             <div>
               <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.style_label", { defaultValue: "Style" })}</Label>
@@ -2661,7 +2982,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Gallery animation */}
-        {inTab("design") && <Section icon={<ImageIcon className="h-4 w-4" />} title={t("website_editor.section_gallery_animation", { defaultValue: "Gallery Animation" })}>
+        {editingPage("gallery") && <Section icon={<ImageIcon className="h-4 w-4" />} title={t("website_editor.section_gallery_animation", { defaultValue: "Gallery Animation" })}>
           <div className="space-y-3">
             <div>
               <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.style_label", { defaultValue: "Style" })}</Label>
@@ -2696,7 +3017,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Photo effects */}
-        {inTab("design") && <Section icon={<ImageIcon className="h-4 w-4" />} title={t("website_editor.section_photo_effects", { defaultValue: "Photo Effects" })}>
+        {editingPage("home", "gallery") && <Section icon={<ImageIcon className="h-4 w-4" />} title={t("website_editor.section_photo_effects", { defaultValue: "Photo Effects" })}>
           <div className="space-y-2">
             <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.filter_label", { defaultValue: "Filter (applied to hero + gallery)" })}</Label>
             <div className="grid grid-cols-3 gap-2">
@@ -2731,7 +3052,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Home Page Photos — primary background + extras for slideshow/marquee */}
-        {inTab("design") && <Section icon={<ImageIcon className="h-4 w-4" />} title="Home Page Photos">
+        {editingPage("home") && <Section icon={<ImageIcon className="h-4 w-4" />} title="Home Page Photos">
           <p className="text-[11px] text-muted-foreground mb-2 leading-relaxed">
             Photos shown on the home page background. Add multiple for slideshows and marquees. These are separate from the Gallery section.
           </p>
@@ -2843,7 +3164,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Gallery */}
-        {inTab("design") && <Section icon={<ImageIcon className="h-4 w-4" />} title="Gallery">
+        {editingPage("gallery") && <Section icon={<ImageIcon className="h-4 w-4" />} title="Gallery">
           <div className="grid grid-cols-3 gap-2 mb-3 items-start">
             {editingRecord.galleryImages.map((img, i) => (
               <div key={i} className="flex flex-col gap-1">
@@ -2891,7 +3212,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Registry Links */}
-        {inTab("sections") && <Section icon={<Link2 className="h-4 w-4" />} title="Registry Links">
+        {editingPage("registry") && <Section icon={<Link2 className="h-4 w-4" />} title="Registry Links">
           <RegistryLinksEditor
             links={parseRegistryLinks(editingRecord.customText._registryLinks)}
             onChange={(next) =>
@@ -2901,7 +3222,7 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Wedding Party — read-only on the website editor; managed in the portal */}
-        {inTab("sections") && <Section icon={<Heart className="h-4 w-4" />} title="Wedding Party">
+        {editingPage("weddingParty") && <Section icon={<Heart className="h-4 w-4" />} title="Wedding Party">
           {editingRecord.portalParty && editingRecord.portalParty.length > 0 ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-50 dark:bg-emerald-950/30 text-xs text-emerald-800 dark:text-emerald-200">
@@ -2930,7 +3251,7 @@ export default function WebsiteEditor() {
 
 
         {/* RSVP settings — responses are tracked in the portal, not here */}
-        {inTab("rsvp") && !editingRecord.sectionsEnabled.rsvp && (
+        {editingPage("rsvp") && !editingRecord.sectionsEnabled.rsvp && (
           <Section icon={<Heart className="h-4 w-4" />} title="RSVP Section">
             <div className="rounded-lg border bg-muted/30 p-3">
               <p className="text-sm font-medium">RSVP is currently hidden.</p>
@@ -2947,7 +3268,7 @@ export default function WebsiteEditor() {
             </div>
           </Section>
         )}
-        {inTab("rsvp") && editingRecord.sectionsEnabled.rsvp && (
+        {editingPage("rsvp") && editingRecord.sectionsEnabled.rsvp && (
           <Section icon={<Heart className="h-4 w-4" />} title={t("website_editor.section_rsvp_settings", { defaultValue: "RSVP Settings" })}>
             <div className="space-y-2">
               <div>
@@ -3058,7 +3379,13 @@ export default function WebsiteEditor() {
                             rsvpMealOptions: next,
                           }));
                         }}
-                        onBlur={() => saveInvitationMealOptions(editorMealOptions)}
+                        onBlur={(event) => {
+                          const label = event.target.value;
+                          const next = editorMealOptions.map((item, itemIndex) =>
+                            itemIndex === index ? { ...item, label } : item,
+                          );
+                          void saveInvitationMealOptions(next);
+                        }}
                         className="h-8 text-sm"
                         aria-label={`Meal choice ${index + 1}`}
                       />
@@ -3308,6 +3635,7 @@ export default function WebsiteEditor() {
             currentSection={editorSection}
             onSectionChange={(id) => {
               setEditorSection(id);
+              setActiveTab("setup");
               // Reset preview scroll to top when switching pages
               previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
             }}
@@ -4021,3 +4349,9 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
     </div>
   );
 }
+
+
+
+
+
+
