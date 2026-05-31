@@ -21,7 +21,7 @@ import {
   getGetVendorQueryKey,
   getGetDashboardSummaryQueryKey,
 } from "@workspace/api-client-react";
-import type { SummarizeEmailResponse, Vendor, VendorPayment } from "@workspace/api-client-react";
+import type { ConversationSummary, SummarizeEmailResponse, Vendor, VendorPayment } from "@workspace/api-client-react";
 import { useUpload } from "@workspace/object-storage-web";
 import { VendorMessagesTab } from "@/components/VendorMessagesTab";
 import { Button } from "@/components/ui/button";
@@ -1576,7 +1576,8 @@ function VendorContactDialog({
   const { t } = useTranslation();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const { data: vendors = [] } = useListVendors();
+  const { data: vendorsData = [] } = useListVendors();
+  const vendors = vendorsData as Vendor[];
   const [primaryContactChoice, setPrimaryContactChoice] = useState<"manual" | "primary">("manual");
   const [additionalPhone, setAdditionalPhone] = useState("");
   const [additionalEmail, setAdditionalEmail] = useState("");
@@ -2028,7 +2029,8 @@ function VendorDirectoryTab({
   const qc = useQueryClient();
   const { toast } = useToast();
   const { user } = useUser();
-  const { data: vendors = [] } = useListVendors();
+  const { data: vendorsData = [] } = useListVendors();
+  const vendors = vendorsData as Vendor[];
   const { data: publishedPartnerListings = [] } = usePublishedPartnerListings();
   const partnerListings = useMemo(() => mergePartnerListings(publishedPartnerListings), [publishedPartnerListings]);
   const [selectedListing, setSelectedListing] = useState<VendorDirectoryListing | null>(null);
@@ -2306,14 +2308,17 @@ function VendorHubMessagesTab({
   onSelectVendor?: (vendorId: number) => void;
 }) {
   const { toast } = useToast();
-  const { data: vendors = [], isLoading: vendorsLoading } = useListVendors();
-  const { data: publishedPartnerListings = [] } = usePublishedPartnerListings(canPreviewPartnerVendors);
-  const { data: conversations = [], isLoading } = useListConversations({
+  const { data: vendorsData = [], isLoading: vendorsLoading } = useListVendors();
+  const vendors = vendorsData as Vendor[];
+  const { data: publishedPartnerListingsData = [] } = usePublishedPartnerListings(canPreviewPartnerVendors);
+  const publishedPartnerListings = publishedPartnerListingsData as VendorDirectoryListing[];
+  const { data: conversationsData = [], isLoading } = useListConversations({
     query: {
       queryKey: getListConversationsQueryKey(),
       refetchInterval: 5000,
     },
   });
+  const conversations = conversationsData as ConversationSummary[];
   const [selectedVendorId, setSelectedVendorId] = useState<number | null>(initialVendorId ?? null);
   const [selectedPartnerListing, setSelectedPartnerListing] = useState<VendorDirectoryListing | null>(null);
   const createPartnerInquiryMutation = useMutation({
@@ -2774,7 +2779,7 @@ function VendorCard({
   isContractUpdating?: boolean;
 }) {
   const { t } = useTranslation();
-  const payments = vendor.payments ?? [];
+  const payments: VendorPayment[] = vendor.payments ?? [];
   const hasDepositMilestone = payments.some((p) => p.label.toLowerCase() === "deposit");
   const paidFromPayments = payments.filter((p) => p.isPaid).reduce((s, p) => s + p.amount, 0);
   const paidAmount = (hasDepositMilestone ? 0 : vendor.depositAmount) + paidFromPayments;
@@ -2936,7 +2941,8 @@ export default function Vendors() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { user } = useUser();
-  const { data: vendors = [], isLoading } = useListVendors();
+  const { data: vendorsData = [], isLoading } = useListVendors();
+  const vendors = vendorsData as Vendor[];
   const { data: profile, isLoading: profileLoading } = useGetProfile();
   const [location, setLocation] = useLocation();
   const browserSearch = typeof window !== "undefined" ? window.location.search.replace(/^\?/, "") : "";
