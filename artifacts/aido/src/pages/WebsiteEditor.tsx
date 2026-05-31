@@ -1780,28 +1780,14 @@ export default function WebsiteEditor() {
   const activePageLabel = pageNavItems.find((item) => item.id === activeEditorPage)?.label ?? "Home";
   const editingPage = (...ids: string[]) => activeTab !== "publish" && ids.includes(activeEditorPage);
   const allControlGroups = [
-    { id: "copy", label: "Copy", icon: Type },
+    { id: "copy", label: "Content", icon: Type },
     { id: "design", label: "Design", icon: Palette },
     { id: "elements", label: "Elements", icon: ToggleLeft },
     { id: "photos", label: "Photos", icon: ImageIcon },
     { id: "animation", label: "Animation", icon: Sparkles },
     { id: "settings", label: "Settings", icon: Settings },
   ] as const;
-  const controlGroupIdsByPage: Record<string, Array<(typeof allControlGroups)[number]["id"]>> = {
-    home: ["copy", "design", "elements", "photos", "animation", "settings"],
-    welcome: ["copy", "design"],
-    story: ["copy", "design"],
-    schedule: ["copy", "elements", "design"],
-    travel: ["copy", "elements", "design"],
-    registry: ["copy", "elements", "design"],
-    faq: ["copy", "elements", "design"],
-    gallery: ["copy", "photos", "animation", "design"],
-    weddingParty: ["copy", "elements", "design"],
-    rsvp: ["copy", "settings", "design"],
-  };
-  const pageControlGroups = allControlGroups.filter((group) =>
-    (controlGroupIdsByPage[activeEditorPage] ?? ["copy"]).includes(group.id),
-  );
+  const pageControlGroups = allControlGroups;
   const currentControlGroup = pageControlGroups.some((group) => group.id === activeControlGroup)
     ? activeControlGroup
     : pageControlGroups[0]?.id ?? "copy";
@@ -2204,7 +2190,7 @@ export default function WebsiteEditor() {
         )}
 
         {currentControlGroup === "copy" && activeTab !== "publish" && pageCopyFields.length > 0 && (
-          <Section icon={<Type className="h-4 w-4" />} title={`${activePageLabel} Copy`}>
+          <Section icon={<Type className="h-4 w-4" />} title={`${activePageLabel} Content`}>
             <div className="space-y-4">
               {isWebsiteSectionPage && (
                 <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/20 px-3 py-2">
@@ -2301,7 +2287,7 @@ export default function WebsiteEditor() {
             </div>
           );
           return (
-            <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_content", { defaultValue: "Website Copy" })}>
+            <Section icon={<Type className="h-4 w-4" />} title={t("website_editor.section_content", { defaultValue: "Website Content" })}>
               <div className="space-y-4">
                 {([
                   { key: "_heroTagline",  label: t("website_editor.content_hero_tagline", { defaultValue: "Hero tagline (e.g. We're getting married)" }), placeholder: "We're getting married" },

@@ -106,6 +106,9 @@ export interface WebsiteRendererPayload {
       color?: string;
       bold?: boolean;
       italic?: boolean;
+      underline?: boolean;
+      strikethrough?: boolean;
+      textAlign?: "left" | "center" | "right";
       animation?: string;
     }
   >;
@@ -281,6 +284,9 @@ type TextStyle = {
   color?: string;
   bold?: boolean;
   italic?: boolean;
+  underline?: boolean;
+  strikethrough?: boolean;
+  textAlign?: "left" | "center" | "right";
   animation?: string;
 };
 
@@ -2426,6 +2432,7 @@ function Schedule({
 
 function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const text = data.customText.travel ?? "";
+  const isMobileRender = ctx.renderDevice === "mobile";
   const venueCityStateZip = [
     [data.couple.venueCity, data.couple.venueState].filter(Boolean).join(", "),
     data.couple.venueZip,
@@ -2475,7 +2482,8 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const cardStyle: React.CSSProperties = {
     border: `1px solid ${data.colorPalette.primary}22`,
     borderRadius: 12,
-    padding: "18px 20px",
+    padding: isMobileRender ? "16px" : "18px 20px",
+    overflowWrap: "break-word",
   };
   const iconWrap: React.CSSProperties = {
     width: 36,
@@ -2517,12 +2525,12 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         {...withBaseColor(tsp(ctx, "travel_subtitle"), labelColor)}
       />
 
-      <div className="grid sm:grid-cols-2 gap-4 max-w-3xl mx-auto mb-6">
+      <div className={`${isMobileRender ? "grid grid-cols-1" : "grid sm:grid-cols-2"} gap-4 max-w-3xl mx-auto mb-6`}>
         {/* Venue */}
         {data.couple.venue &&
           !isEditableHiddenMarker(data.customText._travelVenueHidden) && (
             <div style={cardStyle}>
-              <div className="flex items-start gap-3 mb-3">
+              <div className={isMobileRender ? "flex flex-col items-start gap-3 mb-4" : "flex items-start gap-3 mb-3"}>
                 <div style={iconWrap}>
                   <MapPin className="h-4 w-4" />
                 </div>
@@ -2545,7 +2553,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                     style={{ color: labelColor }}
                   />
                   <div
-                    className="text-base sm:text-lg font-medium"
+                    className={`${isMobileRender ? "text-lg" : "text-base sm:text-lg"} font-medium`}
                     style={{ color: labelColor }}
                   >
                     {data.couple.venue}
@@ -2578,7 +2586,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         {(hasHotel || ctx.editable) &&
           !isEditableHiddenMarker(data.customText._travelHotelHidden) && (
             <div style={cardStyle}>
-              <div className="flex items-start gap-3 mb-3">
+              <div className={isMobileRender ? "flex flex-col items-start gap-3 mb-4" : "flex items-start gap-3 mb-3"}>
                 <div style={iconWrap}>
                   <Bed className="h-4 w-4" />
                 </div>
@@ -2601,7 +2609,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                     style={{ color: labelColor }}
                   />
                   <div
-                    className="text-base sm:text-lg font-medium"
+                    className={`${isMobileRender ? "text-lg" : "text-base sm:text-lg"} font-medium`}
                     style={{ color: labelColor }}
                   >
                     {hotelName || (ctx.editable ? "Hotel name" : "")}
@@ -2616,7 +2624,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   )}
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <div className={isMobileRender ? "flex flex-col items-start gap-2" : "flex flex-wrap items-center gap-x-4 gap-y-2"}>
                 {hasHotel && (
                   <a
                     href={`https://www.google.com/maps/search/${hotelQuery}`}

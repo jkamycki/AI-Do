@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Trash2, Sparkles, Loader2, Smile } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, Loader2, Smile, Sparkles, Strikethrough, Trash2, Underline } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { WebsiteTextStyle } from "@workspace/db";
 import { authFetch } from "@/lib/authFetch";
@@ -244,6 +244,49 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
         >
           <em>I</em>
         </button>
+        <button
+          className={btnClass(!!style.underline)}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => patch({ underline: !style.underline })}
+          title={t("text_toolbar.underline", { defaultValue: "Underline" })}
+        >
+          <Underline className="h-3.5 w-3.5" />
+        </button>
+        <button
+          className={btnClass(!!style.strikethrough)}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => patch({ strikethrough: !style.strikethrough })}
+          title={t("text_toolbar.strikethrough", { defaultValue: "Strikethrough" })}
+        >
+          <Strikethrough className="h-3.5 w-3.5" />
+        </button>
+
+        <div
+          className="inline-flex h-7 overflow-hidden rounded border border-[#D6C8B8]"
+          title={t("text_toolbar.alignment", { defaultValue: "Text alignment" })}
+        >
+          {[
+            { value: "left" as const, icon: AlignLeft, label: "Align left" },
+            { value: "center" as const, icon: AlignCenter, label: "Align center" },
+            { value: "right" as const, icon: AlignRight, label: "Align right" },
+          ].map(({ value, icon: Icon, label }) => {
+            const active = style.textAlign === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                className={`inline-flex w-7 items-center justify-center transition-colors ${
+                  active ? "bg-[#1F242C] text-[#FFFDF8]" : "bg-[#FFFDF8] text-[#1F242C] hover:bg-[#F3E8DC]"
+                }`}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => patch({ textAlign: active ? undefined : value })}
+                title={t(`text_toolbar.${value}`, { defaultValue: label })}
+              >
+                <Icon className="h-3.5 w-3.5" />
+              </button>
+            );
+          })}
+        </div>
 
         {/* Color */}
         <label

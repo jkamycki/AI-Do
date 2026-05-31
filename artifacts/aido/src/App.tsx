@@ -40,6 +40,7 @@ const PublicWebsite = lazy(() => import("@/pages/PublicWebsite"));
 const PublicGuestPhotoDrop = lazy(() => import("@/pages/PublicGuestPhotoDrop"));
 const PublicDisposableCamera = lazy(() => import("@/pages/PublicDisposableCamera"));
 const WebsiteEditor = lazy(() => import("@/pages/WebsiteEditor"));
+const Registry = lazy(() => import("@/pages/Registry"));
 const WeddingParty = lazy(() => import("@/pages/WeddingParty"));
 const SharedWorkspace = lazy(() => import("@/pages/SharedWorkspace"));
 const GuestListAndInvitations = lazy(() => import("@/pages/GuestListAndInvitations"));
@@ -1921,6 +1922,7 @@ function Router() {
         <Route path="/documents" component={() => <ProtectedRoute component={DocumentLibrary} maintenanceSection="portal-documents" />} />
         <Route path="/mood-board" component={() => <ProtectedRoute component={MoodBoard} maintenanceSection="portal-mood-board" />} />
         <Route path="/aria" component={() => <ProtectedRoute component={Aria} maintenanceSection="portal-aria" />} />
+        <Route path="/registry" component={() => <ProtectedRoute component={Registry} maintenanceSection="portal-website-editor" />} />
         <Route path="/website-editor" component={() => <ProtectedRoute component={WebsiteEditor} fullWidth maintenanceSection="portal-website-editor" />} />
         <Route path="/workspace/:profileId" component={() => <ProtectedRoute component={SharedWorkspace} fullWidth />} />
         <Route path="/terms" component={Terms} />

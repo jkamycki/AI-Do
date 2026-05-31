@@ -16,6 +16,7 @@ import {
   ImagePlus,
   Trash2,
   Pencil,
+  Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -49,6 +50,7 @@ const routePrefetchers: Record<string, () => Promise<unknown>> = {
   "/hotels": () => import("@/pages/Hotels"),
   "/aria": () => import("@/pages/Aria"),
   "/day-of": () => import("@/pages/DayOf"),
+  "/registry": () => import("@/pages/Registry"),
   "/website-editor": () => import("@/pages/WebsiteEditor"),
   "/settings": () => import("@/pages/Settings"),
   "/help": () => import("@/pages/Help"),
@@ -325,7 +327,7 @@ export function Sidebar() {
 
   useEffect(() => {
     if (!isSignedIn) return;
-    const warmRoutes = ["/dashboard", "/profile", "/calendar", "/budget", "/vendors", "/guests", "/guest-photo-drop", "/timeline", "/checklist", "/wedding-party", "/day-of"];
+    const warmRoutes = ["/dashboard", "/profile", "/calendar", "/budget", "/vendors", "/guests", "/guest-photo-drop", "/timeline", "/checklist", "/wedding-party", "/day-of", "/registry"];
     const warm = () => warmRoutes.forEach(prefetchSidebarRoute);
     const idleId =
       "requestIdleCallback" in window
@@ -408,6 +410,7 @@ export function Sidebar() {
       label: t("sidebar.planning_tools_section", { defaultValue: "Planning Tools" }),
       defaultOpen: false,
       items: [
+        { href: "/registry", label: t("nav.registry", { defaultValue: "Registry" }), icon: Gift },
         { href: "/website-editor", label: t("nav.website_editor", { defaultValue: "Website Editor" }) },
         { href: "/documents", label: t("nav.document_library", { defaultValue: "Document Library" }) },
       ],
@@ -657,10 +660,7 @@ export function Sidebar() {
 
           <div className="space-y-4">
             {!isPlannerOwnWorkspace && sidebarSections.map((section) => {
-              const hasActiveItem = section.items.some((item) => isHrefActive(item.href));
-              const expanded = section.id in collapsedSections
-                ? !collapsedSections[section.id]
-                : hasActiveItem || section.defaultOpen;
+              const expanded = collapsedSections[section.id] === true;
 
               return (
                 <div key={section.id} className="space-y-1">

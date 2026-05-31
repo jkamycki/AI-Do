@@ -803,6 +803,9 @@ export type WebsiteTextStyle = {
   color?: string;
   bold?: boolean;
   italic?: boolean;
+  underline?: boolean;
+  strikethrough?: boolean;
+  textAlign?: "left" | "center" | "right";
   animation?: string;
   // Explicit box width set by dragging the corner resize handle sideways.
   // When present, the rendered text wraps inside this width so users can
