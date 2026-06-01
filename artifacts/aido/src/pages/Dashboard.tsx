@@ -315,6 +315,119 @@ function MobileCommandCenter({ t }: { t: (key: string, options?: Record<string, 
   );
 }
 
+function FirstWeekPlan({
+  summary,
+  vendors,
+  hotels,
+}: {
+  summary: DashboardSummary;
+  vendors: Vendor[];
+  hotels: HotelBlock[];
+}) {
+  if (!summary.hasProfile) return null;
+
+  const guestCount = Number((summary as unknown as { guestCount?: number }).guestCount ?? 0);
+  const vendorCount = vendors.length;
+  const hasHotelBlock = hotels.length > 0;
+  const websiteState = summary as unknown as { websiteSlug?: string | null; publicWebsiteUrl?: string | null };
+  const hasWebsite = Boolean(websiteState.websiteSlug || websiteState.publicWebsiteUrl);
+
+  const actions = [
+    guestCount <= 0
+      ? {
+          href: "/guests",
+          icon: Users,
+          label: "Start guest list",
+          detail: "Add close family and wedding party first so RSVPs and seating have a foundation.",
+        }
+      : {
+          href: "/guests",
+          icon: Users,
+          label: "Review guests",
+          detail: "Check RSVP status, plus-ones, meal choices, and any missing contact details.",
+        },
+    vendorCount <= 0
+      ? {
+          href: "/vendors",
+          icon: Building2,
+          label: "Add first vendors",
+          detail: "Save booked vendors or the ones you are considering so budget and contracts stay together.",
+        }
+      : {
+          href: "/vendors",
+          icon: Building2,
+          label: "Confirm vendors",
+          detail: "Review deposits, balances, contracts, and notes for the vendors already added.",
+        },
+    hasWebsite
+      ? {
+          href: "/website-editor",
+          icon: LayoutGrid,
+          label: "Preview website",
+          detail: "Open the guest view and make sure date, venue, travel, RSVP, and registry details look right.",
+        }
+      : {
+          href: "/website-editor",
+          icon: LayoutGrid,
+          label: "Create website",
+          detail: "Publish a simple guest home base before sending invites or sharing QR codes.",
+        },
+  ];
+
+  const bonus = hasHotelBlock
+    ? "Hotel info is already started. Double-check the booking link before guests see it."
+    : "If guests are traveling, add hotel details early so the website is useful right away.";
+
+  return (
+    <section className="rounded-2xl border border-primary/15 bg-gradient-to-br from-white via-[#fff8f4] to-[#f7dde2]/45 p-5 shadow-[0_18px_42px_rgba(141,41,77,0.08)]">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">First week plan</p>
+          <h2 className="mt-1 text-2xl font-serif text-foreground">Do these 3 things first</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+            A simple starting path for couples who just finished setup. You can come back and rearrange the rest later.
+          </p>
+        </div>
+        <Link href="/aria" className="shrink-0">
+          <Button variant="outline" size="sm" className="gap-2 rounded-full border-primary/25 text-primary hover:bg-primary/5">
+            <Sparkles className="h-4 w-4" />
+            Ask Aria
+          </Button>
+        </Link>
+      </div>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-3">
+        {actions.map((action, index) => {
+          const Icon = action.icon;
+          return (
+            <Link key={action.label} href={action.href}>
+              <div className="group h-full rounded-xl border border-primary/10 bg-white/80 p-4 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_14px_28px_rgba(141,41,77,0.10)]">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white">
+                    {index + 1}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Icon className="h-4 w-4 text-primary" />
+                      <p className="font-semibold text-foreground">{action.label}</p>
+                    </div>
+                    <p className="mt-1 text-sm leading-5 text-muted-foreground">{action.detail}</p>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 flex items-start gap-2 rounded-xl border border-primary/10 bg-primary/5 px-4 py-3 text-sm text-foreground/80">
+        <Hotel className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+        <p>{bonus}</p>
+      </div>
+    </section>
+  );
+}
+
 function FeatureCard({
   icon: Icon,
   title,
@@ -1019,6 +1132,7 @@ function DashboardContent() {
       )}
 
       <MobileCommandCenter t={t} />
+      <FirstWeekPlan summary={summary} vendors={vendors} hotels={hotels} />
 
       {/* Wedding Profile Overview */}
       {summary.hasProfile && summary.profile ? (
