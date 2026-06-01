@@ -319,7 +319,7 @@ function MemberCard({
   return (
     <>
       <Card className="h-full border-border/60 bg-card/95 shadow-sm transition-shadow hover:shadow-md">
-        <CardContent className="relative flex h-full min-h-[340px] flex-col items-center p-5 text-center">
+        <CardContent className="relative flex h-full min-h-[300px] flex-col items-center p-3 text-center sm:min-h-[340px] sm:p-5">
           {dragHandle}
           <div className="absolute right-3 top-3 flex gap-1">
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}><Edit2 className="h-3.5 w-3.5" /></Button>
@@ -340,10 +340,10 @@ function MemberCard({
             </AlertDialog>
           </div>
           <div className="flex h-full w-full flex-col items-center">
-            <div className="mb-4 flex h-32 flex-col items-center sm:h-36">
+            <div className="mb-4 flex h-24 flex-col items-center sm:h-36">
               {/* Avatar — click to upload/change headshot */}
               <div
-                className="relative group h-32 w-32 cursor-pointer overflow-hidden rounded-full border border-primary/20 bg-primary/10 shadow-sm sm:h-36 sm:w-36"
+                className="relative group h-24 w-24 cursor-pointer overflow-hidden rounded-full border border-primary/20 bg-primary/10 shadow-sm sm:h-36 sm:w-36"
                 onClick={() => {
                   if (isBusy) return;
                   if (member.photoUrl) void openExistingPhotoEditor();
@@ -411,15 +411,15 @@ function MemberCard({
               />
             </div>
 
-              <div className="flex min-h-[104px] w-full flex-col items-center justify-start space-y-1.5">
-                <div className="flex items-center justify-center gap-2">
-                  <p className="font-serif text-2xl leading-tight text-primary">{member.name}</p>
+              <div className="flex min-h-[96px] w-full flex-col items-center justify-start space-y-1.5 sm:min-h-[104px]">
+                <div className="flex items-center justify-center gap-1.5 sm:gap-2">
+                  <p className="break-words font-serif text-xl leading-tight text-primary sm:text-2xl">{member.name}</p>
                   {(member.role === "Maid of Honor" || member.role === "Best Man") && (
                     <Crown className="h-4 w-4 shrink-0 text-amber-500" />
                   )}
                 </div>
                 <div className="flex flex-col items-center gap-1">
-                  <span className="text-sm text-muted-foreground">{member.role}</span>
+                  <span className="text-xs text-muted-foreground sm:text-sm">{member.role}</span>
                   <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${sideColor}`}>
                     {sideLabel}
                   </span>
@@ -527,7 +527,7 @@ function PartyGroup({ title, members, icon: Icon, color, onEdit, onDelete, onPho
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={members.map((member) => member.id)} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               {members.map(m => (
                 <SortableMemberCard
                   key={m.id}
@@ -713,8 +713,8 @@ export default function WeddingParty() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-0">
-          <div className="lg:pr-10 lg:border-r lg:border-primary/20">
+        <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
+          <div className="min-w-0">
             <PartyGroup
               title={t("party.bride_party", { defaultValue: "Bride's Party" })}
               members={bridesSide}
@@ -726,7 +726,7 @@ export default function WeddingParty() {
               onReorder={handleReorder}
             />
           </div>
-          <div className="lg:pl-10">
+          <div className="min-w-0">
             <PartyGroup
               title={t("party.groom_party", { defaultValue: "Groom's Party" })}
               members={groomsSide}

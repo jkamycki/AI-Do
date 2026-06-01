@@ -4451,14 +4451,6 @@ function WeddingParty({
     }),
   );
 
-  // When a side has an odd number of members, the trailing card spans
-  // both columns and centers itself so it doesn't sit alone. Done in
-  // pure CSS via an arbitrary :last-child:nth-child(odd) selector so
-  // we don't need a wrapper div around each PartyMemberCard (which was
-  // breaking the photo-vs-name alignment under each card).
-  const oddLastGridClass =
-    "[&>:last-child:nth-child(odd)]:sm:col-span-2 [&>:last-child:nth-child(odd)]:sm:justify-self-center [&>:last-child:nth-child(odd)]:sm:max-w-[220px]";
-
   return (
     <SectionShell
       id="weddingParty"
@@ -4500,11 +4492,10 @@ function WeddingParty({
               ? "relative mx-auto max-w-sm"
               : "relative mx-auto grid max-w-5xl grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-0"}
             >
-              {isMobileRender ? (
-                <div className="mx-auto w-full max-w-[22rem]">
-                  <div className="mb-8 grid grid-cols-2 gap-x-4">
+              <div className={isMobileRender ? "mx-auto w-full max-w-[22rem]" : "mx-auto w-full max-w-4xl"}>
+                  <div className={isMobileRender ? "mb-8 grid grid-cols-2 gap-x-4" : "mb-10 grid grid-cols-2 gap-x-8"}>
                     <h3
-                      className="text-center text-xl leading-tight"
+                      className={isMobileRender ? "text-center text-xl leading-tight" : "text-center text-2xl leading-tight sm:text-3xl"}
                       style={{
                         fontFamily: fontStack(headingFont(data)),
                         color: labelColor,
@@ -4520,7 +4511,7 @@ function WeddingParty({
                       />
                     </h3>
                     <h3
-                      className="text-center text-xl leading-tight"
+                      className={isMobileRender ? "text-center text-xl leading-tight" : "text-center text-2xl leading-tight sm:text-3xl"}
                       style={{
                         fontFamily: fontStack(headingFont(data)),
                         color: labelColor,
@@ -4536,7 +4527,7 @@ function WeddingParty({
                       />
                     </h3>
                   </div>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-12">
+                  <div className={isMobileRender ? "grid grid-cols-2 gap-x-4 gap-y-12" : "grid grid-cols-2 gap-x-8 gap-y-12"}>
                     {pairedPartyRows.map((row, i) => (
                       <Fragment key={`party-pair-${i}`}>
                         {row.bride ? (
@@ -4563,100 +4554,6 @@ function WeddingParty({
                     ))}
                   </div>
                 </div>
-              ) : (
-                <>
-              {/* Bride's side */}
-              <div
-                className="lg:border-r lg:pr-12"
-                style={{ borderColor: `${data.colorPalette.primary}33` }}
-              >
-                <h3
-                  className="text-center text-2xl sm:text-3xl mb-10"
-                  style={{
-                    fontFamily: fontStack(headingFont(data)),
-                    color: labelColor,
-                  }}
-                >
-                  <EditableText
-                    editable={ctx.editable}
-                    value={data.customText.weddingParty_brideLabel ?? ""}
-                    defaultValue="Bride's Party"
-                    onCommit={(v) =>
-                      ctx.onTextChange("weddingParty_brideLabel", v)
-                    }
-                  />
-                </h3>
-                {brideSide.length === 0 ? (
-                  <p
-                    className="text-center text-xs font-medium"
-                    style={{ color: labelColor }}
-                  >
-                    {ctx.editable
-                      ? "Add members from the sidebar with side set to Bride"
-                      : ""}
-                  </p>
-                ) : (
-                  <div
-                    className={`grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 ${oddLastGridClass}`}
-                  >
-                    {brideSide.map((m, i) => (
-                      <PartyMemberCard
-                        key={`b-${i}`}
-                        data={data}
-                        member={m}
-                        labelColor={labelColor}
-                        compact={isMobileRender}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Groom's side */}
-              <div className="lg:pl-12">
-                <h3
-                  className="text-center text-2xl sm:text-3xl mb-10"
-                  style={{
-                    fontFamily: fontStack(headingFont(data)),
-                    color: labelColor,
-                  }}
-                >
-                  <EditableText
-                    editable={ctx.editable}
-                    value={data.customText.weddingParty_groomLabel ?? ""}
-                    defaultValue="Groom's Party"
-                    onCommit={(v) =>
-                      ctx.onTextChange("weddingParty_groomLabel", v)
-                    }
-                  />
-                </h3>
-                {groomSide.length === 0 ? (
-                  <p
-                    className="text-center text-xs font-medium"
-                    style={{ color: labelColor }}
-                  >
-                    {ctx.editable
-                      ? "Add members from the sidebar with side set to Groom"
-                      : ""}
-                  </p>
-                ) : (
-                  <div
-                    className={`grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 ${oddLastGridClass}`}
-                  >
-                    {groomSide.map((m, i) => (
-                      <PartyMemberCard
-                        key={`g-${i}`}
-                        data={data}
-                        member={m}
-                        labelColor={labelColor}
-                        compact={isMobileRender}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-                </>
-              )}
             </div>
           )}
 
