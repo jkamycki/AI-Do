@@ -1931,6 +1931,12 @@ function Router() {
         <Route path="/early-access" component={EarlyAccess} />
         <Route path="/ai-wedding-planner" component={SeoMarketingPage} />
         <Route path="/wedding-website-builder" component={SeoMarketingPage} />
+        <Route path="/pricing" component={SeoMarketingPage} />
+        <Route path="/photo-qr-code" component={SeoMarketingPage} />
+        <Route path="/digital-invitations" component={SeoMarketingPage} />
+        <Route path="/wedding-guest-list-manager" component={SeoMarketingPage} />
+        <Route path="/wedding-budget-planner" component={SeoMarketingPage} />
+        <Route path="/wedding-vendor-manager" component={SeoMarketingPage} />
         <Route path="/wedding-photo-qr-code" component={SeoMarketingPage} />
         <Route path="/wedding-planning-checklist" component={SeoMarketingPage} />
         <Route path="/wedding-vendor-management" component={SeoMarketingPage} />
@@ -2044,7 +2050,9 @@ const RESERVED_PUBLIC_ROOT_SEGMENTS = new Set([
   "invite",
   "mood-board",
   "operations-center",
+  "photo-qr-code",
   "photo-drop",
+  "pricing",
   "privacy",
   "profile",
   "promo",
@@ -2063,11 +2071,15 @@ const RESERVED_PUBLIC_ROOT_SEGMENTS = new Set([
   "w",
   "website-editor",
   "wedding",
+  "wedding-budget-planner",
+  "wedding-guest-list-manager",
   "wedding-party",
+  "wedding-vendor-manager",
   "wedding-photo-qr-code",
   "wedding-planning-checklist",
   "wedding-vendor-management",
   "wedding-website-builder",
+  "digital-invitations",
   "workspace",
 ]);
 

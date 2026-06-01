@@ -10,7 +10,11 @@ type PageKey =
   | "wedding-website-builder"
   | "wedding-photo-qr-code"
   | "wedding-planning-checklist"
-  | "wedding-vendor-management";
+  | "wedding-vendor-management"
+  | "digital-invitations"
+  | "wedding-guest-list-manager"
+  | "wedding-budget-planner"
+  | "pricing";
 
 const PAGE_CONTENT: Record<PageKey, {
   title: string;
@@ -79,6 +83,48 @@ const PAGE_CONTENT: Record<PageKey, {
       { heading: "Move from planning to execution", body: "Checklist items can support the day-of timeline, vendor handoffs, payment reminders, and document review so details do not fall through." },
     ],
   },
+  "digital-invitations": {
+    title: "Digital Wedding Invitations",
+    metaTitle: "Digital Wedding Invitations With RSVP Tracking | A.I DO",
+    description: "Send digital wedding invitations, collect RSVPs, organize guests, manage meal choices, and connect invitation replies to your A.I DO planning dashboard.",
+    eyebrow: "Digital wedding invitations",
+    h1: "Send digital invitations and keep every RSVP connected to the plan.",
+    intro: "A.I DO helps couples manage digital invites, RSVP replies, guest details, meal choices, plus-ones, and wedding website links from one planning workspace.",
+    icon: MailCheck,
+    bullets: ["Digital invitation and save-the-date flows", "RSVP status, meal choices, and guest notes", "Connected guest list, website, and planning dashboard"],
+    sections: [
+      { heading: "Built for fewer follow-ups", body: "Guests can respond digitally while couples keep RSVP details connected to guest records, invitations, meals, and planning totals." },
+      { heading: "One guest source of truth", body: "Use A.I DO to keep invitation status, RSVP answers, hotel notes, and guest counts in one place instead of scattered messages." },
+    ],
+  },
+  "wedding-guest-list-manager": {
+    title: "Wedding Guest List Manager",
+    metaTitle: "Wedding Guest List Manager & RSVP Tracker | A.I DO",
+    description: "Manage your wedding guest list, plus-ones, RSVP status, meal choices, groups, invitations, and guest communication in A.I DO.",
+    eyebrow: "Wedding guest list manager",
+    h1: "Organize your guest list before it turns into a spreadsheet maze.",
+    intro: "A.I DO gives couples a cleaner way to manage guests, households, RSVP answers, meals, plus-ones, invitations, hotel notes, and final headcounts.",
+    icon: Users,
+    bullets: ["Guest groups, households, plus-ones, and RSVP status", "Meal choices, notes, and invitation tracking", "Connected website, invitations, seating, and photo tools"],
+    sections: [
+      { heading: "Made for real guest changes", body: "Track who is invited, confirmed, pending, declined, added late, or bringing a plus-one without losing the bigger planning picture." },
+      { heading: "Connected to the wedding day", body: "Guest details can support RSVP totals, seating, hotel planning, photo drop access, and day-of coordination." },
+    ],
+  },
+  "wedding-budget-planner": {
+    title: "Wedding Budget Planner",
+    metaTitle: "Wedding Budget Planner & Payment Tracker | A.I DO",
+    description: "Track wedding budget categories, vendor payments, due dates, estimates, actual costs, and planning decisions in A.I DO.",
+    eyebrow: "Wedding budget planner",
+    h1: "Track wedding spending without guessing where the money went.",
+    intro: "A.I DO helps couples organize budget categories, estimates, vendor costs, payment due dates, documents, and planning notes in one workspace.",
+    icon: CheckCircle2,
+    bullets: ["Budget categories, estimates, actuals, and due dates", "Vendor payments connected to contracts and notes", "Planning dashboard visibility for next money moves"],
+    sections: [
+      { heading: "Know what is paid and what is next", body: "Keep deposit dates, balances, vendor costs, and budget decisions visible so payment planning does not become a last-minute scramble." },
+      { heading: "Budget with the rest of the plan", body: "Connect costs to vendors, documents, checklist items, and timeline decisions instead of managing budget in isolation." },
+    ],
+  },
   "wedding-vendor-management": {
     title: "Wedding Vendor Management",
     metaTitle: "Wedding Vendor Management Software | A.I DO",
@@ -93,6 +139,20 @@ const PAGE_CONTENT: Record<PageKey, {
       { heading: "Reduce last-minute confusion", body: "A.I DO brings vendor notes into timelines, checklists, contracts, and day-of planning so handoffs stay clear." },
     ],
   },
+  "pricing": {
+    title: "A.I DO Pricing",
+    metaTitle: "A.I DO Pricing | Wedding Planning App Plans",
+    description: "Compare A.I DO wedding planning app pricing for founding couples, including early access planning tools, website builder, guest tools, vendor tracking, and AI planning help.",
+    eyebrow: "Wedding planning app pricing",
+    h1: "Start planning free during early access, then choose the plan that fits your wedding.",
+    intro: "A.I DO is launching with simple couple-focused pricing: founding couples can start free, explore the workspace, and upgrade when paid launch features are ready.",
+    icon: Sparkles,
+    bullets: ["Free beta access for founding couples", "Simple monthly or annual paid plan when launch pricing is enabled", "Website, guest, vendor, budget, checklist, and AI planning tools"],
+    sections: [
+      { heading: "Built to lower the barrier", body: "Couples should be able to try the planning workspace before paying, then upgrade when they see enough value for their wedding." },
+      { heading: "One wedding workspace", body: "Paid plans are designed to bundle the tools couples actually use: website, RSVPs, Photo Drop, vendors, budget, checklist, timeline, and AI planning support." },
+    ],
+  },
 };
 
 const relatedLinks = [
@@ -104,7 +164,12 @@ const relatedLinks = [
 ];
 
 function pageKeyFromPath(path: string): PageKey {
-  const key = path.replace(/^\/+|\/+$/g, "") as PageKey;
+  const normalized = path.replace(/^\/+|\/+$/g, "");
+  const aliases: Record<string, PageKey> = {
+    "photo-qr-code": "wedding-photo-qr-code",
+    "wedding-vendor-manager": "wedding-vendor-management",
+  };
+  const key = (aliases[normalized] ?? normalized) as PageKey;
   return PAGE_CONTENT[key] ? key : "ai-wedding-planner";
 }
 

@@ -699,19 +699,23 @@ function encodeMediaTail(tail: string): string {
 }
 
 function authBackgroundCandidates(rawSrc: string | null | undefined, resolvedSrc: string): string[] {
-  const candidates = [resolvedSrc];
+  const candidates: string[] = [];
   const tail = objectMediaTail(rawSrc) ?? objectMediaTail(resolvedSrc);
   if (tail) {
     const websiteMedia = resolveMediaUrl(`/api/website/media/${encodeMediaTail(tail)}`);
     if (websiteMedia && !candidates.includes(websiteMedia)) candidates.push(websiteMedia);
   }
+  if (!isMediaAuthRequired(resolvedSrc) && !candidates.includes(resolvedSrc)) candidates.push(resolvedSrc);
   return candidates;
 }
 
 // Fetches a protected media URL as a blob so CSS background-image can use it.
-// Falls back to the resolved URL when auth isn't required or fetch fails.
+// For protected URLs, avoid applying the raw URL directly. CSS backgrounds
+// cannot attach auth headers, so using the raw URL creates noisy 403s and a
+// broken image before the authenticated blob fetch has a chance to resolve.
 function useAuthBlobUrl(url: string | null | undefined): string | null {
   const resolved = resolveMediaUrl(url);
+  const requiresAuth = isMediaAuthRequired(url) || isMediaAuthRequired(resolved);
   const [blobSrc, setBlobSrc] = useState<string | null>(null);
   const blobRef = useRef<string | null>(null);
 
@@ -721,7 +725,7 @@ function useAuthBlobUrl(url: string | null | undefined): string | null {
       blobRef.current = null;
     }
     setBlobSrc(null);
-    if (!resolved || !isMediaAuthRequired(url)) return;
+    if (!resolved || !requiresAuth) return;
     let cancelled = false;
     (async () => {
       for (const candidate of authBackgroundCandidates(url, resolved)) {
@@ -746,9 +750,10 @@ function useAuthBlobUrl(url: string | null | undefined): string | null {
         blobRef.current = null;
       }
     };
-  }, [resolved, url]);
+  }, [resolved, requiresAuth, url]);
 
-  return blobSrc ?? resolved;
+  if (!resolved) return null;
+  return requiresAuth ? blobSrc : resolved;
 }
 
 function headingFont(data: WebsiteRendererPayload): string {
@@ -1874,13 +1879,16 @@ function AuthBgSlide({
   style?: React.CSSProperties;
 }) {
   const blobUrl = useAuthBlobUrl(url);
+  const resolved = resolveMediaUrl(url);
+  const requiresAuth = isMediaAuthRequired(url) || isMediaAuthRequired(resolved);
+  const usableUrl = blobUrl && (!requiresAuth || blobUrl !== resolved) ? blobUrl : null;
   return (
     <div
       className={className}
       style={{
         ...style,
-        backgroundImage: blobUrl
-          ? `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.55)), url('${blobUrl}')`
+        backgroundImage: usableUrl
+          ? `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.55)), url('${usableUrl}')`
           : style?.backgroundImage,
       }}
     />
@@ -2839,11 +2847,13 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const hotelQuery = encodeURIComponent(
     [hotelName, ...hotelAddressLines].filter(Boolean).join(", "),
   );
+  const venueDescription = data.customText._travelVenueDescription ?? "";
+  const hotelDescription = data.customText._travelHotelDescription ?? "";
 
   const cardStyle: React.CSSProperties = {
-    border: `1px solid ${data.colorPalette.primary}22`,
-    borderRadius: 12,
-    padding: isMobileRender ? "16px" : "18px 20px",
+    border: isMobileRender ? `1px solid ${data.colorPalette.primary}22` : undefined,
+    borderRadius: isMobileRender ? 12 : 0,
+    padding: isMobileRender ? "16px" : "4px 22px 8px",
     overflowWrap: "break-word",
     textAlign: isMobileRender ? "center" : undefined,
   };
@@ -2887,7 +2897,16 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         {...withBaseColor(tsp(ctx, "travel_subtitle"), labelColor)}
       />
 
-      <div className={`${isMobileRender ? "grid grid-cols-1 justify-items-center" : "grid sm:grid-cols-2"} gap-4 max-w-3xl mx-auto mb-6`}>
+      <div
+        className={`${isMobileRender ? "grid grid-cols-1 justify-items-center gap-4" : "relative grid sm:grid-cols-2 gap-0"} max-w-3xl mx-auto mb-6`}
+      >
+        {!isMobileRender && (
+          <div
+            aria-hidden="true"
+            className="absolute left-1/2 top-1 bottom-1 w-px -translate-x-1/2"
+            style={{ background: `${data.colorPalette.primary}2E` }}
+          />
+        )}
         {/* Venue */}
         {data.couple.venue &&
           !isEditableHiddenMarker(data.customText._travelVenueHidden) && (
@@ -2931,6 +2950,26 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   ))}
                 </div>
               </div>
+              {(venueDescription.trim() || ctx.editable) && (
+                <EditableText
+                  as="div"
+                  multiline
+                  editable={ctx.editable}
+                  value={venueDescription}
+                  defaultValue={
+                    ctx.editable
+                      ? "Add venue details, parking notes, entrance instructions, or ceremony arrival info..."
+                      : ""
+                  }
+                  onCommit={(v) => ctx.onTextChange("_travelVenueDescription", v)}
+                  className="mb-4 whitespace-pre-line text-sm leading-relaxed"
+                  style={{
+                    color: labelColor,
+                    fontFamily: bodyFontStack(bodyFont(data)),
+                  }}
+                  {...withBaseColor(tsp(ctx, "_travelVenueDescription"), labelColor)}
+                />
+              )}
               <a
                 href={`https://www.google.com/maps/search/${venueQuery}`}
                 target="_blank"
@@ -2995,6 +3034,26 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   )}
                 </div>
               </div>
+              {(hotelDescription.trim() || ctx.editable) && (
+                <EditableText
+                  as="div"
+                  multiline
+                  editable={ctx.editable}
+                  value={hotelDescription}
+                  defaultValue={
+                    ctx.editable
+                      ? "Add hotel notes, shuttle details, booking instructions, or room block reminders..."
+                      : ""
+                  }
+                  onCommit={(v) => ctx.onTextChange("_travelHotelDescription", v)}
+                  className="mb-4 whitespace-pre-line text-sm leading-relaxed"
+                  style={{
+                    color: labelColor,
+                    fontFamily: bodyFontStack(bodyFont(data)),
+                  }}
+                  {...withBaseColor(tsp(ctx, "_travelHotelDescription"), labelColor)}
+                />
+              )}
               <div className={isMobileRender ? "flex flex-col items-center gap-2" : "flex flex-wrap items-center gap-x-4 gap-y-2"}>
                 {hasHotel && (
                   <a

@@ -537,7 +537,7 @@ function archiveSummary(archivedData: Record<string, unknown>): ArchiveSummary {
 }
 
 export default function OperationsCenterPage() {
-  const { getToken } = useAuth();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -576,6 +576,19 @@ export default function OperationsCenterPage() {
     });
   };
 
+  const { data: adminCheck, isLoading: isLoadingAdminCheck } = useQuery<{ isAdmin: boolean }>({
+    queryKey: ["admin-check"],
+    queryFn: async () => {
+      const r = await authedFetch("/api/admin/check");
+      if (!r.ok) return { isAdmin: false };
+      return r.json();
+    },
+    enabled: isLoaded && !!isSignedIn,
+    staleTime: 30_000,
+    retry: false,
+  });
+  const isAdmin = adminCheck?.isAdmin === true;
+
   const { data: ticketsData, isLoading, error: ticketsError } = useQuery<{ tickets: unknown[] }, Error>({
     queryKey: ["support-tickets"],
     queryFn: async () => {
@@ -593,6 +606,7 @@ export default function OperationsCenterPage() {
       }
       return r.json();
     },
+    enabled: isAdmin,
   });
 
   const { data: messagesData } = useQuery<{ contacts: { isRead: boolean; isResolved: boolean }[]; unreadCount: number }>({
@@ -602,7 +616,8 @@ export default function OperationsCenterPage() {
       if (!r.ok) throw new Error("Failed to fetch messages");
       return r.json();
     },
-    refetchInterval: 30000,
+    enabled: isAdmin,
+    refetchInterval: isAdmin ? 30000 : false,
   });
   const unreadMessageCount = messagesData?.unreadCount ?? 0;
 
@@ -613,8 +628,8 @@ export default function OperationsCenterPage() {
       if (!r.ok) throw new Error("Failed to fetch vendor partner applications");
       return r.json();
     },
-    enabled: activeTab === "vendorIntake",
-    refetchInterval: activeTab === "vendorIntake" ? 30000 : false,
+    enabled: isAdmin && activeTab === "vendorIntake",
+    refetchInterval: isAdmin && activeTab === "vendorIntake" ? 30000 : false,
   });
   const vendorApplications = vendorApplicationsData?.applications ?? [];
   const newVendorApplicationCount = vendorApplications.filter(application => application.status === "new").length;
@@ -750,8 +765,8 @@ export default function OperationsCenterPage() {
       if (!r.ok) throw new Error("Failed to fetch signed-up users");
       return r.json();
     },
-    enabled: activeTab === "users",
-    refetchInterval: activeTab === "users" ? 15000 : false,
+    enabled: isAdmin && activeTab === "users",
+    refetchInterval: isAdmin && activeTab === "users" ? 15000 : false,
     refetchOnWindowFocus: true,
     staleTime: 0,
   });
@@ -766,8 +781,8 @@ export default function OperationsCenterPage() {
       if (!r.ok) throw new Error("Failed to fetch maintenance settings");
       return r.json();
     },
-    enabled: activeTab === "maintenance",
-    refetchInterval: activeTab === "maintenance" ? 15000 : false,
+    enabled: isAdmin && activeTab === "maintenance",
+    refetchInterval: isAdmin && activeTab === "maintenance" ? 15000 : false,
   });
 
   const { data: pricingData, isLoading: isLoadingPricing } = useQuery<{
@@ -781,7 +796,7 @@ export default function OperationsCenterPage() {
       if (!r.ok) throw new Error("Failed to fetch pricing settings");
       return r.json();
     },
-    enabled: activeTab === "pricing",
+    enabled: isAdmin && activeTab === "pricing",
   });
 
   const { data: metricsData, isLoading: isLoadingMetrics } = useQuery<AdminMetricsResponse>({
@@ -791,8 +806,8 @@ export default function OperationsCenterPage() {
       if (!r.ok) throw new Error("Failed to fetch growth metrics");
       return r.json();
     },
-    enabled: activeTab === "tracking",
-    refetchInterval: activeTab === "tracking" ? 30000 : false,
+    enabled: isAdmin && activeTab === "tracking",
+    refetchInterval: isAdmin && activeTab === "tracking" ? 30000 : false,
   });
 
   const maintenanceMutation = useMutation({
@@ -869,8 +884,8 @@ export default function OperationsCenterPage() {
       if (!r.ok) throw new Error("Failed to load recovery archive");
       return r.json();
     },
-    enabled: activeTab === "recovery",
-    refetchInterval: activeTab === "recovery" ? 30000 : false,
+    enabled: isAdmin && activeTab === "recovery",
+    refetchInterval: isAdmin && activeTab === "recovery" ? 30000 : false,
   });
   const archiveRows = archiveData?.archives ?? [];
   const openArchiveCount = archiveRows.filter(entry => !entry.restoredAt).length;
@@ -969,8 +984,8 @@ export default function OperationsCenterPage() {
       if (!r.ok) throw new Error("Failed to fetch workflow progress");
       return r.json();
     },
-    enabled: activeTab === "workflow",
-    refetchInterval: activeTab === "workflow" ? 30000 : false,
+    enabled: isAdmin && activeTab === "workflow",
+    refetchInterval: isAdmin && activeTab === "workflow" ? 30000 : false,
   });
   const workflowUsers = workflowData?.users ?? [];
   const filteredWorkflowUsers = workflowFilter === "all"
@@ -1077,6 +1092,35 @@ export default function OperationsCenterPage() {
         return <Eye className="h-4 w-4" />;
     }
   };
+
+  if (!isLoaded || isLoadingAdminCheck) {
+    return (
+      <div className="mx-auto max-w-6xl space-y-4 text-[#24171D]">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-24 w-full rounded-xl" />
+        <Skeleton className="h-64 w-full rounded-xl" />
+      </div>
+    );
+  }
+
+  if (!isSignedIn || !isAdmin) {
+    return (
+      <div className="mx-auto max-w-2xl rounded-2xl border border-[#E8C9D4] bg-white p-6 text-[#24171D] shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className="rounded-full bg-[#F8E7EE] p-2 text-[#8D294D]">
+            <AlertCircle className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="font-serif text-2xl font-bold text-[#24171D]">Operations Center access only</h1>
+            <p className="mt-2 text-sm leading-6 text-[#4A3941]">
+              This area is only available to approved A.I DO admin accounts. Sign in with an owner account to manage
+              support, pricing, vendor intake, tracking, users, and maintenance settings.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto text-[#24171D]">

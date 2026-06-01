@@ -248,6 +248,8 @@ const WEBSITE_TRANSLATABLE_DEFAULTS: Record<string, string> = {
   travel_subtitle: "Where & how to get there",
   _travelVenueLabel: "Venue",
   _travelHotelLabel: "Hotel",
+  _travelVenueDescription: "",
+  _travelHotelDescription: "",
   _openInGoogleMaps: "Open in Google Maps",
   registry_title: "Registry",
   registry_subtitle: "With love",
@@ -1854,6 +1856,8 @@ export default function WebsiteEditor() {
       travel: [
         { key: "travel_title", label: "Section title", placeholder: "Travel & Venue" },
         { key: "travel_subtitle", label: "Section subtitle", placeholder: "Where & how to get there" },
+        { key: "_travelVenueDescription", label: "Venue description", multiline: true, placeholder: "Add venue details, parking notes, entrance instructions, or ceremony arrival info..." },
+        { key: "_travelHotelDescription", label: "Hotel description", multiline: true, placeholder: "Add hotel notes, shuttle details, booking instructions, or room block reminders..." },
         { key: "travel", label: "Travel notes", multiline: true },
       ],
       registry: [
