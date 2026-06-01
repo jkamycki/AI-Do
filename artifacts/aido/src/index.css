@@ -110,7 +110,7 @@
   opacity: 0;
 }
 [data-gallery-anim="puzzle"].wsg-grid-ready .wsg-item {
-  animation: wsg-puzzle-snap 1.5s ease-in-out forwards;
+  animation: wsg-puzzle-snap var(--puzzle-duration, 1.5s) ease-in-out forwards;
   animation-delay: var(--stagger, 0ms);
 }
 

@@ -3084,7 +3084,7 @@ export default function WebsiteEditor() {
                 <option value="marquee">{t("website_editor.gallery_anim_marquee", { defaultValue: "Marquee (continuous scroll)" })}</option>
               </select>
             </div>
-            {(editingRecord.customText._galleryAnimation === "slideshow" || editingRecord.customText._galleryAnimation === "marquee") && (
+            {(editingRecord.customText._galleryAnimation === "grid" || editingRecord.customText._galleryAnimation === "slideshow" || editingRecord.customText._galleryAnimation === "marquee") && (
               <div>
                 <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.speed_label", { defaultValue: "Speed" })}</Label>
                 <select

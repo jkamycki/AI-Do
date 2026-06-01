@@ -31,6 +31,7 @@ import {
   UploadCloud,
   Camera,
   Download,
+  Phone,
 } from "lucide-react";
 import {
   EditableText,
@@ -220,6 +221,7 @@ export interface WebsiteRendererPayload {
     cutoffDate?: string | null;
     checkInDate?: string | null;
     checkOutDate?: string | null;
+    phone?: string | null;
     address?: string | null;
     city?: string | null;
     state?: string | null;
@@ -489,6 +491,17 @@ function formatWeddingDate(dateStr: string): string {
   if (!y || !m || !d) return dateStr;
   return new Date(y, m - 1, d).toLocaleDateString("en-US", {
     weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function formatWeddingDateWithoutWeekday(dateStr: string): string {
+  if (!dateStr) return "";
+  const [y, m, d] = dateStr.split("-").map(Number);
+  if (!y || !m || !d) return dateStr;
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -2826,6 +2839,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
       : [];
   const hotelBookingLink = (syncedHotel?.bookingLink || data.customText._hotelBookingLink || "").trim();
   const hotelBookingLabel = (data.customText._hotelBookingLinkLabel || "Book hotel room").trim();
+  const hotelPhone = (syncedHotel?.phone || data.customText._hotelPhone || "").trim();
   const hasHotel = !!hotelName;
   if (!text && !data.couple.venue && !hasHotel && !ctx.editable) return null;
   const labelColor = sectionTextColor(data, "travel");
@@ -2834,6 +2848,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
     hotelBookingLink && /^https?:\/\//i.test(hotelBookingLink)
       ? hotelBookingLink
       : "";
+  const hotelPhoneHref = hotelPhone ? `tel:${hotelPhone.replace(/[^\d+]/g, "")}` : "";
 
   const venueQuery = encodeURIComponent(
     [
@@ -3077,6 +3092,16 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
                     {hotelBookingLabel}
+                  </a>
+                )}
+                {hotelPhone && (
+                  <a
+                    href={hotelPhoneHref}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold transition-opacity hover:opacity-70"
+                    style={{ color: data.colorPalette.primary }}
+                  >
+                    <Phone className="h-3.5 w-3.5" />
+                    {hotelPhone}
                   </a>
                 )}
               </div>
@@ -3395,6 +3420,8 @@ function Gallery({
     speed === "slow" ? 6000 : speed === "fast" ? 2500 : 4000;
   const marqueeDuration =
     speed === "slow" ? "60s" : speed === "fast" ? "20s" : "40s";
+  const puzzleDuration = speed === "slow" ? "2.2s" : speed === "fast" ? "0.75s" : "1.5s";
+  const puzzleStaggerMs = speed === "slow" ? 150 : speed === "fast" ? 35 : 80;
   // Grid mode uses the puzzle fade entrance on the guest site, but editor
   // previews should show every image immediately in desktop and mobile.
   const entrance: "none" | "fade-in" | "slide-up" | "zoom-in" | "puzzle" =
@@ -3653,6 +3680,11 @@ function Gallery({
           ref={gridRef}
           className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4${puzzleReady ? " wsg-grid-ready" : ""}`}
           data-gallery-anim={entrance !== "none" ? entrance : undefined}
+          style={
+            entrance === "puzzle"
+              ? { ["--puzzle-duration" as string]: puzzleDuration }
+              : undefined
+          }
         >
           {images.map((img, i) => (
             <div
@@ -3664,7 +3696,7 @@ function Gallery({
               style={
                 entrance !== "none"
                   ? {
-                      ["--stagger" as string]: `${i * 80}ms`,
+                      ["--stagger" as string]: `${i * puzzleStaggerMs}ms`,
                     }
                   : undefined
               }
@@ -4476,7 +4508,7 @@ function WeddingParty({
 
 function Footer({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const footerCouple = defaultFooterCoupleName(data);
-  const dateStr = formatWeddingDate(data.couple.weddingDate);
+  const dateStr = formatWeddingDateWithoutWeekday(data.couple.weddingDate);
   return (
     <>
       <footer
