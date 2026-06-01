@@ -96,6 +96,61 @@ function authMediaCandidates(rawSrc: string | null | undefined, resolvedSrc: str
   return candidates;
 }
 
+export function preloadAuthMediaImage(src: string | null | undefined): Promise<string | null> {
+  const resolvedSrc = resolveMediaUrl(src);
+  if (!resolvedSrc) return Promise.resolve(null);
+  const fetchAsBlob = shouldFetchAsBlob(src ?? resolvedSrc);
+  if (!fetchAsBlob) {
+    if (typeof window !== "undefined") {
+      const image = new Image();
+      image.decoding = "async";
+      image.src = resolvedSrc;
+    }
+    return Promise.resolve(resolvedSrc);
+  }
+
+  const candidates = authMediaCandidates(src, resolvedSrc);
+  const cached = [resolvedSrc, ...(src ? [src] : []), ...candidates]
+    .map((key) => authMediaBlobCache.get(key))
+    .find(Boolean);
+  if (cached) return Promise.resolve(cached);
+
+  const cacheKey = candidates[0] ?? resolvedSrc;
+  let loadPromise = authMediaBlobInflight.get(cacheKey);
+  if (!loadPromise) {
+    loadPromise = (async () => {
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        let shouldRetry = false;
+        for (const candidate of candidates) {
+          try {
+            const response = await authFetch(candidate);
+            if (response.ok) {
+              const blob = await response.blob();
+              const nextBlobSrc = URL.createObjectURL(blob);
+              authMediaBlobCache.set(resolvedSrc, nextBlobSrc);
+              if (src) authMediaBlobCache.set(src, nextBlobSrc);
+              for (const cacheCandidate of candidates) {
+                authMediaBlobCache.set(cacheCandidate, nextBlobSrc);
+              }
+              return nextBlobSrc;
+            }
+            shouldRetry ||= response.status === 401 || response.status === 403;
+          } catch {
+            shouldRetry = true;
+          }
+        }
+        if (!shouldRetry || attempt === 3) return null;
+        await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+      }
+      return null;
+    })().finally(() => {
+      authMediaBlobInflight.delete(cacheKey);
+    });
+    authMediaBlobInflight.set(cacheKey, loadPromise);
+  }
+  return loadPromise;
+}
+
 export function AuthMediaImage({ src, ...imgProps }: AuthMediaImageProps) {
   const resolvedSrc = resolveMediaUrl(src);
   const fetchAsBlob = !!resolvedSrc && shouldFetchAsBlob(src ?? resolvedSrc);

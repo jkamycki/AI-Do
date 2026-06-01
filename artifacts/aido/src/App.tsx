@@ -354,6 +354,19 @@ function TestAccountCallout() {
   );
 }
 
+function TestAccountCalloutForAutomation() {
+  const [enabled] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const params = new URLSearchParams(window.location.search);
+    return (
+      params.get("e2eTestLogin") === "1" ||
+      window.localStorage.getItem("aido_enable_test_login") === "true"
+    );
+  });
+
+  return enabled ? <TestAccountCallout /> : null;
+}
+
 function ActiveAccountNotice({
   email,
   context,
@@ -676,7 +689,7 @@ function CustomSignInForm() {
         Welcome back to A.IDO.
       </p>
 
-      <TestAccountCallout />
+      <TestAccountCalloutForAutomation />
 
       {isLoaded && isSignedIn && (
         <ActiveAccountNotice
@@ -1307,7 +1320,7 @@ function CustomSignUpForm() {
         Welcome! Let's get your wedding planning started.
       </p>
 
-      <TestAccountCallout />
+      <TestAccountCalloutForAutomation />
 
       {isLoaded && isSignedIn && (
         <ActiveAccountNotice

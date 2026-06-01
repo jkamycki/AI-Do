@@ -546,6 +546,9 @@ export default function OperationsCenterPage() {
   const [expandedTicketIds, setExpandedTicketIds] = useState<Set<number | string>>(new Set());
   const [activeTab, setActiveTab] = useState<"tickets" | "email" | "messages" | "tracking" | "vendorIntake" | "users" | "recovery" | "workflow" | "pricing" | "maintenance">("tickets");
   const [activeMailbox, setActiveMailbox] = useState<"partners" | "support">("partners");
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [composeMailbox, setComposeMailbox] = useState<"partners" | "support">("partners");
+  const [composeForm, setComposeForm] = useState({ to: "", subject: "", message: "" });
   const [workflowFilter, setWorkflowFilter] = useState<"all" | "completed" | "in_progress" | "not_started">("all");
   const [userSearch, setUserSearch] = useState("");
   const [userToDelete, setUserToDelete] = useState<SignedUpUser | null>(null);
@@ -685,6 +688,30 @@ export default function OperationsCenterPage() {
     onError: (error) => {
       toast({
         title: "Vendor reply could not be sent",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const composeEmailMutation = useMutation({
+    mutationFn: async (payload: { mailbox: "partners" | "support"; to: string; subject: string; message: string }) => {
+      const r = await authedFetch("/api/admin/email/compose", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(body.error ?? "Failed to send email");
+      return body;
+    },
+    onSuccess: () => {
+      toast({ title: "Email sent" });
+      setComposeOpen(false);
+      setComposeForm({ to: "", subject: "", message: "" });
+    },
+    onError: (error) => {
+      toast({
+        title: "Email could not be sent",
         description: error instanceof Error ? error.message : "Please try again.",
         variant: "destructive",
       });
@@ -1072,6 +1099,24 @@ export default function OperationsCenterPage() {
     new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime(),
   );
   const openSupportThreadCount = tickets.filter((ticket: any) => ticket.status !== "resolved" && ticket.status !== "closed").length;
+  const composeFromAddress = composeMailbox === "partners" ? "partners@aidowedding.net" : "support@aidowedding.net";
+  const canSendComposeEmail =
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(composeForm.to.trim()) &&
+    composeForm.subject.trim().length > 0 &&
+    composeForm.message.trim().length > 0;
+  const openCompose = (
+    mailbox: "partners" | "support",
+    draft: Partial<typeof composeForm> = {},
+  ) => {
+    setActiveMailbox(mailbox);
+    setComposeMailbox(mailbox);
+    setComposeOpen(true);
+    setComposeForm({
+      to: draft.to ?? "",
+      subject: draft.subject ?? "",
+      message: draft.message ?? "",
+    });
+  };
 
   const stats = {
     total: tickets.length,
@@ -1281,25 +1326,31 @@ export default function OperationsCenterPage() {
                 Keep partner and support conversations organized while email sending is being connected.
               </p>
             </div>
-            <div className="inline-flex rounded-full border border-[#E6C7D2] bg-[#FFF8F4] p-1">
-              <button
-                type="button"
-                onClick={() => setActiveMailbox("partners")}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                  activeMailbox === "partners" ? "bg-primary text-white shadow-sm" : "text-[#6F3E54] hover:bg-white"
-                }`}
-              >
-                Partners
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveMailbox("support")}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                  activeMailbox === "support" ? "bg-primary text-white shadow-sm" : "text-[#6F3E54] hover:bg-white"
-                }`}
-              >
-                Support
-              </button>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="inline-flex rounded-full border border-[#E6C7D2] bg-[#FFF8F4] p-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveMailbox("partners")}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    activeMailbox === "partners" ? "bg-primary text-white shadow-sm" : "text-[#6F3E54] hover:bg-white"
+                  }`}
+                >
+                  Partners
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveMailbox("support")}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    activeMailbox === "support" ? "bg-primary text-white shadow-sm" : "text-[#6F3E54] hover:bg-white"
+                  }`}
+                >
+                  Support
+                </button>
+              </div>
+              <Button type="button" onClick={() => openCompose(activeMailbox)} className="gap-2">
+                <Send className="h-4 w-4" />
+                Compose
+              </Button>
             </div>
           </div>
 
@@ -1311,8 +1362,8 @@ export default function OperationsCenterPage() {
                   <p className="mt-1 font-serif text-xl font-semibold text-[#24171D]">partners@aidowedding.net</p>
                   <p className="mt-1 text-sm font-medium text-[#6F3E54]">{emailPartnerThreads.length} vendor conversation{emailPartnerThreads.length === 1 ? "" : "s"}</p>
                 </div>
-                <Button variant="outline" size="sm" asChild>
-                  <a href="mailto:partners@aidowedding.net">Email</a>
+                <Button variant="outline" size="sm" onClick={() => openCompose("partners")}>
+                  Compose
                 </Button>
               </CardContent>
             </Card>
@@ -1323,12 +1374,109 @@ export default function OperationsCenterPage() {
                   <p className="mt-1 font-serif text-xl font-semibold text-[#24171D]">support@aidowedding.net</p>
                   <p className="mt-1 text-sm font-medium text-[#6F3E54]">{openSupportThreadCount} open support thread{openSupportThreadCount === 1 ? "" : "s"}</p>
                 </div>
-                <Button variant="outline" size="sm" asChild>
-                  <a href="mailto:support@aidowedding.net">Email</a>
+                <Button variant="outline" size="sm" onClick={() => openCompose("support")}>
+                  Compose
                 </Button>
               </CardContent>
             </Card>
           </div>
+
+          {composeOpen && (
+            <Card className="border-primary/30 bg-[#FFF8FA]">
+              <CardHeader className="pb-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <CardTitle className="font-serif text-lg text-[#24171D]">Compose Message</CardTitle>
+                    <p className="mt-1 text-sm font-medium text-[#6F3E54]">
+                      Sending from {composeMailbox === "partners" ? "Partners" : "Support"} with replies directed to {composeFromAddress}.
+                    </p>
+                  </div>
+                  <div className="inline-flex rounded-full border border-[#E6C7D2] bg-white p-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setComposeMailbox("partners");
+                        setActiveMailbox("partners");
+                      }}
+                      className={`rounded-full px-3 py-1.5 text-xs font-bold transition ${
+                        composeMailbox === "partners" ? "bg-primary text-white" : "text-[#6F3E54] hover:bg-[#FFF8F4]"
+                      }`}
+                    >
+                      Partners
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setComposeMailbox("support");
+                        setActiveMailbox("support");
+                      }}
+                      className={`rounded-full px-3 py-1.5 text-xs font-bold transition ${
+                        composeMailbox === "support" ? "bg-primary text-white" : "text-[#6F3E54] hover:bg-[#FFF8F4]"
+                      }`}
+                    >
+                      Support
+                    </button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid gap-3 md:grid-cols-[1fr_1.4fr]">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-[#8D294D]/70">To</label>
+                    <Input
+                      type="email"
+                      value={composeForm.to}
+                      onChange={(event) => setComposeForm(current => ({ ...current, to: event.target.value }))}
+                      placeholder="name@example.com"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold uppercase tracking-[0.14em] text-[#8D294D]/70">Subject</label>
+                    <Input
+                      value={composeForm.subject}
+                      onChange={(event) => setComposeForm(current => ({ ...current, subject: event.target.value }))}
+                      placeholder={composeMailbox === "partners" ? "A.I DO Founding Vendor Partner Program" : "A.I DO Support"}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-[0.14em] text-[#8D294D]/70">Message</label>
+                  <Textarea
+                    value={composeForm.message}
+                    onChange={(event) => setComposeForm(current => ({ ...current, message: event.target.value }))}
+                    placeholder="Write your message here..."
+                    className="min-h-[180px]"
+                  />
+                </div>
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setComposeOpen(false);
+                      setComposeForm({ to: "", subject: "", message: "" });
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    className="gap-2"
+                    disabled={!canSendComposeEmail || composeEmailMutation.isPending}
+                    onClick={() => composeEmailMutation.mutate({
+                      mailbox: composeMailbox,
+                      to: composeForm.to.trim(),
+                      subject: composeForm.subject.trim(),
+                      message: composeForm.message.trim(),
+                    })}
+                  >
+                    {composeEmailMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    Send Email
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>

@@ -238,6 +238,8 @@ router.get("/collaborators", requireAuth, async (req, res) => {
           inviteeEmail: c.inviteeEmail,
           inviteeUserId: c.inviteeUserId,
           inviterUserId: c.inviterUserId,
+          inviteToken: c.status === "pending" ? c.inviteToken : null,
+          inviteUrl: c.status === "pending" ? buildInviteUrl(c.inviteToken) : null,
         };
       }),
       workspaceName: workspaceName(profile),

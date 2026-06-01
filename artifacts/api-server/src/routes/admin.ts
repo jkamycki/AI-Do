@@ -998,6 +998,64 @@ router.post("/admin/vendor-partner-applications/:id/reply", requireAuth, require
   }
 });
 
+router.post("/admin/email/compose", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const mailbox = req.body?.mailbox === "partners" ? "partners" : "support";
+    const to = typeof req.body?.to === "string" ? req.body.to.trim() : "";
+    const subject = typeof req.body?.subject === "string" ? req.body.subject.trim() : "";
+    const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+      res.status(400).json({ error: "A valid recipient email is required." });
+      return;
+    }
+    if (!subject) {
+      res.status(400).json({ error: "Subject is required." });
+      return;
+    }
+    if (!message) {
+      res.status(400).json({ error: "Message is required." });
+      return;
+    }
+
+    const supportAddress = getSupportInboxAddresses()[0] ?? FROM_EMAIL;
+    const replyTo = mailbox === "partners" ? "partners@aidowedding.net" : supportAddress;
+    const signatureName = mailbox === "partners" ? "A.I DO Vendor Partnerships" : "A.I DO Support";
+    const result = await sendEmail({
+      to,
+      replyTo,
+      subject,
+      text: [
+        message,
+        "",
+        `- ${signatureName}`,
+      ].join("\n"),
+      fromName: signatureName,
+    });
+
+    if (!result.ok) {
+      req.log.error({ error: result.error, mailbox, to }, "Failed to send operations email compose message");
+      res.status(502).json({ error: "Email delivery failed." });
+      return;
+    }
+
+    if (req.userId) {
+      await trackEvent(req.userId, "operations_email_sent", {
+        feature: "Operations Center",
+        section: "Email",
+        step: mailbox === "partners" ? "Sent partner email" : "Sent support email",
+        mailbox,
+        subject,
+      });
+    }
+
+    res.json({ success: true, mailbox, id: result.id ?? null });
+  } catch (err) {
+    req.log.error(err, "Failed to send operations compose email");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 const defaultLaunchPlanItems = [
   {
     title: "Confirm A.IDO launch promise and audience",

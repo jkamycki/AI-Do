@@ -35,8 +35,64 @@ async function expectAppReady(page: Page, expected: RegExp) {
   await expect(page.locator('body')).not.toContainText(/we'?re working on it|something went wrong|internal server error|unauthorized/i);
 }
 
+async function ensureSignedIn(page: Page) {
+  await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(1200);
+
+  const dashboardExpected = /dashboard|wedding|budget|guest|vendor/i;
+  const dashboardReady = async () => {
+    const candidates = page.locator('main, [role="main"]').filter({ hasText: dashboardExpected });
+    const count = await candidates.count().catch(() => 0);
+    for (let index = 0; index < count; index += 1) {
+      if (await visible(candidates.nth(index))) return true;
+    }
+    return false;
+  };
+
+  if ((await dashboardReady()) && !/sign-in|sign-up/i.test(page.url())) return;
+
+  await page.goto('/sign-in?e2eTestLogin=1', { waitUntil: 'domcontentloaded' });
+  const continueAs = page.getByRole('button', { name: /continue as/i });
+  if (await visible(continueAs, 10_000)) {
+    await continueAs.click();
+  } else {
+    const testAccount = page.getByRole('button', { name: /sign in to test account/i });
+    await expect(testAccount).toBeVisible({ timeout: 10_000 });
+    await testAccount.click();
+  }
+
+  await expect
+    .poll(
+      async () => {
+        if ((await dashboardReady()) && !/sign-in|sign-up/i.test(page.url())) return true;
+        const nextContinue = page.getByRole('button', { name: /continue as/i });
+        if (await visible(nextContinue, 600)) {
+          await nextContinue.click().catch(() => {});
+          return false;
+        }
+        if (!/\/dashboard(?:\?|#|$)/.test(new URL(page.url()).pathname)) {
+          await page.goto('/dashboard', { waitUntil: 'domcontentloaded' }).catch(() => {});
+        }
+        return (await dashboardReady()) && !/sign-in|sign-up/i.test(page.url());
+      },
+      { message: 'Test account reaches dashboard', timeout: 30_000 },
+    )
+    .toBe(true);
+
+  await expect(page).toHaveURL(/\/dashboard(?:\?|#|$)/, { timeout: 30_000 });
+  await expectAppReady(page, dashboardExpected);
+}
+
 async function gotoApp(page: Page, url: string, expected: RegExp) {
-  const response = await page.goto(url, { waitUntil: 'domcontentloaded' });
+  let response = await page.goto(url, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(1000);
+  if (!(await visible(page.locator('main, [role="main"]').filter({ hasText: expected }), 1000))) {
+    const bodyText = await page.locator('body').innerText().catch(() => '');
+    if (new URL(page.url()).pathname !== url || /start planning free|plan your perfect day|sign in|get started free/i.test(bodyText)) {
+      await ensureSignedIn(page);
+      response = await page.goto(url, { waitUntil: 'domcontentloaded' });
+    }
+  }
   expect(response?.ok(), `${url} response`).toBeTruthy();
   await expectAppReady(page, expected);
 }
@@ -130,7 +186,7 @@ test.describe('A.IDO safe CRUD workflows', () => {
   test.setTimeout(90_000);
   test.use({ storageState: hasAuthState ? authStatePath : undefined });
 
-  test.beforeEach(({}, testInfo) => {
+  test.beforeEach(async ({ page }, testInfo) => {
     test.skip(
       !hasAuthState,
       'Missing .auth/user.json. Run: npx.cmd playwright codegen --save-storage=.auth/user.json https://aidowedding.net',
@@ -139,6 +195,7 @@ test.describe('A.IDO safe CRUD workflows', () => {
       testInfo.project.name !== 'chromium',
       'Safe CRUD mutates the shared test account, so full-suite runs keep it to one browser project.',
     );
+    await ensureSignedIn(page);
   });
 
   test('creates, verifies, and deletes a vendor from Vendor Tracking', async ({ page }, testInfo) => {

@@ -1316,6 +1316,7 @@ export default function SettingsPage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<CollabRole>("planner");
   const [newInviteLink, setNewInviteLink] = useState<string | null>(null);
+  const [inviteLinksById, setInviteLinksById] = useState<Record<number, string>>({});
   const [editingRoleId, setEditingRoleId] = useState<number | null>(null);
   const [confirmRemoveId, setConfirmRemoveId] = useState<number | null>(null);
 
@@ -1363,6 +1364,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setNewInviteLink(null);
+    setInviteLinksById({});
   }, [sharedProfileId]);
 
   const inviteMutation = useMutation({
@@ -1383,6 +1385,7 @@ export default function SettingsPage() {
       qc.invalidateQueries({ queryKey: ["collaborators", sharedProfileId] });
       const link = collab.inviteUrl ?? `${window.location.origin}/invite/${collab.inviteToken ?? ""}`;
       setNewInviteLink(link);
+      setInviteLinksById((current) => ({ ...current, [collab.id]: link }));
 
       const workspaceName = data?.workspaceName ?? "our wedding";
       const role = ROLE_CONFIG[inviteRole]?.label ?? inviteRole;
@@ -1452,6 +1455,7 @@ export default function SettingsPage() {
       qc.invalidateQueries({ queryKey: ["collaborators", sharedProfileId] });
       const link = collab.inviteUrl ?? `${window.location.origin}/invite/${collab.inviteToken ?? ""}`;
       setNewInviteLink(link);
+      setInviteLinksById((current) => ({ ...current, [collab.id]: link }));
       toast({
         title: collab.emailSent ? t("settings.invite_sent") : t("settings.new_invite_link"),
         description: collab.emailSent
@@ -1466,8 +1470,13 @@ export default function SettingsPage() {
     toast({ title: t("settings.link_copied") });
   };
 
-  const getInviteLink = (token: string | null | undefined) =>
-    `${window.location.origin}/invite/${token ?? ""}`;
+  const getInviteLink = (collab: Pick<Collaborator, "id" | "inviteUrl" | "inviteToken">) => {
+    const stored = inviteLinksById[collab.id];
+    if (stored) return stored;
+    if (collab.inviteUrl) return collab.inviteUrl;
+    if (collab.inviteToken) return `${window.location.origin}/invite/${collab.inviteToken}`;
+    return null;
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -1636,6 +1645,7 @@ export default function SettingsPage() {
                   {data.collaborators.map(collab => {
                     const statusCfg = STATUS_CONFIG[collab.status as CollabStatus];
                     const StatusIcon = statusCfg.icon;
+                    const inviteLink = getInviteLink(collab);
                     return (
                       <div key={collab.id} className="flex items-center gap-4 p-4 rounded-xl border border-border/60 hover:border-primary/20 transition-colors bg-card">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm flex-shrink-0">
@@ -1683,7 +1693,8 @@ export default function SettingsPage() {
                             <>
                               <button
                                 className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                                onClick={() => copyLink(getInviteLink(collab.inviteToken))}
+                                onClick={() => inviteLink && copyLink(inviteLink)}
+                                disabled={!inviteLink}
                                 title={t("settings.copy_invite_link")}
                               >
                                 <Copy className="h-4 w-4" />

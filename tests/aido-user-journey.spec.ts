@@ -114,8 +114,8 @@ function collectPageFailures(page: Page) {
   return failures;
 }
 
-async function visible(locator: Locator) {
-  return locator.first().isVisible({ timeout: 1200 }).catch(() => false);
+async function visible(locator: Locator, timeout = 1200) {
+  return locator.first().isVisible({ timeout }).catch(() => false);
 }
 
 async function clickIfVisible(locator: Locator) {
@@ -175,22 +175,43 @@ async function ensureSignedIn(page: Page) {
   await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(1200);
 
-  const dashboardReady = await page
-    .locator('main, [role="main"]')
-    .filter({ hasText: /dashboard|wedding|budget|guest|vendor/i })
-    .first()
-    .isVisible({ timeout: 1500 })
-    .catch(() => false);
+  const dashboardExpected = /dashboard|wedding|budget|guest|vendor/i;
+  const dashboardReady = async () => hasVisibleMainContent(page, dashboardExpected);
 
-  if (dashboardReady && !/sign-in|sign-up/i.test(page.url())) return;
+  if ((await dashboardReady()) && !/sign-in|sign-up/i.test(page.url())) return;
 
-  await page.goto('/sign-in', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /sign in to test account/i }).click();
-  if (!/\/dashboard(?:\?|#|$)/.test(new URL(page.url()).pathname)) {
-    await page.getByRole('button', { name: /continue as/i }).click({ timeout: 30_000 });
+  await page.goto('/sign-in?e2eTestLogin=1', { waitUntil: 'domcontentloaded' });
+  const continueAs = page.getByRole('button', { name: /continue as/i });
+  if (await visible(continueAs, 10_000)) {
+    await continueAs.click();
+  } else if (await visible(page.getByRole('button', { name: /sign in to test account/i }), 10_000)) {
+    await page.getByRole('button', { name: /sign in to test account/i }).click();
+  } else {
+    throw new Error(
+      'No signed-in session was available. The public test-account button is intentionally hidden; refresh .auth/user.json with an authenticated test session before running this workflow.',
+    );
   }
+
+  await expect
+    .poll(
+      async () => {
+        if ((await dashboardReady()) && !/sign-in|sign-up/i.test(page.url())) return true;
+        const nextContinue = page.getByRole('button', { name: /continue as/i });
+        if (await visible(nextContinue, 600)) {
+          await nextContinue.click().catch(() => {});
+          return false;
+        }
+        if (!/\/dashboard(?:\?|#|$)/.test(new URL(page.url()).pathname)) {
+          await page.goto('/dashboard', { waitUntil: 'domcontentloaded' }).catch(() => {});
+        }
+        return (await dashboardReady()) && !/sign-in|sign-up/i.test(page.url());
+      },
+      { message: 'Test account reaches dashboard', timeout: 30_000 },
+    )
+    .toBe(true);
+
   await expect(page).toHaveURL(/\/dashboard(?:\?|#|$)/, { timeout: 30_000 });
-  await expectVisibleMainContent(page, 'Dashboard', /dashboard|wedding|budget|guest|vendor/i);
+  await expectVisibleMainContent(page, 'Dashboard', dashboardExpected);
 }
 
 async function expectHealthyPage(page: Page, label: string, failures: string[]) {
@@ -235,7 +256,7 @@ async function visitFeature(page: Page, pathName: string, label: string, expecte
 
 test.describe('A.IDO user journey', () => {
   test.describe.configure({ mode: 'serial' });
-  test.setTimeout(90_000);
+  test.setTimeout(150_000);
   test.use({ storageState: hasAuthState ? authStatePath : undefined });
 
   test.beforeEach(async ({ page }) => {

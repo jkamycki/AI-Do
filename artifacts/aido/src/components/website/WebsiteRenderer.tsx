@@ -51,7 +51,7 @@ import { AuthMediaImage } from "@/components/AuthMediaImage";
 
 // camelCase section id <-> kebab-case URL slug
 const SECTION_TO_URL: Record<string, string> = {
-  home: "home",
+  home: "",
   welcome: "welcome",
   story: "story",
   schedule: "schedule",
@@ -819,6 +819,52 @@ function useAuthBlobUrl(url: string | null | undefined): string | null {
 
   if (!resolved) return null;
   return requiresAuth ? blobSrc : resolved;
+}
+
+export function preloadWebsiteBackgroundMedia(url: string | null | undefined): Promise<string | null> {
+  const resolved = resolveMediaUrl(url);
+  if (!resolved) return Promise.resolve(null);
+  const requiresAuth = isMediaAuthRequired(url) || isMediaAuthRequired(resolved);
+  if (!requiresAuth) {
+    if (typeof window !== "undefined") {
+      const image = new Image();
+      image.decoding = "async";
+      image.src = resolved;
+    }
+    return Promise.resolve(resolved);
+  }
+
+  const cacheKeys = [resolved, ...authBackgroundCandidates(url, resolved)];
+  const cached = cacheKeys.map((key) => authBackgroundBlobCache.get(key)).find(Boolean);
+  if (cached) return Promise.resolve(cached);
+
+  const candidates = authBackgroundCandidates(url, resolved);
+  const cacheKey = candidates[0] ?? resolved;
+  let loadPromise = authBackgroundBlobInflight.get(cacheKey);
+  if (!loadPromise) {
+    loadPromise = (async () => {
+      for (const candidate of candidates) {
+        try {
+          const res = await authFetch(candidate);
+          if (!res.ok) continue;
+          const blob = await res.blob();
+          const next = URL.createObjectURL(blob);
+          authBackgroundBlobCache.set(resolved, next);
+          for (const cacheCandidate of candidates) {
+            authBackgroundBlobCache.set(cacheCandidate, next);
+          }
+          return next;
+        } catch {
+          /* try the next candidate */
+        }
+      }
+      return null;
+    })().finally(() => {
+      authBackgroundBlobInflight.delete(cacheKey);
+    });
+    authBackgroundBlobInflight.set(cacheKey, loadPromise);
+  }
+  return loadPromise;
 }
 
 function publicWebsiteMediaUrl(slug: string | null | undefined, url: string): string {
@@ -3533,8 +3579,8 @@ function Gallery({
     speed === "slow" ? 6000 : speed === "fast" ? 2500 : 4000;
   const marqueeDuration =
     speed === "slow" ? "60s" : speed === "fast" ? "20s" : "40s";
-  const puzzleDuration = speed === "slow" ? "2.2s" : speed === "fast" ? "0.75s" : "1.5s";
-  const puzzleStaggerMs = speed === "slow" ? 150 : speed === "fast" ? 35 : 80;
+  const puzzleDuration = speed === "slow" ? "0.7s" : speed === "fast" ? "0.32s" : "0.5s";
+  const puzzleStepMs = speed === "slow" ? 820 : speed === "fast" ? 360 : 560;
   // Grid mode is the "Puzzle" option: photos fade in one by one. Let the
   // editor preview run it too so the selected animation is visible while
   // customizing the Gallery page.
@@ -3542,6 +3588,10 @@ function Gallery({
     animation === "grid" ? "puzzle" : "none";
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [guestLightboxIndex, setGuestLightboxIndex] = useState<number | null>(null);
+  const imageSequenceKey = useMemo(
+    () => images.map((img) => `${img.url}:${img.order}`).join("|"),
+    [images],
+  );
 
   // Slideshow auto-advance. Hooks must run unconditionally - bail out inside.
   const [activeIdx, setActiveIdx] = useState(0);
@@ -3560,41 +3610,6 @@ function Gallery({
   // Per-item scroll observers for fade/slide/zoom entrance modes.
   const [visibleItems, setVisibleItems] = useState<Set<number>>(new Set());
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
-  useEffect(() => {
-    if (entrance === "none") {
-      setVisibleItems(new Set());
-      return;
-    }
-    if (entrance === "puzzle") {
-      setVisibleItems(new Set());
-      const timers = images.map((_, i) =>
-        window.setTimeout(() => {
-          setVisibleItems((prev) => new Set([...prev, i]));
-        }, i * puzzleStaggerMs),
-      );
-      return () => timers.forEach((timer) => window.clearTimeout(timer));
-    }
-    const observers = itemRefs.current.map((el, i) => {
-      if (!el) return null;
-      const obs = new IntersectionObserver(
-        ([entry]) => {
-          if (entry.isIntersecting) {
-            setVisibleItems((prev) => new Set([...prev, i]));
-            obs.disconnect();
-          }
-        },
-        { threshold: 0.1 },
-      );
-      obs.observe(el);
-      return obs;
-    });
-    return () => {
-      observers.forEach((obs) => obs?.disconnect());
-    };
-  }, [entrance, images.length, puzzleStaggerMs]);
-
-  // Grid-level observer for puzzle mode: fires once when the grid enters view,
-  // then CSS handles the sequential snap-in via animation-delay per item.
   const [puzzleReady, setPuzzleReady] = useState(false);
   const gridRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -3620,7 +3635,48 @@ function Gallery({
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [ctx.editable, ctx.previewMode, entrance, images.length, speed]);
+  }, [ctx.editable, ctx.previewMode, entrance, imageSequenceKey, speed]);
+  useEffect(() => {
+    if (entrance === "none") {
+      setVisibleItems(new Set());
+      return;
+    }
+    if (entrance === "puzzle") {
+      setVisibleItems(new Set());
+      if (!puzzleReady || images.length === 0) return;
+      let index = 0;
+      let timer: number | undefined;
+      const revealNext = () => {
+        const nextIndex = index;
+        setVisibleItems((prev) => new Set([...prev, nextIndex]));
+        index += 1;
+        if (index < images.length) {
+          timer = window.setTimeout(revealNext, puzzleStepMs);
+        }
+      };
+      timer = window.setTimeout(revealNext, 120);
+      return () => {
+        if (timer !== undefined) window.clearTimeout(timer);
+      };
+    }
+    const observers = itemRefs.current.map((el, i) => {
+      if (!el) return null;
+      const obs = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            setVisibleItems((prev) => new Set([...prev, i]));
+            obs.disconnect();
+          }
+        },
+        { threshold: 0.1 },
+      );
+      obs.observe(el);
+      return obs;
+    });
+    return () => {
+      observers.forEach((obs) => obs?.disconnect());
+    };
+  }, [entrance, images.length, imageSequenceKey, puzzleReady, puzzleStepMs]);
 
   if (images.length === 0 && guestUploads.length === 0 && !ctx.editable) return null;
 
@@ -3824,10 +3880,11 @@ function Gallery({
               style={
                 entrance !== "none"
                   ? {
-                      ["--stagger" as string]: `${i * puzzleStaggerMs}ms`,
+                      ["--stagger" as string]: entrance === "puzzle" ? "0ms" : `${i * 80}ms`,
                     }
                   : undefined
               }
+              data-gallery-puzzle-item={entrance === "puzzle" ? i : undefined}
             >
               <div>
                 <button

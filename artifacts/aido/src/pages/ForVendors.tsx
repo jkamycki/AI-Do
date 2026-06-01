@@ -338,7 +338,7 @@ export default function ForVendors() {
           </nav>
           <div className="flex items-center gap-2">
             <Button asChild className="h-10 rounded-lg bg-[#8D294D] px-3 text-sm text-white hover:bg-[#762140] sm:px-5">
-              <Link href="/for-vendors/apply"><span className="sm:hidden">Partner</span><span className="hidden sm:inline">Partner With Us</span></Link>
+              <Link href="/for-vendors/apply">Partner With Us</Link>
             </Button>
             <Link href="/sign-in">
               <Button variant="ghost" size="icon" className="hidden text-[#6F3E54] hover:bg-[#FFF7F2] sm:inline-flex">

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@clerk/react";
 import { useUpload } from "@workspace/object-storage-web";
 import { authFetch } from "@/lib/authFetch";
-import { AuthMediaImage } from "@/components/AuthMediaImage";
+import { AuthMediaImage, preloadAuthMediaImage } from "@/components/AuthMediaImage";
 import { WEBSITE_THEMES as THEMES } from "@/lib/websiteThemes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,7 @@ import {
 import {
   WebsiteRenderer,
   WEBSITE_DEVICE_OVERRIDES_KEY,
+  preloadWebsiteBackgroundMedia,
   parseWebsiteDeviceOverrides,
   type WebsiteRendererPayload,
   type WebsiteDeviceOverride,
@@ -156,6 +157,10 @@ function editorMediaSrc(url: string | null | undefined): string | null {
     })
     .join("/");
   return safeTail ? `/api/website/media/${safeTail}` : url;
+}
+
+function uniqueMediaUrls(urls: Array<string | null | undefined>): string[] {
+  return Array.from(new Set(urls.map((url) => editorMediaSrc(url)).filter((url): url is string => !!url)));
 }
 
 function formatProfileTime(time: string | null | undefined): string {
@@ -1859,6 +1864,43 @@ export default function WebsiteEditor() {
     });
   };
 
+  const editorMediaPreloadUrls = useMemo(() => {
+    if (!editingRecord) return [];
+    const homeUrls = [
+      editingRecord.heroImage,
+      ...(editingRecord.heroImages ?? []).map((image) => image.url),
+    ];
+    const galleryUrls = (editingRecord.galleryImages ?? []).map((image) => image.url);
+    const travelUrls = [
+      editingRecord.customText._travelVenuePhoto,
+      editingRecord.customText._travelHotelPhoto,
+    ];
+    if (editorSection === EDITOR_SETTINGS_PAGE_ID || editorSection === "home") return uniqueMediaUrls([...homeUrls, ...galleryUrls.slice(0, 2), ...travelUrls]);
+    if (editorSection === "gallery") return uniqueMediaUrls([...galleryUrls, ...homeUrls.slice(0, 1)]);
+    if (editorSection === "travel") return uniqueMediaUrls([...travelUrls, ...homeUrls.slice(0, 1)]);
+    return uniqueMediaUrls(homeUrls.slice(0, 1));
+  }, [
+    editingRecord,
+    editorSection,
+  ]);
+
+  useEffect(() => {
+    if (editorMediaPreloadUrls.length === 0) return;
+    const idle = "requestIdleCallback" in window
+      ? window.requestIdleCallback.bind(window)
+      : (callback: IdleRequestCallback) => globalThis.setTimeout(() => callback({ didTimeout: false, timeRemaining: () => 0 }), 1);
+    const id = idle(() => {
+      for (const url of editorMediaPreloadUrls) {
+        void preloadAuthMediaImage(url);
+        void preloadWebsiteBackgroundMedia(url);
+      }
+    });
+    return () => {
+      if ("cancelIdleCallback" in window) window.cancelIdleCallback(id as number);
+      else globalThis.clearTimeout(id);
+    };
+  }, [editorMediaPreloadUrls]);
+
   // ---- render ----
 
   if (loading) {
@@ -1973,7 +2015,6 @@ export default function WebsiteEditor() {
   const orderedGalleryImages = (editingRecord.galleryImages ?? [])
     .slice()
     .sort((a, b) => a.order - b.order);
-
   return (
     <div className="flex min-h-[100dvh] flex-col overflow-x-hidden lg:h-screen lg:min-h-0 lg:flex-row relative">
       {/* Mobile: live preview pinned to the top half so the user can see
