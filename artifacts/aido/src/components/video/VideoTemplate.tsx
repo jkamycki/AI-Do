@@ -36,6 +36,9 @@ function useTimerPlayer() {
 export default function VideoTemplate({ embedded = false }: { embedded?: boolean }) {
   const currentScene = useTimerPlayer();
   const rootClass = `relative ${embedded ? "h-full" : "h-screen"} w-full overflow-hidden bg-[#FFF7F2] text-[#3B1C2B]`;
+  const sceneClass = embedded
+    ? "absolute inset-0 origin-center scale-[0.6] sm:scale-[0.72] lg:scale-[0.78]"
+    : "absolute inset-0";
 
   return (
     <div className={rootClass}>
@@ -66,7 +69,7 @@ export default function VideoTemplate({ embedded = false }: { embedded?: boolean
         <AnimatePresence mode="wait">
           <motion.div
             key={currentScene}
-            className="absolute inset-0"
+            className={sceneClass}
             initial={{ opacity: 0, y: 18, filter: "blur(10px)" }}
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
             exit={{ opacity: 0, y: -16, filter: "blur(8px)" }}

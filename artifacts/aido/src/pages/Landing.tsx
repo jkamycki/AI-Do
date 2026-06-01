@@ -121,34 +121,37 @@ export default function Landing() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#FFF7F2] text-[#8D294D]">
       <header className="sticky top-0 z-40 border-b border-[#E6A6B7]/70 bg-[#FFF7F2]/[0.94] px-3 py-2 shadow-[0_1px_0_rgba(141,41,77,0.06)] backdrop-blur-md sm:px-8 sm:py-3">
-        <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto_1fr] items-center gap-2">
-          <div className="justify-self-start">
+        <div className="mx-auto grid max-w-7xl grid-cols-[auto_1fr_auto] items-center gap-3">
+          <div className="flex min-w-0 items-center gap-2 justify-self-start sm:gap-3">
+            <Link href="/" aria-label="A.I DO home" className="flex shrink-0 items-center">
+              <img src="/logo.png" alt="A.I DO" className="h-9 w-auto object-contain sm:h-11" />
+            </Link>
             <LandingLanguagePicker />
           </div>
-          <nav className="hidden min-w-0 items-center justify-center gap-4 justify-self-center md:flex lg:gap-7" aria-label="Main navigation">
+          <nav className="hidden min-w-0 items-center justify-center gap-3 justify-self-center rounded-full border border-[#E6A6B7]/40 bg-white/45 px-3 py-1 shadow-[0_10px_24px_rgba(141,41,77,0.06)] md:flex lg:gap-5" aria-label="Main navigation">
             <a href="#start">
-              <Button variant="ghost" className="h-10 px-2 text-base font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E]">
+              <Button variant="ghost" className="h-9 rounded-full px-3 text-sm font-semibold text-[#8D294D] hover:bg-[#FFF7F2] hover:text-[#B16C8E] lg:text-base">
                 How It Starts
               </Button>
             </a>
             <a href="#essentials">
-              <Button variant="ghost" className="h-10 px-2 text-base font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E]">
+              <Button variant="ghost" className="h-9 rounded-full px-3 text-sm font-semibold text-[#8D294D] hover:bg-[#FFF7F2] hover:text-[#B16C8E] lg:text-base">
                 What You Get
               </Button>
             </a>
             <a href="#demo">
-              <Button variant="ghost" className="h-10 px-2 text-base font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E]">
+              <Button variant="ghost" className="h-9 rounded-full px-3 text-sm font-semibold text-[#8D294D] hover:bg-[#FFF7F2] hover:text-[#B16C8E] lg:text-base">
                 Watch Demo
               </Button>
             </a>
             <Link href="/for-vendors">
-              <Button variant="ghost" className="h-10 px-2 text-base font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E]">
+              <Button variant="ghost" className="h-9 rounded-full px-3 text-sm font-semibold text-[#8D294D] hover:bg-[#FFF7F2] hover:text-[#B16C8E] lg:text-base">
                 Partner With Us
               </Button>
             </Link>
             {launchPricingEnabled && (
               <a href="#pricing">
-                <Button variant="ghost" className="h-10 px-2 text-base font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E]">
+                <Button variant="ghost" className="h-9 rounded-full px-3 text-sm font-semibold text-[#8D294D] hover:bg-[#FFF7F2] hover:text-[#B16C8E] lg:text-base">
                   Pricing
                 </Button>
               </a>
@@ -156,7 +159,7 @@ export default function Landing() {
           </nav>
           <nav className="flex min-w-0 items-center justify-end gap-1.5 justify-self-end sm:gap-3" aria-label="Account navigation">
             <Link href="/early-access">
-              <Button className="h-10 rounded-full bg-[linear-gradient(110deg,#E6A6B7_0%,#F2CFC6_52%,#E9A6A0_100%)] px-3 text-sm font-semibold leading-tight text-[#8D294D] shadow-[0_10px_18px_rgba(141,41,77,0.16)] hover:opacity-95 sm:h-11 sm:px-7 sm:text-base">
+              <Button className="h-10 rounded-full border border-[#8D294D]/70 bg-[#F3B6C3] px-3 text-sm font-bold leading-tight text-[#8D294D] shadow-[0_10px_18px_rgba(141,41,77,0.14)] hover:bg-[#E6A6B7] sm:h-11 sm:px-6 sm:text-base">
                 <span className="sm:hidden">Join Beta</span>
                 <span className="hidden sm:inline">{t("landing.get_started", { defaultValue: "Join Founding Couples" })}</span>
               </Button>
@@ -311,7 +314,7 @@ export default function Landing() {
               </p>
             </div>
             <div className="relative mx-auto w-full max-w-5xl overflow-hidden rounded-[30px] border border-[#E6A6B7]/45 bg-white/78 p-2 shadow-[0_24px_70px_rgba(141,41,77,0.16)] sm:p-3">
-              <div className="relative aspect-video overflow-hidden rounded-[22px] bg-[#FFF7F2]">
+              <div className="relative aspect-[4/3] overflow-hidden rounded-[22px] bg-[#FFF7F2] sm:aspect-[16/10] lg:aspect-[16/9] xl:aspect-[16/10]">
                 <VideoTemplate embedded />
               </div>
             </div>
