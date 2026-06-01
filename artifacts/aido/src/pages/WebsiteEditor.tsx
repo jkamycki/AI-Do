@@ -62,6 +62,7 @@ type ControlGroupId = "copy" | "design" | "elements" | "photos" | "animation" | 
 
 const MOBILE_GUEST_PREVIEW_WIDTH = 430;
 const MOBILE_GUEST_PREVIEW_HEIGHT = 932;
+const EDITOR_SETTINGS_PAGE_ID = "editor-settings";
 
 interface InvitationHotelSettings {
   rsvpAskHotel: boolean;
@@ -1890,7 +1891,9 @@ export default function WebsiteEditor() {
   const pageNavItems = [
     { id: "home", label: "Home", icon: Heart },
     ...SECTION_LIST,
+    { id: EDITOR_SETTINGS_PAGE_ID, label: "Settings", icon: Settings },
   ] as Array<{ id: string; label: string; icon: React.ElementType }>;
+  const isEditorSettingsPage = activeEditorPage === EDITOR_SETTINGS_PAGE_ID;
   const activePageLabel = pageNavItems.find((item) => item.id === activeEditorPage)?.label ?? "Home";
   const editingPage = (...ids: string[]) => activeTab !== "publish" && ids.includes(activeEditorPage);
   const allControlGroups = [
@@ -1902,9 +1905,11 @@ export default function WebsiteEditor() {
     { id: "settings", label: "Settings", icon: Settings },
   ] as const;
   const pageControlGroups = allControlGroups;
-  const currentControlGroup = pageControlGroups.some((group) => group.id === activeControlGroup)
-    ? activeControlGroup
-    : pageControlGroups[0]?.id ?? "copy";
+  const currentControlGroup = isEditorSettingsPage
+    ? "settings"
+    : pageControlGroups.some((group) => group.id === activeControlGroup)
+      ? activeControlGroup
+      : pageControlGroups[0]?.id ?? "copy";
   const editingGroup = (
     _group: typeof currentControlGroup,
     ...ids: string[]
@@ -1988,7 +1993,7 @@ export default function WebsiteEditor() {
               slug={editingRecord.slug ?? ""}
               previewMode
               scrollContainer={mobilePreviewRef.current}
-              currentSection={editorSection}
+              currentSection={isEditorSettingsPage ? "home" : editorSection}
               onSectionChange={(id) => {
                 setEditorSection(id);
                 setActiveTab("setup");
@@ -2080,7 +2085,7 @@ export default function WebsiteEditor() {
                 // Flush any pending inline-text commit before showing preview
                 // so the user sees their latest edits, not a stale snapshot.
                 flushPendingEditableCommits();
-                setPreviewSection(editorSection || "home");
+                setPreviewSection(isEditorSettingsPage ? "home" : editorSection || "home");
                 setPreviewOpen(true);
               }}
               className="border-0 font-bold"
@@ -2249,6 +2254,7 @@ export default function WebsiteEditor() {
               {pageNavItems.map((item) => {
                 const PageIcon = item.icon;
                 const active = activeTab !== "publish" && activeEditorPage === item.id;
+                const isSettingsPageButton = item.id === EDITOR_SETTINGS_PAGE_ID;
                 return (
                   <button
                     key={item.id}
@@ -2256,9 +2262,11 @@ export default function WebsiteEditor() {
                     onClick={() => {
                       setActiveTab("setup");
                       setEditorSection(item.id);
-                      setActiveControlGroup("copy");
-                      previewRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-                      mobilePreviewRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                      setActiveControlGroup(isSettingsPageButton ? "settings" : "copy");
+                      if (!isSettingsPageButton) {
+                        previewRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                        mobilePreviewRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                      }
                     }}
                     className={`flex min-w-0 items-center justify-start gap-1.5 rounded-lg px-2 py-2 text-[11px] font-semibold transition-colors ${active ? "bg-background text-[#24171D] shadow-sm ring-1 ring-border dark:text-[#F7E7D6]" : "text-muted-foreground hover:bg-background/70 hover:text-foreground"}`}
                   >
@@ -3771,7 +3779,7 @@ export default function WebsiteEditor() {
             slug={editingRecord.slug ?? ""}
             previewMode
             scrollContainer={previewRef.current}
-            currentSection={editorSection}
+            currentSection={isEditorSettingsPage ? "home" : editorSection}
             onSectionChange={(id) => {
               setEditorSection(id);
               setActiveTab("setup");

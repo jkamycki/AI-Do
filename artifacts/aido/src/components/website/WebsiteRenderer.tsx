@@ -1438,7 +1438,7 @@ function AddToCalendarButton({ data }: { data: WebsiteRendererPayload }) {
   };
 
   const itemClass =
-    "block w-full text-left px-4 py-2 text-sm hover:bg-black/5 transition-colors";
+    "block w-full rounded-lg px-4 py-3 text-left text-sm font-semibold hover:bg-black/5 transition-colors";
 
   return (
     <div className="relative inline-flex flex-col items-center mt-6">
@@ -1459,13 +1459,18 @@ function AddToCalendarButton({ data }: { data: WebsiteRendererPayload }) {
             aria-hidden
           />
           <div
-            className="absolute top-full mt-2 z-50 rounded-lg shadow-xl border overflow-hidden min-w-[180px]"
+            role="dialog"
+            aria-label="Choose calendar"
+            className="fixed inset-x-4 bottom-4 z-50 rounded-2xl border p-3 shadow-2xl sm:absolute sm:inset-auto sm:left-1/2 sm:top-full sm:mt-2 sm:w-56 sm:-translate-x-1/2 sm:rounded-lg sm:p-2"
             style={{
               background: "#fff",
               color: "#222",
               borderColor: "rgba(0,0,0,0.1)",
             }}
           >
+            <div className="px-2 pb-2 text-left text-xs font-semibold uppercase tracking-[0.16em] text-[#8D294D]">
+              Choose calendar
+            </div>
             <button
               type="button"
               className={itemClass}
@@ -2944,8 +2949,9 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const hotelDescription = data.customText._travelHotelDescription ?? "";
   const venuePhoto = (data.customText._travelVenuePhoto || "").trim();
   const hotelPhoto = (data.customText._travelHotelPhoto || "").trim();
-  const venuePhotoSrc = venuePhoto && !ctx.editable ? publicWebsiteMediaUrl(data.slug, venuePhoto) : venuePhoto;
-  const hotelPhotoSrc = hotelPhoto && !ctx.editable ? publicWebsiteMediaUrl(data.slug, hotelPhoto) : hotelPhoto;
+  const shouldUsePublicTravelMedia = !ctx.editable && !ctx.previewMode;
+  const venuePhotoSrc = venuePhoto && shouldUsePublicTravelMedia ? publicWebsiteMediaUrl(data.slug, venuePhoto) : venuePhoto;
+  const hotelPhotoSrc = hotelPhoto && shouldUsePublicTravelMedia ? publicWebsiteMediaUrl(data.slug, hotelPhoto) : hotelPhoto;
 
   const cardStyle: React.CSSProperties = {
     border: isMobileRender ? `1px solid ${data.colorPalette.primary}22` : undefined,
@@ -3524,10 +3530,11 @@ function Gallery({
     speed === "slow" ? "60s" : speed === "fast" ? "20s" : "40s";
   const puzzleDuration = speed === "slow" ? "2.2s" : speed === "fast" ? "0.75s" : "1.5s";
   const puzzleStaggerMs = speed === "slow" ? 150 : speed === "fast" ? 35 : 80;
-  // Grid mode uses the puzzle fade entrance on the guest site, but editor
-  // previews should show every image immediately in desktop and mobile.
+  // Grid mode is the "Puzzle" option: photos fade in one by one. Let the
+  // editor preview run it too so the selected animation is visible while
+  // customizing the Gallery page.
   const entrance: "none" | "fade-in" | "slide-up" | "zoom-in" | "puzzle" =
-    ctx.editable || ctx.previewMode ? "none" : animation === "grid" ? "puzzle" : "none";
+    animation === "grid" ? "puzzle" : "none";
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [guestLightboxIndex, setGuestLightboxIndex] = useState<number | null>(null);
 
@@ -3549,9 +3556,18 @@ function Gallery({
   const [visibleItems, setVisibleItems] = useState<Set<number>>(new Set());
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   useEffect(() => {
-    if (entrance === "none" || entrance === "puzzle") {
+    if (entrance === "none") {
       setVisibleItems(new Set());
       return;
+    }
+    if (entrance === "puzzle") {
+      setVisibleItems(new Set());
+      const timers = images.map((_, i) =>
+        window.setTimeout(() => {
+          setVisibleItems((prev) => new Set([...prev, i]));
+        }, i * puzzleStaggerMs),
+      );
+      return () => timers.forEach((timer) => window.clearTimeout(timer));
     }
     const observers = itemRefs.current.map((el, i) => {
       if (!el) return null;
@@ -3570,7 +3586,7 @@ function Gallery({
     return () => {
       observers.forEach((obs) => obs?.disconnect());
     };
-  }, [entrance, images.length]);
+  }, [entrance, images.length, puzzleStaggerMs]);
 
   // Grid-level observer for puzzle mode: fires once when the grid enters view,
   // then CSS handles the sequential snap-in via animation-delay per item.
@@ -3580,6 +3596,11 @@ function Gallery({
     if (entrance !== "puzzle") {
       setPuzzleReady(false);
       return;
+    }
+    if (ctx.editable || ctx.previewMode) {
+      setPuzzleReady(false);
+      const frame = requestAnimationFrame(() => setPuzzleReady(true));
+      return () => cancelAnimationFrame(frame);
     }
     const el = gridRef.current;
     if (!el) return;
@@ -3594,7 +3615,7 @@ function Gallery({
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [entrance]);
+  }, [ctx.editable, ctx.previewMode, entrance, images.length, speed]);
 
   if (images.length === 0 && guestUploads.length === 0 && !ctx.editable) return null;
 
@@ -4302,9 +4323,9 @@ function PartyMemberCard({
   compact?: boolean;
 }) {
   return (
-    <div className="flex min-w-0 flex-col items-center px-3 text-center">
+    <div className={`flex min-w-0 flex-col items-center text-center ${compact ? "px-1" : "px-3"}`}>
       <div
-        className={`${compact ? "h-28 w-28" : "h-32 w-32 sm:h-36 sm:w-36"} mb-4 flex items-center justify-center overflow-hidden rounded-full`}
+        className={`${compact ? "h-24 w-24" : "h-32 w-32 sm:h-36 sm:w-36"} mb-4 flex items-center justify-center overflow-hidden rounded-full`}
         style={{
           background: `${data.colorPalette.primary}15`,
           border: `1px solid ${data.colorPalette.primary}33`,
@@ -4328,11 +4349,11 @@ function PartyMemberCard({
         )}
       </div>
       <div
-        className={`${compact ? "text-xl" : "text-xl sm:text-2xl"} mb-1 w-full leading-tight`}
+        className={`${compact ? "text-lg" : "text-xl sm:text-2xl"} mb-1 w-full leading-tight`}
         style={{
           fontFamily: fontStack(headingFont(data)),
           color: data.colorPalette.primary,
-          maxWidth: compact ? "13rem" : "14rem",
+          maxWidth: compact ? "9.5rem" : "14rem",
           overflowWrap: "normal",
           wordBreak: "normal",
           hyphens: "manual",
@@ -4342,7 +4363,7 @@ function PartyMemberCard({
         {member.name || "Name"}
       </div>
       <div
-        className="text-sm opacity-80"
+        className={`${compact ? "text-xs" : "text-sm"} opacity-80`}
         style={{ color: labelColor, fontFamily: bodyFontStack(bodyFont(data)) }}
       >
         {member.role || "Role"}
@@ -4504,7 +4525,7 @@ function WeddingParty({
                 ) : (
                   <div
                     className={isMobileRender
-                      ? "mx-auto grid max-w-[260px] grid-cols-1 gap-y-12"
+                      ? "mx-auto grid w-full max-w-[22rem] grid-cols-2 gap-x-4 gap-y-12"
                       : `grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 ${oddLastGridClass}`}
                   >
                     {brideSide.map((m, i) => (
@@ -4550,7 +4571,7 @@ function WeddingParty({
                 ) : (
                   <div
                     className={isMobileRender
-                      ? "mx-auto grid max-w-[260px] grid-cols-1 gap-y-12"
+                      ? "mx-auto grid w-full max-w-[22rem] grid-cols-2 gap-x-4 gap-y-12"
                       : `grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 ${oddLastGridClass}`}
                   >
                     {groomSide.map((m, i) => (
@@ -4587,7 +4608,7 @@ function WeddingParty({
                 />
               </h3>
               <div className={isMobileRender
-                ? "mx-auto grid max-w-[260px] grid-cols-1 gap-y-12"
+                ? "mx-auto grid w-full max-w-[22rem] grid-cols-2 gap-x-4 gap-y-12"
                 : "grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 md:grid-cols-3"}
               >
                 {familySide.map((m, i) => (

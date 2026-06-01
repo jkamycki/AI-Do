@@ -460,8 +460,17 @@ export function Sidebar() {
     return locationPath === hrefPath || (hrefPath !== "/dashboard" && locationPath.startsWith(`${hrefPath}/`));
   };
 
-  const toggleSection = (id: string) => {
-    setCollapsedSections((current) => ({ ...current, [id]: !current[id] }));
+  const isSectionActive = (section: SidebarSection) =>
+    section.items.some((item) => isHrefActive(item.href));
+
+  const isSectionExpanded = (section: SidebarSection) =>
+    (collapsedSections[section.id] ?? section.defaultOpen) || isSectionActive(section);
+
+  const toggleSection = (section: SidebarSection) => {
+    setCollapsedSections((current) => {
+      const currentValue = current[section.id] ?? section.defaultOpen;
+      return { ...current, [section.id]: !currentValue };
+    });
   };
 
   const NavLink = ({
@@ -687,13 +696,13 @@ export function Sidebar() {
 
           <div className="space-y-4">
             {!isPlannerOwnWorkspace && sidebarSections.map((section) => {
-              const expanded = collapsedSections[section.id] === true;
+              const expanded = isSectionExpanded(section);
 
               return (
                 <div key={section.id} className="space-y-1">
                   <button
                     type="button"
-                    onClick={() => toggleSection(section.id)}
+                    onClick={() => toggleSection(section)}
                     className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm font-semibold text-foreground transition-colors hover:bg-primary/5"
                     aria-expanded={expanded}
                   >

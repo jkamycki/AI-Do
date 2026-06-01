@@ -97,21 +97,13 @@
   transform: none;
 }
 
-/* Puzzle build animation — photos fade in one-by-one and stay */
-@keyframes wsg-puzzle-snap {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
+/* Puzzle build animation - photos fade in one-by-one and stay */
 [data-gallery-anim="puzzle"] .wsg-item {
   opacity: 0;
+  transition: opacity var(--puzzle-duration, 1.5s) ease-in-out;
 }
-[data-gallery-anim="puzzle"].wsg-grid-ready .wsg-item {
-  animation: wsg-puzzle-snap var(--puzzle-duration, 1.5s) ease-in-out forwards;
-  animation-delay: var(--stagger, 0ms);
+[data-gallery-anim="puzzle"] .wsg-item.wsg-visible {
+  opacity: 1;
 }
 
 /* Hero background animations */
@@ -609,3 +601,4 @@
   outline: 2px solid rgba(99, 102, 241, 0.75) !important;
   background-color: rgba(99, 102, 241, 0.06);
 }
+
