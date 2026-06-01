@@ -4490,10 +4490,17 @@ function WeddingParty({
           {(groomSide.length > 0 || brideSide.length > 0) && (
             <div className={isMobileRender
               ? "relative mx-auto max-w-sm"
-              : "relative mx-auto grid max-w-5xl grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-0"}
+              : "relative mx-auto flex w-full max-w-5xl justify-center"}
             >
-              <div className={isMobileRender ? "mx-auto w-full max-w-[22rem]" : "mx-auto w-full max-w-4xl"}>
-                  <div className={isMobileRender ? "mb-8 grid grid-cols-2 gap-x-4" : "mb-10 grid grid-cols-2 gap-x-8"}>
+              <div
+                className={isMobileRender ? "relative mx-auto w-full max-w-[22rem]" : "relative mx-auto w-full max-w-3xl"}
+              >
+                <div
+                  aria-hidden="true"
+                  className="absolute left-1/2 top-0 bottom-0 w-px -translate-x-1/2"
+                  style={{ background: `${data.colorPalette.primary}30` }}
+                />
+                  <div className={isMobileRender ? "relative mb-8 grid grid-cols-2 gap-x-4" : "relative mb-10 grid grid-cols-2 justify-items-center gap-x-8"}>
                     <h3
                       className={isMobileRender ? "text-center text-xl leading-tight" : "text-center text-2xl leading-tight sm:text-3xl"}
                       style={{
@@ -4527,7 +4534,7 @@ function WeddingParty({
                       />
                     </h3>
                   </div>
-                  <div className={isMobileRender ? "grid grid-cols-2 gap-x-4 gap-y-12" : "grid grid-cols-2 gap-x-8 gap-y-12"}>
+                  <div className={isMobileRender ? "relative grid grid-cols-2 gap-x-4 gap-y-12" : "relative grid grid-cols-2 justify-items-center gap-x-8 gap-y-12"}>
                     {pairedPartyRows.map((row, i) => (
                       <Fragment key={`party-pair-${i}`}>
                         {row.bride ? (
