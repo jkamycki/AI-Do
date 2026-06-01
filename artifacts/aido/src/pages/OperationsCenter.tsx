@@ -1412,7 +1412,7 @@ export default function OperationsCenterPage() {
                         </Badge>
                       </div>
                       <p className="mt-2 max-w-2xl text-sm leading-6 text-[#6F3E54]">
-                        When enabled, couples see two launch packages: Free and A.I DO Complete for $99 one-time per wedding.
+                        When enabled, couples see launch pricing: Free, A.I DO Complete Monthly for $9/month, and A.I DO Complete One-Time for $99 per wedding.
                         When disabled, pricing is hidden and the site keeps using the free beta messaging.
                       </p>
                       {pricingData?.updatedAt && (
@@ -1431,7 +1431,7 @@ export default function OperationsCenterPage() {
                 </div>
               )}
 
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-3 md:grid-cols-3">
                 <div className="rounded-xl border border-[#E6C7D2] bg-white p-4">
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#B16C8E]">Free</p>
                   <p className="mt-2 font-serif text-3xl text-[#8D294D]">$0</p>
@@ -1439,8 +1439,15 @@ export default function OperationsCenterPage() {
                     Website, A.I DO URL, basic RSVP, guest list, checklist, budget, travel, registry, photo QR, limited AI, and A.I DO branding.
                   </p>
                 </div>
+                <div className="rounded-xl border border-primary/35 bg-white p-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#B16C8E]">A.I DO Complete Monthly</p>
+                  <p className="mt-2 font-serif text-3xl text-[#8D294D]">$9/mo</p>
+                  <p className="mt-2 text-sm leading-6 text-[#6F3E54]">
+                    Same Complete features with a softer monthly entry while couples are actively planning.
+                  </p>
+                </div>
                 <div className="rounded-xl border border-primary/40 bg-primary p-4 text-white">
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/80">A.I DO Complete</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/80">A.I DO Complete One-Time</p>
                   <p className="mt-2 font-serif text-3xl">$99</p>
                   <p className="mt-2 text-sm leading-6 text-white/88">
                     One-time per wedding with premium designs, no branding, advanced RSVP, seating, vendors, invitations, contract AI, day-of tools, photo upgrades, collaboration, and priority support.
@@ -1459,7 +1466,7 @@ export default function OperationsCenterPage() {
                 Keep this hidden until payment links, plan limits, and upgrade messaging are ready. Turning it on only changes public pricing visibility.
               </p>
               <p className="font-semibold text-[#24171D]">
-                Recommended first launch: Free + $99 Complete.
+                Recommended first launch: Free + $9/month Complete + $99 one-time Complete.
               </p>
             </CardContent>
           </Card>

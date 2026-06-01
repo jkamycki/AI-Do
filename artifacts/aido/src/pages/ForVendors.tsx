@@ -89,41 +89,41 @@ const EMPTY_FORM: VendorPartnerForm = {
 const BENEFITS = [
   {
     icon: Store,
-    title: "Free Vendor Profile",
-    body: "Showcase your business in a curated wedding planning experience.",
+    title: "Free Beta Listing",
+    body: "Get a polished A.I DO vendor profile at no cost while the founding program is open.",
   },
   {
     icon: BadgeCheck,
-    title: "Exclusive Badge",
-    body: "Approved partners receive an A.I DO badge for their site and socials.",
+    title: "Founding Partner Badge",
+    body: "Approved early vendors receive a founding badge they can share on their site and socials.",
   },
   {
     icon: Users,
-    title: "Targeted Leads",
-    body: "Reach couples who are actively organizing guests, budgets, and vendors.",
+    title: "Priority Early Placement",
+    body: "Be one of the first vendors couples see as A.I DO begins opening to engaged couples.",
   },
   {
     icon: HeartHandshake,
-    title: "Mutual Promotion",
-    body: "You help introduce A.I DO. We help introduce your services.",
+    title: "Help Shape The Network",
+    body: "Share feedback on what would make the vendor side useful enough to pay for later.",
   },
 ];
 
 const STEPS = [
   {
     icon: BriefcaseBusiness,
-    title: "1. Get Featured",
-    body: "We review your application and create a polished vendor listing.",
+    title: "1. Apply For Free",
+    body: "Send your business details, logo, photos, service area, and the services you want couples to see.",
   },
   {
     icon: Share2,
-    title: "2. Cross-Promote",
-    body: "Add your partner badge to your site, proposals, or social channels.",
+    title: "2. Get Listed Early",
+    body: "We review your application, create your profile, and mark approved vendors as founding partners.",
   },
   {
     icon: Sparkles,
-    title: "3. Grow Together",
-    body: "Couples discover trusted vendors while planning inside A.I DO.",
+    title: "3. Grow With A.I DO",
+    body: "Share your listing, give honest feedback, and get priority placement as couples start joining.",
   },
 ];
 
@@ -140,7 +140,7 @@ function getVendorPartnerPage(path: string): VendorPartnerPage {
   if (path.endsWith("/how-it-works")) return "how-it-works";
   if (path.endsWith("/apply")) return "apply";
   if (path.endsWith("/sample-profile")) return "sample-profile";
-  return "vendors";
+  return "home";
 }
 
 function vendorPartnerNavClass(isActive: boolean) {
@@ -164,18 +164,18 @@ export default function ForVendors() {
 
   useEffect(() => {
     const titleByPage: Record<VendorPartnerPage, string> = {
-      home: "Wedding Vendor Directory & Partner Program | A.I DO",
-      vendors: "Wedding Vendor Directory & Partner Program | A.I DO",
-      "how-it-works": "How A.I DO Vendor Partnerships Work",
-      apply: "Apply to Join the A.I DO Wedding Vendor Directory",
-      "sample-profile": "Sample Wedding Vendor Profile | A.I DO",
+      home: "Founding Wedding Vendor Program | A.I DO",
+      vendors: "Founding Wedding Vendor Program | A.I DO",
+      "how-it-works": "How A.I DO Founding Vendor Partnerships Work",
+      apply: "Apply to Join the A.I DO Founding Vendor Program",
+      "sample-profile": "Sample Founding Vendor Profile | A.I DO",
     };
     const descriptionByPage: Record<VendorPartnerPage, string> = {
-      home: "Join the A.I DO wedding vendor directory and reach couples using AI wedding planning tools for budgets, guest lists, timelines, and vendor decisions.",
-      vendors: "Join the A.I DO wedding vendor directory and reach couples using AI wedding planning tools for budgets, guest lists, timelines, and vendor decisions.",
-      "how-it-works": "See how A.I DO helps wedding vendors get discovered by couples planning budgets, timelines, guest lists, and wedding websites.",
-      apply: "Apply for a free A.I DO wedding vendor profile and get discovered by couples actively planning venues, photography, florals, music, catering, and more.",
-      "sample-profile": "Preview a sample A.I DO wedding vendor profile with service details, contact links, photos, QR code sharing, and partner badge placement.",
+      home: "Apply for A.I DO's founding wedding vendor program: free beta listing, founding partner badge, priority early placement, and profile visibility as A.I DO grows.",
+      vendors: "Apply for A.I DO's founding wedding vendor program: free beta listing, founding partner badge, priority early placement, and profile visibility as A.I DO grows.",
+      "how-it-works": "See how A.I DO founding vendors get listed early, share a polished vendor profile, and help shape the vendor network before paid partnerships launch.",
+      apply: "Apply for a free founding vendor profile on A.I DO. Share your logo, photos, services, and feedback while the platform grows its first couple audience.",
+      "sample-profile": "Preview a sample A.I DO founding vendor profile with services, photos, contact links, QR code sharing, and founding partner badge placement.",
     };
     setSeo({
       title: titleByPage[page],
@@ -375,20 +375,20 @@ export default function ForVendors() {
             <div className="max-w-xl">
               <p className="mb-4 inline-flex max-w-full items-center gap-2 rounded-full border border-[#E6C7D0] bg-white/75 px-3 py-2 text-xs font-bold uppercase tracking-[0.16em] text-[#B16C8E] sm:px-4 sm:tracking-[0.22em]">
                 <Sparkles className="h-4 w-4" />
-                Partner With Us
+                Founding Vendor Program
               </p>
               <h1 className="font-serif text-[2.6rem] font-bold leading-[1.05] text-[#8D294D] sm:text-6xl">
-                Partner with A.I DO
+                Become a founding A.I DO vendor
               </h1>
               <p className="mt-4 max-w-lg text-base leading-7 text-[#3B1C2B] sm:mt-5 sm:text-lg sm:leading-8">
-                Get listed with A.I DO, reach couples as they plan, and share a trusted badge on your site or socials.
+                Join the beta vendor network for free, get a polished profile you can share, and help shape how couples discover vendors inside A.I DO.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Button asChild className="h-12 w-full rounded-lg bg-[#8D294D] px-8 text-base font-bold text-white shadow-lg shadow-[#8D294D]/25 hover:bg-[#762140] sm:w-auto">
-                  <Link href="/for-vendors/apply">Partner With Us</Link>
+                  <Link href="/for-vendors/apply">Apply Free</Link>
                 </Button>
                 <Button asChild variant="outline" className="h-12 w-full rounded-lg border-[#E6A6B7] bg-white/80 px-8 text-base font-bold text-[#6F3E54] hover:bg-white sm:w-auto">
-                  <Link href="/for-vendors/vendors">See Benefits</Link>
+                  <Link href="/for-vendors/vendors">See Founding Offer</Link>
                 </Button>
               </div>
             </div>
@@ -403,8 +403,11 @@ export default function ForVendors() {
         <section id="benefits" className="bg-white px-4 py-14 sm:px-8">
           <div className="mx-auto max-w-6xl">
             <h2 className="text-center font-serif text-3xl font-bold leading-tight text-[#8D294D] sm:text-4xl">
-              Why Partner With Us?
+              Founding Vendor Offer
             </h2>
+            <p className="mx-auto mt-3 max-w-2xl text-center text-sm leading-6 text-[#6F3E54] sm:text-base sm:leading-7">
+              This is not a paid marketplace yet. Early approved vendors get free beta visibility while A.I DO builds its first couple audience.
+            </p>
             <div className="mt-9 grid gap-5 md:grid-cols-4">
               {BENEFITS.map((benefit) => {
                 const Icon = benefit.icon;
@@ -427,7 +430,7 @@ export default function ForVendors() {
         <section id="how-it-works" className="bg-[#FAF9FC] px-4 py-16 sm:px-8">
           <div className="mx-auto max-w-6xl text-center">
             <h2 className="font-serif text-3xl font-bold leading-tight text-[#8D294D] sm:text-4xl">How It Works</h2>
-            <p className="mt-3 text-base leading-7 text-[#3B1C2B] sm:text-lg">We create a profile page for your business.</p>
+            <p className="mt-3 text-base leading-7 text-[#3B1C2B] sm:text-lg">Apply once, get listed early, and help shape the vendor experience before paid partnerships launch.</p>
             <div className="mt-10 grid gap-6 md:grid-cols-3">
               {STEPS.map((step) => {
                 const Icon = step.icon;
@@ -453,18 +456,27 @@ export default function ForVendors() {
           <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
             <div className="space-y-6">
               <div>
-                <h2 className="font-serif text-3xl font-bold leading-tight text-[#8D294D] sm:text-4xl">Ready to Partner?</h2>
+                <h2 className="font-serif text-3xl font-bold leading-tight text-[#8D294D] sm:text-4xl">Apply as a Founding Vendor</h2>
                 <p className="mt-3 text-base leading-7 text-[#3B1C2B] sm:text-lg">
-                  Tell us about your business and we will review your fit for the A.I DO partner network.
+                  Tell us about your business and we will review your fit for the free founding vendor beta.
                 </p>
               </div>
               <VendorBadge />
               <div className="rounded-lg border border-[#E8DDE8] bg-white p-5">
-                <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#B16C8E]">What approved vendors receive</p>
+                <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#B16C8E]">What founding vendors get</p>
                 <ul className="mt-4 space-y-3 text-sm leading-6 text-[#6F3E54]">
-                  <li className="flex gap-2"><CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#8D294D]" /> A vendor profile in the A.I DO directory.</li>
-                  <li className="flex gap-2"><CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#8D294D]" /> An official partner badge with your A.I DO listing link.</li>
-                  <li className="flex gap-2"><CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#8D294D]" /> Mutual promotion opportunities as the directory grows.</li>
+                  <li className="flex gap-2"><CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#8D294D]" /> Free vendor profile/listing during beta.</li>
+                  <li className="flex gap-2"><CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#8D294D]" /> Founding Partner badge and priority early placement.</li>
+                  <li className="flex gap-2"><CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#8D294D]" /> SEO exposure as your profile grows with the platform.</li>
+                  <li className="flex gap-2"><CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#8D294D]" /> Optional testimonials or case studies once A.I DO has early users.</li>
+                </ul>
+              </div>
+              <div className="rounded-lg border border-[#E8DDE8] bg-white p-5">
+                <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#B16C8E]">What we ask from you</p>
+                <ul className="mt-4 space-y-3 text-sm leading-6 text-[#6F3E54]">
+                  <li className="flex gap-2"><CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#8D294D]" /> Complete the application with logo, photos, services, and contact details.</li>
+                  <li className="flex gap-2"><CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#8D294D]" /> Share your A.I DO listing once it is live.</li>
+                  <li className="flex gap-2"><CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#8D294D]" /> Give honest feedback on what would make a paid vendor plan valuable later.</li>
                 </ul>
               </div>
             </div>
@@ -489,7 +501,7 @@ export default function ForVendors() {
                 <form className="space-y-5" onSubmit={handleSubmit}>
                   <div>
                     <h3 className="font-serif text-3xl font-bold text-[#8D294D]">Apply Now</h3>
-                    <p className="mt-1 text-sm text-[#6F3E54]">Quick and easy. No cost to join.</p>
+                    <p className="mt-1 text-sm text-[#6F3E54]">Free beta listing. No contract. No vendor fee while the founding program is open.</p>
                   </div>
 
                   <div className="rounded-lg border border-[#E8DDE8] bg-[#FFF7F2] p-4">
@@ -677,7 +689,7 @@ export default function ForVendors() {
             </div>
             <div className="grid gap-6 md:grid-cols-2">
               <QuoteCard quote="A.I DO helps couples stay organized, which makes every vendor conversation clearer from the start." name="Partner-ready planning" />
-              <QuoteCard quote="The directory gives vendors a clean way to be discovered while sharing the planning tool with their own audience." name="Mutual growth" />
+              <QuoteCard quote="Founding vendors get early visibility now, then help define what a future paid vendor plan should actually include." name="Built with vendors" />
             </div>
           </div>
         </section>
@@ -749,7 +761,7 @@ function VendorBadge({ size = "default" }: { size?: "default" | "large" }) {
         <div>
           <p className="font-serif text-lg leading-none text-[#B16C8E]">Proud Partner of</p>
           <p className="font-serif text-4xl leading-tight text-[#8D294D]">A.I DO</p>
-          <p className="text-xs font-semibold text-[#6F3E54]">AI Wedding Planner Assistant</p>
+          <p className="text-xs font-semibold text-[#6F3E54]">Founding Vendor Partner</p>
         </div>
       </div>
     </div>
@@ -777,7 +789,7 @@ function MockDirectoryPreview({ compact = false }: { compact?: boolean }) {
           What your partner profile can look like
         </h3>
         <p className="mt-3 text-sm leading-6 text-[#6F3E54] sm:text-base sm:leading-7">
-          Vendors fill out the intake once, upload their logo and service photos, and A.I DO turns it into a clean profile couples can understand quickly.
+          Founding vendors fill out the intake once, upload their logo and service photos, and A.I DO turns it into a clean profile couples can understand quickly.
         </p>
       </div>
       )}
@@ -863,9 +875,9 @@ function MockDirectoryPreview({ compact = false }: { compact?: boolean }) {
               <div className="flex items-center gap-3 p-4">
                 <img src="/logo.png" alt="A.I DO logo" className="h-10 w-10 object-contain" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-[#8D294D]">Proud Partner of</p>
+                  <p className="text-xs font-semibold text-[#8D294D]">Founding Partner of</p>
                   <p className="font-serif text-2xl leading-none text-[#8D294D]">A.I DO</p>
-                  <p className="text-[10px] text-[#6F3E54]">AI Wedding Planner Assistant</p>
+                  <p className="text-[10px] text-[#6F3E54]">Free beta vendor profile</p>
                 </div>
                 <img
                   src={mockQrUrl}

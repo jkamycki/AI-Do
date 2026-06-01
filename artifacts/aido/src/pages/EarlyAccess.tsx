@@ -7,34 +7,40 @@ import { organizationSchema, setSeo, softwareSchema } from "@/lib/seo";
 const FOUNDING_CARDS = [
   {
     icon: UsersRound,
-    title: "Join founding couples",
-    body: "Get early access while A.I DO is still being shaped by real couples planning real weddings.",
+    title: "A calm first 5 minutes",
+    body: "Start with your wedding profile, choose what matters now, and get one clear next step instead of a wall of tools.",
   },
   {
     icon: Sparkles,
     title: "Free beta access",
-    body: "Use the wedding website, RSVP tools, guest hub, planning dashboard, and app while launch pricing stays hidden.",
+    body: "Use the essentials first: website, RSVPs, guest list, checklist, budget, vendors, and mobile planning.",
   },
   {
     icon: MessageCircleHeart,
     title: "Help shape A.I DO",
-    body: "Tell us what feels helpful, what feels confusing, and what would make planning easier before public launch.",
+    body: "Tell us where the experience feels confusing so A.I DO gets simpler before public launch.",
   },
 ];
 
 const INCLUDED = [
+  "Simple wedding profile setup",
   "Wedding website and RSVP basics",
   "Guest list, checklist, budget, and vendor tools",
-  "Photo QR and disposable-camera style guest uploads",
-  "App + website sync as features continue improving",
-  "Early feedback channel through support and Operations Center",
+  "Mobile-friendly planning from your phone",
+  "More advanced tools only when you are ready",
+];
+
+const FIRST_STEPS = [
+  "Add your wedding date, location, and guest estimate",
+  "Choose your first priority: website, RSVPs, guests, budget, or vendors",
+  "Continue from the dashboard with one recommended next action",
 ];
 
 export default function EarlyAccess() {
   useEffect(() => {
     setSeo({
       title: "Join Founding Couples | A.I DO Early Access",
-      description: "Join A.I DO founding couples for free beta access to the AI wedding planner, wedding website builder, RSVP tools, guest hub, app, and photo QR features.",
+      description: "Join A.I DO founding couples for free beta access to a simple AI wedding planner with wedding website, RSVPs, guests, checklist, budget, vendors, and mobile-friendly planning.",
       path: "/early-access",
       jsonLd: [
         organizationSchema(),
@@ -77,7 +83,7 @@ export default function EarlyAccess() {
               Join the founding couples shaping A.I DO before launch.
             </h1>
             <p className="mt-5 max-w-2xl text-pretty text-base leading-7 text-[#6F3E54] sm:text-xl sm:leading-8">
-              Be one of the first couples to use A.I DO for your wedding website, RSVP flow, guest list, budget, vendors, AI planning help, and wedding-day photo QR experience.
+              Be one of the first couples to use a simpler A.I DO: start with your wedding website, RSVPs, guest list, checklist, budget, vendors, and mobile-friendly planning.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button asChild className="h-12 w-full rounded-full bg-[#8D294D] px-6 text-white hover:bg-[#6F1D3D] sm:w-auto">
@@ -93,6 +99,17 @@ export default function EarlyAccess() {
             <p className="mt-4 text-sm font-semibold text-[#6F3E54]">
               No credit card required during beta.
             </p>
+            <div className="mt-5 rounded-[28px] border border-[#E6A6B7]/35 bg-white/65 p-4 shadow-[0_12px_30px_rgba(141,41,77,0.08)]">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-[#B16C8E]">What happens first</p>
+              <div className="mt-3 grid gap-2">
+                {FIRST_STEPS.map((step, index) => (
+                  <div key={step} className="flex items-center gap-3 rounded-2xl bg-[#FFF7F2] p-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#8D294D] text-xs font-bold text-white">{index + 1}</span>
+                    <p className="text-sm font-semibold leading-5 text-[#5B2035]">{step}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
           <div className="rounded-[32px] border border-[#E6A6B7]/45 bg-white/75 p-5 shadow-[0_28px_80px_rgba(141,41,77,0.14)] sm:p-7">

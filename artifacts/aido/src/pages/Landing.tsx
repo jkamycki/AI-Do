@@ -1,12 +1,12 @@
 import { useEffect } from "react";
 import { apiFetch } from "@/lib/authFetch";
 import { Link } from "wouter";
-import { ArrowDown, Armchair, BadgeDollarSign, Camera, CheckSquare, Clock3, FileSearch, Globe2, Heart, MailCheck, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowDown, BadgeDollarSign, CheckSquare, Clock3, Globe2, Heart, MailCheck, ShieldCheck, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { LanguagePicker } from "@/components/LanguagePicker";
 import VideoTemplate from "@/components/video/VideoTemplate";
-import { LaunchPricingSection } from "@/components/LaunchPricingSection";
+import { LaunchPricingSection, useLaunchPricingEnabled } from "@/components/LaunchPricingSection";
 import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 import { organizationSchema, setSeo, softwareSchema } from "@/lib/seo";
 
@@ -16,61 +16,39 @@ const LANG_CODE_TO_NAME: Record<string, string> = Object.fromEntries(
 
 const HERO_FEATURES = [
   {
-    icon: BadgeDollarSign,
-    titleKey: "landing.feature_vendor_budget_title",
-    descKey: "landing.feature_vendor_budget_desc",
-    fallbackTitle: "Vendor & Budget Tracking",
-    fallbackDesc: "Track payments, contracts, and spending in one clean dashboard.",
-  },
-  {
     icon: MailCheck,
     titleKey: "landing.feature_guest_invite_title",
     descKey: "landing.feature_guest_invite_desc",
-    fallbackTitle: "Guest List & Invitation Studio",
-    fallbackDesc: "Manage guests, invitations, and QR RSVPs from one place.",
+    fallbackTitle: "Guest list and RSVPs",
+    fallbackDesc: "Start with names, meal choices, plus-ones, and simple RSVP tracking.",
   },
   {
     icon: Globe2,
     titleKey: "landing.feature_website_title",
     descKey: "landing.feature_website_desc",
-    fallbackTitle: "Wedding Website Builder",
-    fallbackDesc: "Publish a personalized wedding website guests can view anywhere.",
-  },
-  {
-    icon: Clock3,
-    titleKey: "landing.feature_day_timeline_title",
-    descKey: "landing.feature_day_timeline_desc",
-    fallbackTitle: "Day-of Timeline",
-    fallbackDesc: "Build a minute-by-minute wedding day plan for your ceremony, reception, and vendor arrivals.",
+    fallbackTitle: "Wedding website",
+    fallbackDesc: "Create a shareable home for your date, location, travel, registry, and updates.",
   },
   {
     icon: CheckSquare,
     titleKey: "landing.feature_checklist_title",
     descKey: "landing.feature_checklist_desc",
-    fallbackTitle: "Smart Checklist",
-    fallbackDesc: "Stay ahead with organized tasks, due dates, and planning progress in one place.",
+    fallbackTitle: "Simple checklist",
+    fallbackDesc: "See what matters next without feeling buried in planning details.",
   },
   {
-    icon: FileSearch,
-    titleKey: "landing.feature_contracts_title",
-    descKey: "landing.feature_contracts_desc",
-    fallbackTitle: "Contract Analyzer & Library",
-    fallbackDesc: "Let AI highlight red flags, payment schedules, and key details.",
+    icon: BadgeDollarSign,
+    titleKey: "landing.feature_vendor_budget_title",
+    descKey: "landing.feature_vendor_budget_desc",
+    fallbackTitle: "Budget and vendors",
+    fallbackDesc: "Keep vendor names, payments, notes, and contracts together as you grow.",
   },
-  {
-    icon: Armchair,
-    titleKey: "landing.feature_seating_title",
-    descKey: "landing.feature_seating_desc",
-    fallbackTitle: "AI Seating Chart Generator",
-    fallbackDesc: "Generate balanced tables from guests, relationships, and notes.",
-  },
-  {
-    icon: Camera,
-    titleKey: "landing.feature_photo_qr_title",
-    descKey: "landing.feature_photo_qr_desc",
-    fallbackTitle: "Wedding Day Photo QR Code",
-    fallbackDesc: "Guests scan, upload photos, and share memories without an app.",
-  },
+];
+
+const FIRST_FIVE_MINUTES = [
+  "Create your wedding profile",
+  "Pick your first tools",
+  "Share your website or start your guest list",
 ];
 
 const HERO_REASSURANCE = [
@@ -124,17 +102,18 @@ function HeroSparkles() {
 
 export default function Landing() {
   const { t } = useTranslation();
+  const launchPricingEnabled = useLaunchPricingEnabled();
 
   useEffect(() => {
     setSeo({
       title: "AI Wedding Planner App | A.I DO Wedding Planning Assistant",
-      description: "Plan your wedding with A.I DO: an AI wedding planner app for guest lists, RSVP QR codes, wedding websites, budgets, vendors, checklists, contracts, and day-of timelines.",
+      description: "Start wedding planning with A.I DO: a simple AI wedding planner for your wedding website, RSVPs, guest list, checklist, budget, vendors, and mobile planning.",
       path: "/",
       jsonLd: [
         organizationSchema(),
         softwareSchema(
           "A.I DO AI Wedding Planner",
-          "AI wedding planning software for budgets, guest lists, RSVPs, websites, vendors, contracts, seating charts, and day-of timelines.",
+          "Simple AI wedding planning software for wedding websites, guest lists, RSVPs, checklists, budgets, vendors, and mobile planning.",
           "/",
         ),
       ],
@@ -172,6 +151,13 @@ export default function Landing() {
                 Website Builder
               </Button>
             </Link>
+            {launchPricingEnabled && (
+              <a href="#pricing">
+                <Button variant="ghost" className="h-10 px-2 text-base font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E]">
+                  Pricing
+                </Button>
+              </a>
+            )}
             <Link href="/for-vendors">
               <Button variant="ghost" className="h-10 px-2 text-base font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E]">
                 Partner With Us
@@ -192,11 +178,12 @@ export default function Landing() {
             </Link>
           </nav>
         </div>
-        <nav className="mx-auto mt-2 grid max-w-7xl grid-cols-4 gap-1.5 pb-1 text-center text-[11px] font-bold text-[#6F3E54] md:hidden" aria-label="Popular A.I DO tools">
+        <nav className={`mx-auto mt-2 grid max-w-7xl ${launchPricingEnabled ? "grid-cols-5" : "grid-cols-4"} gap-1.5 pb-1 text-center text-[11px] font-bold text-[#6F3E54] md:hidden`} aria-label="Popular A.I DO tools">
           <Link href="/ai-wedding-planner" className="rounded-full border border-[#E6A6B7]/45 bg-white/70 px-2 py-2">AI</Link>
           <Link href="/wedding-website-builder" className="rounded-full border border-[#E6A6B7]/45 bg-white/70 px-2 py-2">Website</Link>
           <Link href="/wedding-photo-qr-code" className="rounded-full border border-[#E6A6B7]/45 bg-white/70 px-2 py-2">Photo QR</Link>
           <Link href="/wedding-planning-checklist" className="rounded-full border border-[#E6A6B7]/45 bg-white/70 px-2 py-2">Checklist</Link>
+          {launchPricingEnabled && <a href="#pricing" className="rounded-full border border-[#E6A6B7]/45 bg-white/70 px-2 py-2">Pricing</a>}
         </nav>
       </header>
 
@@ -220,9 +207,9 @@ export default function Landing() {
             </div>
 
             <h1 className="mt-4 max-w-[22rem] text-balance font-serif text-[2.15rem] leading-[1.04] tracking-normal text-[#8D294D] min-[390px]:text-[2.5rem] sm:mt-6 sm:max-w-4xl sm:text-[3.7rem] sm:leading-[1.02] md:text-[4.35rem] lg:text-[4.6rem]">
-              {t("landing.hero_line1", { defaultValue: "AI wedding planner for" })}
+              {t("landing.hero_line1", { defaultValue: "Start your wedding plan" })}
               <br />
-              <span className="italic text-[#C39B70]">{t("landing.hero_line2", { defaultValue: "your perfect day." })}</span>
+              <span className="italic text-[#C39B70]">{t("landing.hero_line2", { defaultValue: "without the overwhelm." })}</span>
             </h1>
             <div className="mt-4 flex items-center gap-2 text-[#C39B70]" aria-hidden="true">
               <span className="h-px w-20 bg-[linear-gradient(90deg,transparent,#C39B70)]" />
@@ -230,14 +217,14 @@ export default function Landing() {
               <span className="h-px w-20 bg-[linear-gradient(90deg,#C39B70,transparent)]" />
             </div>
             <p className="mt-3 max-w-[42rem] text-pretty px-1 text-[0.94rem] leading-6 text-[#6F3E54] sm:mt-4 sm:px-0 sm:text-xl sm:leading-8">
-              {t("landing.hero_desc", { defaultValue: "Use A.I DO to manage your wedding website, RSVP QR codes, guest list, budget, vendors, contracts, seating chart, checklist, and day-of timeline from one AI-powered workspace." })}
+              {t("landing.hero_desc", { defaultValue: "A.I DO gives couples one simple place to set up a wedding website, collect RSVPs, organize guests, track budget and vendors, and get AI help only when they need it." })}
             </p>
 
             <div className="mt-6 flex w-full max-w-3xl flex-col gap-3 px-1 sm:flex-row sm:justify-center sm:px-0">
               <Link href="/early-access">
                 <Button className="h-[52px] w-full rounded-full bg-[linear-gradient(110deg,#E6A6B7_0%,#D88A96_42%,#F4C9C2_100%)] px-4 text-base font-semibold leading-tight text-white shadow-[0_20px_36px_rgba(141,41,77,0.22)] hover:opacity-95 sm:h-16 sm:min-w-72 sm:text-xl">
                   <Sparkles className="mr-1.5 h-4 w-4 shrink-0 sm:mr-2 sm:h-5 sm:w-5" />
-                  <span className="min-w-0 truncate">{t("landing.cta_start", { defaultValue: "Join founding couples" })}</span>
+                  <span className="min-w-0 truncate">{t("landing.cta_start", { defaultValue: "Start free beta" })}</span>
                   <Sparkles className="ml-1.5 h-4 w-4 shrink-0 sm:ml-2 sm:h-5 sm:w-5" />
                 </Button>
               </Link>
@@ -267,10 +254,10 @@ export default function Landing() {
             <div className="mx-auto max-w-7xl">
               <div className="mb-8 text-center">
                 <h2 className="font-serif text-3xl leading-tight text-[#8D294D] sm:text-4xl">
-                  {t("landing.top_features_title", { defaultValue: "Top features of A.I Do" })}
+                  {t("landing.top_features_title", { defaultValue: "Start with the essentials" })}
                 </h2>
                 <p className="mt-2 text-base text-[#6F3E54] sm:text-lg">
-                  {t("landing.top_features_subtitle", { defaultValue: "Simple to use. Powerful where it matters." })}
+                  {t("landing.top_features_subtitle", { defaultValue: "The first version should feel calm: set up the basics, then use more tools when you are ready." })}
                 </p>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
@@ -294,14 +281,33 @@ export default function Landing() {
               </div>
               <div className="mt-5 rounded-[28px] border border-[#E6A6B7]/35 bg-[linear-gradient(110deg,rgba(247,221,226,0.62),rgba(255,253,251,0.92),rgba(242,226,198,0.58))] px-5 py-5 text-center shadow-[0_14px_34px_rgba(141,41,77,0.08)]">
                 <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#B16C8E]">
-                  {t("landing.features_more_label", { defaultValue: "& so much more" })}
+                  {t("landing.features_more_label", { defaultValue: "More when you need it" })}
                 </p>
                 <p className="mx-auto mt-2 max-w-3xl text-pretty text-base leading-7 text-[#6F3E54]">
                   {t("landing.features_more_desc", {
                     defaultValue:
-                      "Aria planning support, wedding profile, RSVPs, document storage, reminders, exports, and polished tools that keep the whole plan easy to manage.",
+                      "After the basics, A.I DO can help with contracts, seating, photo QR uploads, day-of timelines, documents, reminders, exports, and Aria planning support.",
                   })}
                 </p>
+              </div>
+              <div className="mt-5 rounded-[28px] border border-[#E6A6B7]/35 bg-white/78 px-5 py-6 shadow-[0_14px_34px_rgba(141,41,77,0.08)]">
+                <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+                  <div className="text-left">
+                    <p className="text-sm font-bold uppercase tracking-[0.22em] text-[#B16C8E]">First 5 minutes</p>
+                    <h3 className="mt-2 font-serif text-2xl leading-tight text-[#8D294D] sm:text-3xl">A smoother start after signup</h3>
+                    <p className="mt-2 text-sm leading-6 text-[#6F3E54] sm:text-base">
+                      New couples should not land inside a giant app and wonder what to do. The first path is profile, priorities, then one clear next action.
+                    </p>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {FIRST_FIVE_MINUTES.map((step, index) => (
+                      <div key={step} className="rounded-2xl border border-[#E6A6B7]/35 bg-[#FFF7F2] p-4 text-left">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#8D294D] text-sm font-bold text-white">{index + 1}</span>
+                        <p className="mt-3 text-sm font-semibold leading-5 text-[#5B2035]">{step}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
               <div className="mt-6 grid gap-3 text-sm font-semibold text-[#6F3E54] sm:grid-cols-2 lg:grid-cols-5">
                 <Link href="/ai-wedding-planner" className="rounded-2xl border border-[#E6A6B7]/35 bg-white/70 p-4 hover:border-[#8D294D] hover:text-[#8D294D]">AI wedding planner</Link>

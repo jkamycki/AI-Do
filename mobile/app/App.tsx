@@ -120,9 +120,14 @@ function LaunchPricingPreview() {
           <Text style={styles.authPricingText}>Website, RSVP, guest list, checklist, budget, travel, registry, photo QR, and limited AI.</Text>
         </View>
         <View style={[styles.authPricingCard, styles.authPricingCardFeatured]}>
-          <Text style={[styles.authPricingPlan, styles.authPricingPlanFeatured]}>A.I DO Complete</Text>
-          <Text style={[styles.authPricingPrice, styles.authPricingPriceFeatured]}>$99</Text>
-          <Text style={[styles.authPricingText, styles.authPricingTextFeatured]}>One-time per wedding with premium designs, invites, contract AI, day-of tools, photo upgrades, and collaboration.</Text>
+          <Text style={[styles.authPricingPlan, styles.authPricingPlanFeatured]}>Complete Monthly</Text>
+          <Text style={[styles.authPricingPrice, styles.authPricingPriceFeatured]}>$9/mo</Text>
+          <Text style={[styles.authPricingText, styles.authPricingTextFeatured]}>Softer monthly option with premium designs, invites, contract AI, day-of tools, photo upgrades, and collaboration.</Text>
+        </View>
+        <View style={styles.authPricingCard}>
+          <Text style={styles.authPricingPlan}>Complete One-Time</Text>
+          <Text style={styles.authPricingPrice}>$99</Text>
+          <Text style={styles.authPricingText}>Pay once per wedding for the same Complete features and no monthly payment.</Text>
         </View>
       </View>
     </View>
