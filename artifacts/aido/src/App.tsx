@@ -207,6 +207,7 @@ function SignInPage() {
 function TestAccountCallout() {
   const clerk = useClerk();
   const { isLoaded, isSignedIn } = useAuth();
+  const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -229,6 +230,7 @@ function TestAccountCallout() {
   async function handleTestAccount() {
     setError(null);
     if (isLoaded && isSignedIn) {
+      queryClient.removeQueries();
       setLocation("/dashboard", { replace: true });
       return;
     }
@@ -265,6 +267,7 @@ function TestAccountCallout() {
           localStorage.setItem("aido_test_account_mode", "true");
         } catch {}
         await clerk.setActive({ session: attempt.createdSessionId });
+        queryClient.removeQueries();
         setLocation("/dashboard");
       } else {
         throw new Error("Test sign-in did not complete. Please try again.");

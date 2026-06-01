@@ -1,6 +1,7 @@
-import { useGetDashboardSummary, getListVendorsQueryKey, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
+import { getListVendorsQueryKey, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
+import type { DashboardSummary } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useUser } from "@clerk/react";
+import { useAuth, useUser } from "@clerk/react";
 import { useLocation } from "wouter";
 import { useEffect, useMemo, useState, useRef, Component } from "react";
 import type { ReactNode } from "react";
@@ -732,7 +733,27 @@ function SeatingTile({
 
 function DashboardContent() {
   const { t } = useTranslation();
-  const { data: summary, isLoading, isError, refetch } = useGetDashboardSummary();
+  const { isLoaded: authLoaded, isSignedIn } = useAuth();
+  const { data: summary, isLoading, isError } = useQuery<DashboardSummary>({
+    queryKey: getGetDashboardSummaryQueryKey(),
+    queryFn: async ({ signal }) => {
+      const response = await authFetch(`${API}/api/dashboard/summary`, { signal });
+      if (!response.ok) {
+        const error = new Error(response.statusText || "Failed to load dashboard summary") as Error & { status?: number };
+        error.status = response.status;
+        throw error;
+      }
+      return response.json() as Promise<DashboardSummary>;
+    },
+    enabled: authLoaded && !!isSignedIn,
+    staleTime: 60_000,
+    retry: (failureCount, error: unknown) => {
+      const status = (error as { status?: number })?.status;
+      if (status === 401 || status === 403 || status === 404) return failureCount < 1;
+      return failureCount < 2;
+    },
+    retryDelay: (attempt) => Math.min(750 * 2 ** attempt, 3000),
+  });
   const qc = useQueryClient();
   const { user } = useUser();
   const { activeWorkspace } = useWorkspace();
@@ -778,6 +799,7 @@ function DashboardContent() {
   const picInputRef = useRef<HTMLInputElement>(null);
   const [uploadingPic, setUploadingPic] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const dashboardLoading = !authLoaded || isLoading;
 
   const handlePicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -837,17 +859,17 @@ function DashboardContent() {
 
   // Non-owner collaborators always land on the shared workspace, not their own dashboard
   useEffect(() => {
-    if (activeWorkspace && activeWorkspace.role !== "owner" && !isLoading) {
+    if (activeWorkspace && activeWorkspace.role !== "owner" && !dashboardLoading) {
       setLocation(`/workspace/${activeWorkspace.profileId}`);
     }
-  }, [activeWorkspace, isLoading, setLocation]);
-  if (activeWorkspace && activeWorkspace.role !== "owner" && !isLoading) {
+  }, [activeWorkspace, dashboardLoading, setLocation]);
+  if (activeWorkspace && activeWorkspace.role !== "owner" && !dashboardLoading) {
     return null;
   }
 
   const firstName = user?.firstName ?? user?.emailAddresses?.[0]?.emailAddress?.split("@")[0] ?? "there";
 
-  if (isLoading) {
+  if (dashboardLoading) {
     return (
       <div className="space-y-6 max-w-5xl mx-auto">
         <div className="space-y-2">
