@@ -722,6 +722,9 @@ function authBackgroundCandidates(rawSrc: string | null | undefined, resolvedSrc
   return candidates;
 }
 
+const authBackgroundBlobCache = new Map<string, string>();
+const authBackgroundBlobInflight = new Map<string, Promise<string | null>>();
+
 // Fetches a protected media URL as a blob so CSS background-image can use it.
 // For protected URLs, avoid applying the raw URL directly. CSS backgrounds
 // cannot attach auth headers, so using the raw URL creates noisy 403s and a
@@ -733,32 +736,57 @@ function useAuthBlobUrl(url: string | null | undefined): string | null {
   const blobRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (blobRef.current) {
+    if (blobRef.current && !authBackgroundBlobCache.has(resolved ?? "")) {
       URL.revokeObjectURL(blobRef.current);
       blobRef.current = null;
     }
+    if (!resolved || !requiresAuth) {
+      setBlobSrc(null);
+      return;
+    }
+    const cacheKeys = [resolved, ...authBackgroundCandidates(url, resolved)];
+    const cached = cacheKeys.map((key) => authBackgroundBlobCache.get(key)).find(Boolean);
+    if (cached) {
+      blobRef.current = cached;
+      setBlobSrc(cached);
+      return;
+    }
     setBlobSrc(null);
-    if (!resolved || !requiresAuth) return;
     let cancelled = false;
-    (async () => {
-      for (const candidate of authBackgroundCandidates(url, resolved)) {
+    const candidates = authBackgroundCandidates(url, resolved);
+    const cacheKey = candidates[0] ?? resolved;
+    let loadPromise = authBackgroundBlobInflight.get(cacheKey);
+    if (!loadPromise) {
+      loadPromise = (async () => {
+      for (const candidate of candidates) {
         try {
           const res = await authFetch(candidate);
-          if (!res.ok || cancelled) continue;
+          if (!res.ok) continue;
           const blob = await res.blob();
-          if (cancelled) return;
           const next = URL.createObjectURL(blob);
-          blobRef.current = next;
-          setBlobSrc(next);
-          return;
+          authBackgroundBlobCache.set(resolved, next);
+          for (const cacheCandidate of candidates) {
+            authBackgroundBlobCache.set(cacheCandidate, next);
+          }
+          return next;
         } catch {
           /* try the next candidate */
         }
       }
-    })();
+      return null;
+      })().finally(() => {
+        authBackgroundBlobInflight.delete(cacheKey);
+      });
+      authBackgroundBlobInflight.set(cacheKey, loadPromise);
+    }
+    loadPromise.then((next) => {
+      if (!next || cancelled) return;
+      blobRef.current = next;
+      setBlobSrc(next);
+    });
     return () => {
       cancelled = true;
-      if (blobRef.current) {
+      if (blobRef.current && !authBackgroundBlobCache.has(resolved)) {
         URL.revokeObjectURL(blobRef.current);
         blobRef.current = null;
       }
@@ -2714,6 +2742,20 @@ function Schedule({
       data={data}
       ctx={ctx}
     >
+      <EditableText
+        as="div"
+        multiline
+        editable={ctx.editable}
+        value={data.customText.schedule_subtitle ?? ""}
+        defaultValue="The day of"
+        onCommit={(v) => ctx.onTextChange("schedule_subtitle", v)}
+        className="mx-auto mb-8 block max-w-2xl whitespace-pre-line text-center text-base font-medium leading-relaxed sm:text-lg"
+        style={{
+          color: labelColor,
+          fontFamily: bodyFontStack(bodyFont(data)),
+        }}
+        {...withBaseColor(tsp(ctx, "schedule_subtitle"), labelColor)}
+      />
       <div className="max-w-2xl mx-auto">
         <div className="mx-auto mb-8 max-w-md space-y-3">
           {visibleItems.map((it, idx) => {
@@ -2864,6 +2906,8 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   );
   const venueDescription = data.customText._travelVenueDescription ?? "";
   const hotelDescription = data.customText._travelHotelDescription ?? "";
+  const venuePhoto = (data.customText._travelVenuePhoto || "").trim();
+  const hotelPhoto = (data.customText._travelHotelPhoto || "").trim();
 
   const cardStyle: React.CSSProperties = {
     border: isMobileRender ? `1px solid ${data.colorPalette.primary}22` : undefined,
@@ -2926,6 +2970,16 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         {data.couple.venue &&
           !isEditableHiddenMarker(data.customText._travelVenueHidden) && (
             <div className={isMobileRender ? "w-full max-w-[18rem]" : undefined} style={cardStyle}>
+              {venuePhoto && (
+                <div className="mb-4 overflow-hidden rounded-lg" style={{ border: `1px solid ${data.colorPalette.primary}22` }}>
+                  <AuthMediaImage
+                    src={venuePhoto}
+                    alt={`${data.couple.venue} venue`}
+                    className="h-36 w-full object-cover sm:h-40"
+                    loading="lazy"
+                  />
+                </div>
+              )}
               <div className={isMobileRender ? "flex flex-col items-center gap-3 mb-4" : "flex items-start gap-3 mb-3"}>
                 <div style={iconWrap}>
                   <MapPin className="h-4 w-4" />
@@ -3002,6 +3056,16 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         {(hasHotel || ctx.editable) &&
           !isEditableHiddenMarker(data.customText._travelHotelHidden) && (
             <div className={isMobileRender ? "w-full max-w-[18rem]" : undefined} style={cardStyle}>
+              {hotelPhoto && (
+                <div className="mb-4 overflow-hidden rounded-lg" style={{ border: `1px solid ${data.colorPalette.primary}22` }}>
+                  <AuthMediaImage
+                    src={hotelPhoto}
+                    alt={`${hotelName || "Hotel"} exterior`}
+                    className="h-36 w-full object-cover sm:h-40"
+                    loading="lazy"
+                  />
+                </div>
+              )}
               <div className={isMobileRender ? "flex flex-col items-center gap-3 mb-4" : "flex items-start gap-3 mb-3"}>
                 <div style={iconWrap}>
                   <Bed className="h-4 w-4" />
@@ -4226,13 +4290,13 @@ function PartyMemberCard({
         )}
       </div>
       <div
-        className={`${compact ? "text-xl" : "text-2xl sm:text-3xl"} mb-1 w-full leading-tight`}
+        className={`${compact ? "text-xl" : "text-xl sm:text-2xl"} mb-1 w-full leading-tight`}
         style={{
           fontFamily: fontStack(headingFont(data)),
           color: data.colorPalette.primary,
-          maxWidth: compact ? "10rem" : "12rem",
-          overflowWrap: "break-word",
-          wordBreak: "keep-all",
+          maxWidth: compact ? "13rem" : "14rem",
+          overflowWrap: "normal",
+          wordBreak: "normal",
           hyphens: "manual",
           textWrap: "balance",
         }}
@@ -5066,7 +5130,28 @@ export function WebsiteRenderer({
         onSectionChange={onSectionChange}
         renderDevice={activeRenderDevice}
       />
-      {(showAll || currentSection === "home") && <Hero data={data} ctx={ctx} />}
+      {showAll ? (
+        <Hero data={data} ctx={ctx} />
+      ) : previewMode ? (
+        <div
+          style={
+            currentSection === "home"
+              ? undefined
+              : {
+                  position: "absolute",
+                  width: 1,
+                  height: 1,
+                  overflow: "hidden",
+                  opacity: 0,
+                  pointerEvents: "none",
+                }
+          }
+        >
+          <Hero data={data} ctx={ctx} />
+        </div>
+      ) : (
+        currentSection === "home" && <Hero data={data} ctx={ctx} />
+      )}
       {data.sectionsEnabled.welcome &&
         (showAll ||
           currentSection === "home" ||

@@ -16,7 +16,7 @@ import { coupleFirstNames } from "@/lib/coupleNames";
 import {
   Loader2, Save, Globe, Eye, Copy, Check, Image as ImageIcon, X,
   Lock, Type, Palette, ToggleLeft, FileText, Heart, MapPin, Clock, Gift, HelpCircle,
-  QrCode, Download, Link2, Plus, Users, Undo2, Sparkles, Settings, Trash2, Smile,
+  QrCode, Download, Link2, Plus, Users, Undo2, Redo2, Sparkles, Settings, Trash2, Smile,
   GripVertical, Laptop, Move, Smartphone,
 } from "lucide-react";
 import {
@@ -241,6 +241,7 @@ const WEBSITE_TRANSLATABLE_DEFAULTS: Record<string, string> = {
   story_title: "Our Story",
   story_subtitle: "How we got here",
   schedule_title: "Schedule",
+  schedule_subtitle: "The day of",
   _scheduleCeremonyLabel: "Ceremony",
   _scheduleCocktailLabel: "Cocktail Hour",
   _scheduleReceptionLabel: "Reception",
@@ -250,6 +251,8 @@ const WEBSITE_TRANSLATABLE_DEFAULTS: Record<string, string> = {
   _travelHotelLabel: "Hotel",
   _travelVenueDescription: "",
   _travelHotelDescription: "",
+  _travelVenuePhoto: "",
+  _travelHotelPhoto: "",
   _openInGoogleMaps: "Open in Google Maps",
   registry_title: "Registry",
   registry_subtitle: "With love",
@@ -760,10 +763,16 @@ export default function WebsiteEditor() {
   // debounce flushes the pending entry into history.
   const [hasPending, setHasPending] = useState(false);
   const historyRef = useRef<WebsiteRecord[]>([]);
+  const [futureLen, setFutureLen] = useState(0);
+  const futureRef = useRef<WebsiteRecord[]>([]);
   const pendingPrevRef = useRef<WebsiteRecord | null>(null);
   const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const queueHistory = useCallback((prev: WebsiteRecord) => {
+    if (futureRef.current.length > 0) {
+      futureRef.current = [];
+      setFutureLen(0);
+    }
     if (!pendingPrevRef.current) {
       pendingPrevRef.current = prev;
       setHasPending(true);
@@ -792,8 +801,13 @@ export default function WebsiteEditor() {
     }
     if (historyRef.current.length === 0) return;
     const prev = historyRef.current[historyRef.current.length - 1];
+    const current = recordRef.current;
     historyRef.current = historyRef.current.slice(0, -1);
     setHistoryLen(historyRef.current.length);
+    if (current) {
+      futureRef.current = [...futureRef.current.slice(-49), current];
+      setFutureLen(futureRef.current.length);
+    }
     setRecord(prev);
     recordRef.current = prev;
     editSeqRef.current += 1;
@@ -818,18 +832,55 @@ export default function WebsiteEditor() {
     setTimeout(doUndo, 0);
   }, [doUndo]);
 
-  // Cmd/Ctrl+Z to undo from anywhere in the editor (except inside form fields)
+  const doRedo = useCallback(() => {
+    if (commitTimerRef.current) {
+      clearTimeout(commitTimerRef.current);
+      commitTimerRef.current = null;
+    }
+    pendingPrevRef.current = null;
+    setHasPending(false);
+    if (futureRef.current.length === 0) return;
+    const next = futureRef.current[futureRef.current.length - 1];
+    const current = recordRef.current;
+    futureRef.current = futureRef.current.slice(0, -1);
+    setFutureLen(futureRef.current.length);
+    if (current) {
+      historyRef.current = [...historyRef.current.slice(-49), current];
+      setHistoryLen(historyRef.current.length);
+    }
+    setRecord(next);
+    recordRef.current = next;
+    editSeqRef.current += 1;
+    setDirty(true);
+  }, []);
+
+  const handleRedo = useCallback(() => {
+    const active = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
+    const editing = !!active && (active.isContentEditable || active.tagName === "INPUT" || active.tagName === "TEXTAREA");
+    if (editing) active!.blur();
+    flushPendingEditableCommits();
+    setTimeout(doRedo, 0);
+  }, [doRedo]);
+
+  // Cmd/Ctrl+Z to undo and Cmd/Ctrl+Shift+Z / Ctrl+Y to redo from anywhere in
+  // the editor (except inside form fields).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "z" || e.shiftKey) return;
+      if (!(e.metaKey || e.ctrlKey)) return;
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
-      e.preventDefault();
-      handleUndo();
+      const key = e.key.toLowerCase();
+      if (key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      } else if ((key === "z" && e.shiftKey) || key === "y") {
+        e.preventDefault();
+        handleRedo();
+      }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [handleUndo]);
+  }, [handleRedo, handleUndo]);
 
   // ---- update helpers ----
 
@@ -1622,6 +1673,33 @@ export default function WebsiteEditor() {
     update({ galleryImages: newImages });
   };
 
+  const handleTravelPhotoUpload = async (
+    files: FileList,
+    key: "_travelVenuePhoto" | "_travelHotelPhoto",
+  ) => {
+    const file = Array.from(files)[0];
+    if (!file) return;
+    const result = await upload.uploadFile(file);
+    if (!result) return;
+    update({
+      customText: {
+        ...(recordRef.current?.customText ?? {}),
+        [key]: result.objectPath,
+      },
+    });
+    setEditorSection("travel");
+    previewRef.current?.scrollTo({ top: 0, behavior: "auto" });
+  };
+
+  const removeTravelPhoto = (key: "_travelVenuePhoto" | "_travelHotelPhoto") => {
+    patchRecord((prev) => ({
+      customText: {
+        ...prev.customText,
+        [key]: "",
+      },
+    }));
+  };
+
   const removeGalleryImage = (targetUrl: string, targetOrder: number) => {
     patchRecord((prev) => {
       const next = (prev.galleryImages ?? [])
@@ -2046,6 +2124,17 @@ export default function WebsiteEditor() {
             >
               <Undo2 className="h-3.5 w-3.5 mr-1.5" />
               {t("website_editor.undo", { defaultValue: "Undo" })}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleRedo}
+              disabled={futureLen === 0}
+              title="Redo last undone change (Cmd/Ctrl+Shift+Z or Ctrl+Y)"
+              className="bg-[#8D294D] hover:bg-[#731f3e] border-0 disabled:opacity-50 font-bold"
+              style={{ color: "#FFF7F2" }}
+            >
+              <Redo2 className="h-3.5 w-3.5 mr-1.5" />
+              {t("website_editor.redo", { defaultValue: "Redo" })}
             </Button>
           </div>
           {editingRecord.published && (
@@ -3084,7 +3173,7 @@ export default function WebsiteEditor() {
                 <option value="marquee">{t("website_editor.gallery_anim_marquee", { defaultValue: "Marquee (continuous scroll)" })}</option>
               </select>
             </div>
-            {(editingRecord.customText._galleryAnimation === "grid" || editingRecord.customText._galleryAnimation === "slideshow" || editingRecord.customText._galleryAnimation === "marquee") && (
+            {(["grid", "slideshow", "marquee"].includes(editingRecord.customText._galleryAnimation ?? "grid")) && (
               <div>
                 <Label className="text-xs text-muted-foreground mb-1 block">{t("website_editor.speed_label", { defaultValue: "Speed" })}</Label>
                 <select
@@ -3140,6 +3229,71 @@ export default function WebsiteEditor() {
         </Section>}
 
         {/* Home Page Photos — primary background + extras for slideshow/marquee */}
+        {editingGroup("photos", "travel") && editingRecord.sectionsEnabled.travel && <Section icon={<ImageIcon className="h-4 w-4" />} title="Travel & Venue Photos">
+          <p className="text-[11px] text-muted-foreground mb-3 leading-relaxed">
+            Add optional photos at the top of the venue and hotel cards so guests can recognize each place quickly.
+          </p>
+          <div className="space-y-3">
+            {([
+              { key: "_travelVenuePhoto", label: "Venue photo", hint: "Shows above the venue address." },
+              { key: "_travelHotelPhoto", label: "Hotel photo", hint: "Shows above the hotel address and booking link." },
+            ] as const).map((item) => {
+              const value = editingRecord.customText[item.key] ?? "";
+              return (
+                <div key={item.key} className="rounded-md border border-border/70 bg-muted/20 p-3">
+                  <div className="mb-2 flex items-start justify-between gap-3">
+                    <div>
+                      <Label className="text-sm font-medium">{item.label}</Label>
+                      <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{item.hint}</p>
+                    </div>
+                    {value && (
+                      <button
+                        type="button"
+                        onClick={() => removeTravelPhoto(item.key)}
+                        className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                        title={`Remove ${item.label.toLowerCase()}`}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  {value && (
+                    <div className="mb-2 overflow-hidden rounded-md border border-border/70">
+                      <AuthMediaImage
+                        src={editorMediaSrc(value)}
+                        alt={item.label}
+                        className="h-28 w-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border-2 border-dashed border-border px-3 py-2 text-xs text-muted-foreground transition-colors hover:border-primary/50">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files) handleTravelPhotoUpload(e.target.files, item.key);
+                        e.target.value = "";
+                      }}
+                      disabled={upload.isUploading}
+                    />
+                    {upload.isUploading ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : value ? (
+                      "Replace photo"
+                    ) : (
+                      "Add photo"
+                    )}
+                  </label>
+                </div>
+              );
+            })}
+          </div>
+        </Section>}
+
         {editingGroup("photos", "home") && <Section icon={<ImageIcon className="h-4 w-4" />} title="Home Page Photos">
           <p className="text-[11px] text-muted-foreground mb-2 leading-relaxed">
             Photos shown on the home page background. Add multiple for slideshows and marquees. These are separate from the Gallery section.

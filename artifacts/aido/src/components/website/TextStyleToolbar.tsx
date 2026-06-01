@@ -260,16 +260,16 @@ export const TextStyleToolbar = forwardRef<HTMLDivElement, Props>(
               setFontSizeDraft(fontSizeNumber);
               onKeepOpen?.();
             }}
-            onBlur={() => {
+            onBlur={(e) => {
               setFontSizeFocused(false);
-              commitFontSize();
+              commitFontSize(e.currentTarget.value);
             }}
             onMouseDown={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
               e.stopPropagation();
               if (e.key === "Enter") {
                 e.preventDefault();
-                commitFontSize();
+                commitFontSize((e.currentTarget as HTMLInputElement).value);
                 (e.currentTarget as HTMLInputElement).blur();
               }
               if (e.key === "Escape") {
