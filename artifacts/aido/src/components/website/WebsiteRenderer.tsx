@@ -713,6 +713,29 @@ function encodeMediaTail(tail: string): string {
 
 function authBackgroundCandidates(rawSrc: string | null | undefined, resolvedSrc: string): string[] {
   const candidates: string[] = [];
+  const rawPath = rawSrc
+    ? (() => {
+        try {
+          return new URL(rawSrc).pathname;
+        } catch {
+          return rawSrc;
+        }
+      })()
+    : "";
+  const resolvedPath = (() => {
+    try {
+      return new URL(resolvedSrc).pathname;
+    } catch {
+      return resolvedSrc;
+    }
+  })();
+  if (
+    /^\/api\/website\/public\/[^/]+\/media\//.test(rawPath) ||
+    /^\/api\/website\/public\/[^/]+\/media\//.test(resolvedPath)
+  ) {
+    candidates.push(resolvedSrc);
+    return candidates;
+  }
   const tail = objectMediaTail(rawSrc) ?? objectMediaTail(resolvedSrc);
   if (tail) {
     const websiteMedia = resolveMediaUrl(`/api/website/media/${encodeMediaTail(tail)}`);
@@ -795,6 +818,19 @@ function useAuthBlobUrl(url: string | null | undefined): string | null {
 
   if (!resolved) return null;
   return requiresAuth ? blobSrc : resolved;
+}
+
+function publicWebsiteMediaUrl(slug: string | null | undefined, url: string): string {
+  try {
+    if (/^\/api\/website\/public\/[^/]+\/media\//.test(new URL(url, "https://aidowedding.net").pathname)) {
+      return url;
+    }
+  } catch {
+    if (/^\/api\/website\/public\/[^/]+\/media\//.test(url)) return url;
+  }
+  const tail = objectMediaTail(url);
+  if (!slug || !tail) return url;
+  return `/api/website/public/${encodeURIComponent(slug)}/media/${encodeMediaTail(tail)}`;
 }
 
 function headingFont(data: WebsiteRendererPayload): string {
@@ -2908,6 +2944,8 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
   const hotelDescription = data.customText._travelHotelDescription ?? "";
   const venuePhoto = (data.customText._travelVenuePhoto || "").trim();
   const hotelPhoto = (data.customText._travelHotelPhoto || "").trim();
+  const venuePhotoSrc = venuePhoto && !ctx.editable ? publicWebsiteMediaUrl(data.slug, venuePhoto) : venuePhoto;
+  const hotelPhotoSrc = hotelPhoto && !ctx.editable ? publicWebsiteMediaUrl(data.slug, hotelPhoto) : hotelPhoto;
 
   const cardStyle: React.CSSProperties = {
     border: isMobileRender ? `1px solid ${data.colorPalette.primary}22` : undefined,
@@ -2970,10 +3008,10 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         {data.couple.venue &&
           !isEditableHiddenMarker(data.customText._travelVenueHidden) && (
             <div className={isMobileRender ? "w-full max-w-[18rem]" : undefined} style={cardStyle}>
-              {venuePhoto && (
+              {venuePhotoSrc && (
                 <div className="mb-4 overflow-hidden rounded-lg" style={{ border: `1px solid ${data.colorPalette.primary}22` }}>
                   <AuthMediaImage
-                    src={venuePhoto}
+                    src={venuePhotoSrc}
                     alt={`${data.couple.venue} venue`}
                     className="h-36 w-full object-cover sm:h-40"
                     loading="lazy"
@@ -3056,10 +3094,10 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
         {(hasHotel || ctx.editable) &&
           !isEditableHiddenMarker(data.customText._travelHotelHidden) && (
             <div className={isMobileRender ? "w-full max-w-[18rem]" : undefined} style={cardStyle}>
-              {hotelPhoto && (
+              {hotelPhotoSrc && (
                 <div className="mb-4 overflow-hidden rounded-lg" style={{ border: `1px solid ${data.colorPalette.primary}22` }}>
                   <AuthMediaImage
-                    src={hotelPhoto}
+                    src={hotelPhotoSrc}
                     alt={`${hotelName || "Hotel"} exterior`}
                     className="h-36 w-full object-cover sm:h-40"
                     loading="lazy"

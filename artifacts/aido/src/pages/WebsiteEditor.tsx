@@ -1906,9 +1906,9 @@ export default function WebsiteEditor() {
     ? activeControlGroup
     : pageControlGroups[0]?.id ?? "copy";
   const editingGroup = (
-    group: typeof currentControlGroup,
+    _group: typeof currentControlGroup,
     ...ids: string[]
-  ) => editingPage(...ids) && currentControlGroup === group;
+  ) => editingPage(...ids);
   const isWebsiteSectionPage = activeEditorPage !== "home" && activeEditorPage in editingRecord.sectionsEnabled;
   const pageCopyFields = (() => {
     const textFieldMap: Partial<Record<string, PageCopyField[]>> = {
@@ -2269,28 +2269,9 @@ export default function WebsiteEditor() {
               })}
             </div>
             {activeTab !== "publish" && (
-              <div className="mt-3 border-t border-[#E8CBD3] pt-3">
-                <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  Options
-                </p>
-                <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
-                  {pageControlGroups.map((group) => {
-                    const GroupIcon = group.icon;
-                    const active = currentControlGroup === group.id;
-                    return (
-                      <button
-                        key={group.id}
-                        type="button"
-                        onClick={() => setActiveControlGroup(group.id)}
-                        className={`flex min-w-0 items-center justify-start gap-1.5 rounded-lg px-2 py-2 text-[11px] font-semibold transition-colors ${active ? "bg-[#8D294D] text-white shadow-sm" : "text-muted-foreground hover:bg-background/70 hover:text-foreground"}`}
-                      >
-                        <GroupIcon className="h-3.5 w-3.5" />
-                        <span className="truncate">{group.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              <p className="mt-3 border-t border-[#E8CBD3] px-1 pt-3 text-[11px] leading-relaxed text-muted-foreground">
+                All controls for {activePageLabel} are shown below.
+              </p>
             )}
           </div>
 

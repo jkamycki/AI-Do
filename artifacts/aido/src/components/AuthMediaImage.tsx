@@ -64,12 +64,35 @@ function encodeMediaTail(tail: string): string {
 
 function authMediaCandidates(rawSrc: string | null | undefined, resolvedSrc: string): string[] {
   const candidates: string[] = [];
+  const rawPath = rawSrc
+    ? (() => {
+        try {
+          return new URL(rawSrc).pathname;
+        } catch {
+          return rawSrc;
+        }
+      })()
+    : "";
+  const resolvedPath = (() => {
+    try {
+      return new URL(resolvedSrc).pathname;
+    } catch {
+      return resolvedSrc;
+    }
+  })();
+  if (
+    /^\/api\/website\/public\/[^/]+\/media\//.test(rawPath) ||
+    /^\/api\/website\/public\/[^/]+\/media\//.test(resolvedPath)
+  ) {
+    candidates.push(resolvedSrc);
+    return candidates;
+  }
   const tail = objectMediaTail(rawSrc) ?? objectMediaTail(resolvedSrc);
   if (tail) {
     const websiteMedia = resolveMediaUrl(`/api/website/media/${encodeMediaTail(tail)}`);
     if (websiteMedia && !candidates.includes(websiteMedia)) candidates.push(websiteMedia);
   }
-  if (!tail && !candidates.includes(resolvedSrc)) candidates.push(resolvedSrc);
+  if (!candidates.includes(resolvedSrc)) candidates.push(resolvedSrc);
   return candidates;
 }
 

@@ -278,6 +278,23 @@ function mapWebsiteMedia<T extends { url: string }>(
   }));
 }
 
+const WEBSITE_CUSTOM_TEXT_MEDIA_KEYS = [
+  "_travelVenuePhoto",
+  "_travelHotelPhoto",
+] as const;
+
+function mapWebsiteCustomTextMedia(
+  row: typeof weddingWebsites.$inferSelect,
+  customText: Record<string, string>,
+): Record<string, string> {
+  const next = { ...customText };
+  for (const key of WEBSITE_CUSTOM_TEXT_MEDIA_KEYS) {
+    const value = next[key];
+    if (value) next[key] = websiteMediaUrl(row, value) ?? value;
+  }
+  return next;
+}
+
 type GuestPhotoDropSettings = {
   enabled: boolean;
   galleryEnabled: boolean;
@@ -571,6 +588,8 @@ function collectWebsiteMediaPaths(
   add(row.heroImage);
   for (const image of row.heroImages ?? []) add(image.url);
   for (const image of row.galleryImages ?? []) add(image.url);
+  const customText = (row.customText ?? {}) as Record<string, unknown>;
+  for (const key of WEBSITE_CUSTOM_TEXT_MEDIA_KEYS) add(customText[key]);
   for (const member of party) add(member.photoUrl);
   for (const media of extraMedia) add(media);
   return paths;
@@ -784,6 +803,7 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
   if (invitationColors.rsvpHotelBlockId !== undefined && invitationColors.rsvpHotelBlockId !== null) {
     customText._rsvpHotelBlockId = String(invitationColors.rsvpHotelBlockId);
   }
+  const publicCustomText = mapWebsiteCustomTextMedia(row, customText);
   const guestPhotoSettings = guestPhotoDropSettings(customText);
   const showGuestPhotosOnWebsite = guestPhotoShowsOnWebsite(guestPhotoSettings);
   const approvedGuestPhotos = showGuestPhotosOnWebsite
@@ -804,7 +824,7 @@ async function buildPublicWebsitePayload(row: typeof weddingWebsites.$inferSelec
     accentColor: row.accentColor,
     colorPalette: row.colorPalette,
     sectionsEnabled: row.sectionsEnabled,
-    customText,
+    customText: publicCustomText,
     textStyles: row.textStyles ?? {},
     textPositions: row.textPositions ?? {},
     galleryImages: mapWebsiteMedia(row, row.galleryImages),
