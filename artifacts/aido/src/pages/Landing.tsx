@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { LanguagePicker } from "@/components/LanguagePicker";
 import VideoTemplate from "@/components/video/VideoTemplate";
+import { LaunchPricingSection } from "@/components/LaunchPricingSection";
 import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 import { organizationSchema, setSeo, softwareSchema } from "@/lib/seo";
 
@@ -178,10 +179,10 @@ export default function Landing() {
             </Link>
           </nav>
           <nav className="flex min-w-0 items-center justify-end gap-1.5 justify-self-end sm:gap-3" aria-label="Account navigation">
-            <Link href="/sign-up">
+            <Link href="/early-access">
               <Button className="h-10 rounded-full bg-[linear-gradient(110deg,#E6A6B7_0%,#F2CFC6_52%,#E9A6A0_100%)] px-3 text-sm font-semibold leading-tight text-[#8D294D] shadow-[0_10px_18px_rgba(141,41,77,0.16)] hover:opacity-95 sm:h-11 sm:px-7 sm:text-base">
-                <span className="sm:hidden">Start Free</span>
-                <span className="hidden sm:inline">{t("landing.get_started", { defaultValue: "Get Started Free" })}</span>
+                <span className="sm:hidden">Join Beta</span>
+                <span className="hidden sm:inline">{t("landing.get_started", { defaultValue: "Join Founding Couples" })}</span>
               </Button>
             </Link>
             <Link href="/sign-in">
@@ -233,10 +234,10 @@ export default function Landing() {
             </p>
 
             <div className="mt-6 flex w-full max-w-3xl flex-col gap-3 px-1 sm:flex-row sm:justify-center sm:px-0">
-              <Link href="/sign-up">
+              <Link href="/early-access">
                 <Button className="h-[52px] w-full rounded-full bg-[linear-gradient(110deg,#E6A6B7_0%,#D88A96_42%,#F4C9C2_100%)] px-4 text-base font-semibold leading-tight text-white shadow-[0_20px_36px_rgba(141,41,77,0.22)] hover:opacity-95 sm:h-16 sm:min-w-72 sm:text-xl">
                   <Sparkles className="mr-1.5 h-4 w-4 shrink-0 sm:mr-2 sm:h-5 sm:w-5" />
-                  <span className="min-w-0 truncate">{t("landing.cta_start", { defaultValue: "Start Planning Free" })}</span>
+                  <span className="min-w-0 truncate">{t("landing.cta_start", { defaultValue: "Join founding couples" })}</span>
                   <Sparkles className="ml-1.5 h-4 w-4 shrink-0 sm:ml-2 sm:h-5 sm:w-5" />
                 </Button>
               </Link>
@@ -329,6 +330,8 @@ export default function Landing() {
             </div>
           </div>
         </section>
+
+        <LaunchPricingSection />
       </main>
 
       <footer className="border-t border-[#E6A6B7]/35 bg-[#FFF7F2] px-8 py-8 text-center text-sm text-[#8D294D]/70">

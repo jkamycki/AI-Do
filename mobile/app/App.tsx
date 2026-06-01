@@ -46,6 +46,7 @@ const ariaAvatar = require('./assets/aria-avatar.png');
 const homeHeroPhoto = require('./assets/home-hero.jpg');
 const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? '';
 const publicWebsiteOrigin = (process.env.EXPO_PUBLIC_AIDO_WEB_URL?.trim() || 'https://aidowedding.net').replace(/\/+$/, '');
+const publicApiOrigin = process.env.EXPO_PUBLIC_AIDO_API_URL?.trim().replace(/\/+$/, '') ?? '';
 const couplePhotoUri =
   'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=640&q=90';
 const userAvatarUri =
@@ -81,6 +82,52 @@ type MobileSeatingResult = {
   totalSeated: number;
   warnings: string[];
 };
+
+function useLaunchPricingEnabled() {
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    if (!publicApiOrigin) return;
+    let cancelled = false;
+    fetch(`${publicApiOrigin}/api/pricing/public`)
+      .then(async (response) => {
+        if (!response.ok) return;
+        const body = (await response.json()) as { enabled?: boolean };
+        if (!cancelled) setEnabled(body.enabled === true);
+      })
+      .catch(() => {
+        if (!cancelled) setEnabled(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return enabled;
+}
+
+function LaunchPricingPreview() {
+  const enabled = useLaunchPricingEnabled();
+  if (!enabled) return null;
+
+  return (
+    <View style={styles.authPricingWrap}>
+      <Text style={styles.authPricingKicker}>Launch pricing</Text>
+      <View style={styles.authPricingGrid}>
+        <View style={styles.authPricingCard}>
+          <Text style={styles.authPricingPlan}>Free</Text>
+          <Text style={styles.authPricingPrice}>$0</Text>
+          <Text style={styles.authPricingText}>Website, RSVP, guest list, checklist, budget, travel, registry, photo QR, and limited AI.</Text>
+        </View>
+        <View style={[styles.authPricingCard, styles.authPricingCardFeatured]}>
+          <Text style={[styles.authPricingPlan, styles.authPricingPlanFeatured]}>A.I DO Complete</Text>
+          <Text style={[styles.authPricingPrice, styles.authPricingPriceFeatured]}>$99</Text>
+          <Text style={[styles.authPricingText, styles.authPricingTextFeatured]}>One-time per wedding with premium designs, invites, contract AI, day-of tools, photo upgrades, and collaboration.</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
 
 function buildGuestWebsiteHomeUrl(slug: string) {
   const cleanSlug = slug.trim().replace(/^\/+|\/+$/g, '');
@@ -1342,6 +1389,7 @@ function ClerkAuthScreen() {
             <Ionicons color={error ? colors.rose : colors.green} name={error ? 'alert-circle-outline' : 'shield-checkmark-outline'} size={17} />
             <Text style={styles.hubDetail}>{error || 'Secure Clerk sign-in keeps the mobile app connected to the website backend.'}</Text>
           </View>
+          <LaunchPricingPreview />
         </LinearGradient>
       </ScrollView>
     </View>
@@ -1441,6 +1489,7 @@ function AuthScreen({
             <Ionicons color={error ? colors.rose : colors.green} name={error ? 'alert-circle-outline' : 'shield-checkmark-outline'} size={17} />
             <Text style={styles.hubDetail}>{error || (isSignUp ? 'After sign-up, the onboarding wizard opens automatically.' : 'Sign out is available from your profile avatar.')}</Text>
           </View>
+          <LaunchPricingPreview />
         </LinearGradient>
       </ScrollView>
     </View>
@@ -10842,6 +10891,64 @@ const styles = StyleSheet.create({
     gap: 9,
     marginTop: 14,
     padding: 12,
+  },
+  authPricingWrap: {
+    backgroundColor: 'rgba(255,255,255,0.58)',
+    borderColor: colors.faint,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginTop: 14,
+    padding: 12,
+  },
+  authPricingKicker: {
+    color: colors.rose,
+    fontFamily: 'Inter_800ExtraBold',
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  authPricingGrid: {
+    gap: 10,
+    marginTop: 10,
+  },
+  authPricingCard: {
+    backgroundColor: colors.surface,
+    borderColor: colors.faint,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 12,
+  },
+  authPricingCardFeatured: {
+    backgroundColor: colors.rose,
+    borderColor: colors.rose,
+  },
+  authPricingPlan: {
+    color: colors.ink,
+    fontFamily: 'Inter_800ExtraBold',
+    fontSize: 12,
+    textTransform: 'uppercase',
+  },
+  authPricingPlanFeatured: {
+    color: colors.surface,
+  },
+  authPricingPrice: {
+    color: colors.rose,
+    fontFamily: 'PlayfairDisplay_700Bold',
+    fontSize: 30,
+    marginTop: 2,
+  },
+  authPricingPriceFeatured: {
+    color: colors.surface,
+  },
+  authPricingText: {
+    color: colors.muted,
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  authPricingTextFeatured: {
+    color: 'rgba(255,255,255,0.88)',
   },
   onboardingRoot: {
     backgroundColor: colors.bg,

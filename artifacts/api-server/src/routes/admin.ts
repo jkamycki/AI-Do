@@ -9,6 +9,7 @@ import {
   hotelBlocks, weddingParty, manualExpenses, vendorPayments,
   workspaceCollaborators, adminLaunchPlanItems,
   weddingWebsites, websiteRsvps, vendorPartnerApplications, vendorPartnerApplicationReplies,
+  maintenanceFlags, contactMessages, feedbackSubmissions,
 } from "@workspace/db";
 import { eq, gte, desc, sql, and, inArray, asc } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -37,6 +38,7 @@ import {
 } from "../lib/vendorPartnerDirectory";
 
 const router = Router();
+const PRICING_FLAG_SECTION = "launch-pricing";
 
 const LAUNCH_PLAN_ASSIGNEES = ["kamyckijoseph@gmail.com", "michaelgang31@gmail.com"] as const;
 const LAUNCH_PLAN_BOTH_ASSIGNEES = "michaelgang31@gmail.com,kamyckijoseph@gmail.com";
@@ -103,6 +105,61 @@ router.get("/admin/maintenance", requireAuth, requireAdmin, async (_req, res) =>
     res.json({ flags: await listMaintenanceFlags(), defaultMessage: DEFAULT_MAINTENANCE_MESSAGE });
   } catch (err) {
     res.status(500).json({ error: "Failed to load maintenance settings" });
+  }
+});
+
+router.get("/admin/pricing", requireAuth, requireAdmin, async (_req, res) => {
+  try {
+    const [flag] = await db
+      .select()
+      .from(maintenanceFlags)
+      .where(eq(maintenanceFlags.section, PRICING_FLAG_SECTION))
+      .limit(1);
+
+    res.json({
+      enabled: flag?.enabled === true,
+      updatedAt: flag?.updatedAt?.toISOString() ?? null,
+      updatedBy: flag?.updatedBy ?? null,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load pricing settings" });
+  }
+});
+
+router.put("/admin/pricing", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const enabled = Boolean(req.body?.enabled);
+    const now = new Date();
+    const [flag] = await db
+      .insert(maintenanceFlags)
+      .values({
+        section: PRICING_FLAG_SECTION,
+        enabled,
+        message: "Launch pricing visibility",
+        expiresAt: null,
+        updatedBy: req.userId ?? null,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: maintenanceFlags.section,
+        set: {
+          enabled,
+          message: "Launch pricing visibility",
+          expiresAt: null,
+          updatedBy: req.userId ?? null,
+          updatedAt: now,
+        },
+      })
+      .returning();
+
+    res.json({
+      enabled: flag.enabled,
+      updatedAt: flag.updatedAt.toISOString(),
+      updatedBy: flag.updatedBy ?? null,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Pricing setting save error");
+    res.status(500).json({ error: "Failed to save pricing settings" });
   }
 });
 
@@ -195,7 +252,9 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
     const [
       countsByType, dauRow, wauRow, mauRow, userGrowthRows, deviceRows,
       clerkTotal, clerkToday, clerkThisWeek, clerkThisMonth, onboardedRow,
-      pvTodayRow, pvWeekRow, pvTotalRow, onboardingGrowthRows,
+      pvTodayRow, pvWeekRow, pvTotalRow, onboardingGrowthRows, sourceRows,
+      landingPageRows, featureUsageRows, firstPlanningActionRow, contactSummaryRow,
+      feedbackSummaryRow, recentFeedbackRows,
     ] = await Promise.all([
       db.select({
         eventType: analyticsEvents.eventType,
@@ -286,6 +345,97 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
         ) onboarding_events
         GROUP BY 1 ORDER BY 1
       `),
+
+      db.execute(sql`
+        SELECT
+          COALESCE(
+            NULLIF(metadata->>'utmSource', ''),
+            NULLIF(metadata->>'utm_source', ''),
+            NULLIF(metadata->>'acquisitionSource', ''),
+            NULLIF(metadata->>'referrerHost', ''),
+            'Direct / unknown'
+          ) AS source,
+          count(*)::int AS visits,
+          count(DISTINCT user_id)::int AS visitors
+        FROM analytics_events
+        WHERE event_type = 'page_view'
+          AND timestamp >= NOW() - INTERVAL '30 days'
+        GROUP BY 1
+        ORDER BY visits DESC
+        LIMIT 12
+      `),
+
+      db.execute(sql`
+        SELECT
+          COALESCE(NULLIF(metadata->>'path', ''), '/') AS path,
+          count(*)::int AS visits,
+          count(DISTINCT user_id)::int AS visitors
+        FROM analytics_events
+        WHERE event_type = 'page_view'
+          AND timestamp >= NOW() - INTERVAL '30 days'
+          AND (
+            metadata->>'path' = '/'
+            OR metadata->>'path' = '/early-access'
+            OR metadata->>'path' ILIKE '/ai-wedding-planner%'
+            OR metadata->>'path' ILIKE '/wedding-website-builder%'
+            OR metadata->>'path' ILIKE '/digital-wedding-invitations%'
+          )
+        GROUP BY 1
+        ORDER BY visits DESC
+        LIMIT 12
+      `),
+
+      db.execute(sql`
+        SELECT
+          COALESCE(NULLIF(metadata->>'feature', ''), event_type) AS feature,
+          count(*)::int AS events,
+          count(DISTINCT user_id)::int AS users
+        FROM analytics_events
+        WHERE timestamp >= NOW() - INTERVAL '30 days'
+          AND event_type IN ('feature_accessed', 'tool_used')
+        GROUP BY 1
+        ORDER BY events DESC
+        LIMIT 14
+      `),
+
+      db.execute(sql`
+        SELECT count(DISTINCT user_id)::int AS count
+        FROM analytics_events
+        WHERE timestamp >= NOW() - INTERVAL '30 days'
+          AND event_type IN ('feature_accessed', 'tool_used')
+          AND COALESCE(metadata->>'feature', '') NOT IN ('Dashboard', 'Wedding Profile', 'Operations Center', 'Admin')
+      `),
+
+      db.execute(sql`
+        SELECT
+          count(*)::int AS total,
+          count(*) FILTER (WHERE is_read = false)::int AS unread,
+          count(*) FILTER (WHERE is_resolved = false)::int AS unresolved,
+          count(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days')::int AS last30
+        FROM contact_messages
+      `),
+
+      db.execute(sql`
+        SELECT
+          count(*)::int AS total,
+          count(*) FILTER (WHERE is_read = false)::int AS unread,
+          count(*) FILTER (WHERE is_resolved = false)::int AS unresolved,
+          count(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days')::int AS last30,
+          round(avg(rating)::numeric, 1) AS average_rating
+        FROM feedback_submissions
+      `),
+
+      db.select({
+        id: feedbackSubmissions.id,
+        rating: feedbackSubmissions.rating,
+        category: feedbackSubmissions.category,
+        message: feedbackSubmissions.message,
+        isResolved: feedbackSubmissions.isResolved,
+        createdAt: feedbackSubmissions.createdAt,
+      })
+        .from(feedbackSubmissions)
+        .orderBy(desc(feedbackSubmissions.createdAt))
+        .limit(5),
     ]);
 
     const countMap = Object.fromEntries(countsByType.map(r => [r.eventType, r.count]));
@@ -297,6 +447,26 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
     const onboardedCount = Number((onboardedRow.rows?.[0] as { count?: number } | undefined)?.count ?? 0);
     const onboardingRate = totalUsers > 0 ? Math.round((onboardedCount / totalUsers) * 100) : 0;
     const signupCount = totalUsers;
+    const landingVisitors = Number(
+      (landingPageRows.rows as Array<{ visitors?: number }>).reduce((sum, row) => sum + Number(row.visitors ?? 0), 0),
+    );
+    const firstPlanningActionUsers = Number((firstPlanningActionRow.rows?.[0] as { count?: number } | undefined)?.count ?? 0);
+    const signupToProfileRate = totalUsers > 0 ? Math.round((onboardedCount / totalUsers) * 100) : 0;
+    const profileToActionRate = onboardedCount > 0 ? Math.round((firstPlanningActionUsers / onboardedCount) * 100) : 0;
+    const landingToSignupRate = landingVisitors > 0 ? Math.round((newThisMonth / landingVisitors) * 100) : 0;
+    const contactSummary = contactSummaryRow.rows?.[0] as {
+      total?: number;
+      unread?: number;
+      unresolved?: number;
+      last30?: number;
+    } | undefined;
+    const feedbackSummary = feedbackSummaryRow.rows?.[0] as {
+      total?: number;
+      unread?: number;
+      unresolved?: number;
+      last30?: number;
+      average_rating?: string | number | null;
+    } | undefined;
 
     const features = [
       { name: "Timeline", eventType: "timeline_generated", count: countMap["timeline_generated"] ?? 0 },
@@ -366,6 +536,65 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
         date: r.date,
         count: r.count,
       })),
+      growthTracking: {
+        acquisitionSources: (sourceRows.rows as Array<{ source: string; visits: number; visitors: number }>).map(r => ({
+          source: r.source || "Direct / unknown",
+          visits: Number(r.visits ?? 0),
+          visitors: Number(r.visitors ?? 0),
+        })),
+        landingPages: (landingPageRows.rows as Array<{ path: string; visits: number; visitors: number }>).map(r => ({
+          path: r.path || "/",
+          visits: Number(r.visits ?? 0),
+          visitors: Number(r.visitors ?? 0),
+        })),
+        funnel: [
+          { step: "Landing page visitors", count: landingVisitors, rate: 100 },
+          { step: "Signups this month", count: newThisMonth, rate: landingToSignupRate },
+          { step: "Profile setup complete", count: onboardedCount, rate: signupToProfileRate },
+          { step: "Used a planning feature", count: firstPlanningActionUsers, rate: profileToActionRate },
+        ],
+        featureUsage: (featureUsageRows.rows as Array<{ feature: string; events: number; users: number }>).map(r => ({
+          feature: r.feature || "Unknown feature",
+          events: Number(r.events ?? 0),
+          users: Number(r.users ?? 0),
+        })),
+        dropOffs: [
+          {
+            stage: "Visited landing page but did not sign up",
+            count: Math.max(landingVisitors - newThisMonth, 0),
+            note: "Based on tracked landing visitors and this month's Clerk signups.",
+          },
+          {
+            stage: "Signed up but no profile setup",
+            count: Math.max(totalUsers - onboardedCount, 0),
+            note: "Users who created an account but have not created or joined a wedding profile.",
+          },
+          {
+            stage: "Profile created but no planning feature used",
+            count: Math.max(onboardedCount - firstPlanningActionUsers, 0),
+            note: "Users who completed setup but have not used a tracked planning feature in the last 30 days.",
+          },
+        ],
+        feedback: {
+          contactMessages: {
+            total: Number(contactSummary?.total ?? 0),
+            unread: Number(contactSummary?.unread ?? 0),
+            unresolved: Number(contactSummary?.unresolved ?? 0),
+            last30: Number(contactSummary?.last30 ?? 0),
+          },
+          feedbackMessages: {
+            total: Number(feedbackSummary?.total ?? 0),
+            unread: Number(feedbackSummary?.unread ?? 0),
+            unresolved: Number(feedbackSummary?.unresolved ?? 0),
+            last30: Number(feedbackSummary?.last30 ?? 0),
+            averageRating: feedbackSummary?.average_rating == null ? null : Number(feedbackSummary.average_rating),
+          },
+          recent: recentFeedbackRows.map(item => ({
+            ...item,
+            createdAt: item.createdAt.toISOString(),
+          })),
+        },
+      },
     });
   } catch (err) {
     req.log.error(err, "Admin metrics error");

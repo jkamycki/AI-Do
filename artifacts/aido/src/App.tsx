@@ -16,6 +16,7 @@ import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 import { MaintenanceNotice } from "@/components/MaintenanceNotice";
 
 const Landing = lazy(() => import("@/pages/Landing"));
+const EarlyAccess = lazy(() => import("@/pages/EarlyAccess"));
 const SeoMarketingPage = lazy(() => import("@/pages/SeoMarketingPage"));
 const ForVendors = lazy(() => import("@/pages/ForVendors"));
 const PublicVendorProfile = lazy(() => import("@/pages/PublicVendorProfile"));
@@ -1600,6 +1601,30 @@ function getPortalTrackingContext(path: string): PortalTrackingContext | null {
   return PORTAL_TRACKING_ROUTES.find(route => route.pattern.test(routePath)) ?? null;
 }
 
+function getAcquisitionMetadata(path: string): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const [, queryString = ""] = path.split("?");
+  const params = new URLSearchParams(queryString);
+  const referrer = document.referrer || "";
+  let referrerHost = "";
+  try {
+    referrerHost = referrer ? new URL(referrer).hostname.replace(/^www\./, "") : "";
+  } catch {
+    referrerHost = "";
+  }
+  const utmSource = params.get("utm_source")?.trim() || "";
+  const utmMedium = params.get("utm_medium")?.trim() || "";
+  const utmCampaign = params.get("utm_campaign")?.trim() || "";
+  const acquisitionSource = utmSource || referrerHost || "Direct / unknown";
+  return {
+    acquisitionSource,
+    ...(utmSource ? { utmSource } : {}),
+    ...(utmMedium ? { utmMedium } : {}),
+    ...(utmCampaign ? { utmCampaign } : {}),
+    ...(referrerHost ? { referrerHost } : {}),
+  };
+}
+
 function AppTracking() {
   const [location] = useLocation();
   const { track, testMode, sessionId } = useTracking();
@@ -1610,6 +1635,7 @@ function AppTracking() {
     void track("page_view", {
       path: location,
       title: typeof document !== "undefined" ? document.title : "",
+      ...getAcquisitionMetadata(location),
       ...(context ?? {}),
     });
     if (!context) return;
@@ -1902,6 +1928,7 @@ function Router() {
     <Suspense fallback={<RouteLoading />}>
       <Switch>
         <Route path="/" component={HomeRedirect} />
+        <Route path="/early-access" component={EarlyAccess} />
         <Route path="/ai-wedding-planner" component={SeoMarketingPage} />
         <Route path="/wedding-website-builder" component={SeoMarketingPage} />
         <Route path="/wedding-photo-qr-code" component={SeoMarketingPage} />
@@ -2008,6 +2035,7 @@ const RESERVED_PUBLIC_ROOT_SEGMENTS = new Set([
   "data-handling",
   "day-of",
   "documents",
+  "early-access",
   "for-vendors",
   "guest-photo-drop",
   "guests",

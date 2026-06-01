@@ -26,6 +26,8 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import {
   Mail,
+  BadgeDollarSign,
+  BarChart3,
   Clock,
   AlertCircle,
   CheckCircle2,
@@ -37,46 +39,13 @@ import {
   Inbox,
   Loader2,
   Ticket,
-  FlaskConical,
-  ListChecks,
-  Plus,
   Send,
-  Sparkles,
   Store,
   Users,
   Wrench,
 } from "lucide-react";
 import MessagesSection from "@/components/admin/MessagesSection";
 import { MaintenanceNotice } from "@/components/MaintenanceNotice";
-
-type TestSessionRow = {
-  sessionId: string;
-  testMode: boolean;
-  createdAt: string;
-  lastActiveAt: string;
-  totalEvents: number;
-  workflowProgress: {
-    pageViews: number;
-    profileVisits: number;
-    guestListVisits: number;
-    invitationStudioVisits: number;
-    websiteEditorVisits: number;
-  };
-  pagesVisited: string[];
-  wizardsUsed: string[];
-  errorsEncountered: number;
-};
-
-type LaunchPlanItem = {
-  id: string;
-  title: string;
-  category: string;
-  notes: string;
-  assigneeEmail: string;
-  priority: "low" | "medium" | "high";
-  dueDate: string;
-  completed: boolean;
-};
 
 type WorkflowMilestone = {
   key: string;
@@ -159,6 +128,39 @@ type AdminUsersResponse = {
     createdProfile: number;
     sharedWorkspace: number;
     deleted: number;
+  };
+};
+
+type AdminMetricsResponse = {
+  userMetrics: {
+    totalUsers: number;
+    newThisMonth: number;
+    onboardedUsers: number;
+    onboardingCompletionRate: number;
+  };
+  pageViews: {
+    today: number;
+    week: number;
+    total: number;
+  };
+  growthTracking: {
+    acquisitionSources: Array<{ source: string; visits: number; visitors: number }>;
+    landingPages: Array<{ path: string; visits: number; visitors: number }>;
+    funnel: Array<{ step: string; count: number; rate: number }>;
+    featureUsage: Array<{ feature: string; events: number; users: number }>;
+    dropOffs: Array<{ stage: string; count: number; note: string }>;
+    feedback: {
+      contactMessages: { total: number; unread: number; unresolved: number; last30: number };
+      feedbackMessages: { total: number; unread: number; unresolved: number; last30: number; averageRating: number | null };
+      recent: Array<{
+        id: number;
+        rating: number | null;
+        category: string | null;
+        message: string;
+        isResolved: boolean;
+        createdAt: string;
+      }>;
+    };
   };
 };
 
@@ -374,109 +376,6 @@ function workspaceSharingText(share: SignedUpUser["sharedWith"][number]): string
     : `Shared with ${relatedName} as ${share.role}`;
 }
 
-const LAUNCH_PLAN_STORAGE_KEY = "aido_operations_launch_plan_v1";
-const LAUNCH_PLAN_ASSIGNEES = [
-  { name: "Joseph", email: "kamyckijoseph@gmail.com" },
-  { name: "Michael", email: "michaelgang31@gmail.com" },
-] as const;
-const LAUNCH_PLAN_ASSIGNEE_EMAILS = LAUNCH_PLAN_ASSIGNEES.map(assignee => assignee.email);
-
-const getLaunchPlanAssigneeName = (email: string) =>
-  LAUNCH_PLAN_ASSIGNEES.find(assignee => assignee.email === email)?.name ?? "Unassigned";
-
-const getLaunchPlanPriorityClass = (priority: LaunchPlanItem["priority"]) => {
-  if (priority === "high") return "border-red-300 bg-red-50 text-red-700 focus:border-red-500";
-  if (priority === "low") return "border-emerald-300 bg-emerald-50 text-emerald-700 focus:border-emerald-500";
-  return "border-yellow-300 bg-yellow-50 text-yellow-700 focus:border-yellow-500";
-};
-
-const buildLaunchPlanTaskEmail = (item: LaunchPlanItem) => {
-  const assigneeName = getLaunchPlanAssigneeName(item.assigneeEmail);
-  const priority = item.priority.charAt(0).toUpperCase() + item.priority.slice(1);
-  return {
-    subject: `A.IDO Launch Task: ${item.title || "Launch task"}`,
-    body: [
-      "A.IDO Launch Plan Task",
-      "",
-      `Task: ${item.title || "Untitled task"}`,
-      `Category: ${item.category || "Launch"}`,
-      `Assigned to: ${assigneeName}`,
-      `Priority: ${priority}`,
-      `Due date: ${item.dueDate || "Not set"}`,
-      `Status: ${item.completed ? "Completed" : "Open"}`,
-      "",
-      "Notes:",
-      item.notes || "No notes added.",
-      "",
-      "Open the A.IDO Operations Center to update this task.",
-    ].join("\n"),
-  };
-};
-
-const fallbackLaunchPlanItems: LaunchPlanItem[] = [
-  {
-    id: "launch-positioning",
-    title: "Finalize A.IDO launch positioning",
-    category: "Brand",
-    notes: "Confirm the primary promise, launch audience, and short description used across the website, previews, and outreach.",
-    assigneeEmail: "kamyckijoseph@gmail.com",
-    priority: "high",
-    dueDate: "",
-    completed: false,
-  },
-  {
-    id: "launch-onboarding",
-    title: "Test signup and onboarding from a fresh account",
-    category: "Product",
-    notes: "Walk through profile setup, guest list, budget, vendors, contracts, website editor, and Aria from mobile and desktop.",
-    assigneeEmail: "michaelgang31@gmail.com",
-    priority: "high",
-    dueDate: "",
-    completed: false,
-  },
-  {
-    id: "launch-support",
-    title: "Prepare support and feedback workflow",
-    category: "Operations",
-    notes: "Make sure support messages, feedback prompts, and Operations Center tickets are being received and reviewed daily.",
-    assigneeEmail: "kamyckijoseph@gmail.com",
-    priority: "medium",
-    dueDate: "",
-    completed: false,
-  },
-];
-
-const normalizeLaunchPlanItem = (item: Partial<LaunchPlanItem>, index = 0): LaunchPlanItem => {
-  const priority = String(item.priority ?? "medium").toLowerCase();
-  const assigneeEmail = String(item.assigneeEmail ?? "").toLowerCase();
-  return {
-    id: String(item.id ?? makeLaunchPlanId()),
-    title: String(item.title ?? `Launch task ${index + 1}`),
-    category: String(item.category ?? "Launch"),
-    notes: String(item.notes ?? ""),
-    assigneeEmail: LAUNCH_PLAN_ASSIGNEE_EMAILS.includes(assigneeEmail as typeof LAUNCH_PLAN_ASSIGNEE_EMAILS[number]) ? assigneeEmail : "",
-    priority: priority === "low" || priority === "high" ? priority : "medium",
-    dueDate: String(item.dueDate ?? ""),
-    completed: Boolean(item.completed),
-  };
-};
-
-const appendNewLaunchPlanItems = (currentItems: LaunchPlanItem[], generatedItems: LaunchPlanItem[]) => {
-  const existingTitles = new Set(currentItems.map(item => item.title.trim().toLowerCase()).filter(Boolean));
-  const uniqueGenerated = generatedItems.filter(item => {
-    const title = item.title.trim().toLowerCase();
-    if (!title || existingTitles.has(title)) return false;
-    existingTitles.add(title);
-    return true;
-  });
-  return [...currentItems, ...uniqueGenerated];
-};
-
-const makeLaunchPlanId = () => {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
-  return `launch-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-};
-
 const maintenanceSections: Array<{
   section: MaintenanceSection;
   label: string;
@@ -645,9 +544,8 @@ export default function OperationsCenterPage() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [expandedTicketIds, setExpandedTicketIds] = useState<Set<number | string>>(new Set());
-  const [activeTab, setActiveTab] = useState<"tickets" | "messages" | "vendorIntake" | "users" | "recovery" | "workflow" | "testActivity" | "launchPlan" | "maintenance">("tickets");
+  const [activeTab, setActiveTab] = useState<"tickets" | "messages" | "tracking" | "vendorIntake" | "users" | "recovery" | "workflow" | "pricing" | "maintenance">("tickets");
   const [workflowFilter, setWorkflowFilter] = useState<"all" | "completed" | "in_progress" | "not_started">("all");
-  const [testSessionFilter, setTestSessionFilter] = useState<"test" | "all" | "real">("test");
   const [userSearch, setUserSearch] = useState("");
   const [userToDelete, setUserToDelete] = useState<SignedUpUser | null>(null);
   const [expandedArchiveId, setExpandedArchiveId] = useState<number | null>(null);
@@ -655,28 +553,11 @@ export default function OperationsCenterPage() {
   const [archiveDetailLoadingId, setArchiveDetailLoadingId] = useState<number | null>(null);
   const [restoreArchiveId, setRestoreArchiveId] = useState<number | null>(null);
   const [restoreUserId, setRestoreUserId] = useState("");
-  const [launchPlanPrompt, setLaunchPlanPrompt] = useState("");
-  const [hasLoadedLaunchPlan, setHasLoadedLaunchPlan] = useState(false);
-  const launchPlanItemsRef = useRef<LaunchPlanItem[]>([]);
-  const hasLoadedLaunchPlanRef = useRef(false);
-  const [launchPlanEmailRecipients, setLaunchPlanEmailRecipients] = useState<Record<string, string>>({});
   const [vendorReplyOpenId, setVendorReplyOpenId] = useState<number | null>(null);
   const [vendorReplyText, setVendorReplyText] = useState<Record<number, string>>({});
   const [vendorDirectoryEditorId, setVendorDirectoryEditorId] = useState<number | null>(null);
   const [vendorDirectoryDrafts, setVendorDirectoryDrafts] = useState<Record<number, VendorDirectoryListingDraft>>({});
   const [vendorIntakeFilter, setVendorIntakeFilter] = useState<"all" | "new" | "reviewing" | "approved" | "declined" | "published">("all");
-  const [launchPlanItems, setLaunchPlanItems] = useState<LaunchPlanItem[]>(() => {
-    if (typeof window === "undefined") return fallbackLaunchPlanItems;
-    try {
-      const stored = window.localStorage.getItem(LAUNCH_PLAN_STORAGE_KEY);
-      if (!stored) return fallbackLaunchPlanItems;
-      const parsed = JSON.parse(stored) as LaunchPlanItem[];
-      if (!Array.isArray(parsed) || parsed.length === 0) return fallbackLaunchPlanItems;
-      return parsed.map(normalizeLaunchPlanItem);
-    } catch {
-      return fallbackLaunchPlanItems;
-    }
-  });
   const [followUpForm, setFollowUpForm] = useState({
     followUpEmail: "",
     followUpNotes: "",
@@ -861,18 +742,6 @@ export default function OperationsCenterPage() {
     },
   });
 
-  const { data: testSessionsData, isLoading: isLoadingTestSessions } = useQuery<{ sessions: TestSessionRow[] }>({
-    queryKey: ["admin-test-sessions", testSessionFilter],
-    queryFn: async () => {
-      const r = await authedFetch(`/api/admin/test-sessions?mode=${testSessionFilter}`);
-      if (!r.ok) throw new Error("Failed to fetch test sessions");
-      return r.json();
-    },
-    enabled: activeTab === "testActivity",
-    refetchInterval: activeTab === "testActivity" ? 30000 : false,
-  });
-  const testSessions = testSessionsData?.sessions ?? [];
-
   const { data: signedUpUsersData, isLoading: isLoadingSignedUpUsers } = useQuery<AdminUsersResponse>({
     queryKey: ["admin-signed-up-users", userSearch],
     queryFn: async () => {
@@ -899,6 +768,31 @@ export default function OperationsCenterPage() {
     },
     enabled: activeTab === "maintenance",
     refetchInterval: activeTab === "maintenance" ? 15000 : false,
+  });
+
+  const { data: pricingData, isLoading: isLoadingPricing } = useQuery<{
+    enabled: boolean;
+    updatedAt: string | null;
+    updatedBy: string | null;
+  }>({
+    queryKey: ["admin-pricing"],
+    queryFn: async () => {
+      const r = await authedFetch("/api/admin/pricing");
+      if (!r.ok) throw new Error("Failed to fetch pricing settings");
+      return r.json();
+    },
+    enabled: activeTab === "pricing",
+  });
+
+  const { data: metricsData, isLoading: isLoadingMetrics } = useQuery<AdminMetricsResponse>({
+    queryKey: ["admin-metrics"],
+    queryFn: async () => {
+      const r = await authedFetch("/api/admin/metrics");
+      if (!r.ok) throw new Error("Failed to fetch growth metrics");
+      return r.json();
+    },
+    enabled: activeTab === "tracking",
+    refetchInterval: activeTab === "tracking" ? 30000 : false,
   });
 
   const maintenanceMutation = useMutation({
@@ -929,6 +823,25 @@ export default function OperationsCenterPage() {
     },
     onError: () => {
       toast({ title: "Maintenance setting could not be saved", variant: "destructive" });
+    },
+  });
+
+  const pricingMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const r = await authedFetch("/api/admin/pricing", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+      if (!r.ok) throw new Error("Failed to save pricing setting");
+      return r.json() as Promise<{ enabled: boolean; updatedAt: string | null; updatedBy: string | null }>;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["admin-pricing"], data);
+      toast({ title: data.enabled ? "Launch pricing is visible" : "Launch pricing is hidden" });
+    },
+    onError: () => {
+      toast({ title: "Pricing setting could not be saved", variant: "destructive" });
     },
   });
   const signedUpUsers = signedUpUsersData?.activeUsers ?? signedUpUsersData?.users?.filter(user => !user.isDeleted) ?? [];
@@ -1064,213 +977,6 @@ export default function OperationsCenterPage() {
     ? workflowUsers
     : workflowUsers.filter(user => user.status === workflowFilter);
 
-  const { data: launchPlanData, isLoading: isLoadingLaunchPlan } = useQuery<{
-    items: Array<Partial<LaunchPlanItem>>;
-    assignees: string[];
-  }>({
-    queryKey: ["admin-launch-plan"],
-    queryFn: async () => {
-      const r = await authedFetch("/api/admin/launch-plan");
-      if (!r.ok) throw new Error("Failed to load launch plan");
-      return r.json();
-    },
-    enabled: activeTab === "launchPlan",
-  });
-
-  useEffect(() => {
-    window.localStorage.setItem(LAUNCH_PLAN_STORAGE_KEY, JSON.stringify(launchPlanItems));
-  }, [launchPlanItems]);
-
-  useEffect(() => {
-    if (!launchPlanData?.items) return;
-    setLaunchPlanItems(launchPlanData.items.map(normalizeLaunchPlanItem));
-    setHasLoadedLaunchPlan(true);
-  }, [launchPlanData]);
-
-  const launchPlanCompletedCount = launchPlanItems.filter(item => item.completed).length;
-  const launchPlanProgress = launchPlanItems.length > 0
-    ? Math.round((launchPlanCompletedCount / launchPlanItems.length) * 100)
-    : 0;
-  const launchPlanOpenCount = launchPlanItems.length - launchPlanCompletedCount;
-  const openLaunchPlanItems = launchPlanItems.filter(item => !item.completed);
-  const completedLaunchPlanItems = launchPlanItems.filter(item => item.completed);
-  const launchPlanAssigneeStats = LAUNCH_PLAN_ASSIGNEES.map(assignee => ({
-    ...assignee,
-    total: launchPlanItems.filter(item => item.assigneeEmail === assignee.email).length,
-    open: launchPlanItems.filter(item => item.assigneeEmail === assignee.email && !item.completed).length,
-  }));
-
-  const updateLaunchPlanItem = (id: string, patch: Partial<LaunchPlanItem>) => {
-    setHasLoadedLaunchPlan(true);
-    setLaunchPlanItems(items => items.map(item => item.id === id ? { ...item, ...patch } : item));
-  };
-
-  const addLaunchPlanItem = () => {
-    setHasLoadedLaunchPlan(true);
-    setLaunchPlanItems(items => [
-      ...items,
-      {
-        id: makeLaunchPlanId(),
-        title: "New launch task",
-        category: "Launch",
-        notes: "",
-        assigneeEmail: "",
-        priority: "medium",
-        dueDate: "",
-        completed: false,
-      },
-    ]);
-  };
-
-  const saveLaunchPlanMutation = useMutation({
-    mutationFn: async (items: LaunchPlanItem[]) => {
-      const r = await authedFetch("/api/admin/launch-plan", {
-        method: "PUT",
-        body: JSON.stringify({ items }),
-      });
-      if (!r.ok) throw new Error("Failed to save launch plan");
-      return r.json();
-    },
-    onError: () => {
-      toast({ title: "Launch plan could not be saved", variant: "destructive" });
-    },
-  });
-
-  const saveLaunchPlanItems = async (items: LaunchPlanItem[]) => {
-    const r = await authedFetch("/api/admin/launch-plan", {
-      method: "PUT",
-      body: JSON.stringify({ items }),
-    });
-    if (!r.ok) throw new Error("Failed to save launch plan");
-  };
-
-  useEffect(() => {
-    launchPlanItemsRef.current = launchPlanItems;
-  }, [launchPlanItems]);
-
-  useEffect(() => {
-    hasLoadedLaunchPlanRef.current = hasLoadedLaunchPlan;
-  }, [hasLoadedLaunchPlan]);
-
-  useEffect(() => {
-    if (!hasLoadedLaunchPlan) return;
-    const timeout = window.setTimeout(() => {
-      saveLaunchPlanMutation.mutate(launchPlanItems);
-    }, 700);
-    return () => window.clearTimeout(timeout);
-  }, [hasLoadedLaunchPlan, launchPlanItems]);
-
-  useEffect(() => {
-    const flushPendingLaunchPlan = () => {
-      if (!hasLoadedLaunchPlanRef.current) return;
-      void saveLaunchPlanItems(launchPlanItemsRef.current);
-    };
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden") flushPendingLaunchPlan();
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("pagehide", flushPendingLaunchPlan);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("pagehide", flushPendingLaunchPlan);
-      flushPendingLaunchPlan();
-    };
-  }, []);
-
-  const generateLaunchPlanMutation = useMutation({
-    mutationFn: async () => {
-      const r = await authedFetch("/api/admin/launch-plan/generate", {
-        method: "POST",
-        body: JSON.stringify({
-          focus: launchPlanPrompt,
-          currentItems: launchPlanItems.map(({ title, category, notes, assigneeEmail, priority, dueDate, completed }) => ({
-            title,
-            category,
-            notes,
-            assigneeEmail,
-            priority,
-            dueDate,
-            completed,
-          })),
-        }),
-      });
-      if (!r.ok) throw new Error("Failed to generate launch plan");
-      return r.json() as Promise<{ items: Array<Partial<LaunchPlanItem>>; source?: string }>;
-    },
-    onSuccess: (data) => {
-      const generatedItems = (data.items ?? [])
-        .filter(item => String(item.title ?? "").trim().length > 0)
-        .map((item, index) => normalizeLaunchPlanItem({
-          id: makeLaunchPlanId(),
-          title: String(item.title ?? "").trim(),
-          category: String(item.category ?? "Launch").trim() || "Launch",
-          notes: String(item.notes ?? "").trim(),
-          assigneeEmail: String(item.assigneeEmail ?? ""),
-          priority: item.priority as LaunchPlanItem["priority"],
-          dueDate: String(item.dueDate ?? ""),
-          completed: Boolean(item.completed),
-        }, index));
-
-      if (generatedItems.length === 0) {
-        toast({ title: "No checklist items generated", variant: "destructive" });
-        return;
-      }
-
-      setHasLoadedLaunchPlan(true);
-      setLaunchPlanItems(current => appendNewLaunchPlanItems(current, generatedItems));
-      toast({
-        title: data.source === "fallback" ? "Launch plan starter added" : "Launch plan items added",
-        description: "Existing tasks and completed items were kept in place.",
-      });
-    },
-    onError: () => {
-      toast({ title: "Could not generate launch plan", variant: "destructive" });
-    },
-  });
-
-  const sendLaunchPlanTaskMutation = useMutation({
-    mutationFn: async ({ item, recipientEmail }: { item: LaunchPlanItem; recipientEmail: string }) => {
-      const taskEmail = buildLaunchPlanTaskEmail(item);
-      const r = await authedFetch("/api/admin/launch-plan/send-task", {
-        method: "POST",
-        body: JSON.stringify({ task: item, recipientEmail }),
-      });
-      const body = await r.json().catch(() => ({}));
-      if (!r.ok) {
-        const fallback = await authedFetch("/api/admin/marketing/send", {
-          method: "POST",
-          body: JSON.stringify({
-            emails: [recipientEmail],
-            subject: taskEmail.subject,
-            body: taskEmail.body,
-          }),
-        });
-        const fallbackBody = await fallback.json().catch(() => ({}));
-        if (!fallback.ok || fallbackBody?.failed > 0) {
-          const firstError = Array.isArray(fallbackBody?.results)
-            ? fallbackBody.results.find((result: { ok?: boolean; error?: string }) => !result.ok)?.error
-            : undefined;
-          throw new Error(firstError ?? fallbackBody?.error ?? body?.error ?? "Failed to email launch task");
-        }
-        return fallbackBody;
-      }
-      return body;
-    },
-    onSuccess: (_data, variables) => {
-      toast({
-        title: "Task emailed",
-        description: `Sent to ${getLaunchPlanAssigneeName(variables.recipientEmail)}.`,
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Could not email task",
-        description: error instanceof Error ? error.message : "Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
   const lastSeenUnread = useRef<number | null>(null);
   useEffect(() => {
     if (lastSeenUnread.current === null) {
@@ -1372,142 +1078,6 @@ export default function OperationsCenterPage() {
     }
   };
 
-  const renderLaunchPlanTaskCard = (item: LaunchPlanItem) => {
-    const recipientEmail = launchPlanEmailRecipients[item.id] || item.assigneeEmail || LAUNCH_PLAN_ASSIGNEES[0].email;
-    return (
-      <Card key={item.id} className={item.completed ? "border-emerald-200 bg-emerald-50/40" : ""}>
-        <CardContent className="py-4">
-          <div className="grid gap-4 lg:grid-cols-[auto_1fr_auto] lg:items-start">
-            <button
-              type="button"
-              onClick={() => updateLaunchPlanItem(item.id, { completed: !item.completed })}
-              className={`mt-1 flex h-8 w-8 items-center justify-center rounded-full border transition-colors ${
-                item.completed
-                  ? "border-emerald-500 bg-emerald-500 text-white"
-                  : "border-[#E7C7D3] bg-white text-[#9A2E5C] hover:border-[#9A2E5C]"
-              }`}
-              aria-label={item.completed ? "Mark launch task incomplete" : "Mark launch task complete"}
-            >
-              <CheckCircle2 className="h-5 w-5" />
-            </button>
-
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[150px_1fr_220px_130px_150px]">
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wide text-[#7A5062]">Category</label>
-                <Input
-                  value={item.category}
-                  onChange={(event) => updateLaunchPlanItem(item.id, { category: event.target.value })}
-                  className="mt-1"
-                />
-              </div>
-              <div className="md:col-span-1 xl:col-span-1">
-                <label className="text-xs font-bold uppercase tracking-wide text-[#7A5062]">Task</label>
-                <Input
-                  value={item.title}
-                  onChange={(event) => updateLaunchPlanItem(item.id, { title: event.target.value })}
-                  className={`mt-1 font-semibold ${item.completed ? "line-through decoration-2" : ""}`}
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wide text-[#7A5062]">Assigned To</label>
-                <Select
-                  value={item.assigneeEmail || "unassigned"}
-                  onValueChange={assigneeEmail => updateLaunchPlanItem(item.id, {
-                    assigneeEmail: assigneeEmail === "unassigned" ? "" : assigneeEmail,
-                  })}
-                >
-                  <SelectTrigger className={`mt-1 ${getLaunchPlanPriorityClass(item.priority)}`}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unassigned">Unassigned</SelectItem>
-                    {LAUNCH_PLAN_ASSIGNEES.map(assignee => (
-                      <SelectItem key={assignee.email} value={assignee.email}>{assignee.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wide text-[#7A5062]">Priority</label>
-                <Select
-                  value={item.priority}
-                  onValueChange={priority => updateLaunchPlanItem(item.id, { priority: priority as LaunchPlanItem["priority"] })}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="low">Low</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wide text-[#7A5062]">Due Date</label>
-                <Input
-                  type="date"
-                  value={item.dueDate}
-                  onChange={(event) => updateLaunchPlanItem(item.id, { dueDate: event.target.value })}
-                  className="mt-1"
-                />
-              </div>
-              <div className="md:col-span-2 xl:col-span-5">
-                <label className="text-xs font-bold uppercase tracking-wide text-[#7A5062]">Notes</label>
-                <Textarea
-                  value={item.notes}
-                  onChange={(event) => updateLaunchPlanItem(item.id, { notes: event.target.value })}
-                  placeholder="Add launch notes, owner, blockers, links, or next action."
-                  className="mt-1 min-h-[82px]"
-                />
-              </div>
-              <div className="rounded-lg border border-[#F0D7E0] bg-[#FFF8FA] p-3 md:col-span-2 xl:col-span-5">
-                <label className="text-xs font-bold uppercase tracking-wide text-[#7A5062]">Email this task</label>
-                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                  <Select
-                    value={recipientEmail}
-                    onValueChange={email => setLaunchPlanEmailRecipients(current => ({ ...current, [item.id]: email }))}
-                  >
-                    <SelectTrigger className="min-h-10 flex-1 bg-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LAUNCH_PLAN_ASSIGNEES.map(assignee => (
-                        <SelectItem key={assignee.email} value={assignee.email}>
-                          {assignee.name} ({assignee.email})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="gap-2"
-                    disabled={sendLaunchPlanTaskMutation.isPending}
-                    onClick={() => sendLaunchPlanTaskMutation.mutate({ item, recipientEmail })}
-                  >
-                    {sendLaunchPlanTaskMutation.isPending ? <Clock className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
-                    Send Task
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-              onClick={() => setLaunchPlanItems(items => items.filter(current => current.id !== item.id))}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
-
   return (
     <div className="space-y-6 max-w-6xl mx-auto text-[#24171D]">
       <Dialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
@@ -1568,6 +1138,14 @@ export default function OperationsCenterPage() {
           )}
         </button>
         <button
+          onClick={() => setActiveTab("tracking")}
+          className={`flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
+            ${activeTab === "tracking" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
+        >
+          <BarChart3 className="h-4 w-4" />
+          Growth Tracking
+        </button>
+        <button
           onClick={() => setActiveTab("vendorIntake")}
           className={`flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
             ${activeTab === "vendorIntake" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
@@ -1610,20 +1188,12 @@ export default function OperationsCenterPage() {
           User Workflow Progress
         </button>
         <button
-          onClick={() => setActiveTab("testActivity")}
+          onClick={() => setActiveTab("pricing")}
           className={`flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
-            ${activeTab === "testActivity" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
+            ${activeTab === "pricing" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
         >
-          <FlaskConical className="h-4 w-4" />
-          Free Test Account Activity
-        </button>
-        <button
-          onClick={() => setActiveTab("launchPlan")}
-          className={`flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
-            ${activeTab === "launchPlan" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
-        >
-          <ListChecks className="h-4 w-4" />
-          A.IDO Launch Plan
+          <BadgeDollarSign className="h-4 w-4" />
+          Pricing
         </button>
         <button
           onClick={() => setActiveTab("maintenance")}
@@ -1634,6 +1204,267 @@ export default function OperationsCenterPage() {
           Maintenance Mode
         </button>
       </div>
+
+      {activeTab === "tracking" && (
+        <div className="space-y-5">
+          <div>
+            <h2 className="text-xl font-serif font-semibold text-[#24171D]">Growth Tracking</h2>
+            <p className="text-sm font-medium text-[#4A3941]">
+              Track signups by source, landing visits, profile setup conversion, feature usage, drop-off, and feedback.
+            </p>
+          </div>
+
+          {isLoadingMetrics ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-36 rounded-xl" />)}
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {[
+                  { label: "Landing visits", value: metricsData?.pageViews.week ?? 0, detail: "Last 7 days" },
+                  { label: "Signups", value: metricsData?.userMetrics.newThisMonth ?? 0, detail: "This month" },
+                  { label: "Profile setup", value: `${metricsData?.userMetrics.onboardingCompletionRate ?? 0}%`, detail: `${metricsData?.userMetrics.onboardedUsers ?? 0} completed` },
+                  {
+                    label: "Feedback",
+                    value: (metricsData?.growthTracking.feedback.contactMessages.last30 ?? 0) + (metricsData?.growthTracking.feedback.feedbackMessages.last30 ?? 0),
+                    detail: "Last 30 days",
+                  },
+                ].map(item => (
+                  <Card key={item.label}>
+                    <CardContent className="py-4">
+                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#7A5062]">{item.label}</p>
+                      <p className="mt-2 text-3xl font-bold text-[#24171D]">{item.value}</p>
+                      <p className="mt-1 text-sm font-medium text-[#6F3E54]">{item.detail}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="font-serif text-lg text-[#24171D]">Conversion Funnel</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {(metricsData?.growthTracking.funnel ?? []).map(item => (
+                      <div key={item.step}>
+                        <div className="mb-2 flex items-center justify-between gap-3">
+                          <p className="text-sm font-semibold text-[#24171D]">{item.step}</p>
+                          <p className="text-sm font-bold text-[#8D294D]">{item.count.toLocaleString()} / {item.rate}%</p>
+                        </div>
+                        <Progress value={Math.min(item.rate, 100)} />
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="font-serif text-lg text-[#24171D]">Drop-Off Watchlist</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {(metricsData?.growthTracking.dropOffs ?? []).map(item => (
+                      <div key={item.stage} className="rounded-lg border border-[#E6C7D2] bg-[#FFF8FA] p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="text-sm font-semibold text-[#24171D]">{item.stage}</p>
+                          <Badge className="bg-[#6F3E54] text-white">{item.count}</Badge>
+                        </div>
+                        <p className="mt-2 text-xs leading-5 text-[#6F3E54]">{item.note}</p>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid gap-5 lg:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="font-serif text-lg text-[#24171D]">Signups & Visits By Source</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {(metricsData?.growthTracking.acquisitionSources ?? []).length === 0 ? (
+                      <p className="text-sm font-medium text-[#6F3E54]">No source data yet. UTM/referrer tracking starts on new visits.</p>
+                    ) : (
+                      metricsData?.growthTracking.acquisitionSources.map(item => (
+                        <div key={item.source} className="flex items-center justify-between gap-3 rounded-lg border border-[#E6C7D2] bg-white p-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-[#24171D]">{item.source}</p>
+                            <p className="text-xs font-medium text-[#6F3E54]">{item.visitors.toLocaleString()} visitors</p>
+                          </div>
+                          <p className="text-sm font-bold text-[#8D294D]">{item.visits.toLocaleString()} visits</p>
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="font-serif text-lg text-[#24171D]">Landing Page Visits</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {(metricsData?.growthTracking.landingPages ?? []).length === 0 ? (
+                      <p className="text-sm font-medium text-[#6F3E54]">No landing page visits tracked yet.</p>
+                    ) : (
+                      metricsData?.growthTracking.landingPages.map(item => (
+                        <div key={item.path} className="flex items-center justify-between gap-3 rounded-lg border border-[#E6C7D2] bg-white p-3">
+                          <div className="min-w-0">
+                            <p className="truncate font-mono text-sm font-semibold text-[#24171D]">{item.path}</p>
+                            <p className="text-xs font-medium text-[#6F3E54]">{item.visitors.toLocaleString()} visitors</p>
+                          </div>
+                          <p className="text-sm font-bold text-[#8D294D]">{item.visits.toLocaleString()} visits</p>
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid gap-5 lg:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="font-serif text-lg text-[#24171D]">Feature Usage</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {(metricsData?.growthTracking.featureUsage ?? []).length === 0 ? (
+                      <p className="text-sm font-medium text-[#6F3E54]">No tracked feature usage yet.</p>
+                    ) : (
+                      metricsData?.growthTracking.featureUsage.map(item => (
+                        <div key={item.feature} className="rounded-lg border border-[#E6C7D2] bg-white p-3">
+                          <div className="mb-2 flex items-center justify-between gap-3">
+                            <p className="truncate text-sm font-semibold text-[#24171D]">{item.feature}</p>
+                            <p className="text-xs font-bold uppercase tracking-wide text-[#7A5062]">{item.users} users</p>
+                          </div>
+                          <Progress value={Math.min(item.events, 100)} />
+                          <p className="mt-2 text-xs font-medium text-[#6F3E54]">{item.events.toLocaleString()} events in the last 30 days</p>
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="font-serif text-lg text-[#24171D]">Feedback Messages</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-lg border border-[#E6C7D2] bg-[#FFF8FA] p-3">
+                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#7A5062]">Contact</p>
+                        <p className="mt-2 text-2xl font-bold text-[#24171D]">{metricsData?.growthTracking.feedback.contactMessages.total ?? 0}</p>
+                        <p className="text-xs font-medium text-[#6F3E54]">{metricsData?.growthTracking.feedback.contactMessages.unresolved ?? 0} unresolved</p>
+                      </div>
+                      <div className="rounded-lg border border-[#E6C7D2] bg-[#FFF8FA] p-3">
+                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#7A5062]">Feedback</p>
+                        <p className="mt-2 text-2xl font-bold text-[#24171D]">{metricsData?.growthTracking.feedback.feedbackMessages.total ?? 0}</p>
+                        <p className="text-xs font-medium text-[#6F3E54]">
+                          Avg rating {metricsData?.growthTracking.feedback.feedbackMessages.averageRating ?? "N/A"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {(metricsData?.growthTracking.feedback.recent ?? []).length === 0 ? (
+                        <p className="text-sm font-medium text-[#6F3E54]">No recent feedback yet.</p>
+                      ) : (
+                        metricsData?.growthTracking.feedback.recent.map(item => (
+                          <div key={item.id} className="rounded-lg border border-[#E6C7D2] bg-white p-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="text-xs font-bold uppercase tracking-wide text-[#7A5062]">{item.category || "Feedback"}</p>
+                              <Badge className={item.isResolved ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}>
+                                {item.isResolved ? "Resolved" : "Open"}
+                              </Badge>
+                            </div>
+                            <p className="mt-2 line-clamp-2 text-sm leading-5 text-[#4A3941]">{item.message}</p>
+                            <p className="mt-2 text-xs font-medium text-[#6F3E54]">{new Date(item.createdAt).toLocaleString()}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {activeTab === "pricing" && (
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-serif text-xl text-[#24171D]">Launch Pricing</CardTitle>
+              <p className="text-sm font-medium text-[#4A3941]">
+                Control whether the public website and app show the first-launch couple pricing packages.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {isLoadingPricing ? (
+                <Skeleton className="h-36 rounded-xl" />
+              ) : (
+                <div className={`rounded-xl border p-5 ${pricingData?.enabled ? "border-primary/40 bg-primary/5" : "border-[#E6C7D2] bg-[#F8EEDB]"}`}>
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold text-[#24171D]">Show pricing to couples</p>
+                        <Badge className={pricingData?.enabled ? "bg-primary text-primary-foreground" : "bg-[#6F3E54] text-white"}>
+                          {pricingData?.enabled ? "Visible" : "Hidden"}
+                        </Badge>
+                      </div>
+                      <p className="mt-2 max-w-2xl text-sm leading-6 text-[#6F3E54]">
+                        When enabled, couples see two launch packages: Free and A.I DO Complete for $99 one-time per wedding.
+                        When disabled, pricing is hidden and the site keeps using the free beta messaging.
+                      </p>
+                      {pricingData?.updatedAt && (
+                        <p className="mt-2 text-xs font-medium text-[#7A5062]">
+                          Last updated {new Date(pricingData.updatedAt).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                    <Switch
+                      checked={pricingData?.enabled === true}
+                      disabled={pricingMutation.isPending}
+                      onCheckedChange={(checked) => pricingMutation.mutate(checked)}
+                      aria-label="Toggle launch pricing visibility"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-xl border border-[#E6C7D2] bg-white p-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#B16C8E]">Free</p>
+                  <p className="mt-2 font-serif text-3xl text-[#8D294D]">$0</p>
+                  <p className="mt-2 text-sm leading-6 text-[#6F3E54]">
+                    Website, A.I DO URL, basic RSVP, guest list, checklist, budget, travel, registry, photo QR, limited AI, and A.I DO branding.
+                  </p>
+                </div>
+                <div className="rounded-xl border border-primary/40 bg-primary p-4 text-white">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/80">A.I DO Complete</p>
+                  <p className="mt-2 font-serif text-3xl">$99</p>
+                  <p className="mt-2 text-sm leading-6 text-white/88">
+                    One-time per wedding with premium designs, no branding, advanced RSVP, seating, vendors, invitations, contract AI, day-of tools, photo upgrades, collaboration, and priority support.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-serif text-lg text-[#24171D]">Launch Note</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm leading-6 text-[#6F3E54]">
+              <p>
+                Keep this hidden until payment links, plan limits, and upgrade messaging are ready. Turning it on only changes public pricing visibility.
+              </p>
+              <p className="font-semibold text-[#24171D]">
+                Recommended first launch: Free + $99 Complete.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {activeTab === "maintenance" && (
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
@@ -2786,203 +2617,6 @@ export default function OperationsCenterPage() {
                 </Card>
               ))}
             </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === "testActivity" && (
-        <div className="space-y-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-xl font-serif font-semibold text-[#24171D]">Free Test Account Activity</h2>
-              <p className="text-sm font-medium text-[#4A3941]">
-                Anonymous test sessions are separated from real user analytics.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              {[
-                { value: "test", label: "Show only testMode sessions" },
-                { value: "all", label: "Show all sessions" },
-                { value: "real", label: "Show real users only" },
-              ].map((option) => (
-                <Button
-                  key={option.value}
-                  size="sm"
-                  variant={testSessionFilter === option.value ? "default" : "outline"}
-                  onClick={() => setTestSessionFilter(option.value as "test" | "all" | "real")}
-                >
-                  {option.label}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          {isLoadingTestSessions ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 rounded-lg" />)}
-            </div>
-          ) : testSessions.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <FlaskConical className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
-                <p className="font-medium text-[#4A3941]">No sessions found for this filter.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {testSessions.map((session) => (
-                <Card key={session.sessionId}>
-                  <CardContent className="py-4">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2 mb-2">
-                          <h3 className="font-mono text-sm font-semibold text-[#24171D] break-all">{session.sessionId}</h3>
-                          <Badge className={session.testMode ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-800"}>
-                            testMode = {String(session.testMode)}
-                          </Badge>
-                          {session.errorsEncountered > 0 && (
-                            <Badge className="bg-red-100 text-red-800">{session.errorsEncountered} errors</Badge>
-                          )}
-                        </div>
-                        <div className="grid gap-2 text-xs font-medium text-[#4A3941] sm:grid-cols-2 lg:grid-cols-4">
-                          <span>Created: {new Date(session.createdAt).toLocaleString()}</span>
-                          <span>Last active: {new Date(session.lastActiveAt).toLocaleString()}</span>
-                          <span>Total events: {session.totalEvents}</span>
-                          <span>Pages visited: {session.pagesVisited.length}</span>
-                        </div>
-                        <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-5">
-                          <span className="rounded-md bg-muted px-2 py-1">Page views: {session.workflowProgress.pageViews}</span>
-                          <span className="rounded-md bg-muted px-2 py-1">Profile: {session.workflowProgress.profileVisits}</span>
-                          <span className="rounded-md bg-muted px-2 py-1">Guests: {session.workflowProgress.guestListVisits}</span>
-                          <span className="rounded-md bg-muted px-2 py-1">Invites: {session.workflowProgress.invitationStudioVisits}</span>
-                          <span className="rounded-md bg-muted px-2 py-1">Website: {session.workflowProgress.websiteEditorVisits}</span>
-                        </div>
-                        {session.pagesVisited.length > 0 && (
-                          <p className="mt-3 text-xs font-medium text-[#4A3941]">
-                            <span className="font-semibold text-[#24171D]">Pages:</span>{" "}
-                            {session.pagesVisited.slice(0, 10).join(", ")}
-                            {session.pagesVisited.length > 10 ? ` +${session.pagesVisited.length - 10} more` : ""}
-                          </p>
-                        )}
-                        {session.wizardsUsed.length > 0 && (
-                          <p className="mt-1 text-xs font-medium text-[#4A3941]">
-                            <span className="font-semibold text-[#24171D]">Wizards used:</span>{" "}
-                            {session.wizardsUsed.join(", ")}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === "launchPlan" && (
-        <div className="space-y-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <h2 className="text-xl font-serif font-semibold text-[#24171D]">A.IDO Launch Plan</h2>
-              <p className="text-sm font-medium text-[#4A3941]">
-                Generate a launch checklist, edit each task, add working notes, and check off what is finished.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={addLaunchPlanItem}
-                className="gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Add Item
-              </Button>
-              <Button
-                type="button"
-                onClick={() => generateLaunchPlanMutation.mutate()}
-                disabled={generateLaunchPlanMutation.isPending}
-                className="gap-2 bg-[#9A2E5C] hover:bg-[#7B2148]"
-              >
-                <Sparkles className="h-4 w-4" />
-                {generateLaunchPlanMutation.isPending ? "Generating..." : "Generate Checklist"}
-              </Button>
-            </div>
-          </div>
-
-          <Card>
-            <CardContent className="py-5">
-              <div className="grid gap-4 lg:grid-cols-[1fr_260px] lg:items-end">
-                <div>
-                  <label className="text-sm font-semibold text-[#24171D]">AI focus</label>
-                  <Textarea
-                    value={launchPlanPrompt}
-                    onChange={(event) => setLaunchPlanPrompt(event.target.value)}
-                    placeholder="Example: launch public beta, prep social posts, test payments, confirm privacy/security, and plan first users."
-                    className="mt-2 min-h-[86px]"
-                  />
-                </div>
-                <div className="rounded-lg border border-[#F0D7E0] bg-[#FFF8FA] p-4">
-                  <p className="text-sm font-semibold text-[#4A3941]">Progress</p>
-                  <p className="mt-1 text-3xl font-bold text-[#9A2E5C]">{launchPlanProgress}%</p>
-                  <p className="mt-1 text-xs font-medium text-[#4A3941]">
-                    {launchPlanCompletedCount} complete, {launchPlanOpenCount} open
-                  </p>
-                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#F4DDE5]">
-                    <div
-                      className="h-full rounded-full bg-[#9A2E5C] transition-all"
-                      style={{ width: `${launchPlanProgress}%` }}
-                    />
-                  </div>
-                  <div className="mt-3 space-y-1 text-xs font-medium text-[#4A3941]">
-                    {launchPlanAssigneeStats.map(stat => (
-                      <div key={stat.email} className="flex justify-between gap-3">
-                        <span className="truncate">{stat.name}</span>
-                        <span className="shrink-0">{stat.open} open</span>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="mt-2 text-[11px] font-medium text-[#7A5062]">
-                    {saveLaunchPlanMutation.isPending ? "Saving..." : hasLoadedLaunchPlan ? "Shared plan saved automatically" : "Loading shared plan"}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {isLoadingLaunchPlan ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map(i => <Skeleton key={i} className="h-40 rounded-lg" />)}
-            </div>
-          ) : (
-          <div className="space-y-6">
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold uppercase tracking-wide text-[#7A5062]">Open Tasks</h3>
-              {openLaunchPlanItems.length > 0 ? openLaunchPlanItems.map(renderLaunchPlanTaskCard) : (
-                <Card>
-                  <CardContent className="py-8 text-center text-sm font-medium text-[#4A3941]">No open launch tasks.</CardContent>
-                </Card>
-              )}
-            </div>
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold uppercase tracking-wide text-emerald-700">Completed</h3>
-              {completedLaunchPlanItems.length > 0 ? completedLaunchPlanItems.map(renderLaunchPlanTaskCard) : (
-                <Card>
-                  <CardContent className="py-8 text-center text-sm font-medium text-[#4A3941]">Completed launch tasks will move here.</CardContent>
-                </Card>
-              )}
-            </div>
-          </div>
-          )}
-
-          {launchPlanItems.length === 0 && (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <ListChecks className="mx-auto mb-4 h-12 w-12 text-muted-foreground/40" />
-                <p className="font-medium text-[#4A3941]">No launch tasks yet. Generate a checklist or add an item.</p>
-              </CardContent>
-            </Card>
           )}
         </div>
       )}

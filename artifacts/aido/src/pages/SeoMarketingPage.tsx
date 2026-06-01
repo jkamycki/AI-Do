@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { ArrowRight, Camera, CheckCircle2, CheckSquare, Globe2, HeartHandshake, MailCheck, Sparkles, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LaunchPricingSection } from "@/components/LaunchPricingSection";
 import { organizationSchema, setSeo, softwareSchema } from "@/lib/seo";
 
 type PageKey =
@@ -146,7 +147,7 @@ export default function SeoMarketingPage() {
             <Link href="/for-vendors" className="hover:text-[#8D294D]">Vendors</Link>
           </nav>
           <Button asChild className="h-10 shrink-0 rounded-full bg-[#8D294D] px-4 text-sm text-white hover:bg-[#6F1D3D] sm:px-5">
-            <Link href="/sign-up">Start Free</Link>
+            <Link href="/early-access">Join Beta</Link>
           </Button>
         </div>
         <nav className="mx-auto mt-3 grid max-w-6xl grid-cols-5 gap-1.5 pb-1 text-center text-[11px] font-bold text-[#6F3E54] md:hidden" aria-label="Related wedding tools">
@@ -173,7 +174,7 @@ export default function SeoMarketingPage() {
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button asChild className="h-12 w-full rounded-full bg-[#8D294D] px-6 text-white hover:bg-[#6F1D3D] sm:w-auto">
-                <Link href="/sign-up">Start planning free <ArrowRight className="h-4 w-4" /></Link>
+                <Link href="/early-access">Join founding couples <ArrowRight className="h-4 w-4" /></Link>
               </Button>
               <Button asChild variant="outline" className="h-12 w-full rounded-full border-[#B16C8E]/50 bg-white/55 px-6 text-[#8D294D] sm:w-auto">
                 <Link href="/">See all features</Link>
@@ -218,6 +219,8 @@ export default function SeoMarketingPage() {
           </div>
         </div>
       </section>
+
+      <LaunchPricingSection compact />
 
       <footer className="border-t border-[#E6A6B7]/35 px-5 py-8 text-center text-sm text-[#6F3E54]">
         <div className="mx-auto flex max-w-4xl flex-wrap justify-center gap-4">
