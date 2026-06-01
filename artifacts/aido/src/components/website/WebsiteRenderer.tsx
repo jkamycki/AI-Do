@@ -3151,7 +3151,7 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   {hotelPhone && (
                     <a
                       href={hotelPhoneHref}
-                      className={`mt-1 inline-flex items-center gap-1.5 text-sm font-semibold transition-opacity hover:opacity-70 ${isMobileRender ? "justify-center" : ""}`}
+                      className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold transition-opacity hover:opacity-70 ${isMobileRender ? "justify-center" : ""}`}
                       style={{ color: data.colorPalette.primary }}
                     >
                       <Phone className="h-3.5 w-3.5" />
