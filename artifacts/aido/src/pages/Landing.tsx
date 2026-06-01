@@ -125,7 +125,7 @@ export default function Landing() {
           <div className="justify-self-start">
             <LandingLanguagePicker />
           </div>
-          <nav className="hidden min-w-0 items-center justify-center gap-8 justify-self-center md:flex lg:gap-10" aria-label="Main navigation">
+          <nav className="hidden min-w-0 items-center justify-center gap-4 justify-self-center md:flex lg:gap-7" aria-label="Main navigation">
             <a href="#start">
               <Button variant="ghost" className="h-10 px-2 text-base font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E]">
                 How It Starts
@@ -141,6 +141,11 @@ export default function Landing() {
                 Watch Demo
               </Button>
             </a>
+            <Link href="/for-vendors">
+              <Button variant="ghost" className="h-10 px-2 text-base font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E]">
+                Partner With Us
+              </Button>
+            </Link>
             {launchPricingEnabled && (
               <a href="#pricing">
                 <Button variant="ghost" className="h-10 px-2 text-base font-medium text-[#8D294D] hover:bg-transparent hover:text-[#B16C8E]">
@@ -163,6 +168,13 @@ export default function Landing() {
             </Link>
           </nav>
         </div>
+        <nav className="mx-auto mt-2 flex max-w-7xl gap-2 overflow-x-auto pb-1 text-xs font-bold text-[#6F3E54] [scrollbar-width:none] md:hidden [&::-webkit-scrollbar]:hidden" aria-label="A.I DO sections">
+          <a href="#start" className="shrink-0 rounded-full border border-[#E6A6B7]/45 bg-white/70 px-3 py-2">How It Starts</a>
+          <a href="#essentials" className="shrink-0 rounded-full border border-[#E6A6B7]/45 bg-white/70 px-3 py-2">What You Get</a>
+          <a href="#demo" className="shrink-0 rounded-full border border-[#E6A6B7]/45 bg-white/70 px-3 py-2">Watch Demo</a>
+          <Link href="/for-vendors" className="shrink-0 rounded-full border border-[#E6A6B7]/45 bg-white/70 px-3 py-2">Partner With Us</Link>
+          {launchPricingEnabled && <a href="#pricing" className="shrink-0 rounded-full border border-[#E6A6B7]/45 bg-white/70 px-3 py-2">Pricing</a>}
+        </nav>
       </header>
 
       <main>
@@ -288,8 +300,8 @@ export default function Landing() {
         </section>
 
         <section id="demo" className="scroll-mt-24 bg-[#FFFDFB] px-4 py-12 sm:px-8 sm:py-16">
-          <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
-            <div>
+          <div className="mx-auto grid max-w-7xl gap-8 xl:grid-cols-[0.75fr_1.25fr] xl:items-center">
+            <div className="mx-auto max-w-3xl text-center xl:mx-0 xl:max-w-md xl:text-left">
               <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#B16C8E]">Quick demo</p>
               <h2 className="mt-3 text-balance font-serif text-3xl leading-tight text-[#8D294D] sm:text-5xl">
                 See how the planning pieces come together.
@@ -298,8 +310,8 @@ export default function Landing() {
                 The video is here for couples who want to feel the product before signing up. It should build trust, not slow down the page.
               </p>
             </div>
-            <div className="relative overflow-hidden rounded-[30px] border border-[#E6A6B7]/45 bg-white/78 p-3 shadow-[0_24px_70px_rgba(141,41,77,0.16)]">
-              <div className="relative aspect-[9/16] overflow-hidden rounded-[22px] bg-[#FFF7F2] sm:aspect-video">
+            <div className="relative mx-auto w-full max-w-5xl overflow-hidden rounded-[30px] border border-[#E6A6B7]/45 bg-white/78 p-2 shadow-[0_24px_70px_rgba(141,41,77,0.16)] sm:p-3">
+              <div className="relative aspect-video overflow-hidden rounded-[22px] bg-[#FFF7F2]">
                 <VideoTemplate embedded />
               </div>
             </div>
@@ -341,8 +353,6 @@ export default function Landing() {
             <Link href="/security" className="underline-offset-4 hover:underline">Security</Link>
             <Link href="/data-handling" className="underline-offset-4 hover:underline">Data Handling</Link>
             <Link href="/for-vendors/apply" className="underline-offset-4 hover:underline">Vendors</Link>
-            <Link href="/wedding-website-builder" className="underline-offset-4 hover:underline">Wedding Website Builder</Link>
-            <Link href="/wedding-photo-qr-code" className="underline-offset-4 hover:underline">Photo QR Code</Link>
           </div>
         </div>
       </footer>

@@ -136,10 +136,11 @@ const VENDOR_OPTIMIZED_IMAGE_QUALITY = 0.72;
 type VendorPartnerPage = "home" | "vendors" | "how-it-works" | "apply" | "sample-profile";
 
 function getVendorPartnerPage(path: string): VendorPartnerPage {
-  if (path.endsWith("/vendors")) return "vendors";
-  if (path.endsWith("/how-it-works")) return "how-it-works";
-  if (path.endsWith("/apply")) return "apply";
-  if (path.endsWith("/sample-profile")) return "sample-profile";
+  const cleanPath = path.replace(/\/+$/, "");
+  if (cleanPath === "/for-vendors/vendors") return "vendors";
+  if (cleanPath === "/for-vendors/how-it-works") return "how-it-works";
+  if (cleanPath === "/for-vendors/apply") return "apply";
+  if (cleanPath === "/for-vendors/sample-profile") return "sample-profile";
   return "home";
 }
 
@@ -358,7 +359,7 @@ export default function ForVendors() {
         {page === "sample-profile" && (
           <section className="bg-[#FFF7F2] px-4 py-10 sm:px-8">
             <div className="mx-auto max-w-6xl">
-              <MockDirectoryPreview compact />
+              <MockDirectoryPreview compact showBackLink />
             </div>
           </section>
         )}
@@ -371,7 +372,7 @@ export default function ForVendors() {
             className="absolute inset-0 h-full w-full object-cover"
           />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,247,242,0.98)_0%,rgba(255,247,242,0.9)_54%,rgba(255,247,242,0.32)_100%)] sm:bg-[linear-gradient(90deg,rgba(255,247,242,0.96)_0%,rgba(255,247,242,0.86)_43%,rgba(255,247,242,0.18)_100%)]" />
-          <div className="relative mx-auto flex min-h-[520px] max-w-6xl items-center px-4 py-10 sm:min-h-[560px] sm:px-8 sm:py-16">
+          <div className="relative mx-auto grid min-h-[520px] max-w-6xl items-center gap-8 px-4 py-10 sm:min-h-[560px] sm:px-8 sm:py-16 lg:grid-cols-[0.9fr_1.1fr]">
             <div className="max-w-xl">
               <p className="mb-4 inline-flex max-w-full items-center gap-2 rounded-full border border-[#E6C7D0] bg-white/75 px-3 py-2 text-xs font-bold uppercase tracking-[0.16em] text-[#B16C8E] sm:px-4 sm:tracking-[0.22em]">
                 <Sparkles className="h-4 w-4" />
@@ -388,13 +389,21 @@ export default function ForVendors() {
                   <Link href="/for-vendors/apply">Apply Free</Link>
                 </Button>
                 <Button asChild variant="outline" className="h-12 w-full rounded-lg border-[#E6A6B7] bg-white/80 px-8 text-base font-bold text-[#6F3E54] hover:bg-white sm:w-auto">
-                  <Link href="/for-vendors/vendors">See Founding Offer</Link>
+                  <a href="#partner-profile-preview">See Profile Mock</a>
                 </Button>
               </div>
             </div>
-            <div className="absolute bottom-10 right-6 hidden lg:block">
-              <VendorBadge size="large" />
+            <div className="hidden lg:block">
+              <HeroProfileMock />
             </div>
+          </div>
+        </section>
+        )}
+
+        {(page === "home" || page === "vendors") && (
+        <section className="bg-[#FFFDFB] px-4 py-14 sm:px-8">
+          <div className="mx-auto max-w-6xl">
+            <MockDirectoryPreview />
           </div>
         </section>
         )}
@@ -446,7 +455,6 @@ export default function ForVendors() {
                 );
               })}
             </div>
-            <MockDirectoryPreview />
           </div>
         </section>
         )}
@@ -631,8 +639,8 @@ export default function ForVendors() {
                           Upload up to 3 examples, then crop and position each one for your future vendor profile.
                         </p>
                       </div>
-                      <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-[#E6A6B7] bg-white px-4 text-sm font-semibold text-[#8D294D] hover:border-[#8D294D]">
-                        <ImagePlus className="h-4 w-4" />
+                      <label className="inline-flex h-10 w-full shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-[#E6A6B7] bg-white px-4 text-sm font-semibold leading-none text-[#8D294D] hover:border-[#8D294D] sm:w-auto sm:min-w-[154px]">
+                        <ImagePlus className="h-4 w-4 shrink-0" />
                         Upload photos
                         <input
                           type="file"
@@ -768,7 +776,60 @@ function VendorBadge({ size = "default" }: { size?: "default" | "large" }) {
   );
 }
 
-function MockDirectoryPreview({ compact = false }: { compact?: boolean }) {
+function HeroProfileMock() {
+  return (
+    <div className="ml-auto max-w-[34rem] rounded-[2rem] border border-[#E6C7D0]/80 bg-white/82 p-4 shadow-[0_24px_70px_rgba(90,80,124,0.18)] backdrop-blur">
+      <div className="overflow-hidden rounded-[1.4rem] border border-[#E8DDE8] bg-[#FFF7F2]">
+        <div className="grid grid-cols-[1.1fr_0.9fr] gap-3 p-4">
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-sm">
+              <div className="flex h-16 w-20 items-center justify-center rounded-xl border border-[#E6C7D0] bg-[#FFFDFB]">
+                <div className="text-center">
+                  <p className="font-serif text-lg leading-none text-[#8D294D]">Everly</p>
+                  <p className="text-[8px] font-bold uppercase tracking-[0.22em] text-[#B16C8E]">Studio</p>
+                </div>
+              </div>
+              <div className="min-w-0">
+                <p className="font-serif text-2xl font-bold leading-tight text-[#24171D]">Everly Rose Photo</p>
+                <p className="mt-1 text-xs font-semibold text-[#6F3E54]">Photography | Florida</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <img src="/images/default-wedding-couple.jpg" alt="Mock vendor profile gallery" className="aspect-square rounded-xl object-cover" />
+              <img src="/images/floral-bg.png" alt="Mock vendor details" className="aspect-square rounded-xl object-cover" />
+              <img src="/images/bokeh-bg.png" alt="Mock vendor reception" className="aspect-square rounded-xl object-cover" />
+            </div>
+            <div className="rounded-2xl bg-white p-3 shadow-sm">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#B16C8E]">Services</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {["Wedding day coverage", "Engagements", "Online gallery"].map((service) => (
+                  <span key={service} className="rounded-full bg-[#FFF7F2] px-2 py-1 text-[10px] font-bold text-[#6F3E54]">{service}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+          <aside className="space-y-3">
+            <div className="rounded-2xl bg-white p-3 shadow-sm">
+              <VendorBadge />
+            </div>
+            <div className="rounded-2xl bg-[#8D294D] p-3 text-white shadow-sm">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/75">Couple action</p>
+              <p className="mt-2 font-serif text-2xl leading-tight">Message Partner</p>
+              <p className="mt-2 text-xs leading-5 text-white/82">Couples can view your work and contact you from the profile.</p>
+            </div>
+            <div className="rounded-2xl bg-white p-3 shadow-sm">
+              <p className="text-xs font-bold text-[#8D294D]">Starting Price</p>
+              <p className="font-serif text-2xl text-[#24171D]">From $3,200</p>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <p className="mt-3 text-center text-xs font-bold uppercase tracking-[0.2em] text-[#8D294D]">Mock profile preview</p>
+    </div>
+  );
+}
+
+function MockDirectoryPreview({ compact = false, showBackLink = false }: { compact?: boolean; showBackLink?: boolean }) {
   const demoProfileUrl = `${publicAppOrigin()}/for-vendors/sample-profile`;
   const mockQrUrl = qrSvgDataUrl(demoProfileUrl, 7, 3);
   const services = [
@@ -795,10 +856,12 @@ function MockDirectoryPreview({ compact = false }: { compact?: boolean }) {
       )}
 
       <div className="mt-8 rounded-[1.25rem] border border-[#E8DDE8] bg-[#FFF7F2] p-4 shadow-[0_24px_55px_rgba(90,80,124,0.12)] sm:p-6">
+        {showBackLink && (
         <Link href="/for-vendors/how-it-works#partner-profile-preview" className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-[#8D294D] hover:underline">
           <span aria-hidden="true">&lt;-</span>
           Back to partner network
         </Link>
+        )}
 
         <div className="grid gap-5 lg:grid-cols-[1fr_18rem]">
           <div className="space-y-5">
