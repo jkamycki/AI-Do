@@ -186,7 +186,7 @@ function AuthPageWrapper({ children }: { children: React.ReactNode }) {
       style={{ background: "#FFF7F2" }}
     >
       <div className="relative flex flex-col items-center gap-2">
-        <img src="/logo.png" alt="A.IDO" className="h-24 w-auto object-contain" style={{ filter: "drop-shadow(0 16px 28px rgba(141,41,77,0.25))" }} />
+        <img src="/logo-optimized.jpg" alt="A.IDO" className="h-24 w-auto object-contain" decoding="async" style={{ filter: "drop-shadow(0 16px 28px rgba(141,41,77,0.25))" }} />
         <p className="text-sm font-medium tracking-widest uppercase" style={{ color: "#6F3E54" }}>AI Wedding Planning OS</p>
       </div>
       <div className="relative w-full max-w-md">

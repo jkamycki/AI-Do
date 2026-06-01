@@ -1,14 +1,15 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/authFetch";
 import { Link } from "wouter";
 import { BadgeDollarSign, CheckSquare, Clock3, Globe2, MailCheck, ShieldCheck, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { LanguagePicker } from "@/components/LanguagePicker";
-import VideoTemplate from "@/components/video/VideoTemplate";
 import { LaunchPricingSection, useLaunchPricingEnabled } from "@/components/LaunchPricingSection";
 import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 import { organizationSchema, setSeo, softwareSchema } from "@/lib/seo";
+
+const VideoTemplate = lazy(() => import("@/components/video/VideoTemplate"));
 
 const LANG_CODE_TO_NAME: Record<string, string> = Object.fromEntries(
   Object.entries(LANG_NAME_TO_CODE).map(([name, code]) => [code, name])
@@ -85,6 +86,53 @@ function LandingLanguagePicker() {
   );
 }
 
+function DeferredDemoVideo() {
+  const [shouldLoad, setShouldLoad] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (shouldLoad) return;
+    const element = containerRef.current;
+    if (!element) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setShouldLoad(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "360px 0px" },
+    );
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [shouldLoad]);
+
+  return (
+    <div ref={containerRef} className="relative aspect-[4/3] overflow-hidden rounded-[22px] bg-[#FFF7F2] sm:aspect-[16/10] lg:aspect-[16/9] xl:aspect-[16/10]">
+      {shouldLoad ? (
+        <Suspense fallback={<DemoVideoSkeleton />}>
+          <VideoTemplate embedded />
+        </Suspense>
+      ) : (
+        <DemoVideoSkeleton />
+      )}
+    </div>
+  );
+}
+
+function DemoVideoSkeleton() {
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#FFF7F2,#FFFDFB,#F7DDE2)] p-6 text-center">
+      <div>
+        <p className="text-sm font-bold uppercase tracking-[0.22em] text-[#B16C8E]">Demo loading soon</p>
+        <p className="mt-3 font-serif text-3xl font-semibold text-[#8D294D]">A calm preview, without slowing the first page.</p>
+      </div>
+    </div>
+  );
+}
+
 export default function Landing() {
   const { t } = useTranslation();
   const launchPricingEnabled = useLaunchPricingEnabled();
@@ -124,7 +172,7 @@ export default function Landing() {
         <div className="mx-auto grid max-w-7xl grid-cols-[auto_1fr_auto] items-center gap-3">
           <div className="flex min-w-0 items-center gap-2 justify-self-start sm:gap-3">
             <Link href="/" aria-label="A.I DO home" className="flex shrink-0 items-center">
-              <img src="/logo.png" alt="A.I DO" className="h-9 w-auto object-contain sm:h-11" />
+              <img src="/logo-optimized.jpg" alt="A.I DO" className="h-9 w-auto object-contain sm:h-11" decoding="async" />
             </Link>
             <LandingLanguagePicker />
           </div>
@@ -186,6 +234,8 @@ export default function Landing() {
             src="/images/default-wedding-couple.jpg"
             alt="Couple walking together on their wedding day"
             className="absolute inset-0 h-full w-full object-cover"
+            decoding="async"
+            fetchPriority="high"
           />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,247,242,0.98)_0%,rgba(255,247,242,0.92)_44%,rgba(255,247,242,0.74)_100%)] md:bg-[linear-gradient(90deg,rgba(255,247,242,0.98)_0%,rgba(255,247,242,0.92)_47%,rgba(255,247,242,0.38)_100%)]" />
           <div className="absolute inset-x-0 top-0 h-1.5 bg-[linear-gradient(90deg,#8D294D,#E6A6B7,#F2E2C6,#B16C8E)]" />
@@ -314,9 +364,7 @@ export default function Landing() {
               </p>
             </div>
             <div className="relative mx-auto w-full max-w-5xl overflow-hidden rounded-[30px] border border-[#E6A6B7]/45 bg-white/78 p-2 shadow-[0_24px_70px_rgba(141,41,77,0.16)] sm:p-3">
-              <div className="relative aspect-[4/3] overflow-hidden rounded-[22px] bg-[#FFF7F2] sm:aspect-[16/10] lg:aspect-[16/9] xl:aspect-[16/10]">
-                <VideoTemplate embedded />
-              </div>
+              <DeferredDemoVideo />
             </div>
           </div>
         </section>
@@ -341,12 +389,12 @@ export default function Landing() {
           </div>
         </section>
 
-        <LaunchPricingSection />
+        <LaunchPricingSection enabled={launchPricingEnabled} />
       </main>
 
       <footer className="border-t border-[#E6A6B7]/35 bg-[#FFF7F2] px-8 py-8 text-center text-sm text-[#8D294D]/70">
         <div className="mx-auto flex max-w-3xl flex-col items-center gap-3">
-          <img src="/logo.png" alt="A.I Do" className="h-20 w-auto object-contain" />
+          <img src="/logo-optimized.jpg" alt="A.I Do" className="h-20 w-auto object-contain" loading="lazy" decoding="async" />
           <p>{t("landing.footer_brand", { defaultValue: "A.IDO - AI Wedding Planner Assistant" })}</p>
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs">
             <span>&copy; {new Date().getFullYear()} A.IDO. {t("landing.footer_rights", { defaultValue: "All rights reserved." })}</span>

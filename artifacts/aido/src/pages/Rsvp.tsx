@@ -443,7 +443,7 @@ export default function Rsvp() {
             </div>
             <div style={{ borderTop: `1px solid ${CARD_BDR}`, paddingTop: "1.25rem" }}>
               <img
-                src="/logo.png"
+                src="/logo-optimized.jpg"
                 alt="A.IDO"
                 style={{ height: 34, width: "auto", objectFit: "contain", margin: "0 auto 0.75rem" }}
               />
@@ -866,7 +866,7 @@ export default function Rsvp() {
             )}
             <div style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid ${CARD_BDR}`, textAlign: "center" }}>
               <img
-                src="/logo.png"
+                src="/logo-optimized.jpg"
                 alt="A.IDO"
                 style={{ display: "block", height: 30, width: "auto", objectFit: "contain", margin: "0 auto 8px" }}
               />
@@ -1312,7 +1312,7 @@ export default function Rsvp() {
           dark-card MUTED (white@55%) which would be invisible on white. */}
       <div style={{ marginTop: 28, textAlign: "center" }}>
         <img
-          src="/logo.png"
+          src="/logo-optimized.jpg"
           alt="A.IDO"
           style={{ display: "block", height: 30, width: "auto", objectFit: "contain", margin: "0 auto 8px" }}
         />

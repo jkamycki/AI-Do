@@ -216,7 +216,7 @@ const SAMPLE_VENDOR_DIRECTORY: VendorDirectoryListing[] = [
     contactName: "Maya Bennett",
     email: "hello@lumenandlace.example",
     fit: "Editorial style, warm film tones, and strong getting-ready coverage.",
-    gallery: ["/images/default-wedding-couple.jpg", "/images/floral-bg.png", "/opengraph.jpg", "/images/bokeh-bg.png"],
+    gallery: ["/images/default-wedding-couple.jpg", "/images/floral-bg-optimized.jpg", "/opengraph.jpg", "/images/bokeh-bg-optimized.jpg"],
     id: "lumen-lace-photo",
     instagram: "@lumenandlacephoto",
     location: "South Florida",
@@ -238,7 +238,7 @@ const SAMPLE_VENDOR_DIRECTORY: VendorDirectoryListing[] = [
     contactName: "Isabel Cruz",
     email: "studio@verdepetal.example",
     fit: "Romantic garden arrangements, ceremony arches, and candle-heavy reception styling.",
-    gallery: ["/images/floral-bg.png", "/images/default-wedding-couple.jpg", "/images/bokeh-bg.png", "/opengraph.jpg"],
+    gallery: ["/images/floral-bg-optimized.jpg", "/images/default-wedding-couple.jpg", "/images/bokeh-bg-optimized.jpg", "/opengraph.jpg"],
     id: "verde-petal-studio",
     instagram: "@verdepetalstudio",
     location: "Miami / Fort Lauderdale",
@@ -260,7 +260,7 @@ const SAMPLE_VENDOR_DIRECTORY: VendorDirectoryListing[] = [
     contactName: "Andre Cole",
     email: "bookings@coleevents.example",
     fit: "Clean MC style, bilingual announcements, ceremony sound, and reception dance floor.",
-    gallery: ["/opengraph.jpg", "/images/bokeh-bg.png", "/images/default-wedding-couple.jpg", "/images/floral-bg.png"],
+    gallery: ["/opengraph.jpg", "/images/bokeh-bg-optimized.jpg", "/images/default-wedding-couple.jpg", "/images/floral-bg-optimized.jpg"],
     id: "cole-events-dj",
     instagram: "@coleeventsdj",
     location: "Tri-County Area",
@@ -2742,7 +2742,7 @@ function VendorDirectoryProfile({
           <section className="overflow-hidden rounded-xl border border-[#E8C9D4] bg-card shadow-sm">
             <div className="grid grid-cols-[1fr_86px] items-center gap-3 bg-[linear-gradient(90deg,#FFF7F2,#FFFFFF)] p-4">
               <div className="flex min-w-0 items-center gap-2">
-                <img src="/logo.png" alt="A.I DO logo" className="h-11 w-11 shrink-0 object-contain" />
+                <img src="/logo-optimized.jpg" alt="A.I DO logo" className="h-11 w-11 shrink-0 object-contain" loading="lazy" decoding="async" />
                 <div>
                   <p className="text-[11px] font-semibold text-[#8D294D]">Proud Partner of</p>
                   <p className="font-serif text-2xl leading-none text-[#8D294D]">A.I DO</p>

@@ -58,7 +58,7 @@ export default function EarlyAccess() {
       <header className="border-b border-[#E6A6B7]/45 bg-[#FFF7F2]/95 px-4 py-3 backdrop-blur sm:px-5 sm:py-4">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
           <Link href="/" className="flex min-w-0 items-center gap-2">
-            <img src="/logo.png" alt="A.I DO" className="h-11 w-auto shrink-0 sm:h-14" />
+            <img src="/logo-optimized.jpg" alt="A.I DO" className="h-11 w-auto shrink-0 sm:h-14" decoding="async" />
           </Link>
           <nav className="hidden items-center gap-5 text-sm font-semibold text-[#6F3E54] md:flex">
             <Link href="/ai-wedding-planner" className="hover:text-[#8D294D]">AI Planner</Link>

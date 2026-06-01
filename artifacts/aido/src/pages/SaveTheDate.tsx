@@ -557,7 +557,7 @@ export default function SaveTheDate() {
         {/* Footer — matches email card footer */}
         <div style={{ backgroundColor: BG, padding: "16px 24px", textAlign: "center", borderTop: `1px solid ${CARD_BDR}` }}>
           <img
-            src="/logo.png"
+            src="/logo-optimized.jpg"
             alt="A.IDO"
             style={{ display: "block", height: 30, width: "auto", objectFit: "contain", margin: "0 auto 8px" }}
           />

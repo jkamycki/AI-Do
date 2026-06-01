@@ -43,7 +43,7 @@ type PhotoDropUsage = {
 };
 
 const PHOTO_DROP_HERO_IMAGE =
-  "/images/bokeh-bg.png";
+  "/images/bokeh-bg-optimized.jpg";
 const PORTAL_ONLY_INSTRUCTIONS =
   "Share your favorite wedding day moments here. Add a caption if you'd like, and the couple will review every photo privately.";
 
@@ -381,7 +381,7 @@ export default function PublicGuestPhotoDrop() {
               className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-[1.35rem] border bg-white/90 p-2 shadow-[0_18px_42px_rgba(91,15,42,0.16)] backdrop-blur"
               style={{ borderColor: `${accent}55`, boxShadow: `0 18px 42px ${primary}24` }}
             >
-              <img src="/logo.png" alt="A.I Do" className="h-full w-full object-contain" />
+              <img src="/logo-optimized.jpg" alt="A.I Do" className="h-full w-full object-contain" decoding="async" />
             </div>
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#8D294D]">{coupleName(data)}</p>
             <h1 className="mt-3 font-serif text-4xl font-bold leading-tight text-[#5B0F2A]">{drop.title || "Guest Photo Drop"}</h1>
@@ -538,7 +538,7 @@ export default function PublicGuestPhotoDrop() {
               </div>
             )}
             <div className="border-t border-[#F2C7D1]/60 pt-5">
-              <img src="/logo.png" alt="A.I Do" className="mx-auto h-11 w-auto object-contain opacity-95" />
+              <img src="/logo-optimized.jpg" alt="A.I Do" className="mx-auto h-11 w-auto object-contain opacity-95" loading="lazy" decoding="async" />
               <p className="mt-3 text-xs font-bold uppercase tracking-[0.22em] text-[#8D294D]">Powered by A.I Do</p>
               <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-[#6F3E54]">
                 Create your wedding website, RSVP flow, and guest photo drop with A.I Do.

@@ -63,8 +63,9 @@ function FeatureList({ items }: { items: string[] }) {
   );
 }
 
-export function LaunchPricingSection({ compact = false }: { compact?: boolean }) {
-  const enabled = useLaunchPricingEnabled();
+export function LaunchPricingSection({ compact = false, enabled: controlledEnabled }: { compact?: boolean; enabled?: boolean }) {
+  const fetchedEnabled = useLaunchPricingEnabled();
+  const enabled = controlledEnabled ?? fetchedEnabled;
   if (!enabled) return null;
 
   return (

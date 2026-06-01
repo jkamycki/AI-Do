@@ -571,7 +571,7 @@ export function Sidebar() {
           {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </Button>
         <div className="flex-1 flex items-center justify-end gap-2">
-          <img src="/logo.png" alt="A.I Do Logo" className="h-14 w-auto object-contain" />
+          <img src="/logo-optimized.jpg" alt="A.I Do Logo" className="h-14 w-auto object-contain" decoding="async" />
           <span className="text-[9px] font-bold tracking-[0.18em] uppercase px-1.5 py-0.5 rounded-full border border-primary/50 text-primary bg-primary/10 dark:bg-primary/10 dark:text-primary dark:border-primary/35">
             BETA
           </span>
@@ -590,7 +590,7 @@ export function Sidebar() {
         `}
       >
         <div className="hidden md:flex flex-col items-center justify-center px-4 py-3 border-b border-primary/10 gap-1">
-          <img src="/logo.png" alt="A.I Do - AI Wedding Planner Assistant" className="h-20 w-auto object-contain" />
+          <img src="/logo-optimized.jpg" alt="A.I Do - AI Wedding Planner Assistant" className="h-20 w-auto object-contain" decoding="async" />
           <span className="text-[10px] font-bold tracking-[0.22em] uppercase px-2.5 py-0.5 rounded-full border border-primary/50 text-primary bg-primary/10 dark:bg-primary/10 dark:text-primary dark:border-primary/35">
             BETA
           </span>

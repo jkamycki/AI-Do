@@ -26,6 +26,15 @@ function setMeta(name: string, content: string, isProperty = false) {
   el.setAttribute("content", content);
 }
 
+function firstHeroImageUrl(data: WebsiteRendererPayload): string | null {
+  const sortedHeroImages = (data.heroImages ?? [])
+    .slice()
+    .sort((a, b) => a.order - b.order)
+    .map((image) => image.url)
+    .filter(Boolean);
+  return sortedHeroImages[0] || data.heroImage || null;
+}
+
 function PasswordGate({
   accent,
   font,
@@ -255,6 +264,24 @@ export default function PublicWebsite() {
       document.title = "Wedding Website";
     }
   }, [data]);
+
+  useEffect(() => {
+    if (!data || currentSection !== "home") return;
+    const heroUrl = firstHeroImageUrl(data);
+    if (!heroUrl) return;
+    const existing = document.head.querySelector(`link[data-aido-public-hero-preload="${slug}"]`);
+    if (existing) return;
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.as = "image";
+    link.href = heroUrl;
+    link.setAttribute("fetchpriority", "high");
+    link.setAttribute("data-aido-public-hero-preload", slug);
+    document.head.appendChild(link);
+    return () => {
+      link.remove();
+    };
+  }, [currentSection, data, slug]);
 
   if (maintenance.data?.active) {
     return <MaintenanceNotice message={maintenance.data.message} />;

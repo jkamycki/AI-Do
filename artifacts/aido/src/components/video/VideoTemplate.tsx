@@ -44,12 +44,12 @@ export default function VideoTemplate({ embedded = false }: { embedded?: boolean
     <div className={rootClass}>
       <div className="absolute inset-0 z-0">
         <motion.div
-          className="absolute inset-0 bg-[url('/images/bokeh-bg.png')] bg-cover bg-center opacity-35"
+          className="absolute inset-0 bg-[url('/images/bokeh-bg-optimized.jpg')] bg-cover bg-center opacity-35"
           animate={{ scale: [1.02, 1.06, 1.02] }}
           transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
         />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,247,242,0.84)_0%,rgba(255,247,242,0.72)_48%,rgba(242,226,198,0.48)_100%)]" />
-        <div className="absolute inset-x-0 top-0 h-[46%] bg-[url('/images/floral-bg.png')] bg-cover bg-center opacity-20 mix-blend-multiply" />
+        <div className="absolute inset-x-0 top-0 h-[46%] bg-[url('/images/floral-bg-optimized.jpg')] bg-cover bg-center opacity-20 mix-blend-multiply" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_62%_at_50%_43%,rgba(255,255,255,0.74)_0%,rgba(255,247,242,0.32)_48%,rgba(230,166,183,0.18)_100%)]" />
       </div>
 

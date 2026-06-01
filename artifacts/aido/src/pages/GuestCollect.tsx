@@ -61,7 +61,7 @@ const AIDO_MARKETING_URL = "https://aidowedding.net?theme=light";
 function Logo({ className }: { className?: string }) {
   return (
     <img
-      src="/logo.png"
+      src="/logo-optimized.jpg"
       alt="A.IDO - AI Wedding Planning OS"
       className={className ?? "h-16 w-auto object-contain"}
     />

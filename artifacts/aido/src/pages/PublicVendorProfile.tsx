@@ -193,7 +193,7 @@ export default function PublicVendorProfile() {
 
             <section className="overflow-hidden rounded-2xl border border-[#E8C9D4] bg-white shadow-sm">
               <div className="flex items-center gap-3 bg-[linear-gradient(90deg,#FFF7F2,#FFFFFF)] p-4">
-                <img src="/logo.png" alt="A.I DO logo" className="h-12 w-12 shrink-0 object-contain" />
+                <img src="/logo-optimized.jpg" alt="A.I DO logo" className="h-12 w-12 shrink-0 object-contain" loading="lazy" decoding="async" />
                 <div>
                   <p className="text-[11px] font-semibold text-[#8D294D]">Proud Partner of</p>
                   <p className="font-serif text-3xl leading-none text-[#8D294D]">A.I DO</p>

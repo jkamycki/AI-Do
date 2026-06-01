@@ -36,7 +36,7 @@ const BETA_FEEDBACK_ACTIVE_MS_KEY = "aido-beta-feedback-engaged-ms-v2";
 function AriaRobotAvatar({ className = "" }: { className?: string }) {
   return (
     <div className={`rounded-full bg-white border border-primary/15 shadow-sm overflow-hidden flex items-center justify-center ${className}`}>
-      <img src="/aria-avatar.png" alt="Aria" className="h-full w-full object-cover" />
+      <img src="/aria-avatar-optimized.jpg" alt="Aria" className="h-full w-full object-cover" loading="lazy" decoding="async" />
     </div>
   );
 }

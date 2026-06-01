@@ -1964,7 +1964,11 @@ function AuthBgSlide({
   const blobUrl = useAuthBlobUrl(url);
   const resolved = resolveMediaUrl(url);
   const requiresAuth = isMediaAuthRequired(url) || isMediaAuthRequired(resolved);
-  const usableUrl = blobUrl && (!requiresAuth || blobUrl !== resolved) ? blobUrl : null;
+  const usableUrl = requiresAuth
+    ? blobUrl && blobUrl !== resolved
+      ? blobUrl
+      : null
+    : blobUrl || resolved;
   return (
     <div
       className={className}
@@ -4653,7 +4657,7 @@ function BrandingFooter() {
       >
         <span className="text-xs font-medium uppercase tracking-[0.18em] sm:normal-case sm:tracking-normal">Built with</span>
         <span className="inline-flex items-center justify-center gap-2.5">
-          <img src="/logo.png" alt="A.IDO" className="h-10 w-auto object-contain" />
+          <img src="/logo-optimized.jpg" alt="A.IDO" className="h-10 w-auto object-contain" loading="lazy" decoding="async" />
           <span
             className="font-semibold tracking-wide text-base"
             style={{ color: "#F3C6D3" }}

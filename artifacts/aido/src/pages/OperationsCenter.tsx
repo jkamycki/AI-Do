@@ -544,7 +544,8 @@ export default function OperationsCenterPage() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [expandedTicketIds, setExpandedTicketIds] = useState<Set<number | string>>(new Set());
-  const [activeTab, setActiveTab] = useState<"tickets" | "messages" | "tracking" | "vendorIntake" | "users" | "recovery" | "workflow" | "pricing" | "maintenance">("tickets");
+  const [activeTab, setActiveTab] = useState<"tickets" | "email" | "messages" | "tracking" | "vendorIntake" | "users" | "recovery" | "workflow" | "pricing" | "maintenance">("tickets");
+  const [activeMailbox, setActiveMailbox] = useState<"partners" | "support">("partners");
   const [workflowFilter, setWorkflowFilter] = useState<"all" | "completed" | "in_progress" | "not_started">("all");
   const [userSearch, setUserSearch] = useState("");
   const [userToDelete, setUserToDelete] = useState<SignedUpUser | null>(null);
@@ -628,8 +629,8 @@ export default function OperationsCenterPage() {
       if (!r.ok) throw new Error("Failed to fetch vendor partner applications");
       return r.json();
     },
-    enabled: isAdmin && activeTab === "vendorIntake",
-    refetchInterval: isAdmin && activeTab === "vendorIntake" ? 30000 : false,
+    enabled: isAdmin && (activeTab === "vendorIntake" || activeTab === "email"),
+    refetchInterval: isAdmin && (activeTab === "vendorIntake" || activeTab === "email") ? 30000 : false,
   });
   const vendorApplications = vendorApplicationsData?.applications ?? [];
   const newVendorApplicationCount = vendorApplications.filter(application => application.status === "new").length;
@@ -1062,6 +1063,15 @@ export default function OperationsCenterPage() {
   const filteredTickets = filterStatus === "all"
     ? tickets
     : tickets.filter((t: any) => t.status === filterStatus);
+  const emailPartnerThreads = [...vendorApplications].sort((a, b) => {
+    const aLast = a.replies?.at(-1)?.createdAt ?? a.updatedAt ?? a.createdAt;
+    const bLast = b.replies?.at(-1)?.createdAt ?? b.updatedAt ?? b.createdAt;
+    return new Date(bLast).getTime() - new Date(aLast).getTime();
+  });
+  const emailSupportThreads = [...tickets].sort((a: any, b: any) =>
+    new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime(),
+  );
+  const openSupportThreadCount = tickets.filter((ticket: any) => ticket.status !== "resolved" && ticket.status !== "closed").length;
 
   const stats = {
     total: tickets.length,
@@ -1169,6 +1179,19 @@ export default function OperationsCenterPage() {
           Support Tickets
         </button>
         <button
+          onClick={() => setActiveTab("email")}
+          className={`flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
+            ${activeTab === "email" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
+        >
+          <Mail className="h-4 w-4" />
+          Email
+          {newVendorApplicationCount + openSupportThreadCount > 0 && (
+            <span className="ml-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-xs font-bold text-white">
+              {newVendorApplicationCount + openSupportThreadCount}
+            </span>
+          )}
+        </button>
+        <button
           onClick={() => setActiveTab("messages")}
           className={`flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors
             ${activeTab === "messages" ? "border-primary text-[#5B0F2A]" : "border-transparent text-[#4A3941] hover:text-[#24171D]"}`}
@@ -1248,6 +1271,174 @@ export default function OperationsCenterPage() {
           Maintenance Mode
         </button>
       </div>
+
+      {activeTab === "email" && (
+        <div className="space-y-5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 className="text-xl font-serif font-semibold text-[#24171D]">Email</h2>
+              <p className="text-sm font-medium text-[#4A3941]">
+                Keep partner and support conversations organized while email sending is being connected.
+              </p>
+            </div>
+            <div className="inline-flex rounded-full border border-[#E6C7D2] bg-[#FFF8F4] p-1">
+              <button
+                type="button"
+                onClick={() => setActiveMailbox("partners")}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  activeMailbox === "partners" ? "bg-primary text-white shadow-sm" : "text-[#6F3E54] hover:bg-white"
+                }`}
+              >
+                Partners
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveMailbox("support")}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  activeMailbox === "support" ? "bg-primary text-white shadow-sm" : "text-[#6F3E54] hover:bg-white"
+                }`}
+              >
+                Support
+              </button>
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <Card className={activeMailbox === "partners" ? "border-primary/40 bg-[#FFF8FA]" : ""}>
+              <CardContent className="flex items-start justify-between gap-3 py-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#8D294D]/70">Partners mailbox</p>
+                  <p className="mt-1 font-serif text-xl font-semibold text-[#24171D]">partners@aidowedding.net</p>
+                  <p className="mt-1 text-sm font-medium text-[#6F3E54]">{emailPartnerThreads.length} vendor conversation{emailPartnerThreads.length === 1 ? "" : "s"}</p>
+                </div>
+                <Button variant="outline" size="sm" asChild>
+                  <a href="mailto:partners@aidowedding.net">Email</a>
+                </Button>
+              </CardContent>
+            </Card>
+            <Card className={activeMailbox === "support" ? "border-primary/40 bg-[#FFF8FA]" : ""}>
+              <CardContent className="flex items-start justify-between gap-3 py-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#8D294D]/70">Support mailbox</p>
+                  <p className="mt-1 font-serif text-xl font-semibold text-[#24171D]">support@aidowedding.net</p>
+                  <p className="mt-1 text-sm font-medium text-[#6F3E54]">{openSupportThreadCount} open support thread{openSupportThreadCount === 1 ? "" : "s"}</p>
+                </div>
+                <Button variant="outline" size="sm" asChild>
+                  <a href="mailto:support@aidowedding.net">Email</a>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-serif text-lg text-[#24171D]">
+                {activeMailbox === "partners" ? "Partner Conversations" : "Support Conversations"}
+              </CardTitle>
+              <p className="text-sm font-medium text-[#4A3941]">
+                {activeMailbox === "partners"
+                  ? "Vendor applications and partner replies that should live under partners@aidowedding.net."
+                  : "Support tickets and follow-ups that should live under support@aidowedding.net."}
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {activeMailbox === "partners" ? (
+                isLoadingVendorApplications ? (
+                  [1, 2, 3].map(i => <Skeleton key={i} className="h-28 rounded-lg" />)
+                ) : emailPartnerThreads.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-[#E6C7D2] bg-[#FFF8F4] p-8 text-center">
+                    <Store className="mx-auto h-9 w-9 text-[#8D294D]/60" />
+                    <p className="mt-3 font-semibold text-[#24171D]">No partner messages yet</p>
+                    <p className="mt-1 text-sm text-[#6F3E54]">Vendor applications will appear here first.</p>
+                  </div>
+                ) : (
+                  emailPartnerThreads.map(application => {
+                    const latestReply = application.replies?.[application.replies.length - 1];
+                    return (
+                      <div key={application.id} className="rounded-xl border border-[#E6C7D2] bg-white p-4">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="truncate font-serif text-xl font-semibold text-[#24171D]">{application.businessName}</p>
+                              <Badge variant="outline" className="border-[#E6C7D2] bg-[#FFF8F4] text-[#6F3E54]">{application.status}</Badge>
+                            </div>
+                            <p className="mt-1 text-sm font-medium text-[#4A3941]">
+                              {application.contactName} · {application.email}
+                            </p>
+                            <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#24171D]">
+                              {latestReply?.body || application.description || "Vendor partner application received. No thread replies yet."}
+                            </p>
+                            <p className="mt-2 text-xs font-medium text-[#6F3E54]">
+                              Last activity {new Date(latestReply?.createdAt ?? application.updatedAt ?? application.createdAt).toLocaleString()}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="shrink-0"
+                            onClick={() => {
+                              setVendorIntakeFilter("all");
+                              setActiveTab("vendorIntake");
+                              setVendorReplyOpenId(application.id);
+                            }}
+                          >
+                            Open thread
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )
+              ) : isLoading ? (
+                [1, 2, 3].map(i => <Skeleton key={i} className="h-28 rounded-lg" />)
+              ) : ticketsError ? (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-800">
+                  {ticketsError.message}
+                </div>
+              ) : emailSupportThreads.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-[#E6C7D2] bg-[#FFF8F4] p-8 text-center">
+                  <Ticket className="mx-auto h-9 w-9 text-[#8D294D]/60" />
+                  <p className="mt-3 font-semibold text-[#24171D]">No support messages yet</p>
+                  <p className="mt-1 text-sm text-[#6F3E54]">Support tickets will appear here when couples or users need help.</p>
+                </div>
+              ) : (
+                emailSupportThreads.map((ticket: any) => (
+                  <div key={ticket.id} className="rounded-xl border border-[#E6C7D2] bg-white p-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {getStatusIcon(ticket.status)}
+                          <p className="truncate font-serif text-xl font-semibold text-[#24171D]">{ticket.subject}</p>
+                          <Badge variant="outline" className="border-[#E6C7D2] bg-[#FFF8F4] text-[#6F3E54]">{ticket.status}</Badge>
+                        </div>
+                        <p className="mt-1 text-sm font-medium text-[#4A3941]">
+                          {ticket.name} · {ticket.email}
+                        </p>
+                        <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#24171D]">{ticket.message}</p>
+                        <p className="mt-2 text-xs font-medium text-[#6F3E54]">
+                          {ticket.ticketNumber ? `${ticket.ticketNumber} · ` : ""}{new Date(ticket.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="shrink-0"
+                        onClick={() => {
+                          setFilterStatus("all");
+                          setActiveTab("tickets");
+                          setExpandedTicketIds(prev => new Set(prev).add(ticket.id));
+                        }}
+                      >
+                        Open thread
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {activeTab === "tracking" && (
         <div className="space-y-5">

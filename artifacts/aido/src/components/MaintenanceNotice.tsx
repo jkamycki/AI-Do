@@ -16,7 +16,7 @@ export function MaintenanceNotice({
     <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-[#FFF7F2]">
       <div className="w-full max-w-md text-center">
         <img
-          src="/logo.png"
+          src="/logo-optimized.jpg"
           alt="A.IDO"
           className="mx-auto mb-5 h-24 w-auto object-contain"
         />

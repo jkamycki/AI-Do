@@ -328,7 +328,7 @@ export default function ForVendors() {
       <header className="sticky top-0 z-20 border-b border-[#E8DDE8] bg-white/95 px-4 py-2 shadow-sm backdrop-blur sm:px-8 sm:py-3">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
           <Link href="/" className="flex items-center gap-3">
-            <img src="/logo.png" alt="A.I DO" className="h-10 w-auto object-contain sm:h-14" />
+            <img src="/logo-optimized.jpg" alt="A.I DO" className="h-10 w-auto object-contain sm:h-14" decoding="async" />
           </Link>
           <nav className="hidden items-center gap-2 text-sm font-bold md:flex">
             <Link href="/" className={vendorPartnerNavClass(false)}>Home</Link>
@@ -370,6 +370,8 @@ export default function ForVendors() {
             src="/images/default-wedding-couple.jpg"
             alt="Wedding couple"
             className="absolute inset-0 h-full w-full object-cover"
+            decoding="async"
+            fetchPriority="high"
           />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,247,242,0.98)_0%,rgba(255,247,242,0.9)_54%,rgba(255,247,242,0.32)_100%)] sm:bg-[linear-gradient(90deg,rgba(255,247,242,0.96)_0%,rgba(255,247,242,0.86)_43%,rgba(255,247,242,0.18)_100%)]" />
           <div className="relative mx-auto grid min-h-[520px] max-w-6xl items-center gap-8 px-4 py-10 sm:min-h-[560px] sm:px-8 sm:py-16 lg:grid-cols-[0.9fr_1.1fr]">
@@ -595,8 +597,8 @@ export default function ForVendors() {
                           Upload your logo, then crop and position it for your partner profile.
                         </p>
                       </div>
-                      <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-[#E6A6B7] bg-[#FFF7F2] px-4 text-sm font-semibold text-[#8D294D] hover:border-[#8D294D]">
-                        <ImagePlus className="h-4 w-4" />
+                      <label className="inline-flex h-10 w-full shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-[#E6A6B7] bg-[#FFF7F2] px-4 text-sm font-semibold leading-none text-[#8D294D] hover:border-[#8D294D] sm:w-auto sm:min-w-[136px]">
+                        <ImagePlus className="h-4 w-4 shrink-0" />
                         Upload logo
                         <input
                           type="file"
@@ -764,7 +766,7 @@ function VendorBadge({ size = "default" }: { size?: "default" | "large" }) {
     <div className={`rounded-lg border border-[#E8DDE8] bg-white shadow-[0_16px_38px_rgba(90,80,124,0.16)] ${size === "large" ? "px-7 py-5" : "px-5 py-4"}`}>
       <div className="flex items-center gap-4">
         <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#F8E3EE] ring-1 ring-[#E0B6CC]">
-          <img src="/logo.png" alt="A.I DO logo" className="h-12 w-12 object-contain" />
+          <img src="/logo-optimized.jpg" alt="A.I DO logo" className="h-12 w-12 object-contain" loading="lazy" decoding="async" />
         </div>
         <div>
           <p className="font-serif text-lg leading-none text-[#B16C8E]">Proud Partner of</p>
@@ -795,9 +797,9 @@ function HeroProfileMock() {
               </div>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <img src="/images/default-wedding-couple.jpg" alt="Mock vendor profile gallery" className="aspect-square rounded-xl object-cover" />
-              <img src="/images/floral-bg.png" alt="Mock vendor details" className="aspect-square rounded-xl object-cover" />
-              <img src="/images/bokeh-bg.png" alt="Mock vendor reception" className="aspect-square rounded-xl object-cover" />
+              <img src="/images/default-wedding-couple.jpg" alt="Mock vendor profile gallery" className="aspect-square rounded-xl object-cover" loading="lazy" decoding="async" />
+              <img src="/images/floral-bg-optimized.jpg" alt="Mock vendor details" className="aspect-square rounded-xl object-cover" loading="lazy" decoding="async" />
+              <img src="/images/bokeh-bg-optimized.jpg" alt="Mock vendor reception" className="aspect-square rounded-xl object-cover" loading="lazy" decoding="async" />
             </div>
             <div className="rounded-2xl bg-white p-3 shadow-sm">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#B16C8E]">Services</p>
@@ -894,9 +896,9 @@ function MockDirectoryPreview({ compact = false, showBackLink = false }: { compa
             </section>
 
             <div className="grid grid-cols-3 gap-3">
-              <img src="/images/default-wedding-couple.jpg" alt="Mock vendor ceremony example" className="aspect-[4/3] rounded-lg border border-[#E6C7D0] object-cover shadow-sm" />
-              <img src="/images/floral-bg.png" alt="Mock vendor detail example" className="aspect-[4/3] rounded-lg border border-[#E6C7D0] object-cover shadow-sm" />
-              <img src="/images/bokeh-bg.png" alt="Mock vendor reception example" className="aspect-[4/3] rounded-lg border border-[#E6C7D0] object-cover shadow-sm" />
+              <img src="/images/default-wedding-couple.jpg" alt="Mock vendor ceremony example" className="aspect-[4/3] rounded-lg border border-[#E6C7D0] object-cover shadow-sm" loading="lazy" decoding="async" />
+              <img src="/images/floral-bg-optimized.jpg" alt="Mock vendor detail example" className="aspect-[4/3] rounded-lg border border-[#E6C7D0] object-cover shadow-sm" loading="lazy" decoding="async" />
+              <img src="/images/bokeh-bg-optimized.jpg" alt="Mock vendor reception example" className="aspect-[4/3] rounded-lg border border-[#E6C7D0] object-cover shadow-sm" loading="lazy" decoding="async" />
             </div>
 
             <PreviewPanel title="About Us">
@@ -936,7 +938,7 @@ function MockDirectoryPreview({ compact = false, showBackLink = false }: { compa
 
             <section className="overflow-hidden rounded-lg border border-[#E6C7D0] bg-white/70 shadow-sm">
               <div className="flex items-center gap-3 p-4">
-                <img src="/logo.png" alt="A.I DO logo" className="h-10 w-10 object-contain" />
+                <img src="/logo-optimized.jpg" alt="A.I DO logo" className="h-10 w-10 object-contain" loading="lazy" decoding="async" />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold text-[#8D294D]">Founding Partner of</p>
                   <p className="font-serif text-2xl leading-none text-[#8D294D]">A.I DO</p>

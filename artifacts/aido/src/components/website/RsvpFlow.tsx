@@ -1060,7 +1060,7 @@ export function RsvpFlow({
         })()}
         <div className="mx-auto mt-12 max-w-md border-t pt-6 text-center" style={{ borderColor: `${accent}33` }}>
           <img
-            src="/logo.png"
+            src="/logo-optimized.jpg"
             alt="A.IDO"
             className="mx-auto mb-2 h-8 w-auto object-contain"
           />

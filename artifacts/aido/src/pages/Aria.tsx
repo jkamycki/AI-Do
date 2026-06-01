@@ -126,7 +126,7 @@ function deriveTitle(messages: Message[]): string {
 function AriaAvatar() {
   return (
     <div className="w-8 h-8 rounded-full bg-white border border-primary/15 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
-      <img src="/aria-avatar.png" alt="Aria" className="h-full w-full object-cover" />
+      <img src="/aria-avatar-optimized.jpg" alt="Aria" className="h-full w-full object-cover" loading="lazy" decoding="async" />
     </div>
   );
 }
@@ -754,7 +754,7 @@ export default function Aria() {
               <History className="h-5 w-5" />
             </button>
             <div className="w-10 h-10 rounded-full bg-white border border-primary/15 flex items-center justify-center shadow-md overflow-hidden">
-              <img src="/aria-avatar.png" alt="Aria" className="h-full w-full object-cover" />
+              <img src="/aria-avatar-optimized.jpg" alt="Aria" className="h-full w-full object-cover" loading="lazy" decoding="async" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -791,7 +791,7 @@ export default function Aria() {
             <div className="flex flex-col items-center justify-center h-full gap-8 pb-8">
               <div className="text-center space-y-2">
                 <div className="mx-auto mb-4 flex items-center justify-center">
-                  <img src="/logo.png" alt="Aria" className="h-32 w-auto object-contain drop-shadow-lg" />
+                  <img src="/logo-optimized.jpg" alt="Aria" className="h-32 w-auto object-contain drop-shadow-lg" decoding="async" />
                 </div>
                 <h2 className="font-serif text-2xl text-primary">{t("aria.title")}</h2>
                 <p className="text-muted-foreground text-sm max-w-md">
