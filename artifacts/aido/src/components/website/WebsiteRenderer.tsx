@@ -1,5 +1,6 @@
 import {
   cloneElement,
+  Fragment,
   isValidElement,
   useEffect,
   useMemo,
@@ -4442,6 +4443,13 @@ function WeddingParty({
     ? brideMembers
     : stableSort(brideMembers, (m) => brideRolePriority(m.role));
   const familySide = members.filter((m) => m.side === "family" || !m.side);
+  const pairedPartyRows = Array.from(
+    { length: Math.max(brideSide.length, groomSide.length) },
+    (_, index) => ({
+      bride: brideSide[index],
+      groom: groomSide[index],
+    }),
+  );
 
   // When a side has an odd number of members, the trailing card spans
   // both columns and centers itself so it doesn't sit alone. Done in
@@ -4489,12 +4497,77 @@ function WeddingParty({
         <div className="space-y-16">
           {(groomSide.length > 0 || brideSide.length > 0) && (
             <div className={isMobileRender
-              ? "relative mx-auto grid max-w-sm grid-cols-1 gap-16"
+              ? "relative mx-auto max-w-sm"
               : "relative mx-auto grid max-w-5xl grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-0"}
             >
+              {isMobileRender ? (
+                <div className="mx-auto w-full max-w-[22rem]">
+                  <div className="mb-8 grid grid-cols-2 gap-x-4">
+                    <h3
+                      className="text-center text-xl leading-tight"
+                      style={{
+                        fontFamily: fontStack(headingFont(data)),
+                        color: labelColor,
+                      }}
+                    >
+                      <EditableText
+                        editable={ctx.editable}
+                        value={data.customText.weddingParty_brideLabel ?? ""}
+                        defaultValue="Bride's Party"
+                        onCommit={(v) =>
+                          ctx.onTextChange("weddingParty_brideLabel", v)
+                        }
+                      />
+                    </h3>
+                    <h3
+                      className="text-center text-xl leading-tight"
+                      style={{
+                        fontFamily: fontStack(headingFont(data)),
+                        color: labelColor,
+                      }}
+                    >
+                      <EditableText
+                        editable={ctx.editable}
+                        value={data.customText.weddingParty_groomLabel ?? ""}
+                        defaultValue="Groom's Party"
+                        onCommit={(v) =>
+                          ctx.onTextChange("weddingParty_groomLabel", v)
+                        }
+                      />
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-12">
+                    {pairedPartyRows.map((row, i) => (
+                      <Fragment key={`party-pair-${i}`}>
+                        {row.bride ? (
+                          <PartyMemberCard
+                            data={data}
+                            member={row.bride}
+                            labelColor={labelColor}
+                            compact
+                          />
+                        ) : (
+                          <div aria-hidden="true" />
+                        )}
+                        {row.groom ? (
+                          <PartyMemberCard
+                            data={data}
+                            member={row.groom}
+                            labelColor={labelColor}
+                            compact
+                          />
+                        ) : (
+                          <div aria-hidden="true" />
+                        )}
+                      </Fragment>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <>
               {/* Bride's side */}
               <div
-                className={isMobileRender ? "" : "lg:border-r lg:pr-12"}
+                className="lg:border-r lg:pr-12"
                 style={{ borderColor: `${data.colorPalette.primary}33` }}
               >
                 <h3
@@ -4524,9 +4597,7 @@ function WeddingParty({
                   </p>
                 ) : (
                   <div
-                    className={isMobileRender
-                      ? "mx-auto grid w-full max-w-[22rem] grid-cols-2 gap-x-4 gap-y-12"
-                      : `grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 ${oddLastGridClass}`}
+                    className={`grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 ${oddLastGridClass}`}
                   >
                     {brideSide.map((m, i) => (
                       <PartyMemberCard
@@ -4542,7 +4613,7 @@ function WeddingParty({
               </div>
 
               {/* Groom's side */}
-              <div className={isMobileRender ? "" : "lg:pl-12"}>
+              <div className="lg:pl-12">
                 <h3
                   className="text-center text-2xl sm:text-3xl mb-10"
                   style={{
@@ -4570,9 +4641,7 @@ function WeddingParty({
                   </p>
                 ) : (
                   <div
-                    className={isMobileRender
-                      ? "mx-auto grid w-full max-w-[22rem] grid-cols-2 gap-x-4 gap-y-12"
-                      : `grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 ${oddLastGridClass}`}
+                    className={`grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 ${oddLastGridClass}`}
                   >
                     {groomSide.map((m, i) => (
                       <PartyMemberCard
@@ -4586,6 +4655,8 @@ function WeddingParty({
                   </div>
                 )}
               </div>
+                </>
+              )}
             </div>
           )}
 
