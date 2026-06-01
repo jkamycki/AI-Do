@@ -2963,6 +2963,16 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                       {line}
                     </div>
                   ))}
+                  <a
+                    href={`https://www.google.com/maps/search/${venueQuery}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`mt-1 inline-flex items-center gap-1.5 text-xs font-medium transition-opacity hover:opacity-70 ${isMobileRender ? "justify-center" : ""}`}
+                    style={{ color: data.colorPalette.primary }}
+                  >
+                    <Navigation className="h-3.5 w-3.5" />
+                    {data.customText._openInGoogleMaps || "Open in Google Maps"}
+                  </a>
                 </div>
               </div>
               {(venueDescription.trim() || ctx.editable) && (
@@ -2985,16 +2995,6 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   {...withBaseColor(tsp(ctx, "_travelVenueDescription"), labelColor)}
                 />
               )}
-              <a
-                href={`https://www.google.com/maps/search/${venueQuery}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-medium transition-opacity hover:opacity-70"
-                style={{ color: data.colorPalette.primary }}
-              >
-                <Navigation className="h-3.5 w-3.5" />
-                {data.customText._openInGoogleMaps || "Open in Google Maps"}
-              </a>
             </div>
           )}
 
@@ -3039,6 +3039,28 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                       {line}
                     </div>
                   ))}
+                  {hotelPhone && (
+                    <a
+                      href={hotelPhoneHref}
+                      className={`mt-1 inline-flex items-center gap-1.5 text-sm font-semibold transition-opacity hover:opacity-70 ${isMobileRender ? "justify-center" : ""}`}
+                      style={{ color: data.colorPalette.primary }}
+                    >
+                      <Phone className="h-3.5 w-3.5" />
+                      {hotelPhone}
+                    </a>
+                  )}
+                  {hasHotel && (
+                    <a
+                      href={`https://www.google.com/maps/search/${hotelQuery}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`mt-1 inline-flex items-center gap-1.5 text-xs font-medium transition-opacity hover:opacity-70 ${isMobileRender ? "justify-center" : ""}`}
+                      style={{ color: data.colorPalette.primary }}
+                    >
+                      <Navigation className="h-3.5 w-3.5" />
+                      {data.customText._openInGoogleMaps || "Open in Google Maps"}
+                    </a>
+                  )}
                   {!hotelAddressLines.length && ctx.editable && (
                     <div
                       className="text-sm font-medium"
@@ -3070,18 +3092,6 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                 />
               )}
               <div className={isMobileRender ? "flex flex-col items-center gap-2" : "flex flex-wrap items-center gap-x-4 gap-y-2"}>
-                {hasHotel && (
-                  <a
-                    href={`https://www.google.com/maps/search/${hotelQuery}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs font-medium transition-opacity hover:opacity-70"
-                    style={{ color: data.colorPalette.primary }}
-                  >
-                    <Navigation className="h-3.5 w-3.5" />
-                    {data.customText._openInGoogleMaps || "Open in Google Maps"}
-                  </a>
-                )}
                 {safeHotelBookingLink && (
                   <a
                     href={safeHotelBookingLink}
@@ -3092,16 +3102,6 @@ function Travel({ data, ctx }: { data: WebsiteRendererPayload; ctx: EditCtx }) {
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
                     {hotelBookingLabel}
-                  </a>
-                )}
-                {hotelPhone && (
-                  <a
-                    href={hotelPhoneHref}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold transition-opacity hover:opacity-70"
-                    style={{ color: data.colorPalette.primary }}
-                  >
-                    <Phone className="h-3.5 w-3.5" />
-                    {hotelPhone}
                   </a>
                 )}
               </div>
