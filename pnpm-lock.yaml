@@ -58,8 +58,8 @@ catalogs:
       specifier: ^3.3.1
       version: 3.5.0
     tailwindcss:
-      specifier: ^4.1.14
-      version: 4.2.1
+      specifier: ^4.3.0
+      version: 4.3.0
     tsx:
       specifier: ^4.21.0
       version: 4.21.0
@@ -344,7 +344,7 @@ importers:
         version: 0.0.6
       '@tailwindcss/typography':
         specifier: ^0.5.15
-        version: 0.5.19(tailwindcss@4.2.1)
+        version: 0.5.19(tailwindcss@4.3.0)
       '@tailwindcss/vite':
         specifier: 'catalog:'
         version: 4.2.1(vite@8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.8.4))
@@ -419,7 +419,7 @@ importers:
         version: 2.6.1
       tailwindcss:
         specifier: 'catalog:'
-        version: 4.2.1
+        version: 4.3.0
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0
@@ -711,10 +711,10 @@ importers:
         version: 3.5.0
       tailwindcss:
         specifier: 'catalog:'
-        version: 4.2.1
+        version: 4.3.0
       tailwindcss-animate:
         specifier: ^1.0.7
-        version: 1.0.7(tailwindcss@4.2.1)
+        version: 1.0.7(tailwindcss@4.3.0)
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0
@@ -4814,6 +4814,9 @@ packages:
   tailwindcss@4.2.1:
     resolution: {integrity: sha512-/tBrSQ36vCleJkAOsy9kbNTgaxvGbyOamC30PRePTQe/o1MFwEKHQk4Cn7BNGaPtjp+PuUrByJehM1hgxfq4sw==}
 
+  tailwindcss@4.3.0:
+    resolution: {integrity: sha512-y6nxMGB1nMW9R6k96e5gdIFzcfL/gTJRNaqGes1YvkLnPVXzWgbqFF2yLC0T8G774n24cx3Pe8XrKoniCOAH+Q==}
+
   tapable@2.3.0:
     resolution: {integrity: sha512-g9ljZiwki/LfxmQADO3dEY1CbpmXT5Hm2fJ+QaGKwSXUylMybePR7/67YW7jOrrvjEgL1Fmz5kzyAjWVWLlucg==}
     engines: {node: '>=6'}
@@ -7273,10 +7276,10 @@ snapshots:
       '@tailwindcss/oxide-wasm32-wasi': 4.2.1
       '@tailwindcss/oxide-win32-x64-msvc': 4.2.1
 
-  '@tailwindcss/typography@0.5.19(tailwindcss@4.2.1)':
+  '@tailwindcss/typography@0.5.19(tailwindcss@4.3.0)':
     dependencies:
       postcss-selector-parser: 6.0.10
-      tailwindcss: 4.2.1
+      tailwindcss: 4.3.0
 
   '@tailwindcss/vite@4.2.1(vite@8.0.10(@types/node@25.3.5)(esbuild@0.27.3)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.8.4))':
     dependencies:
@@ -9759,11 +9762,13 @@ snapshots:
 
   tailwind-merge@3.5.0: {}
 
-  tailwindcss-animate@1.0.7(tailwindcss@4.2.1):
+  tailwindcss-animate@1.0.7(tailwindcss@4.3.0):
     dependencies:
-      tailwindcss: 4.2.1
+      tailwindcss: 4.3.0
 
   tailwindcss@4.2.1: {}
+
+  tailwindcss@4.3.0: {}
 
   tapable@2.3.0: {}
 
