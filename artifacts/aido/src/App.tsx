@@ -89,6 +89,15 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 setBaseUrl(apiBaseUrl || null);
 setAuthFetchBaseUrl(apiBaseUrl || null);
 
+function isLocalE2EAuthBypassEnabled(): boolean {
+  if (!isLocalAppOrigin || typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem("aido_e2e_auth_bypass") === "true";
+  } catch {
+    return false;
+  }
+}
+
 function stripBase(path: string): string {
   return basePath && path.startsWith(basePath)
     ? path.slice(basePath.length) || "/"
@@ -1477,6 +1486,9 @@ function ProtectedRoute({
   const { isLoaded, isSignedIn } = useAuth();
   const { activeWorkspace } = useWorkspace();
   const [location] = useLocation();
+  const e2eAuthBypass = isLocalE2EAuthBypassEnabled();
+  const authLoaded = isLoaded || e2eAuthBypass;
+  const signedIn = isSignedIn || e2eAuthBypass;
   const [maintenanceVerified, setMaintenanceVerified] = useState(!maintenanceSection);
   const { data: adminCheck, isLoading: isLoadingAdminCheck } = useQuery({
     queryKey: ["admin-check"],
@@ -1509,16 +1521,16 @@ function ProtectedRoute({
 
   useEffect(() => {
     if (!maintenanceSection) return;
-    if (!isLoaded || !isSignedIn) return;
+    if (!authLoaded || !signedIn) return;
     if (isLoadingAdminCheck || isLoadingMaintenance || isFetchingMaintenance) return;
     setMaintenanceVerified(true);
-  }, [isLoaded, isSignedIn, isLoadingAdminCheck, isLoadingMaintenance, isFetchingMaintenance, maintenanceSection]);
+  }, [authLoaded, signedIn, isLoadingAdminCheck, isLoadingMaintenance, isFetchingMaintenance, maintenanceSection]);
 
-  if (!isLoaded) {
+  if (!authLoaded) {
     return <RouteLoading />;
   }
 
-  if (!isSignedIn) {
+  if (!signedIn) {
     return <Redirect to="/" />;
   }
 

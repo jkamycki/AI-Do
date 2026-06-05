@@ -48,6 +48,12 @@ jobs:
           mkdir -p .auth
           printf '%s' "$AIDO_AUTH_STATE_BASE64" | base64 --decode > .auth/user.json
 
+      - name: Verify production auth state
+        run: pnpm run doctor:production:auth
+
+      - name: Run public production smoke
+        run: pnpm run check:production
+
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
 

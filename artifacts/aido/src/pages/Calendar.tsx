@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   CalendarDays,
+  Bell,
   CheckSquare,
   Clock,
   CreditCard,
@@ -123,6 +124,15 @@ function daysUntil(value: string) {
   today.setHours(0, 0, 0, 0);
   parsed.setHours(0, 0, 0, 0);
   return Math.round((parsed.getTime() - today.getTime()) / 86400000);
+}
+
+function reminderPreferenceText(profile: WeddingProfile | undefined) {
+  const enabled = profile?.taskEmailRemindersEnabled !== false;
+  const daysBefore = Number(profile?.taskReminderDaysBefore ?? 7);
+  const normalizedDays = Number.isFinite(daysBefore) && daysBefore > 0 ? Math.round(daysBefore) : 7;
+  return enabled
+    ? `Email reminders are on ${normalizedDays} day${normalizedDays === 1 ? "" : "s"} before checklist deadlines.`
+    : "Email reminders are off.";
 }
 
 function loadCustomEvents(): CustomCalendarEvent[] {
@@ -424,6 +434,23 @@ export default function Calendar() {
           </div>
           <Button variant="outline" asChild>
             <Link href="/aria">Ask Aria what to prioritize</Link>
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/70">
+        <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary">
+              <Bell className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="font-semibold text-foreground">Reminder settings</p>
+              <p className="text-sm leading-6 text-muted-foreground">{reminderPreferenceText(profile)}</p>
+            </div>
+          </div>
+          <Button variant="outline" asChild>
+            <Link href="/settings">Manage reminders</Link>
           </Button>
         </CardContent>
       </Card>

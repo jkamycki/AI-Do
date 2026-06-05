@@ -14,4 +14,6 @@ services:
       - key: PORT
         value: 10000
       - key: FRONTEND_URL
-        value: https://ai-do-aido-orlizb7tn-kamyckijoseph-6037s-projects.vercel.app
+        value: https://aidowedding.net
+      - key: PUBLIC_APP_URL
+        value: https://aidowedding.net

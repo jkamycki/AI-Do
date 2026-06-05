@@ -1,0 +1,103 @@
+{
+  "generatedAt": "2026-06-05T18:52:38.899Z",
+  "target": "ready-to-submit",
+  "note": "100% means the website and mobile app are ready to submit; app-store acceptance and post-submission signoff are tracked separately.",
+  "overall": {
+    "percent": 100,
+    "ready": 18,
+    "total": 18
+  },
+  "groups": {
+    "Automated": {
+      "ready": 13,
+      "total": 13,
+      "percent": 100
+    },
+    "Production": {
+      "ready": 3,
+      "total": 3,
+      "percent": 100
+    },
+    "Store": {
+      "ready": 2,
+      "total": 2,
+      "percent": 100
+    }
+  },
+  "signoffFile": "docs/release-signoff.json",
+  "ready": [
+    {
+      "group": "Automated",
+      "label": "Launch readiness guide"
+    },
+    {
+      "group": "Automated",
+      "label": "Release handoff guide"
+    },
+    {
+      "group": "Automated",
+      "label": "Mobile preview guide"
+    },
+    {
+      "group": "Automated",
+      "label": "Production environment guide"
+    },
+    {
+      "group": "Automated",
+      "label": "Android release APK"
+    },
+    {
+      "group": "Automated",
+      "label": "Local Android AAB preflight"
+    },
+    {
+      "group": "Automated",
+      "label": "iPhone store screenshots"
+    },
+    {
+      "group": "Automated",
+      "label": "Website release screenshots"
+    },
+    {
+      "group": "Automated",
+      "label": "Mobile store listing copy"
+    },
+    {
+      "group": "Automated",
+      "label": "Release artifact manifest"
+    },
+    {
+      "group": "Automated",
+      "label": "Store submission pack"
+    },
+    {
+      "group": "Automated",
+      "label": "Release signoff template"
+    },
+    {
+      "group": "Automated",
+      "label": "Release manifest tracks package, screenshot, and icon files"
+    },
+    {
+      "group": "Production",
+      "label": "Public website and API smoke"
+    },
+    {
+      "group": "Production",
+      "label": "Signed-in production auth state"
+    },
+    {
+      "group": "Production",
+      "label": "GitHub Actions auth secret ready to set"
+    },
+    {
+      "group": "Store",
+      "label": "Android ready for Google Play production build"
+    },
+    {
+      "group": "Store",
+      "label": "iOS ready for EAS/App Store Connect production build"
+    }
+  ],
+  "remaining": []
+}

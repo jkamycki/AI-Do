@@ -2286,6 +2286,7 @@ export default function WebsiteEditor() {
                 variant={activeTab === "publish" ? "default" : "outline"}
                 className="h-8 px-3 text-xs"
                 onClick={() => setActiveTab(activeTab === "publish" ? "setup" : "publish")}
+                data-testid="website-open-publish-settings"
               >
                 <Globe className="mr-1.5 h-3.5 w-3.5" />
                 Publish
@@ -2403,6 +2404,7 @@ export default function WebsiteEditor() {
                     {field.multiline ? (
                       <textarea
                         ref={(el) => { contentInputRefs.current[field.key] = el; }}
+                        data-testid={`website-copy-${field.key}`}
                         value={currentValue}
                         onChange={(event) => onChange(event.target.value)}
                         placeholder={field.placeholder}
@@ -2412,6 +2414,7 @@ export default function WebsiteEditor() {
                     ) : (
                       <Input
                         ref={(el) => { contentInputRefs.current[field.key] = el; }}
+                        data-testid={`website-copy-${field.key}`}
                         value={currentValue}
                         onChange={(event) => onChange(event.target.value)}
                         placeholder={field.placeholder}
@@ -2823,9 +2826,9 @@ export default function WebsiteEditor() {
         {editingGroup("elements", "schedule") && editingRecord.sectionsEnabled.schedule && <Section icon={<Clock className="h-4 w-4" />} title="Schedule Events">
           <div className="space-y-4">
             {[
-              { hiddenKey: "_scheduleCeremonyHidden",  timeKey: "_scheduleCeremonyTime",  labelKey: "_scheduleCeremonyLabel",  defaultLabel: "Ceremony" },
-              { hiddenKey: "_scheduleCocktailHidden",  timeKey: "_scheduleCocktailTime",  labelKey: "_scheduleCocktailLabel",  defaultLabel: "Cocktail Hour" },
-              { hiddenKey: "_scheduleReceptionHidden", timeKey: "_scheduleReceptionTime", labelKey: "_scheduleReceptionLabel", defaultLabel: "Reception" },
+              { hiddenKey: "_scheduleCeremonyHidden",  timeKey: "_scheduleCeremonyTime",  labelKey: "_scheduleCeremonyLabel",  defaultLabel: "Ceremony", testId: "ceremony" },
+              { hiddenKey: "_scheduleCocktailHidden",  timeKey: "_scheduleCocktailTime",  labelKey: "_scheduleCocktailLabel", defaultLabel: "Cocktail Hour", testId: "cocktail" },
+              { hiddenKey: "_scheduleReceptionHidden", timeKey: "_scheduleReceptionTime", labelKey: "_scheduleReceptionLabel", defaultLabel: "Reception", testId: "reception" },
             ].map((row) => {
               const isHidden = isEditableHiddenMarker(editingRecord.customText[row.hiddenKey]);
               return (
@@ -2847,6 +2850,7 @@ export default function WebsiteEditor() {
                     <div className="grid grid-cols-[auto_1fr] gap-2">
                       <Input
                         type="time"
+                        data-testid={`website-schedule-${row.testId}-time`}
                         className="h-9 text-sm"
                         value={editingRecord.customText[row.timeKey] ?? ""}
                         onChange={(e) => update({ customText: { ...editingRecord.customText, [row.timeKey]: e.target.value } })}
@@ -2854,6 +2858,7 @@ export default function WebsiteEditor() {
                       />
                       <Input
                         type="text"
+                        data-testid={`website-schedule-${row.testId}-label`}
                         className="h-9 text-sm"
                         placeholder={row.defaultLabel}
                         value={editingRecord.customText[row.labelKey] ?? ""}
@@ -2984,6 +2989,7 @@ export default function WebsiteEditor() {
                         </div>
                       </div>
                       <Input
+                        data-testid={`website-faq-question-${i}`}
                         value={item.question}
                         onChange={(e) => updateItem(i, { question: e.target.value.slice(0, QUESTION_MAX) })}
                         placeholder={t("website_editor.faq_question_placeholder", { defaultValue: "What's the dress code?" })}
@@ -2998,6 +3004,7 @@ export default function WebsiteEditor() {
                         {t("website_editor.faq_answer", { defaultValue: "Answer" })} <span className="text-destructive">*</span>
                       </Label>
                       <textarea
+                        data-testid={`website-faq-answer-${i}`}
                         value={item.answer}
                         onChange={(e) => updateItem(i, { answer: e.target.value.slice(0, ANSWER_MAX) })}
                         placeholder={t("website_editor.faq_answer_placeholder", { defaultValue: "Formal attire keeps the evening elegant…" })}
@@ -3410,6 +3417,7 @@ export default function WebsiteEditor() {
               type="file"
               accept="image/*"
               multiple
+              data-testid="website-hero-upload"
               className="hidden"
               onChange={(e) => {
                 if (e.target.files) startHeroCropFlow(e.target.files);
@@ -3448,6 +3456,7 @@ export default function WebsiteEditor() {
                   />
                   <button
                     onClick={() => removeGalleryImage(img.url, img.order)}
+                    data-testid={`website-gallery-remove-${img.order}`}
                     className="absolute top-1 right-1 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white"
                   >
                     <X className="h-3 w-3" />
@@ -3455,6 +3464,7 @@ export default function WebsiteEditor() {
                 </div>
                 <input
                   value={img.caption ?? ""}
+                  data-testid={`website-gallery-caption-${img.order}`}
                   onChange={(e) => {
                     const caption = e.target.value || undefined;
                     patchRecord((prev) => ({
@@ -3476,6 +3486,7 @@ export default function WebsiteEditor() {
               type="file"
               accept="image/*"
               multiple
+              data-testid="website-gallery-upload"
               className="hidden"
               onChange={(e) => {
                 if (e.target.files) handleGalleryUpload(e.target.files);
@@ -3673,7 +3684,13 @@ export default function WebsiteEditor() {
                     : t("website_editor.visibility_draft", { defaultValue: "Your site is in draft. Guests can't view it yet." })}
                 </p>
               </div>
-              <Button size="sm" variant={editingRecord.published ? "outline" : "default"} onClick={requestPublish} disabled={publishing}>
+              <Button
+                size="sm"
+                variant={editingRecord.published ? "outline" : "default"}
+                onClick={requestPublish}
+                disabled={publishing}
+                data-testid="website-publish-toggle"
+              >
                 {publishing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
                 {editingRecord.published ? t("website_editor.unpublish", { defaultValue: "Unpublish" }) : t("website_editor.publish", { defaultValue: "Publish" })}
               </Button>
@@ -3691,6 +3708,7 @@ export default function WebsiteEditor() {
             )}
             <Input
               type="text"
+              data-testid="website-password-input"
               placeholder={editingRecord.passwordEnabled
                 ? t("website_editor.password_change_placeholder", { defaultValue: "Enter a new password" })
                 : t("website_editor.password_placeholder", { defaultValue: "Choose a password" })}
@@ -3705,12 +3723,19 @@ export default function WebsiteEditor() {
                 onClick={handleSavePassword}
                 disabled={savingPassword || !passwordInput.trim()}
                 className="w-full gap-2"
+                data-testid="website-password-save"
               >
                 {savingPassword ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Lock className="h-3.5 w-3.5" />}
                 Save password
               </Button>
               {editingRecord.passwordEnabled && (
-                <Button size="sm" variant="outline" onClick={handleClearPassword} disabled={savingPassword}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleClearPassword}
+                  disabled={savingPassword}
+                  data-testid="website-password-remove"
+                >
                   Remove password
                 </Button>
               )}

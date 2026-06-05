@@ -130,7 +130,6 @@ export function WebsiteEditorScreen() {
         </View>
       </Card>
 
-
       {data.websiteSections.map((section) => (
         <Card key={section.id} style={styles.sectionCard}>
           <View style={styles.sectionHeader}>

@@ -240,10 +240,10 @@ export function ImageCropDialog({ item, onComplete, onSkip, onCancelAll, initial
           <Button variant="ghost" onClick={onCancelAll} disabled={busy}>
             Cancel all
           </Button>
-          <Button variant="outline" onClick={handleSkip} disabled={busy}>
+          <Button variant="outline" onClick={handleSkip} disabled={busy} data-testid="image-crop-use-original">
             Use original
           </Button>
-          <Button onClick={handleApply} disabled={!croppedAreaPixels || busy}>
+          <Button onClick={handleApply} disabled={!croppedAreaPixels || busy} data-testid="image-crop-apply">
             {busy ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Cropping…</> : "Apply crop"}
           </Button>
         </DialogFooter>

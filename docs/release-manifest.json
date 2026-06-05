@@ -1,0 +1,154 @@
+{
+  "name": "A.I. DO release manifest",
+  "canonicalWebsite": "https://aidowedding.net",
+  "productionApi": "https://ai-do.onrender.com",
+  "entries": [
+    {
+      "category": "android",
+      "label": "Release APK",
+      "path": "mobile/app/android/app/build/outputs/apk/release/app-release.apk",
+      "bytes": 35287318,
+      "sha256": "8aec7ca9b90c3e04b6378914cb4a2eb2d6f8aaad43a3c8948f28f164cc4e2296"
+    },
+    {
+      "category": "android",
+      "label": "Local Android AAB preflight",
+      "path": "mobile/app/android/app/build/outputs/bundle/release/app-release.aab",
+      "bytes": 57001341,
+      "sha256": "bb92a6cad1a158877ad3bd4c84d5bceb7ff0db7ed581d7da8bc2cb7a4795bae3"
+    },
+    {
+      "category": "store-copy",
+      "label": "Mobile store listing",
+      "path": "mobile/app/STORE_LISTING.md",
+      "bytes": 2052,
+      "sha256": "ff4d0065130ad711323a02516ac29fa116600ce3bdb4f62c6369633fa6dd4496"
+    },
+    {
+      "category": "store-copy",
+      "label": "Release notes",
+      "path": "docs/release-notes.md",
+      "bytes": 1445,
+      "sha256": "83ad3c251d5dea99636cdad8dfeb3ebc57a8cf5f64b74aaed6ae36e5c2d520e1"
+    },
+    {
+      "category": "app-icons",
+      "label": "Mobile app icon",
+      "path": "mobile/app/assets/icon.png",
+      "bytes": 127837,
+      "sha256": "e94e9c12fe6479738cfc1c9b5d012ff9512d6c1981771ec3999d294718502410"
+    },
+    {
+      "category": "app-icons",
+      "label": "Android adaptive foreground",
+      "path": "mobile/app/assets/android-icon-foreground.png",
+      "bytes": 232331,
+      "sha256": "f6d8ce6e7c2c672853ca6ceac4090170cd3413a40ecc78de59b805757b1e6508"
+    },
+    {
+      "category": "app-icons",
+      "label": "Android adaptive background",
+      "path": "mobile/app/assets/android-icon-background.png",
+      "bytes": 113783,
+      "sha256": "95905ab402b3e14b3fbe285dcbc416b22b7e4ad31472fce46e3ac032e4f6745a"
+    },
+    {
+      "category": "app-icons",
+      "label": "Android adaptive monochrome",
+      "path": "mobile/app/assets/android-icon-monochrome.png",
+      "bytes": 36422,
+      "sha256": "6e3af1cba00c54c8503e0a6698be57d05a9393bb4ded69ecb3a95a8afb52aa88"
+    },
+    {
+      "category": "app-icons",
+      "label": "Website PWA icon 192",
+      "path": "artifacts/aido/public/web-app-icon-192.png",
+      "bytes": 12105,
+      "sha256": "73f5fcb563f29c5dcf5881b159455a2bf1b14e56bd74c90aebd0e43a14eb08cb"
+    },
+    {
+      "category": "app-icons",
+      "label": "Website PWA icon 512",
+      "path": "artifacts/aido/public/web-app-icon-512.png",
+      "bytes": 42676,
+      "sha256": "42e42ce37ce5724141bc6236ae98fb81d6fa798241a875b770b97e85fbb97717"
+    },
+    {
+      "category": "app-icons",
+      "label": "Website manifest",
+      "path": "artifacts/aido/public/site.webmanifest",
+      "bytes": 608,
+      "sha256": "40815259cbd259b56f37923bb0d2345cd9b81ef3f80a50cb3e8daea0a341c033"
+    },
+    {
+      "category": "ios-screenshots",
+      "label": "01-dashboard.png",
+      "path": "mobile/app/store/screenshots/iphone/01-dashboard.png",
+      "bytes": 534832,
+      "sha256": "8dcdcfeef0ac115531fbf277a27efd1e648a4677d6e5b6282ae50ecf841c8260"
+    },
+    {
+      "category": "ios-screenshots",
+      "label": "02-guests.png",
+      "path": "mobile/app/store/screenshots/iphone/02-guests.png",
+      "bytes": 295273,
+      "sha256": "f7a101e87bbad90c550ca7f34d1565f7f53593235ee7926bf156ed7ab320c4ef"
+    },
+    {
+      "category": "ios-screenshots",
+      "label": "03-website-editor.png",
+      "path": "mobile/app/store/screenshots/iphone/03-website-editor.png",
+      "bytes": 619862,
+      "sha256": "ffcc99976c5747666aff79127ba8de60925dd78748b61d07dc3d2b7323ae4bdc"
+    },
+    {
+      "category": "ios-screenshots",
+      "label": "04-budget.png",
+      "path": "mobile/app/store/screenshots/iphone/04-budget.png",
+      "bytes": 283038,
+      "sha256": "93dde7f1e1cbb933de32ed2583914c4fe8b7fef793027905b98f6492043bbdf0"
+    },
+    {
+      "category": "ios-screenshots",
+      "label": "05-vendors.png",
+      "path": "mobile/app/store/screenshots/iphone/05-vendors.png",
+      "bytes": 272607,
+      "sha256": "eb9d46f0d41ce61756285a08384ad613568f863f536827e2606484d3443c3bfa"
+    },
+    {
+      "category": "ios-screenshots",
+      "label": "06-aria.png",
+      "path": "mobile/app/store/screenshots/iphone/06-aria.png",
+      "bytes": 42269,
+      "sha256": "ce807669c9d9ea01753d3d8c744fc1067c3f756a6686e4e2a680519dc3b51dcf"
+    },
+    {
+      "category": "website-screenshots",
+      "label": "01-home-desktop.png",
+      "path": "marketing/release-screenshots/web/01-home-desktop.png",
+      "bytes": 978536,
+      "sha256": "38de4252b34787101b3dd08bef91a882140bc9e3dc5544271843bd977cedd9af"
+    },
+    {
+      "category": "website-screenshots",
+      "label": "02-website-builder-desktop.png",
+      "path": "marketing/release-screenshots/web/02-website-builder-desktop.png",
+      "bytes": 156700,
+      "sha256": "ccc7f6e2bdc0d67e1ba49e7dd4949a6e318d3a4902ab96cead61e94711b8ad6d"
+    },
+    {
+      "category": "website-screenshots",
+      "label": "03-photo-qr-desktop.png",
+      "path": "marketing/release-screenshots/web/03-photo-qr-desktop.png",
+      "bytes": 159738,
+      "sha256": "a86e4f1c309f29134080d83e6a39360788a7cc85f1688e009a83430efecc7783"
+    },
+    {
+      "category": "website-screenshots",
+      "label": "04-vendors-desktop.png",
+      "path": "marketing/release-screenshots/web/04-vendors-desktop.png",
+      "bytes": 691435,
+      "sha256": "f20471d900afed470c5807440078723aa347f56ae8e014ecceffa4ec25aab1ac"
+    }
+  ]
+}

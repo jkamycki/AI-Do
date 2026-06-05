@@ -2,7 +2,7 @@ import { useState } from "react";
 import { apiFetch } from "@/lib/authFetch";
 import { useRoute } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent } from "@/components/ui/card";
@@ -90,7 +90,7 @@ export default function GuestCollect() {
   const couple = wedding ? coupleFirstNames(wedding.partner2Name, wedding.partner1Name) : "";
 
   const form = useForm<FormInput, unknown, FormData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as Resolver<FormInput, unknown, FormData>,
     defaultValues: {
       name: "",
       email: "",

@@ -1,0 +1,87 @@
+name: Readiness
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  website-and-app:
+    name: Website and app readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Show launch status
+        run: pnpm run check:launch:status
+
+      - name: Show completion dashboard
+        run: pnpm run check:complete
+
+      - name: Write completion report and summary
+        run: pnpm run release:completion-summary
+
+      - name: Run readiness checks
+        run: pnpm run check:all
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run mobile app browser preview smoke
+        run: pnpm run check:mobile:preview
+
+      - name: Run website/app parity tests
+        run: pnpm run check:parity
+
+      - name: Upload release collateral
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-collateral
+          path: |
+            docs/release-manifest.json
+            docs/release-completion-report.json
+            docs/release-completion-summary.md
+            docs/store-submission-pack.md
+            docs/release-notes.md
+            mobile/app/STORE_LISTING.md
+            mobile/app/store/screenshots/iphone/
+            marketing/release-screenshots/web/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: readiness-playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload Playwright test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: readiness-playwright-test-results
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7

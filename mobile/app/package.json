@@ -32,13 +32,16 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
+    "eas-cli": "20.0.0",
     "typescript": "~6.0.3"
   },
   "scripts": {
     "start": "expo start",
+    "typecheck": "tsc --noEmit",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
+    "web:preview": "expo start --web --port 19006",
     "build:android:apk": "eas build --platform android --profile preview",
     "build:android:store": "eas build --platform android --profile production",
     "build:ios": "eas build --platform ios --profile production",

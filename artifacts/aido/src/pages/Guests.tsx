@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Link } from "wouter";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -348,7 +348,7 @@ function GuestForm({
 }) {
   const { t } = useTranslation();
   const form = useForm<GuestFormInput, unknown, GuestFormValues>({
-    resolver: zodResolver(guestSchema),
+    resolver: zodResolver(guestSchema) as Resolver<GuestFormInput, unknown, GuestFormValues>,
     defaultValues: {
       name: "",
       email: "",
@@ -1988,6 +1988,11 @@ export default function Guests({
     typeof window !== "undefined" &&
     window.matchMedia("(max-width: 639px)").matches;
   const handleBulkPrimaryAction = (mode: BulkSendMode) => {
+    if (mode === "reminder") {
+      requestProtectedBulkSend("reminder");
+      return;
+    }
+
     if (isMobileViewport()) {
       if (!hasGuestsForBulkSend(mode)) {
         toast({
@@ -1995,9 +2000,7 @@ export default function Guests({
           description:
             mode === "saveTheDate"
               ? "Select at least one guest who has not received a save-the-date yet."
-              : mode === "invitation"
-                ? "Select at least one guest who has not received an RSVP invitation yet."
-                : "Select at least one guest who still needs an RSVP reminder.",
+              : "Select at least one guest who has not received an RSVP invitation yet.",
         });
         return;
       }
@@ -2007,7 +2010,6 @@ export default function Guests({
 
     if (mode === "saveTheDate") openBulkPreview("saveTheDate");
     if (mode === "invitation") openBulkPreview("invitation");
-    if (mode === "reminder") requestProtectedBulkSend("reminder");
   };
   const openBulkLinks = async (
     mode: BulkSendMode,

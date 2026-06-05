@@ -69,6 +69,11 @@ type PrivacyPrefs = {
   securityAlerts: boolean;
 };
 
+function isLocalMobileWebPreview() {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
+  return ['localhost', '127.0.0.1'].includes(window.location.hostname);
+}
+
 type MobileSeatingTable = {
   guests: string[];
   tableName: string;
@@ -1001,13 +1006,13 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
         ) : (
           <AuthScreen
             onGoogle={() => {
-              const localWebsiteSignIn = 'http://localhost:5174/sign-in';
               const productionSignIn = 'https://aidowedding.net/sign-in';
-              const target =
-                Platform.OS === 'web' && typeof window !== 'undefined' && window.location.hostname === 'localhost'
-                  ? localWebsiteSignIn
-                  : productionSignIn;
-              void Linking.openURL(target);
+              if (isLocalMobileWebPreview()) {
+                setAuthUser({ email: 'preview@aidowedding.test', firstName: 'preview', isNewUser: false });
+                setNeedsOnboarding(false);
+                return;
+              }
+              void Linking.openURL(productionSignIn);
             }}
             onSignIn={(email) => {
               setAuthUser({ email, firstName: email.split('@')[0] || 'Planner', isNewUser: false });
@@ -1017,6 +1022,7 @@ function MobileAppContent({ clerkSession }: { clerkSession?: ClerkSessionBridge 
               setAuthUser({ email, firstName, isNewUser: true });
               setNeedsOnboarding(true);
             }}
+            providerLabel={isLocalMobileWebPreview() ? 'Use preview account' : 'Continue with Google'}
           />
         )}
       </BrowserPhoneFrame>
@@ -1405,10 +1411,12 @@ function AuthScreen({
   onGoogle,
   onSignIn,
   onSignUp,
+  providerLabel = 'Continue with Google',
 }: {
   onGoogle: () => void;
   onSignIn: (email: string) => void;
   onSignUp: (email: string, firstName: string) => void;
+  providerLabel?: string;
 }) {
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
@@ -1487,7 +1495,7 @@ function AuthScreen({
           </Pressable>
           <Pressable onPress={onGoogle} style={styles.authProviderButton}>
             <Ionicons color={colors.rose} name="logo-google" size={18} />
-            <Text style={styles.secondaryActionText}>Continue with Google</Text>
+            <Text style={styles.secondaryActionText}>{providerLabel}</Text>
           </Pressable>
 
           <View style={styles.authNote}>
@@ -2633,6 +2641,34 @@ function WebsiteSection({
         </>
       ) : null}
 
+      {activeView === 'travel' ? (
+        <>
+          <LinearGradient colors={['#FFF2EA', '#E6EFE5']} style={styles.websiteHero}>
+            <View style={styles.kickerRow}>
+              <Text style={styles.kicker}>Travel & Hotels</Text>
+              <View style={styles.livePill}>
+                <View style={styles.liveDot} />
+                <Text style={styles.liveText}>{data.hotels.length} blocks</Text>
+              </View>
+            </View>
+            <Text style={styles.websiteTitle}>Guest Travel</Text>
+            <Text style={styles.websiteMeta}>Manage hotel blocks, rates, booking deadlines, shuttle notes, and travel website copy.</Text>
+          </LinearGradient>
+          <View style={styles.summaryGrid}>
+            <SummaryCard label="Rooms" value={`${hotelRoomsBooked}/${hotelRoomsTotal}`} />
+            <SummaryCard label="Blocks" value={String(data.hotels.length)} />
+            <SummaryCard label="Shuttles" value={String(hotelShuttleCount)} />
+          </View>
+          <TravelHotelsPanel
+            data={data}
+            onAddHotel={onAddHotel}
+            onDeleteHotel={onDeleteHotel}
+            onOpenGuestHubView={onChangeView}
+            onUpdateHotel={onUpdateHotel}
+          />
+        </>
+      ) : null}
+
       {activeView === 'website' ? (
         <>
           <LinearGradient colors={['#FFF2EA', '#F8DDE5']} style={styles.websiteHero}>
@@ -2667,32 +2703,23 @@ function WebsiteSection({
         </>
       ) : null}
 
-      {activeView === 'travel' ? (
-        <>
-          <LinearGradient colors={['#FFF2EA', '#E6EFE5']} style={styles.websiteHero}>
-            <View style={styles.kickerRow}>
-              <Text style={styles.kicker}>Travel & Hotels</Text>
-              <View style={styles.livePill}>
-                <View style={styles.liveDot} />
-                <Text style={styles.liveText}>{data.hotels.length} blocks</Text>
-              </View>
-            </View>
-            <Text style={styles.websiteTitle}>Guest Travel</Text>
-            <Text style={styles.websiteMeta}>Manage hotel blocks, rates, booking deadlines, shuttle notes, and travel website copy.</Text>
-          </LinearGradient>
-          <View style={styles.summaryGrid}>
-            <SummaryCard label="Rooms" value={`${hotelRoomsBooked}/${hotelRoomsTotal}`} />
-            <SummaryCard label="Blocks" value={String(data.hotels.length)} />
-            <SummaryCard label="Shuttles" value={String(hotelShuttleCount)} />
-          </View>
-          <TravelHotelsPanel
-            data={data}
-            onAddHotel={onAddHotel}
-            onDeleteHotel={onDeleteHotel}
-            onOpenGuestHubView={onChangeView}
-            onUpdateHotel={onUpdateHotel}
-          />
-        </>
+      {activeView === 'website' ? <Card style={styles.ariaCalendarCard}>
+        <View style={styles.actionIcon}>
+          <Image resizeMode="cover" source={ariaAvatar} style={styles.actionAvatar} />
+        </View>
+        <View style={styles.actionCopy}>
+          <Text style={styles.overline}>Aria website check</Text>
+          <Text style={styles.actionText}>
+            Finish travel, registry, and RSVP copy before publishing the next update.
+          </Text>
+        </View>
+      </Card> : null}
+
+      {activeView === 'website' ? (
+        <WebsiteMobilePreview
+          data={data}
+          registryConnected={registryConnected}
+        />
       ) : null}
 
       {activeView === 'photoDrop' ? (
@@ -2714,25 +2741,6 @@ function WebsiteSection({
             <SummaryCard label="Mode" value={photoDropModeLabel(data.guestPhotoDrop.displayMode)} />
           </View>
         </>
-      ) : null}
-
-      {activeView === 'website' ? <Card style={styles.ariaCalendarCard}>
-        <View style={styles.actionIcon}>
-          <Image resizeMode="cover" source={ariaAvatar} style={styles.actionAvatar} />
-        </View>
-        <View style={styles.actionCopy}>
-          <Text style={styles.overline}>Aria website check</Text>
-          <Text style={styles.actionText}>
-            Finish travel, registry, and RSVP copy before publishing the next update.
-          </Text>
-        </View>
-      </Card> : null}
-
-      {activeView === 'website' ? (
-        <WebsiteMobilePreview
-          data={data}
-          registryConnected={registryConnected}
-        />
       ) : null}
 
       {activeView === 'guests' ? <Card>
@@ -2796,65 +2804,6 @@ function WebsiteSection({
             links={guestCampaignLinks}
           />
         ) : null}
-      </Card> : null}
-
-      <GuestCampaignReviewModal
-        campaign={guestCampaignReview}
-        loading={guestCampaignPreviewLoading}
-        onClose={() => setGuestCampaignReview(null)}
-        onSend={() => guestCampaignReview ? void runGuestCampaign(guestCampaignReview) : undefined}
-        preview={guestCampaignPreview}
-        sending={guestCampaignSending}
-      />
-
-      <GuestDetailModal
-        guest={selectedGuest}
-        onClose={() => setSelectedGuest(null)}
-        onDelete={(guestId) => {
-          onDeleteGuest(guestId);
-          setSelectedGuest(null);
-        }}
-        onSave={(guest) => {
-          if (guest.id.startsWith('mobile-new-')) {
-            onAddGuest(guest);
-          } else {
-            onUpdateGuest(guest);
-          }
-          setSelectedGuest(null);
-        }}
-      />
-
-      {activeView === 'invites' ? <Card>
-        <View style={styles.cardHeaderRow}>
-          <Text style={styles.cardTitle}>Invitation Studio</Text>
-          <Text style={styles.smallStatus}>{inviteTotals.responses} responses</Text>
-        </View>
-        <Text style={styles.mutedText}>Design, preview, and schedule guest invitation flows.</Text>
-        <View style={styles.websiteActions}>
-          <Pressable
-            onPress={() => setInvitationStudioOpen((open) => !open)}
-            style={styles.primaryActionButton}
-          >
-            <Ionicons color={colors.surface} name="color-palette-outline" size={18} />
-            <Text style={styles.primaryActionText}>{invitationStudioOpen ? 'Close studio' : 'Open studio'}</Text>
-          </Pressable>
-        </View>
-        {invitationStudioOpen ? <InvitationStudioPanel data={data} /> : null}
-        <View style={styles.inviteStatsRow}>
-          <SummaryCard label="Sent" value={String(inviteTotals.sent)} />
-          <SummaryCard label="Opened" value={String(inviteTotals.opened)} />
-        </View>
-        <View style={styles.calendarList}>
-          {data.invitations.map((invitation) => (
-            <WebsitePageRow
-              key={invitation.id}
-              title={invitation.type}
-              status={invitation.status}
-              detail={`${invitation.sent} sent - ${invitation.opened} opened - ${invitation.responses} responses`}
-              onPress={() => setInvitationStudioOpen(true)}
-            />
-          ))}
-        </View>
       </Card> : null}
 
       {activeView === 'website' ? <Card>
@@ -2923,6 +2872,65 @@ function WebsiteSection({
           </Pressable>
         </View>
         {registryMessage ? <SavedStrip label={registryMessage} /> : null}
+      </Card> : null}
+
+      <GuestCampaignReviewModal
+        campaign={guestCampaignReview}
+        loading={guestCampaignPreviewLoading}
+        onClose={() => setGuestCampaignReview(null)}
+        onSend={() => guestCampaignReview ? void runGuestCampaign(guestCampaignReview) : undefined}
+        preview={guestCampaignPreview}
+        sending={guestCampaignSending}
+      />
+
+      <GuestDetailModal
+        guest={selectedGuest}
+        onClose={() => setSelectedGuest(null)}
+        onDelete={(guestId) => {
+          onDeleteGuest(guestId);
+          setSelectedGuest(null);
+        }}
+        onSave={(guest) => {
+          if (guest.id.startsWith('mobile-new-')) {
+            onAddGuest(guest);
+          } else {
+            onUpdateGuest(guest);
+          }
+          setSelectedGuest(null);
+        }}
+      />
+
+      {activeView === 'invites' ? <Card>
+        <View style={styles.cardHeaderRow}>
+          <Text style={styles.cardTitle}>Invitation Studio</Text>
+          <Text style={styles.smallStatus}>{inviteTotals.responses} responses</Text>
+        </View>
+        <Text style={styles.mutedText}>Design, preview, and schedule guest invitation flows.</Text>
+        <View style={styles.websiteActions}>
+          <Pressable
+            onPress={() => setInvitationStudioOpen((open) => !open)}
+            style={styles.primaryActionButton}
+          >
+            <Ionicons color={colors.surface} name="color-palette-outline" size={18} />
+            <Text style={styles.primaryActionText}>{invitationStudioOpen ? 'Close studio' : 'Open studio'}</Text>
+          </Pressable>
+        </View>
+        {invitationStudioOpen ? <InvitationStudioPanel data={data} /> : null}
+        <View style={styles.inviteStatsRow}>
+          <SummaryCard label="Sent" value={String(inviteTotals.sent)} />
+          <SummaryCard label="Opened" value={String(inviteTotals.opened)} />
+        </View>
+        <View style={styles.calendarList}>
+          {data.invitations.map((invitation) => (
+            <WebsitePageRow
+              key={invitation.id}
+              title={invitation.type}
+              status={invitation.status}
+              detail={`${invitation.sent} sent - ${invitation.opened} opened - ${invitation.responses} responses`}
+              onPress={() => setInvitationStudioOpen(true)}
+            />
+          ))}
+        </View>
       </Card> : null}
 
       {activeView === 'photoDrop' ? (
@@ -4163,6 +4171,7 @@ function WebsiteMobilePreview({
                     sectionState.schedule ? 'Schedule' : null,
                     sectionState.travel ? 'Travel' : null,
                     sectionState.registry ? 'Registry' : null,
+                    sectionState.photoDrop ? 'Photo Drop' : null,
                     sectionState.rsvp ? 'RSVP' : null,
                   ].filter(Boolean).map((item) => (
                     <Text key={item} style={[styles.websiteLiveNavText, { color: colors.ink }]}>{item}</Text>
@@ -4174,7 +4183,7 @@ function WebsiteMobilePreview({
                 <Image resizeMode="cover" source={{ uri: couplePhotoUri }} style={[styles.websiteLiveHeroImage, photoFilterStyle(photoFilter)]} />
                 <View style={styles.websiteLiveHeroOverlay} />
                 <View style={[styles.websiteLiveHeroCopy, previewDevice === 'desktop' && styles.websiteLiveHeroCopyDesktop]}>
-                  <Text style={styles.websiteLiveKicker}>{previewDevice === 'desktop' ? "We're getting married" : 'Wedding Celebration'}</Text>
+                  <Text style={styles.websiteLiveKicker}>We're getting married</Text>
                   <Text
                     adjustsFontSizeToFit
                     minimumFontScale={0.72}
@@ -4183,46 +4192,31 @@ function WebsiteMobilePreview({
                   >
                     {siteTitle}
                   </Text>
-                  {previewDevice === 'desktop' ? (
-                    <>
-                      <View style={styles.websiteLiveHeroDetailRow}>
-                        <Ionicons color={colors.surface} name="calendar-outline" size={13} />
-                        <Text style={styles.websiteLiveHeroMeta}>{weddingDateLong}</Text>
+                  <View style={styles.websiteLiveHeroDetailRow}>
+                    <Ionicons color={colors.surface} name="calendar-outline" size={13} />
+                    <Text style={styles.websiteLiveHeroMeta}>{weddingDateLong}</Text>
+                  </View>
+                  <View style={styles.websiteLiveHeroDetailRow}>
+                    <Ionicons color={colors.surface} name="location-outline" size={13} />
+                    <Text style={styles.websiteLiveHeroMeta}>{venueLine}</Text>
+                  </View>
+                  <View style={styles.websiteLiveCountdownRow}>
+                    {[
+                      [String(countdownDays), 'Days'],
+                      ['00', 'Hours'],
+                      ['00', 'Min'],
+                      ['00', 'Sec'],
+                    ].map(([value, label]) => (
+                      <View key={label} style={styles.websiteLiveCountdownPill}>
+                        <Text style={styles.websiteLiveCountdownNumber}>{value}</Text>
+                        <Text style={styles.websiteLiveCountdownLabel}>{label}</Text>
                       </View>
-                      <View style={styles.websiteLiveHeroDetailRow}>
-                        <Ionicons color={colors.surface} name="location-outline" size={13} />
-                        <Text style={styles.websiteLiveHeroMeta}>{venueLine}</Text>
-                      </View>
-                      <View style={styles.websiteLiveCountdownRow}>
-                        {[
-                          [String(countdownDays), 'Days'],
-                          ['00', 'Hours'],
-                          ['00', 'Min'],
-                          ['00', 'Sec'],
-                        ].map(([value, label]) => (
-                          <View key={label} style={styles.websiteLiveCountdownPill}>
-                            <Text style={styles.websiteLiveCountdownNumber}>{value}</Text>
-                            <Text style={styles.websiteLiveCountdownLabel}>{label}</Text>
-                          </View>
-                        ))}
-                      </View>
-                      <Pressable onPress={() => openWebsitePreview()} style={styles.websiteLiveCalendarButton}>
-                        <Ionicons color={colors.surface} name="calendar-clear-outline" size={13} />
-                        <Text style={styles.websiteLiveCalendarButtonText}>Add to Calendar</Text>
-                      </Pressable>
-                    </>
-                  ) : null}
-                  {previewDevice !== 'desktop' ? (
-                    <>
-                  <Text style={styles.websiteLiveHeroMeta}>{formatLongDate(data.profile.weddingDate)} - {data.profile.venue}</Text>
-                  <Text style={styles.websiteLiveHeroMeta}>{data.profile.location}</Text>
-                  {sectionState.rsvp ? (
-                    <Pressable onPress={() => openWebsitePreview()} style={[styles.websiteLiveHeroButton, { backgroundColor: accentColor }]}>
-                      <Text style={styles.websiteLiveHeroButtonText}>RSVP</Text>
-                    </Pressable>
-                  ) : null}
-                    </>
-                  ) : null}
+                    ))}
+                  </View>
+                  <Pressable onPress={() => openWebsitePreview()} style={styles.websiteLiveCalendarButton}>
+                    <Ionicons color={colors.surface} name="calendar-clear-outline" size={13} />
+                    <Text style={styles.websiteLiveCalendarButtonText}>Add to Calendar</Text>
+                  </Pressable>
                 </View>
               </View>
 
@@ -12202,7 +12196,7 @@ const styles = StyleSheet.create({
   },
   websiteLivePreviewFrame: {
     alignSelf: 'center',
-    width: 288,
+    width: 302,
   },
   websiteLivePreviewFrameDesktop: {
     backgroundColor: '#F7ECE8',
@@ -12248,12 +12242,12 @@ const styles = StyleSheet.create({
     borderColor: colors.faint,
     borderRadius: 18,
     borderWidth: 1,
-    maxHeight: 520,
+    maxHeight: 620,
     overflow: 'hidden',
   },
   websiteLivePreviewPageMobile: {
     alignSelf: 'center',
-    width: 288,
+    width: 302,
   },
   websiteLivePreviewPageDesktop: {
     borderRadius: 0,
@@ -12313,7 +12307,7 @@ const styles = StyleSheet.create({
   },
   websiteLiveHero: {
     alignItems: 'center',
-    height: 330,
+    height: 420,
     justifyContent: 'center',
     overflow: 'hidden',
     position: 'relative',
