@@ -331,11 +331,30 @@ router.post("/guest-collect/:token", publicRsvpLimiter, async (req, res) => {
       return res.status(404).json({ error: "Invalid link." });
     }
 
-    const { name, email, phone, address, mealChoice, dietaryNotes, plusOne, plusOneStatus, plusOneFirstName, plusOneLastName } = req.body;
+    const {
+      name,
+      email,
+      phone,
+      address,
+      aptUnit,
+      guestCity,
+      guestState,
+      guestZip,
+      mealChoice,
+      dietaryNotes,
+      plusOne,
+      plusOneStatus,
+      plusOneFirstName,
+      plusOneLastName,
+    } = req.body;
     const trimmedName = cleanTextField(name, 120);
     const trimmedEmail = cleanTextField(email, 254).toLowerCase() || null;
     const cleanPhone = cleanTextField(phone, 40) || null;
     const cleanAddress = cleanTextField(address, 500) || null;
+    const cleanAptUnit = cleanTextField(aptUnit, 80) || null;
+    const cleanGuestCity = cleanTextField(guestCity, 120) || null;
+    const cleanGuestState = cleanTextField(guestState, 80) || null;
+    const cleanGuestZip = cleanTextField(guestZip, 40) || null;
     const cleanMeal = cleanTextField(mealChoice, 80) || null;
     const cleanDietary = cleanMeal === "other" ? cleanTextField(dietaryNotes, 500) || null : null;
     const cleanPlusOneFirstName = cleanTextField(plusOneFirstName, 80);
@@ -378,6 +397,10 @@ router.post("/guest-collect/:token", publicRsvpLimiter, async (req, res) => {
         email: trimmedEmail,
         phone: cleanPhone,
         address: cleanAddress,
+        aptUnit: cleanAptUnit,
+        guestCity: cleanGuestCity,
+        guestState: cleanGuestState,
+        guestZip: cleanGuestZip,
         rsvpStatus: "pending",
         mealChoice: cleanMeal,
         dietaryNotes: cleanDietary,

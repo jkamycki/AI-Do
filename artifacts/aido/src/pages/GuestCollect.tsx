@@ -19,6 +19,10 @@ const schema = z.object({
   email: z.string().email("Please enter a valid email").or(z.literal("")),
   phone: z.string().optional(),
   address: z.string().optional(),
+  aptUnit: z.string().optional(),
+  guestCity: z.string().optional(),
+  guestState: z.string().optional(),
+  guestZip: z.string().optional(),
   plusOne: z.boolean().default(false),
   plusOneStatus: z.enum(["none", "named", "name_tbd", "unsure"]).default("none"),
   plusOneFirstName: z.string().optional(),
@@ -96,6 +100,10 @@ export default function GuestCollect() {
       email: "",
       phone: "",
       address: "",
+      aptUnit: "",
+      guestCity: "",
+      guestState: "",
+      guestZip: "",
       plusOne: false,
       plusOneStatus: "none",
       plusOneFirstName: "",
@@ -238,19 +246,75 @@ export default function GuestCollect() {
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="font-semibold text-[#6F3E54]">Mailing Address</FormLabel>
-                        <FormControl>
-                          <Input placeholder="123 Main St, City, State, ZIP" className={inputClass} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="space-y-3">
+                    <FormField
+                      control={form.control}
+                      name="address"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="font-semibold text-[#6F3E54]">Street Address</FormLabel>
+                          <FormControl>
+                            <Input placeholder="123 Main St" className={inputClass} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="aptUnit"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="font-semibold text-[#6F3E54]">Apt / Unit</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Apt 4B" className={inputClass} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_0.7fr_0.8fr]">
+                      <FormField
+                        control={form.control}
+                        name="guestCity"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="font-semibold text-[#6F3E54]">City</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Garfield" className={inputClass} {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="guestState"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="font-semibold text-[#6F3E54]">State</FormLabel>
+                            <FormControl>
+                              <Input placeholder="NJ" className={inputClass} {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="guestZip"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="font-semibold text-[#6F3E54]">ZIP</FormLabel>
+                            <FormControl>
+                              <Input inputMode="numeric" placeholder="07026" className={inputClass} {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
 
                   <FormField
                     control={form.control}

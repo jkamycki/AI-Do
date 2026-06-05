@@ -1083,6 +1083,62 @@ test.describe('A.IDO website and app feature parity', () => {
     await expectNoPageHorizontalOverflow(page, 'Public RSVP submission');
   });
 
+  test('guest collector keeps street, city, state, and ZIP in separate fields on a phone', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const submissions: Array<Record<string, unknown>> = [];
+
+    await page.route('**/api/maintenance/public**', (route) =>
+      fulfillJson(route, {
+        active: false,
+        section: 'guest-collector',
+        message: '',
+        activeSection: null,
+        expiresAt: null,
+      }),
+    );
+    await page.route('**/api/guest-collect/parity-collector', (route) => {
+      if (route.request().method() === 'GET') {
+        return fulfillJson(route, {
+          partner1Name: 'Joseph',
+          partner2Name: 'Gabriela',
+        });
+      }
+      if (route.request().method() === 'POST') {
+        const body = JSON.parse(route.request().postData() || '{}') as Record<string, unknown>;
+        submissions.push(body);
+        return fulfillJson(route, { success: true, guestId: 4242 }, 201);
+      }
+      return route.fallback();
+    });
+
+    const response = await page.goto('/collect/parity-collector', { waitUntil: 'domcontentloaded' });
+    expect(response?.ok(), 'Guest collector response').toBeTruthy();
+
+    await page.getByLabel(/Full Name/i).fill('Taylor Morgan');
+    await page.getByLabel(/Street Address/i).fill('456 Garden Ave');
+    await page.getByLabel(/Apt \/ Unit/i).fill('Unit 8');
+    await page.getByLabel(/^City$/i).fill('Garfield');
+    await page.getByLabel(/^State$/i).fill('NJ');
+    await page.getByLabel(/^ZIP$/i).fill('07026');
+    await page.getByLabel(/Email Address/i).fill('taylor@example.com');
+    await page.getByLabel(/Phone Number/i).fill('(555) 010-2200');
+    await page.getByRole('button', { name: /Send My Info/i }).click();
+
+    await expect(page.getByText(/Got it, thank you/i)).toBeVisible();
+    expect(submissions).toHaveLength(1);
+    expect(submissions[0]).toMatchObject({
+      name: 'Taylor Morgan',
+      address: '456 Garden Ave',
+      aptUnit: 'Unit 8',
+      guestCity: 'Garfield',
+      guestState: 'NJ',
+      guestZip: '07026',
+      email: 'taylor@example.com',
+      phone: '(555) 010-2200',
+    });
+    await expectNoPageHorizontalOverflow(page, 'Guest collector separated address form');
+  });
+
   test.describe('signed-in parity flows', () => {
     test.use({ storageState: hasAuthState ? authStatePath : undefined });
 
