@@ -65,6 +65,32 @@ function publicSessionRef(sessionId: string): string {
   return crypto.createHash("sha256").update(sessionId).digest("hex").slice(0, 16);
 }
 
+async function getClerkSignupGrowth(createdAtAfter: Date) {
+  const signupsByDate = new Map<string, number>();
+  const pageSize = 500;
+  const maxClerkUsers = 10000;
+
+  for (let offset = 0; offset < maxClerkUsers; offset += pageSize) {
+    const page = await clerkClient.users.getUserList({
+      limit: pageSize,
+      offset,
+      createdAtAfter: createdAtAfter.getTime(),
+      orderBy: "-created_at",
+    });
+
+    for (const user of page.data) {
+      const date = new Date(user.createdAt).toISOString().slice(0, 10);
+      signupsByDate.set(date, (signupsByDate.get(date) ?? 0) + 1);
+    }
+
+    if (page.data.length < pageSize || offset + page.data.length >= page.totalCount) break;
+  }
+
+  return Array.from(signupsByDate.entries())
+    .map(([date, count]) => ({ date, count }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
 function isAllowedLaunchPlanRecipient(email: string) {
   const recipients = getLaunchPlanRecipientEmails(email);
   return recipients.length > 0 && recipients.every(recipient =>
@@ -250,7 +276,7 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
     const monthAgo = new Date(now.getTime() - 30 * 86400000);
 
     const [
-      countsByType, dauRow, wauRow, mauRow, userGrowthRows, deviceRows,
+      countsByType, dauRow, wauRow, mauRow, deviceRows,
       clerkTotal, clerkToday, clerkThisWeek, clerkThisMonth, onboardedRow,
       pvTodayRow, pvWeekRow, pvTotalRow, onboardingGrowthRows, sourceRows,
       landingPageRows, featureUsageRows, firstPlanningActionRow, contactSummaryRow,
@@ -274,17 +300,6 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
       db.select({ count: sql<number>`count(distinct user_id)::int` })
         .from(analyticsEvents)
         .where(and(eq(analyticsEvents.eventType, "user_login"), gte(analyticsEvents.timestamp, monthAgo))),
-
-      // Growth chart: use wedding_profiles created_at (accurate first-time signups)
-      db.execute(sql`
-        SELECT
-          to_char(date_trunc('day', created_at), 'YYYY-MM-DD') as date,
-          count(*)::int as count
-        FROM wedding_profiles
-        WHERE created_at >= NOW() - INTERVAL '30 days'
-        GROUP BY 1
-        ORDER BY 1
-      `),
 
       db.execute(sql`
         SELECT
@@ -447,6 +462,7 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
     const onboardedCount = Number((onboardedRow.rows?.[0] as { count?: number } | undefined)?.count ?? 0);
     const onboardingRate = totalUsers > 0 ? Math.round((onboardedCount / totalUsers) * 100) : 0;
     const signupCount = totalUsers;
+    const userGrowth = await getClerkSignupGrowth(monthAgo);
     const landingVisitors = Number(
       (landingPageRows.rows as Array<{ visitors?: number }>).reduce((sum, row) => sum + Number(row.visitors ?? 0), 0),
     );
@@ -523,10 +539,8 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
           count: r.count,
         })),
       },
-      userGrowth: (userGrowthRows.rows as Array<{ date: string; count: number }>).map(r => ({
-        date: r.date,
-        count: r.count,
-      })),
+      userGrowth,
+      userGrowthSource: "clerk",
       pageViews: {
         today: pvTodayRow[0]?.count ?? 0,
         week: pvWeekRow[0]?.count ?? 0,

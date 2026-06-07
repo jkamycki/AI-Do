@@ -66,6 +66,7 @@ interface AdminMetrics {
     deviceBreakdown: Array<{ device: string; count: number }>;
   };
   userGrowth: Array<{ date: string; count: number }>;
+  userGrowthSource?: "clerk" | string;
   pageViews: {
     today: number;
     week: number;
@@ -1731,7 +1732,7 @@ function OverviewSection({ metrics }: { metrics: AdminMetrics }) {
               <TrendingUp className="h-4 w-4 text-primary" />
               Growth — Last 30 Days
             </CardTitle>
-            <CardDescription>Onboardings completed per day (from profile creation)</CardDescription>
+            <CardDescription>Clerk signups and setup completions per day</CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
             {chartData.length === 0 ? (
@@ -1757,7 +1758,7 @@ function OverviewSection({ metrics }: { metrics: AdminMetrics }) {
                   />
                   <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
                   <Area type="monotone" dataKey="onboarded" stroke="#10b981" fill="url(#colorOnboarded)" name="Onboarded" strokeWidth={2} dot={false} />
-                  <Area type="monotone" dataKey="signups" stroke={BRAND} fill="url(#colorSignups)" name="Profile Created" strokeWidth={2} dot={false} />
+                  <Area type="monotone" dataKey="signups" stroke={BRAND} fill="url(#colorSignups)" name="Signups" strokeWidth={2} dot={false} />
                 </AreaChart>
               </ResponsiveContainer>
             )}

@@ -134,10 +134,18 @@ type AdminUsersResponse = {
 type AdminMetricsResponse = {
   userMetrics: {
     totalUsers: number;
+    dau: number;
+    wau: number;
+    mau: number;
+    newToday: number;
+    newThisWeek: number;
     newThisMonth: number;
+    totalSignups: number;
     onboardedUsers: number;
     onboardingCompletionRate: number;
   };
+  userGrowth?: Array<{ date: string; count: number }>;
+  userGrowthSource?: "clerk" | string;
   pageViews: {
     today: number;
     week: number;
@@ -1606,7 +1614,7 @@ export default function OperationsCenterPage() {
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 {[
                   { label: "Landing visits", value: metricsData?.pageViews.week ?? 0, detail: "Last 7 days" },
-                  { label: "Signups", value: metricsData?.userMetrics.newThisMonth ?? 0, detail: "This month" },
+                  { label: "Signups", value: metricsData?.userMetrics.newThisMonth ?? 0, detail: "Clerk accounts this month" },
                   { label: "Profile setup", value: `${metricsData?.userMetrics.onboardingCompletionRate ?? 0}%`, detail: `${metricsData?.userMetrics.onboardedUsers ?? 0} completed` },
                   {
                     label: "Feedback",
@@ -2584,7 +2592,7 @@ export default function OperationsCenterPage() {
             <div>
               <h2 className="text-xl font-serif font-semibold text-[#24171D]">Users & Workspace Sharing</h2>
               <p className="text-sm font-medium text-[#4A3941]">
-                Every account appears once with its current Active or Inactive status, workspace ownership, and sharing details. Refreshes automatically while open.
+                Every Clerk account appears once with its current Active or Inactive status, workspace ownership, and sharing details. Refreshes automatically while open.
               </p>
             </div>
             <div className="w-full lg:w-80">
