@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { LanguagePicker } from "@/components/LanguagePicker";
 import { LaunchPricingSection, useLaunchPricingEnabled } from "@/components/LaunchPricingSection";
+import { MobileStickyCta } from "@/components/MobileStickyCta";
 import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 import { organizationSchema, setSeo, softwareSchema } from "@/lib/seo";
 import { trackPublicMarketingEvent, trackPublicPageView } from "@/lib/publicAnalytics";
@@ -166,7 +167,7 @@ export default function Landing() {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#FFF7F2] text-[#8D294D]">
+    <div className="min-h-screen overflow-x-hidden bg-[#FFF7F2] pb-[calc(5.75rem+env(safe-area-inset-bottom))] text-[#8D294D] md:pb-0">
       <header className="sticky top-0 z-40 border-b border-[#E6A6B7]/70 bg-[#FFF7F2]/[0.94] px-3 py-2 shadow-[0_1px_0_rgba(141,41,77,0.06)] backdrop-blur-md sm:px-8 sm:py-3">
         <div className="mx-auto grid max-w-7xl grid-cols-[auto_1fr_auto] items-center gap-3">
           <div className="flex min-w-0 items-center gap-2 justify-self-start sm:gap-3">
@@ -386,6 +387,10 @@ export default function Landing() {
           </div>
         </div>
       </footer>
+      <MobileStickyCta
+        href="/sign-up?source=landing_sticky"
+        onClick={() => trackStartPlanning("mobile_sticky")}
+      />
     </div>
   );
 }

@@ -83,9 +83,10 @@ type DayOfTab =
   | "setup"
   | "attire"
   | "vendors-party"
-  | "packing";
+  | "packing"
+  | "export";
 
-type BinderSectionId = Exclude<DayOfTab, "timeline" | "packing">;
+type BinderSectionId = Exclude<DayOfTab, "timeline" | "packing" | "export">;
 
 interface BinderChecklistItem {
   id: string;
@@ -286,12 +287,11 @@ interface DayOfRunbookPlan {
 const DAY_OF_TABS: Array<{ id: DayOfTab; label: string; icon: ComponentType<{ className?: string }> }> = [
   { id: "timeline", label: "Timeline", icon: Clock },
   { id: "ceremony", label: "Ceremony", icon: CalendarDays },
-  { id: "music", label: "Music", icon: Music },
-  { id: "speeches", label: "Speeches", icon: Mic2 },
+  { id: "vendors-party", label: "Vendors", icon: PhoneCall },
+  { id: "music", label: "Music & Speeches", icon: Music },
   { id: "setup", label: "Setup", icon: ClipboardList },
-  { id: "attire", label: "Attire", icon: Shirt },
-  { id: "vendors-party", label: "Vendors & Party", icon: UsersRound },
   { id: "packing", label: "Packing", icon: ListChecks },
+  { id: "export", label: "Export Binder", icon: Download },
 ];
 
 const DEFAULT_PACKING_ITEMS: BinderChecklistItem[] = [
@@ -402,8 +402,8 @@ const BINDER_SECTIONS: Record<BinderSectionId, BinderSection> = {
   },
   music: {
     id: "music",
-    title: "Music Cues",
-    description: "A simple cue sheet for ceremony, reception, and must-play moments.",
+    title: "Music & Speeches",
+    description: "Reception and program cues for songs, speeches, microphones, and timing.",
     icon: Music,
     items: [
       { id: "sound-check", title: "Sound check and cue owner", helper: "Who owns the music timeline and when audio is tested." },
@@ -1492,6 +1492,7 @@ function DayOfInner() {
   const [newPackingItem, setNewPackingItem] = useState("");
   const [isExportingTimelinePdf, setIsExportingTimelinePdf] = useState(false);
   const [isExportingBinderPdf, setIsExportingBinderPdf] = useState(false);
+  const [hasExportedBinder, setHasExportedBinder] = useState(false);
   const [loadedStorageKey, setLoadedStorageKey] = useState<string | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
 
@@ -1770,6 +1771,32 @@ function DayOfInner() {
     toast({ title: "Saved vendors added to contact sheet" });
   };
 
+  const useSavedInfoForBinder = () => {
+    const savedVendors = (vendors as Vendor[]).map(vendorToRunbookContact);
+
+    setCeremonyPlan((plan) => {
+      let nextPlan = normalizeCeremonyPlan(plan);
+      (["processional", "rings", "officiant", "recessional"] as CeremonySectionId[]).forEach((section) => {
+        nextPlan = createSuggestedCeremonyPlan(section, nextPlan, profile, guestNameOptions);
+      });
+      return nextPlan;
+    });
+
+    setRunbookPlan((plan) => {
+      let nextPlan = normalizeRunbookPlan(plan);
+      (["music", "speeches", "setup", "attire", "vendors-party"] as StructuredBinderSectionId[]).forEach((section) => {
+        nextPlan = createSuggestedRunbookPlan(section, nextPlan, profile, guestNameOptions, vendors as Vendor[]);
+      });
+      if (savedVendors.length) nextPlan = { ...nextPlan, vendorsParty: { ...nextPlan.vendorsParty, vendors: savedVendors } };
+      return normalizeRunbookPlan(nextPlan);
+    });
+
+    toast({
+      title: "Saved info added",
+      description: "A.I DO pulled in profile, guest, vendor, venue, and ceremony details where available.",
+    });
+  };
+
   const togglePackingItem = (id: string) => {
     setPackingItems((items) =>
       items.map((item) => (item.id === id ? { ...item, completed: !item.completed } : item))
@@ -2021,6 +2048,7 @@ function DayOfInner() {
       });
 
       doc.save("aido-day-of-binder.pdf");
+      setHasExportedBinder(true);
       toast({ title: "Full day-of binder exported" });
     } catch {
       toast({ title: "Could not export day-of binder", variant: "destructive" });
@@ -2051,7 +2079,7 @@ function DayOfInner() {
     : 0;
   const nextEvent = editableEvents.find((_, index) => !completedSet.has(index));
   const activeSection =
-    activeTab !== "timeline" && activeTab !== "packing" ? BINDER_SECTIONS[activeTab] : null;
+    activeTab !== "timeline" && activeTab !== "packing" && activeTab !== "export" ? BINDER_SECTIONS[activeTab] : null;
   const ActiveSectionIcon = activeSection?.icon ?? ClipboardList;
   const renderRunbookPlan = normalizeRunbookPlan(runbookPlan);
   const musicPlan = renderRunbookPlan.music;
@@ -2059,6 +2087,62 @@ function DayOfInner() {
   const setupPlan = renderRunbookPlan.setup;
   const attirePlan = renderRunbookPlan.attire;
   const vendorsPartyPlan = renderRunbookPlan.vendorsParty;
+  const commandCenterItems: Array<{
+    id: string;
+    label: string;
+    helper: string;
+    complete: boolean;
+    tab: DayOfTab;
+  }> = [
+    {
+      id: "timeline",
+      label: "Confirm timeline",
+      helper: editableEvents.length ? `${completedTimelineCount}/${editableEvents.length} timeline items checked` : "Generate or add your wedding day timeline",
+      complete: editableEvents.length > 0 && completedTimelineCount === editableEvents.length,
+      tab: "timeline",
+    },
+    {
+      id: "vendors",
+      label: "Add vendor contacts",
+      helper: vendorsPartyPlan.vendors.length ? `${vendorsPartyPlan.vendors.length} day-of contacts added` : "Pull saved vendors or add key contacts",
+      complete: vendorsPartyPlan.vendors.some((vendor) => vendor.vendorName.trim() || vendor.phone.trim()),
+      tab: "vendors-party",
+    },
+    {
+      id: "ceremony",
+      label: "Confirm ceremony cues",
+      helper: ceremonyPlan.processional.length ? `${ceremonyPlan.processional.length} processional entries started` : "Add processional, rings, officiant, and exit cues",
+      complete: ceremonyPlan.processional.length > 0 && !!ceremonyPlan.ringsAndVows.ringHolder,
+      tab: "ceremony",
+    },
+    {
+      id: "music",
+      label: "Confirm music and speeches",
+      helper: "Set cue owner, key songs, speakers, and mic plan",
+      complete:
+        (musicPlan.ceremonyCues.some((cue) => cue.song.trim() || cue.cueBy.trim()) ||
+          musicPlan.receptionCues.some((cue) => cue.song.trim() || cue.cueBy.trim())) &&
+        speechPlan.speakers.some((speaker) => speaker.speakerName.trim()),
+      tab: "music",
+    },
+    {
+      id: "packing",
+      label: "Pack emergency kit",
+      helper: `${packedCount}/${packingItems.length} packing items checked`,
+      complete: packingItems.some((item) => item.id === "emergency-kit" && item.completed),
+      tab: "packing",
+    },
+    {
+      id: "export",
+      label: "Export binder",
+      helper: "Download the final handoff PDF when the setup items are ready",
+      complete: hasExportedBinder,
+      tab: "export",
+    },
+  ];
+  const completedCommandItems = commandCenterItems.filter((item) => item.complete).length;
+  const binderReadiness = Math.round((completedCommandItems / commandCenterItems.length) * 100);
+  const nextCommandItem = commandCenterItems.find((item) => !item.complete) ?? commandCenterItems[commandCenterItems.length - 1];
 
   return (
     <div className="mx-auto max-w-7xl px-4 pb-28 pt-6 sm:px-6 lg:px-8">
@@ -2078,21 +2162,19 @@ function DayOfInner() {
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
               <Button
-                variant="outline"
-                className="gap-2 rounded-full border-[#E8C9D4] bg-white/80 text-[#8D294D] hover:bg-[#F7DDE2]"
-                onClick={handleDownloadTimelinePdf}
-                disabled={!editableEvents.length || isExportingTimelinePdf}
+                className="gap-2 rounded-full border border-[#D4A373]/70 bg-[#8D294D] text-white shadow-[0_10px_24px_rgba(141,41,77,0.22)] hover:bg-[#762140]"
+                onClick={useSavedInfoForBinder}
               >
-                <FileDown className="h-4 w-4" />
-                {isExportingTimelinePdf ? "Exporting..." : "Export Timeline PDF"}
+                <Sparkles className="h-4 w-4" />
+                Use saved info
               </Button>
               <Button
-                className="gap-2 rounded-full border border-[#D4A373]/70 bg-[#8D294D] text-white shadow-[0_10px_24px_rgba(141,41,77,0.22)] hover:bg-[#762140]"
-                onClick={handleDownloadBinderPdf}
-                disabled={isExportingBinderPdf}
+                variant="outline"
+                className="gap-2 rounded-full border-[#E8C9D4] bg-white/80 text-[#8D294D] hover:bg-[#F7DDE2]"
+                onClick={() => setActiveTab(nextCommandItem.tab)}
               >
-                <Download className="h-4 w-4" />
-                {isExportingBinderPdf ? "Exporting..." : "Export Full Binder"}
+                <CheckCircle2 className="h-4 w-4" />
+                Next: {nextCommandItem.label}
               </Button>
             </div>
           </div>
@@ -2128,6 +2210,54 @@ function DayOfInner() {
               <p className="mt-1 font-serif text-2xl font-bold text-[#4C2730]">{value}</p>
               <p className="text-xs text-[#7B5364]">{helper}</p>
             </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-[1.75rem] border border-[#EBCBD2] bg-white p-4 shadow-[0_14px_35px_rgba(141,41,77,0.08)] sm:p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#A65A73]">Today's setup progress</p>
+            <h2 className="mt-1 font-serif text-2xl font-bold text-[#4C2730]">
+              Your day-of binder is {binderReadiness}% ready.
+            </h2>
+            <p className="mt-1 text-sm text-[#7B5364]">
+              Next: {nextCommandItem.label.toLowerCase()}.
+            </p>
+          </div>
+          <div className="h-3 overflow-hidden rounded-full bg-[#F7DDE2] lg:w-64">
+            <div
+              className="h-full rounded-full bg-[#8D294D] transition-all"
+              style={{ width: `${binderReadiness}%` }}
+            />
+          </div>
+        </div>
+        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {commandCenterItems.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setActiveTab(item.tab)}
+              className={`flex min-h-[5.5rem] items-start gap-3 rounded-2xl border p-4 text-left transition ${
+                item.complete
+                  ? "border-[#D7E6D4] bg-[#FAFDF9] text-[#4F7142]"
+                  : item.id === nextCommandItem.id
+                    ? "border-[#8D294D] bg-[#FFF7F2] text-[#4C2730] shadow-[0_10px_24px_rgba(141,41,77,0.10)]"
+                    : "border-[#EBCBD2] bg-[#FFFDFC] text-[#4C2730] hover:border-[#D99AAC]"
+              }`}
+            >
+              <span
+                className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border ${
+                  item.complete ? "border-[#6E8D5C] bg-[#6E8D5C] text-white" : "border-[#D9B0BC] bg-white text-[#8D294D]"
+                }`}
+              >
+                {item.complete ? <CheckCircle2 className="h-4 w-4" /> : <span className="h-2 w-2 rounded-full bg-current" />}
+              </span>
+              <span className="min-w-0">
+                <span className="block font-bold">{item.label}</span>
+                <span className="mt-1 block text-sm text-[#7B5364]">{item.helper}</span>
+              </span>
+            </button>
           ))}
         </div>
       </section>
@@ -3128,7 +3258,7 @@ function DayOfInner() {
               </>
             )}
 
-            {activeSection.id === "speeches" && (
+            {activeSection.id === "music" && (
               <>
                 <RunbookSectionCard
                   icon={Mic2}
@@ -3256,16 +3386,21 @@ function DayOfInner() {
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
-                        <Textarea
-                          value={speaker.notes}
-                          onChange={(event) =>
-                            updateRunbookSection("speeches", {
-                              speakers: speechPlan.speakers.map((item, i) => (i === index ? { ...item, notes: event.target.value } : item)),
-                            })
-                          }
-                          className="mt-3 min-h-[72px] resize-none rounded-2xl border-[#E8C9D4] bg-white"
-                          placeholder="Example: Walk mic to parent table, remind speaker to toast at the end."
-                        />
+                        <details className="mt-3">
+                          <summary className="cursor-pointer text-xs font-bold uppercase tracking-[0.16em] text-[#A65A73]">
+                            Optional speaker notes
+                          </summary>
+                          <Textarea
+                            value={speaker.notes}
+                            onChange={(event) =>
+                              updateRunbookSection("speeches", {
+                                speakers: speechPlan.speakers.map((item, i) => (i === index ? { ...item, notes: event.target.value } : item)),
+                              })
+                            }
+                            className="mt-2 min-h-[72px] resize-none rounded-2xl border-[#E8C9D4] bg-white"
+                            placeholder="Example: Walk mic to parent table, remind speaker to toast at the end."
+                          />
+                        </details>
                       </div>
                     ))}
                   </div>
@@ -3369,7 +3504,12 @@ function DayOfInner() {
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-                      <Textarea value={task.notes} onChange={(event) => updateRunbookSection("setup", { tasks: setupPlan.tasks.map((item, i) => (i === index ? { ...item, notes: event.target.value } : item)) })} className="mt-3 min-h-[72px] resize-none rounded-2xl border-[#E8C9D4]" placeholder="Optional details: loading dock, rental count, photo reference, or cleanup instruction." />
+                      <details className="mt-3">
+                        <summary className="cursor-pointer text-xs font-bold uppercase tracking-[0.16em] text-[#A65A73]">
+                          Optional setup notes
+                        </summary>
+                        <Textarea value={task.notes} onChange={(event) => updateRunbookSection("setup", { tasks: setupPlan.tasks.map((item, i) => (i === index ? { ...item, notes: event.target.value } : item)) })} className="mt-2 min-h-[72px] resize-none rounded-2xl border-[#E8C9D4]" placeholder="Optional details: loading dock, rental count, photo reference, or cleanup instruction." />
+                      </details>
                     </div>
                   ))}
                 </div>
@@ -3639,6 +3779,77 @@ function DayOfInner() {
                   </div>
                 </article>
               ))}
+            </div>
+          </section>
+        )}
+
+        {activeTab === "export" && (
+          <section className="space-y-4">
+            <div className="rounded-[1.75rem] border border-[#EBCBD2] bg-white p-5 shadow-[0_12px_28px_rgba(141,41,77,0.08)]">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-start gap-4">
+                  <div className="rounded-2xl bg-[#F7DDE2] p-3 text-[#8D294D]">
+                    <Download className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#A65A73]">Final step</p>
+                    <h2 className="font-serif text-3xl font-bold text-[#4C2730]">Export Binder</h2>
+                    <p className="mt-1 max-w-2xl text-sm leading-6 text-[#7B5364]">
+                      Download the handoff PDF after the main setup sections are filled in. Use the timeline-only export when a vendor just needs the schedule.
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-full bg-[#F7DDE2] px-4 py-2 text-sm font-bold text-[#8D294D]">
+                  {binderReadiness}% ready
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[1fr_0.8fr]">
+              <div className="rounded-[1.75rem] border border-[#EBCBD2] bg-white p-5 shadow-[0_12px_28px_rgba(141,41,77,0.08)]">
+                <h3 className="font-serif text-2xl font-bold text-[#4C2730]">Before exporting</h3>
+                <div className="mt-4 space-y-3">
+                  {commandCenterItems.filter((item) => item.id !== "export").map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setActiveTab(item.tab)}
+                      className="flex w-full items-start gap-3 rounded-2xl border border-[#EBCBD2] bg-[#FFFDFC] p-3 text-left hover:border-[#D99AAC]"
+                    >
+                      <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${item.complete ? "bg-[#6E8D5C] text-white" : "bg-[#F7DDE2] text-[#8D294D]"}`}>
+                        {item.complete ? <CheckCircle2 className="h-4 w-4" /> : <span className="h-2 w-2 rounded-full bg-current" />}
+                      </span>
+                      <span>
+                        <span className="block font-bold text-[#4C2730]">{item.label}</span>
+                        <span className="block text-sm text-[#7B5364]">{item.helper}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3 rounded-[1.75rem] border border-[#EBCBD2] bg-[#FFF9F5] p-5 shadow-[0_12px_28px_rgba(141,41,77,0.08)]">
+                <Button
+                  className="h-auto w-full justify-center gap-2 rounded-2xl bg-[#8D294D] px-4 py-4 text-base hover:bg-[#7a2140]"
+                  onClick={handleDownloadBinderPdf}
+                  disabled={isExportingBinderPdf}
+                >
+                  <Download className="h-5 w-5" />
+                  {isExportingBinderPdf ? "Exporting..." : "Export Full Binder"}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-auto w-full justify-center gap-2 rounded-2xl border-[#E8C9D4] bg-white px-4 py-4 text-base text-[#8D294D] hover:bg-[#F7DDE2]"
+                  onClick={handleDownloadTimelinePdf}
+                  disabled={!editableEvents.length || isExportingTimelinePdf}
+                >
+                  <FileDown className="h-5 w-5" />
+                  {isExportingTimelinePdf ? "Exporting..." : "Export Timeline Only"}
+                </Button>
+                <p className="text-sm leading-6 text-[#7B5364]">
+                  The full binder includes timeline, ceremony, music, speeches, setup, vendor contacts, and packing checklist.
+                </p>
+              </div>
             </div>
           </section>
         )}

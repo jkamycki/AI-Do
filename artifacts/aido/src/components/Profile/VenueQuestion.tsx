@@ -23,7 +23,7 @@ const OPTIONS: Array<{
   {
     value: "not_yet",
     label: "Not yet",
-    description: "Help me compare venues and reach out.",
+    description: "Save the basics now. Venue search can come later.",
     icon: MapPin,
   },
 ];

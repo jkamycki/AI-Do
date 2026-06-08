@@ -809,7 +809,7 @@ export default function Profile() {
                   value={form.watch("venueDiscovery")}
                   onChange={handleVenueDiscoveryChange}
                   coupleNames={coupleNames || undefined}
-                  prioritiesSlot={renderPlanningPrioritiesField()}
+                  compact
                 />
               )}
 

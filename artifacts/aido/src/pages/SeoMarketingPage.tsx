@@ -4,6 +4,7 @@ import { Link, useLocation } from "wouter";
 import { ArrowRight, CheckCircle2, Globe2, MailCheck, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LaunchPricingSection } from "@/components/LaunchPricingSection";
+import { MobileStickyCta } from "@/components/MobileStickyCta";
 import { organizationSchema, setSeo, softwareSchema } from "@/lib/seo";
 import { trackPublicMarketingEvent } from "@/lib/publicAnalytics";
 
@@ -101,6 +102,13 @@ export default function SeoMarketingPage() {
     setLocation(`/sign-up?email=${encodeURIComponent(email)}&source=${encodeURIComponent(key)}`);
   }
 
+  function focusQuickStart() {
+    trackStartPlanning("mobile_sticky");
+    const input = document.getElementById("marketing-quick-start-email");
+    input?.scrollIntoView({ behavior: "smooth", block: "center" });
+    window.setTimeout(() => input?.focus(), 350);
+  }
+
   useEffect(() => {
     setSeo({
       title: page.metaTitle,
@@ -122,7 +130,7 @@ export default function SeoMarketingPage() {
   }, [key, page]);
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#FFF7F2] text-[#5B2035]">
+    <main className="min-h-screen overflow-x-hidden bg-[#FFF7F2] pb-[calc(5.75rem+env(safe-area-inset-bottom))] text-[#5B2035] md:pb-0">
       <header className="border-b border-[#E6A6B7]/45 bg-[#FFF7F2]/95 px-4 py-3 backdrop-blur sm:px-5 sm:py-4">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
           <Link href="/" className="flex min-w-0 items-center gap-2 font-serif text-2xl text-[#8D294D]">
@@ -166,7 +174,7 @@ export default function SeoMarketingPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[#8D294D]/25 bg-white/82 p-4 shadow-[0_24px_70px_rgba(141,41,77,0.12)] sm:rounded-[2rem] sm:p-6">
+          <div id="quick-start" className="rounded-2xl border border-[#8D294D]/25 bg-white/82 p-4 shadow-[0_24px_70px_rgba(141,41,77,0.12)] sm:rounded-[2rem] sm:p-6">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-[#B16C8E] sm:text-sm sm:tracking-[0.22em]">Start free</p>
             <h2 className="mt-3 font-serif text-2xl font-semibold leading-tight text-[#8D294D] sm:text-3xl">
               Create your wedding workspace now.
@@ -236,6 +244,7 @@ export default function SeoMarketingPage() {
           <Link href="/for-vendors" className="hover:text-[#8D294D]">Vendor partners</Link>
         </div>
       </footer>
+      <MobileStickyCta onClick={focusQuickStart} />
     </main>
   );
 }

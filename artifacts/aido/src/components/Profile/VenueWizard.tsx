@@ -47,6 +47,7 @@ type VenueWizardProps = {
   value: VenueDiscoveryData;
   onChange: (value: VenueDiscoveryData) => void;
   coupleNames?: string;
+  compact?: boolean;
   prioritiesSlot?: ReactNode;
 };
 
@@ -91,7 +92,7 @@ function parseLocations(text: string) {
     .filter(Boolean);
 }
 
-export function VenueWizard({ value, onChange, coupleNames = "our wedding", prioritiesSlot }: VenueWizardProps) {
+export function VenueWizard({ value, onChange, coupleNames = "our wedding", compact = false, prioritiesSlot }: VenueWizardProps) {
   const [uploadError, setUploadError] = useState("");
   const [generatingPromptDraft, setGeneratingPromptDraft] = useState(false);
   const [generatingVenueOptions, setGeneratingVenueOptions] = useState(false);
@@ -322,9 +323,13 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding", prio
   return (
     <section className="space-y-6 rounded-lg border border-primary/15 bg-background p-4 shadow-sm sm:p-5">
       <div>
-        <h3 className="font-serif text-xl text-primary">Venue Discovery Wizard</h3>
+        <h3 className="font-serif text-xl text-primary">
+          {compact ? "Venue search basics" : "Venue Discovery Wizard"}
+        </h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Use this as a planning helper while you search. Everything here saves with your wedding profile.
+          {compact
+            ? "No problem. Tell us the basics now and A.I DO can help you search after your profile is saved."
+            : "Use this as a planning helper while you search. Everything here saves with your wedding profile."}
         </p>
       </div>
 
@@ -409,203 +414,222 @@ export function VenueWizard({ value, onChange, coupleNames = "our wedding", prio
         </div>
       </div>
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-medium">Style</p>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="h-8 px-2 text-xs"
-            onClick={() => {
-              update({ style: value.style.length === STYLE_OPTIONS.length ? [] : STYLE_OPTIONS });
-            }}
-          >
-            {value.style.length === STYLE_OPTIONS.length ? "Clear all" : "Select all"}
-          </Button>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {STYLE_OPTIONS.map((style) => {
-            const selected = value.style.includes(style);
-            return (
+      {compact ? (
+        <>
+          <label className="space-y-2 text-sm font-medium">
+            Top venue priorities or must-haves
+            <Textarea
+              value={value.notes}
+              onChange={(event) => update({ notes: event.target.value })}
+              placeholder="Example: easy parking, indoor backup, close to hotels, fits 120 guests"
+              rows={3}
+            />
+          </label>
+          <div className="rounded-lg border border-primary/15 bg-primary/5 p-4 text-sm text-muted-foreground">
+            After you save, your dashboard can guide you into venue discovery when you are ready to compare options, draft outreach, and build a shortlist.
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-medium">Style</p>
               <Button
-                key={style}
                 type="button"
                 size="sm"
-                variant={selected ? "default" : "outline"}
+                variant="ghost"
+                className="h-8 px-2 text-xs"
                 onClick={() => {
-                  update({
-                    style: selected ? value.style.filter((item) => item !== style) : [...value.style, style],
-                  });
+                  update({ style: value.style.length === STYLE_OPTIONS.length ? [] : STYLE_OPTIONS });
                 }}
               >
-                {style}
+                {value.style.length === STYLE_OPTIONS.length ? "Clear all" : "Select all"}
               </Button>
-            );
-          })}
-        </div>
-      </div>
-
-      {prioritiesSlot}
-
-      <div className="space-y-3 rounded-lg border border-primary/15 bg-primary/5 p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="flex items-center gap-2 text-sm font-medium">
-              <Sparkles className="h-4 w-4 text-primary" />
-              AI venue options
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Generate named venue suggestions with website links and shortlist guidance from the details above.
-            </p>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            onClick={generateVenueOptions}
-            disabled={generatingVenueOptions}
-            className="gap-2"
-          >
-            <Sparkles className="h-4 w-4" />
-            {generatingVenueOptions ? "Generating..." : "Generate options"}
-          </Button>
-        </div>
-        {venueOptionsError && (
-          <p className="text-sm font-medium text-destructive" role="alert">
-            {venueOptionsError}
-          </p>
-        )}
-        {value.aiVenueOptions && (
-          <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm leading-relaxed">
-            <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-0.5 prose-headings:font-serif prose-headings:text-primary">
-              <ReactMarkdown
-                components={{
-                  a: ({ node: _node, ...props }) => (
-                    <a {...props} target="_blank" rel="noopener noreferrer" />
-                  ),
-                }}
-              >
-                {value.aiVenueOptions}
-              </ReactMarkdown>
             </div>
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-medium">Shortlist</p>
-            <p className="text-xs text-muted-foreground">Save venue names, links, and quick notes.</p>
-          </div>
-          <Button type="button" variant="outline" size="sm" onClick={addShortlistItem} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add venue
-          </Button>
-        </div>
-
-        <div className="space-y-3">
-          {value.shortlist.map((item) => (
-            <div key={item.id} className="grid gap-2 rounded-lg border border-border p-3 md:grid-cols-[1fr_1fr_auto]">
-              <Input
-                value={item.name}
-                onChange={(event) => updateShortlistItem(item.id, { name: event.target.value })}
-                placeholder="Venue name"
-              />
-              <Input
-                value={item.link}
-                onChange={(event) => updateShortlistItem(item.id, { link: event.target.value })}
-                placeholder="Website or saved link"
-              />
-              <Button type="button" variant="ghost" size="icon" onClick={() => removeShortlistItem(item.id)} aria-label="Remove venue">
-                <Trash2 className="h-4 w-4" />
-              </Button>
-              <Textarea
-                value={item.notes}
-                onChange={(event) => updateShortlistItem(item.id, { notes: event.target.value })}
-                placeholder="Notes"
-                rows={2}
-                className="md:col-span-3"
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        <div>
-          <p className="text-sm font-medium">Screenshots</p>
-          <p className="text-xs text-muted-foreground">Upload small screenshots from venue sites or social posts.</p>
-        </div>
-        <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-primary/30 bg-primary/5 px-4 py-5 text-sm font-medium text-primary">
-          <Upload className="h-4 w-4" />
-          Upload screenshots
-          <input type="file" accept="image/*" multiple className="sr-only" onChange={onScreenshotUpload} />
-        </label>
-        {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
-        {value.screenshots.length > 0 && (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {value.screenshots.map((screenshot) => (
-              <div key={screenshot.id} className="overflow-hidden rounded-lg border border-border">
-                <img src={screenshot.dataUrl} alt={screenshot.name} className="h-32 w-full object-cover" />
-                <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs">
-                  <span className="truncate">{screenshot.name}</span>
-                  <Button type="button" variant="ghost" size="icon" onClick={() => removeScreenshot(screenshot.id)} aria-label="Remove screenshot">
-                    <Trash2 className="h-4 w-4" />
+            <div className="flex flex-wrap gap-2">
+              {STYLE_OPTIONS.map((style) => {
+                const selected = value.style.includes(style);
+                return (
+                  <Button
+                    key={style}
+                    type="button"
+                    size="sm"
+                    variant={selected ? "default" : "outline"}
+                    onClick={() => {
+                      update({
+                        style: selected ? value.style.filter((item) => item !== style) : [...value.style, style],
+                      });
+                    }}
+                  >
+                    {style}
                   </Button>
+                );
+              })}
+            </div>
+          </div>
+
+          {prioritiesSlot}
+
+          <div className="space-y-3 rounded-lg border border-primary/15 bg-primary/5 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="flex items-center gap-2 text-sm font-medium">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  AI venue options
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Generate named venue suggestions with website links and shortlist guidance from the details above.
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={generateVenueOptions}
+                disabled={generatingVenueOptions}
+                className="gap-2"
+              >
+                <Sparkles className="h-4 w-4" />
+                {generatingVenueOptions ? "Generating..." : "Generate options"}
+              </Button>
+            </div>
+            {venueOptionsError && (
+              <p className="text-sm font-medium text-destructive" role="alert">
+                {venueOptionsError}
+              </p>
+            )}
+            {value.aiVenueOptions && (
+              <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm leading-relaxed">
+                <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-0.5 prose-headings:font-serif prose-headings:text-primary">
+                  <ReactMarkdown
+                    components={{
+                      a: ({ node: _node, ...props }) => (
+                        <a {...props} target="_blank" rel="noopener noreferrer" />
+                      ),
+                    }}
+                  >
+                    {value.aiVenueOptions}
+                  </ReactMarkdown>
                 </div>
               </div>
-            ))}
+            )}
           </div>
-        )}
-      </div>
 
-      <div className="space-y-3 rounded-lg border border-primary/10 bg-primary/5 p-4">
-        <div>
-          <p className="flex items-center gap-2 text-sm font-medium">
-            <Sparkles className="h-4 w-4 text-primary" />
-            Outreach email drafts
-          </p>
-          <p className="text-xs text-muted-foreground">Generate a starter message, then edit it before sending.</p>
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium" htmlFor="venue-email-prompt">
-            Custom AI prompt
-          </label>
-          <Textarea
-            id="venue-email-prompt"
-            value={value.emailPrompt ?? ""}
-            onChange={(event) => update({ emailPrompt: event.target.value })}
-            placeholder="Example: Write a friendly email asking if they allow outside catering and if there are Saturday dates available next fall."
-            rows={3}
-          />
-          <Button
-            type="button"
-            variant="default"
-            size="sm"
-            onClick={generatePromptDraft}
-            disabled={generatingPromptDraft || !(value.emailPrompt ?? "").trim()}
-            className="gap-2"
-          >
-            <Sparkles className="h-4 w-4" />
-            {generatingPromptDraft ? "Generating..." : "Generate from prompt"}
-          </Button>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {Object.entries(DRAFT_LABELS).map(([type, label]) => (
-            <Button key={type} type="button" variant="outline" size="sm" onClick={() => generateDraft(type as keyof typeof DRAFT_LABELS)} className="gap-2">
-              <Mail className="h-4 w-4" />
-              {label}
-            </Button>
-          ))}
-        </div>
-        <Textarea
-          value={value.emailDraft}
-          onChange={(event) => update({ emailDraft: event.target.value })}
-          placeholder="Your generated outreach draft will appear here."
-          rows={8}
-        />
-      </div>
+          <div className="space-y-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-medium">Shortlist</p>
+                <p className="text-xs text-muted-foreground">Save venue names, links, and quick notes.</p>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={addShortlistItem} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add venue
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              {value.shortlist.map((item) => (
+                <div key={item.id} className="grid gap-2 rounded-lg border border-border p-3 md:grid-cols-[1fr_1fr_auto]">
+                  <Input
+                    value={item.name}
+                    onChange={(event) => updateShortlistItem(item.id, { name: event.target.value })}
+                    placeholder="Venue name"
+                  />
+                  <Input
+                    value={item.link}
+                    onChange={(event) => updateShortlistItem(item.id, { link: event.target.value })}
+                    placeholder="Website or saved link"
+                  />
+                  <Button type="button" variant="ghost" size="icon" onClick={() => removeShortlistItem(item.id)} aria-label="Remove venue">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                  <Textarea
+                    value={item.notes}
+                    onChange={(event) => updateShortlistItem(item.id, { notes: event.target.value })}
+                    placeholder="Notes"
+                    rows={2}
+                    className="md:col-span-3"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm font-medium">Screenshots</p>
+              <p className="text-xs text-muted-foreground">Upload small screenshots from venue sites or social posts.</p>
+            </div>
+            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-primary/30 bg-primary/5 px-4 py-5 text-sm font-medium text-primary">
+              <Upload className="h-4 w-4" />
+              Upload screenshots
+              <input type="file" accept="image/*" multiple className="sr-only" onChange={onScreenshotUpload} />
+            </label>
+            {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
+            {value.screenshots.length > 0 && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {value.screenshots.map((screenshot) => (
+                  <div key={screenshot.id} className="overflow-hidden rounded-lg border border-border">
+                    <img src={screenshot.dataUrl} alt={screenshot.name} className="h-32 w-full object-cover" />
+                    <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs">
+                      <span className="truncate">{screenshot.name}</span>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => removeScreenshot(screenshot.id)} aria-label="Remove screenshot">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-3 rounded-lg border border-primary/10 bg-primary/5 p-4">
+            <div>
+              <p className="flex items-center gap-2 text-sm font-medium">
+                <Sparkles className="h-4 w-4 text-primary" />
+                Outreach email drafts
+              </p>
+              <p className="text-xs text-muted-foreground">Generate a starter message, then edit it before sending.</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium" htmlFor="venue-email-prompt">
+                Custom AI prompt
+              </label>
+              <Textarea
+                id="venue-email-prompt"
+                value={value.emailPrompt ?? ""}
+                onChange={(event) => update({ emailPrompt: event.target.value })}
+                placeholder="Example: Write a friendly email asking if they allow outside catering and if there are Saturday dates available next fall."
+                rows={3}
+              />
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                onClick={generatePromptDraft}
+                disabled={generatingPromptDraft || !(value.emailPrompt ?? "").trim()}
+                className="gap-2"
+              >
+                <Sparkles className="h-4 w-4" />
+                {generatingPromptDraft ? "Generating..." : "Generate from prompt"}
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(DRAFT_LABELS).map(([type, label]) => (
+                <Button key={type} type="button" variant="outline" size="sm" onClick={() => generateDraft(type as keyof typeof DRAFT_LABELS)} className="gap-2">
+                  <Mail className="h-4 w-4" />
+                  {label}
+                </Button>
+              ))}
+            </div>
+            <Textarea
+              value={value.emailDraft}
+              onChange={(event) => update({ emailDraft: event.target.value })}
+              placeholder="Your generated outreach draft will appear here."
+              rows={8}
+            />
+          </div>
+        </>
+      )}
     </section>
   );
 }
