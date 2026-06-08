@@ -43,7 +43,7 @@ export function HelpScreen() {
       ))}
 
       <View style={styles.legalGrid}>
-        {['Terms', 'Privacy', 'Security', 'Data Handling', 'Beta Disclaimer'].map((item) => (
+        {['Terms', 'Privacy', 'Security', 'Data Handling'].map((item) => (
           <Card key={item} padding={spacing.md} style={styles.legalCard}>
             <Text style={[styles.legalText, { color: colors.text }]}>{item}</Text>
           </Card>

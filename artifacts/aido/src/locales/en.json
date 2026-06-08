@@ -4,10 +4,11 @@
     "hero_line1": "Start your wedding plan",
     "hero_line2": "without the overwhelm.",
     "hero_desc": "A.I DO gives couples one simple place to set up a wedding website, collect RSVPs, organize guests, track budget and vendors, and get AI help only when they need it.",
-    "cta_start": "Start free beta",
+    "cta_start": "Start Planning",
     "cta_preview": "See the preview",
-    "reassurance_free": "Free beta access",
+    "reassurance_free": "Free to start",
     "reassurance_minutes": "Set up in minutes",
+    "reassurance_private": "Private by default",
     "reassurance_no_cc": "No credit card required",
     "top_features_title": "Start with the essentials",
     "top_features_subtitle": "The first version should feel calm: set up the basics, then use more tools when you are ready.",
@@ -30,12 +31,12 @@
     "testimonials_title": "Couples who planned with A.IDO",
     "final_title": "Your dream day starts here",
     "final_desc": "Start planning your perfect wedding with A.IDO. It's free to get started.",
-    "final_cta": "Create Your Account — Free",
+    "final_cta": "Start Planning",
     "no_cc": "No credit card required.",
     "footer_brand": "A.I Do — AI Wedding Planning OS",
     "footer_rights": "All rights reserved.",
     "footer_terms": "Terms of Service",
-    "get_started": "Join Founding Couples"
+    "get_started": "Start Planning"
   },
   "features": {
     "timeline_title": "AI Timeline",
@@ -307,7 +308,7 @@
     "seating_unseated": "{{count}} guests still need a seat",
     "no_seating_yet": "No seating chart yet.",
     "generate_seating": "Generate seating",
-    "nudge_create_website": "Create your wedding website",
+    "nudge_create_website": "Set up your wedding website",
     "nudge_create_website_when": "Final step"
   },
   "profile": {

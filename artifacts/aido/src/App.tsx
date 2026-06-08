@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from "@tan
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
-import { setFetchTokenGetter, setAuthFetchBaseUrl, authFetch } from "@/lib/authFetch";
+import { setFetchTokenGetter, setAuthFetchBaseUrl, authFetch, apiFetch } from "@/lib/authFetch";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ApiHealthBanner } from "@/components/ApiHealthBanner";
 import { WorkspaceProvider, useWorkspace } from "@/contexts/WorkspaceContext";
@@ -14,9 +14,9 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useTracking } from "@/hooks/useTracking";
 import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 import { MaintenanceNotice } from "@/components/MaintenanceNotice";
+import { trackPublicMarketingEvent } from "@/lib/publicAnalytics";
 
 const Landing = lazy(() => import("@/pages/Landing"));
-const EarlyAccess = lazy(() => import("@/pages/EarlyAccess"));
 const SeoMarketingPage = lazy(() => import("@/pages/SeoMarketingPage"));
 const ForVendors = lazy(() => import("@/pages/ForVendors"));
 const PublicVendorProfile = lazy(() => import("@/pages/PublicVendorProfile"));
@@ -54,11 +54,9 @@ const MoodBoard = lazy(() => import("@/pages/MoodBoard"));
 const Aria = lazy(() => import("@/pages/Aria"));
 const Terms = lazy(() => import("@/pages/Terms"));
 const Privacy = lazy(() => import("@/pages/Privacy"));
-const BetaDisclaimer = lazy(() => import("@/pages/BetaDisclaimer"));
 const Security = lazy(() => import("@/pages/Security"));
 const DataHandling = lazy(() => import("@/pages/DataHandling"));
 const NotFound = lazy(() => import("@/pages/not-found"));
-const VideoTemplate = lazy(() => import("@/components/video/VideoTemplate"));
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const rawClerkProxyUrl = String(import.meta.env.VITE_CLERK_PROXY_URL ?? "").trim().replace(/\/+$/, "");
@@ -198,7 +196,7 @@ function AuthPageWrapper({ children }: { children: React.ReactNode }) {
         <img src="/logo-optimized.jpg" alt="A.IDO" className="h-24 w-auto object-contain" decoding="async" style={{ filter: "drop-shadow(0 16px 28px rgba(141,41,77,0.25))" }} />
         <p className="text-sm font-medium tracking-widest uppercase" style={{ color: "#6F3E54" }}>AI Wedding Planning OS</p>
       </div>
-      <div className="relative w-full max-w-md">
+      <div className="relative w-full max-w-lg">
         {children}
       </div>
     </div>
@@ -909,7 +907,11 @@ function CustomSignUpForm() {
   const { signUp } = useSignUp();
   const signUpLoaded = !!signUp;
   const [, setLocation] = useLocation();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const value = new URLSearchParams(window.location.search).get("email") ?? "";
+    return value.slice(0, 254);
+  });
   const [submitting, setSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -924,6 +926,13 @@ function CustomSignUpForm() {
     user?.primaryEmailAddress?.emailAddress ??
     user?.emailAddresses?.[0]?.emailAddress ??
     "";
+
+  useEffect(() => {
+    const source = typeof window === "undefined"
+      ? null
+      : new URLSearchParams(window.location.search).get("source");
+    trackPublicMarketingEvent("marketing_signup_view", { source, surface: "sign_up" });
+  }, []);
 
   // Generate a strong, random password under the hood. The user never sees or
   // uses it — sign-in is via email code or Google. Clerk requires a password
@@ -1322,12 +1331,57 @@ function CustomSignUpForm() {
         </>
       ) : (
         <>
-      <h2 style={{ color: "#3B1C2B", fontSize: "1.4rem", fontWeight: 600, marginBottom: "0.35rem" }}>
-        Create your account
-      </h2>
-      <p style={{ color: "#6F3E54", fontSize: "0.85rem", marginBottom: "1.25rem" }}>
-        Welcome! Let's get your wedding planning started.
+      <p style={{ color: "#8D294D", fontSize: "0.72rem", fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "0.5rem" }}>
+        Free to start - no credit card required
       </p>
+      <h2 style={{ color: "#3B1C2B", fontSize: "1.55rem", fontWeight: 700, lineHeight: 1.12, marginBottom: "0.45rem" }}>
+        Create your free wedding workspace
+      </h2>
+      <p style={{ color: "#6F3E54", fontSize: "0.9rem", lineHeight: 1.55, marginBottom: "1rem" }}>
+        Start with your wedding website, RSVPs, guest list, checklist, budget, vendors, and AI planning help in one place.
+      </p>
+      <div
+        style={{
+          background: "rgba(255,255,255,0.62)",
+          border: "1px solid rgba(177,108,142,0.24)",
+          borderRadius: "0.7rem",
+          display: "grid",
+          gap: "0.5rem",
+          marginBottom: "1rem",
+          padding: "0.8rem",
+        }}
+      >
+        {[
+          "Add your wedding date and guest estimate",
+          "Choose what to set up first",
+          "Continue with one recommended next step",
+        ].map((item, index) => (
+          <div key={item} style={{ display: "flex", gap: "0.55rem", alignItems: "flex-start" }}>
+            <span
+              style={{
+                alignItems: "center",
+                background: "#8D294D",
+                borderRadius: "999px",
+                color: "#fff",
+                display: "inline-flex",
+                flex: "0 0 auto",
+                fontSize: "0.72rem",
+                fontWeight: 800,
+                height: "1.35rem",
+                justifyContent: "center",
+                lineHeight: 1,
+                marginTop: "0.05rem",
+                width: "1.35rem",
+              }}
+            >
+              {index + 1}
+            </span>
+            <span style={{ color: "#4A2635", fontSize: "0.83rem", fontWeight: 650, lineHeight: 1.45 }}>
+              {item}
+            </span>
+          </div>
+        ))}
+      </div>
 
       <TestAccountCalloutForAutomation />
 
@@ -1370,7 +1424,7 @@ function CustomSignUpForm() {
             autoComplete="email"
           />
           <p style={{ color: "#6F3E54", fontSize: "0.72rem", marginTop: "0.4rem", lineHeight: 1.4 }}>
-            We'll email you a 6-digit code to verify your account. No password needed — you'll sign in with a code each time, or use Google.
+            We will email you a 6-digit code to verify your account. No password needed. Your planning workspace stays private unless you publish a guest-facing website.
           </p>
         </div>
 
@@ -1420,7 +1474,7 @@ function CustomSignUpForm() {
             marginTop: "0.25rem",
           }}
         >
-          {submitting ? "Creating account..." : "Create account"}
+          {submitting ? "Creating workspace..." : "Start Planning"}
         </button>
       </form>
 
@@ -1448,6 +1502,29 @@ function HomeRedirect() {
   }
 
   return <Landing />;
+}
+
+function PricingRoute() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["public-pricing-route-visibility"],
+    queryFn: async () => {
+      const response = await apiFetch("/api/pricing/public", { cache: "no-store" });
+      if (!response.ok) return { enabled: false };
+      return response.json() as Promise<{ enabled: boolean }>;
+    },
+    staleTime: 0,
+    retry: false,
+  });
+
+  if (isLoading) {
+    return <RouteLoading />;
+  }
+
+  if (data?.enabled !== true) {
+    return <Redirect to="/" />;
+  }
+
+  return <SeoMarketingPage />;
 }
 
 type PortalMaintenanceSection =
@@ -1956,20 +2033,23 @@ function Router() {
     <Suspense fallback={<RouteLoading />}>
       <Switch>
         <Route path="/" component={HomeRedirect} />
-        <Route path="/early-access" component={EarlyAccess} />
+        <Route path="/early-access"><Redirect to="/sign-up" /></Route>
         <Route path="/ai-wedding-planner" component={SeoMarketingPage} />
         <Route path="/wedding-website-builder" component={SeoMarketingPage} />
-        <Route path="/pricing" component={SeoMarketingPage} />
-        <Route path="/photo-qr-code" component={SeoMarketingPage} />
+        <Route path="/pricing" component={PricingRoute} />
         <Route path="/digital-invitations" component={SeoMarketingPage} />
-        <Route path="/wedding-guest-list-manager" component={SeoMarketingPage} />
-        <Route path="/wedding-budget-planner" component={SeoMarketingPage} />
-        <Route path="/wedding-vendor-manager" component={SeoMarketingPage} />
-        <Route path="/wedding-photo-qr-code" component={SeoMarketingPage} />
-        <Route path="/wedding-planning-checklist" component={SeoMarketingPage} />
-        <Route path="/wedding-vendor-management" component={SeoMarketingPage} />
+        <Route path="/photo-qr-code"><Redirect to="/wedding-website-builder" /></Route>
+        <Route path="/wedding-photo-qr-code"><Redirect to="/wedding-website-builder" /></Route>
+        <Route path="/wedding-guest-list-manager"><Redirect to="/digital-invitations" /></Route>
+        <Route path="/wedding-budget-planner"><Redirect to="/ai-wedding-planner" /></Route>
+        <Route path="/wedding-planning-checklist"><Redirect to="/ai-wedding-planner" /></Route>
+        <Route path="/wedding-vendor-manager"><Redirect to="/ai-wedding-planner" /></Route>
+        <Route path="/wedding-vendor-management"><Redirect to="/ai-wedding-planner" /></Route>
         <Route path="/vendors/:partnerId" component={PublicVendorProfile} />
-        <Route path="/for-vendors/:section" component={ForVendors} />
+        <Route path="/for-vendors/vendors" component={ForVendors} />
+        <Route path="/for-vendors/how-it-works" component={ForVendors} />
+        <Route path="/for-vendors/apply" component={ForVendors} />
+        <Route path="/for-vendors/:section"><Redirect to="/for-vendors" /></Route>
         <Route path="/for-vendors" component={ForVendors} />
         <Route path="/sign-in/*?" component={SignInPage} />
         <Route path="/sign-up/*?" component={SignUpPage} />
@@ -2014,10 +2094,9 @@ function Router() {
         <Route path="/workspace/:profileId" component={() => <ProtectedRoute component={SharedWorkspaceRoute} fullWidth />} />
         <Route path="/terms" component={Terms} />
         <Route path="/privacy" component={Privacy} />
-        <Route path="/beta" component={BetaDisclaimer} />
         <Route path="/security" component={Security} />
         <Route path="/data-handling" component={DataHandling} />
-        <Route path="/promo" component={() => <VideoTemplate />} />
+        <Route path="/promo"><Redirect to="/" /></Route>
         <Route component={NotFound} />
       </Switch>
     </Suspense>
@@ -2059,7 +2138,6 @@ const RESERVED_PUBLIC_ROOT_SEGMENTS = new Set([
   "ai-wedding-planner",
   "api",
   "aria",
-  "beta",
   "budget",
   "calendar",
   "checklist",
@@ -2157,8 +2235,8 @@ function ClerkProviderWithRoutes() {
         },
         signUp: {
           start: {
-            title: "Begin your journey",
-            subtitle: "Create your free A.IDO account",
+            title: "Create your free wedding workspace",
+            subtitle: "Start with your website, RSVPs, guests, and planning tools.",
           },
         },
       }}

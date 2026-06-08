@@ -1,5 +1,4 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { apiFetch } from "@/lib/authFetch";
 import { Link } from "wouter";
 import { BadgeDollarSign, CheckSquare, Clock3, Globe2, MailCheck, ShieldCheck, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -8,6 +7,7 @@ import { LanguagePicker } from "@/components/LanguagePicker";
 import { LaunchPricingSection, useLaunchPricingEnabled } from "@/components/LaunchPricingSection";
 import i18n, { LANG_NAME_TO_CODE } from "@/i18n";
 import { organizationSchema, setSeo, softwareSchema } from "@/lib/seo";
+import { trackPublicMarketingEvent, trackPublicPageView } from "@/lib/publicAnalytics";
 
 const VideoTemplate = lazy(() => import("@/components/video/VideoTemplate"));
 
@@ -47,21 +47,21 @@ const HERO_FEATURES = [
 ];
 
 const FIRST_FIVE_MINUTES = [
-  "Tell A.I DO your date, location, and guest estimate",
-  "Choose what you want to handle first",
-  "Launch your website or start your guest list",
+  "Add your wedding date, location, and guest estimate",
+  "Choose your first priority: website, RSVPs, guests, budget, or vendors",
+  "Continue from the dashboard with one clear next step",
 ];
 
 const HERO_REASSURANCE = [
-  { icon: ShieldCheck, labelKey: "landing.reassurance_free", fallback: "Free beta access" },
-  { icon: Clock3, labelKey: "landing.reassurance_minutes", fallback: "Set up in minutes" },
+  { icon: ShieldCheck, labelKey: "landing.reassurance_free", fallback: "Free to start" },
   { icon: CheckSquare, labelKey: "landing.reassurance_no_cc", fallback: "No credit card required" },
+  { icon: Clock3, labelKey: "landing.reassurance_private", fallback: "Private by default" },
 ];
 
 const CONVERSION_REASONS = [
-  "Stop switching between spreadsheets, notes, texts, and wedding website tools.",
-  "Give guests one place for the details while you keep the plan organized.",
-  "Use AI for the stressful parts, not for everything.",
+  "Create your wedding website, RSVPs, guests, checklist, budget, and vendor plan together.",
+  "Give guests one place for details while your private planning stays organized.",
+  "Start with the essentials, then use AI when you need wording, next steps, or decisions.",
 ];
 
 function LandingLanguagePicker() {
@@ -86,7 +86,7 @@ function LandingLanguagePicker() {
   );
 }
 
-function DeferredDemoVideo() {
+function DeferredProductPreview() {
   const [shouldLoad, setShouldLoad] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -112,21 +112,21 @@ function DeferredDemoVideo() {
   return (
     <div ref={containerRef} className="relative aspect-[4/3] overflow-hidden rounded-[22px] bg-[#FFF7F2] sm:aspect-[16/10] lg:aspect-[16/9] xl:aspect-[16/10]">
       {shouldLoad ? (
-        <Suspense fallback={<DemoVideoSkeleton />}>
+        <Suspense fallback={<ProductPreviewSkeleton />}>
           <VideoTemplate embedded />
         </Suspense>
       ) : (
-        <DemoVideoSkeleton />
+        <ProductPreviewSkeleton />
       )}
     </div>
   );
 }
 
-function DemoVideoSkeleton() {
+function ProductPreviewSkeleton() {
   return (
     <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#FFF7F2,#FFFDFB,#F7DDE2)] p-6 text-center">
       <div>
-        <p className="text-sm font-bold uppercase tracking-[0.22em] text-[#B16C8E]">Demo loading soon</p>
+        <p className="text-sm font-bold uppercase tracking-[0.22em] text-[#B16C8E]">Preview loading</p>
         <p className="mt-3 font-serif text-3xl font-semibold text-[#8D294D]">A calm preview, without slowing the first page.</p>
       </div>
     </div>
@@ -154,17 +154,16 @@ export default function Landing() {
   }, []);
 
   useEffect(() => {
-    let vid = localStorage.getItem("aido_vid");
-    if (!vid) {
-      vid = crypto.randomUUID();
-      localStorage.setItem("aido_vid", vid);
-    }
-    apiFetch("/api/analytics/pageview", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ visitorId: vid, path: "/" }),
-    }).catch(() => {});
+    trackPublicPageView("/");
   }, []);
+
+  function trackStartPlanning(placement: string) {
+    trackPublicMarketingEvent("marketing_cta_click", {
+      label: "Start Planning",
+      placement,
+      surface: "landing",
+    });
+  }
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#FFF7F2] text-[#8D294D]">
@@ -187,9 +186,9 @@ export default function Landing() {
                 What You Get
               </Button>
             </a>
-            <a href="#demo">
+            <a href="#preview">
               <Button variant="ghost" className="h-9 rounded-full px-3 text-sm font-semibold text-[#8D294D] hover:bg-[#FFF7F2] hover:text-[#B16C8E] lg:text-base">
-                Watch Demo
+                Product Preview
               </Button>
             </a>
             <Link href="/for-vendors">
@@ -206,10 +205,10 @@ export default function Landing() {
             )}
           </nav>
           <nav className="flex min-w-0 items-center justify-end gap-1.5 justify-self-end sm:gap-3" aria-label="Account navigation">
-            <Link href="/early-access">
-              <Button className="h-10 rounded-full border border-[#8D294D]/70 bg-[#F3B6C3] px-3 text-sm font-bold leading-tight text-[#8D294D] shadow-[0_10px_18px_rgba(141,41,77,0.14)] hover:bg-[#E6A6B7] sm:h-11 sm:px-6 sm:text-base">
-                <span className="sm:hidden">Join Beta</span>
-                <span className="hidden sm:inline">{t("landing.get_started", { defaultValue: "Join Founding Couples" })}</span>
+            <Link href="/sign-up">
+              <Button onClick={() => trackStartPlanning("header")} className="h-10 rounded-full border border-[#8D294D]/70 bg-[#F3B6C3] px-3 text-sm font-bold leading-tight text-[#8D294D] shadow-[0_10px_18px_rgba(141,41,77,0.14)] hover:bg-[#E6A6B7] sm:h-11 sm:px-6 sm:text-base">
+                <span className="sm:hidden">Start</span>
+                <span className="hidden sm:inline">{t("landing.get_started", { defaultValue: "Start Planning" })}</span>
               </Button>
             </Link>
             <Link href="/sign-in">
@@ -222,7 +221,7 @@ export default function Landing() {
         <nav className="mx-auto mt-2 flex max-w-7xl gap-2 overflow-x-auto pb-1 text-xs font-bold text-[#6F3E54] [scrollbar-width:none] md:hidden [&::-webkit-scrollbar]:hidden" aria-label="A.I DO sections">
           <a href="#start" className="shrink-0 rounded-full border border-[#E6A6B7]/45 bg-white/70 px-3 py-2">How It Starts</a>
           <a href="#essentials" className="shrink-0 rounded-full border border-[#E6A6B7]/45 bg-white/70 px-3 py-2">What You Get</a>
-          <a href="#demo" className="shrink-0 rounded-full border border-[#E6A6B7]/45 bg-white/70 px-3 py-2">Watch Demo</a>
+          <a href="#preview" className="shrink-0 rounded-full border border-[#E6A6B7]/45 bg-white/70 px-3 py-2">Product Preview</a>
           <Link href="/for-vendors" className="shrink-0 rounded-full border border-[#E6A6B7]/45 bg-white/70 px-3 py-2">Partner With Us</Link>
           {launchPricingEnabled && <a href="#pricing" className="shrink-0 rounded-full border border-[#E6A6B7]/45 bg-white/70 px-3 py-2">Pricing</a>}
         </nav>
@@ -243,13 +242,13 @@ export default function Landing() {
             <div className="max-w-2xl text-left">
               <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-[#E6A6B7]/70 bg-white/72 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-[#B16C8E] shadow-sm">
                 <Sparkles className="h-4 w-4" />
-                Free beta for founding couples
+                Free wedding planning workspace
               </div>
               <h1 className="mt-5 text-balance font-serif text-[2.75rem] leading-[0.98] tracking-normal text-[#8D294D] min-[390px]:text-[3.15rem] sm:text-6xl lg:text-7xl">
-                A calmer way to plan your wedding.
+                Plan your wedding, website, guests, and RSVPs in one calm place.
               </h1>
               <p className="mt-5 max-w-xl text-pretty text-base leading-7 text-[#4A2635] sm:text-xl sm:leading-8">
-                Build your wedding website, collect RSVPs, organize guests, track budget and vendors, and get AI help from one simple workspace.
+                A.I DO helps couples start with the pieces that matter first: a guest-friendly wedding website, connected RSVPs, organized guests, budget, vendors, and AI help when planning gets messy.
               </p>
               <div className="mt-5 grid gap-2 text-sm font-semibold text-[#5B2035] sm:max-w-xl">
                 {CONVERSION_REASONS.map((reason) => (
@@ -259,16 +258,13 @@ export default function Landing() {
                   </div>
                 ))}
               </div>
-              <div className="mt-7 flex w-full flex-col gap-3 sm:max-w-xl sm:flex-row">
-              <Link href="/early-access">
-                <Button className="h-[54px] w-full rounded-full bg-[#8D294D] px-6 text-base font-bold leading-tight text-white shadow-[0_20px_36px_rgba(141,41,77,0.26)] hover:bg-[#6F1D3D] sm:h-14 sm:min-w-56">
-                  Join free beta
-                </Button>
-              </Link>
-              <Button asChild variant="outline" className="h-[54px] w-full rounded-full border-[#B16C8E]/60 bg-white/72 px-6 text-base font-bold leading-tight text-[#8D294D] shadow-[0_14px_28px_rgba(141,41,77,0.1)] hover:bg-white sm:h-14 sm:w-auto">
-                <a href="#start">See the first steps</a>
-              </Button>
-            </div>
+              <div className="mt-7 flex w-full sm:max-w-xl">
+                <Link href="/sign-up">
+                  <Button onClick={() => trackStartPlanning("hero")} className="h-[54px] w-full rounded-full bg-[#8D294D] px-6 text-base font-bold leading-tight text-white shadow-[0_20px_36px_rgba(141,41,77,0.26)] hover:bg-[#6F1D3D] sm:h-14 sm:min-w-56">
+                    Start Planning
+                  </Button>
+                </Link>
+              </div>
               <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm font-bold text-[#6F3E54]">
               {HERO_REASSURANCE.map(({ icon: Icon, labelKey, fallback }) => (
                 <div key={labelKey} className="inline-flex items-center gap-1.5">
@@ -286,10 +282,10 @@ export default function Landing() {
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#B16C8E]">First 5 minutes</p>
               <h2 className="mt-3 text-balance font-serif text-3xl leading-tight text-[#8D294D] sm:text-5xl">
-                Start small, then plan deeper when you are ready.
+                Sign up, then get one clear next step.
               </h2>
               <p className="mt-4 text-base leading-7 text-[#6F3E54] sm:text-lg sm:leading-8">
-                Couples should not land inside a giant app and wonder what to do. A.I DO guides the first setup into one clear next action.
+                Couples should not land inside a giant app and wonder what to do. A.I DO helps you set up the basics first, then keeps the rest organized as the wedding grows.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
@@ -333,38 +329,22 @@ export default function Landing() {
                   </div>
                 ))}
             </div>
-            <div className="mt-6 grid gap-4 rounded-[28px] border border-[#E6A6B7]/35 bg-white/76 p-5 shadow-[0_14px_34px_rgba(141,41,77,0.08)] md:grid-cols-[1fr_1fr_auto] md:items-center">
-              <div>
-                <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#B16C8E]">More when you need it</p>
-                <p className="mt-2 text-sm leading-6 text-[#6F3E54] sm:text-base">
-                  Contracts, seating, photo QR uploads, day-of timelines, documents, reminders, exports, and Aria planning support.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2 text-xs font-bold text-[#6F3E54]">
-                {["Contracts", "Seating", "Photo QR", "Day-of", "Documents", "Aria"].map((item) => (
-                  <span key={item} className="rounded-full bg-[#FFF7F2] px-3 py-2">{item}</span>
-                ))}
-              </div>
-              <Button asChild variant="outline" className="h-11 rounded-full border-[#B16C8E]/55 bg-white text-[#8D294D]">
-                <a href="#demo">See it</a>
-              </Button>
-            </div>
           </div>
         </section>
 
-        <section id="demo" className="scroll-mt-24 bg-[#FFFDFB] px-4 py-12 sm:px-8 sm:py-16">
+        <section id="preview" className="scroll-mt-24 bg-[#FFFDFB] px-4 py-12 sm:px-8 sm:py-16">
           <div className="mx-auto grid max-w-7xl gap-8 xl:grid-cols-[0.75fr_1.25fr] xl:items-center">
             <div className="mx-auto max-w-3xl text-center xl:mx-0 xl:max-w-md xl:text-left">
-              <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#B16C8E]">Quick demo</p>
+              <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#B16C8E]">Product preview</p>
               <h2 className="mt-3 text-balance font-serif text-3xl leading-tight text-[#8D294D] sm:text-5xl">
                 See how the planning pieces come together.
               </h2>
               <p className="mt-4 text-base leading-7 text-[#6F3E54] sm:text-lg sm:leading-8">
-                The video is here for couples who want to feel the product before signing up. It should build trust, not slow down the page.
+                Preview the flow before signing up: profile, guests, RSVPs, website, budget, vendors, and photo QR in one connected workspace.
               </p>
             </div>
             <div className="relative mx-auto w-full max-w-5xl overflow-hidden rounded-[30px] border border-[#E6A6B7]/45 bg-white/78 p-2 shadow-[0_24px_70px_rgba(141,41,77,0.16)] sm:p-3">
-              <DeferredDemoVideo />
+              <DeferredProductPreview />
             </div>
           </div>
         </section>
@@ -372,17 +352,17 @@ export default function Landing() {
         <section className="bg-[#FFF7F2] px-4 py-12 sm:px-8 sm:py-16">
           <div className="mx-auto grid max-w-6xl gap-6 rounded-[32px] border border-[#E6A6B7]/40 bg-[linear-gradient(110deg,rgba(255,247,242,0.96),rgba(255,255,255,0.86),rgba(247,221,226,0.64))] p-6 shadow-[0_22px_58px_rgba(141,41,77,0.12)] md:grid-cols-[1fr_auto] md:items-center md:p-8">
             <div>
-              <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#B16C8E]">Founding couples</p>
+              <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#B16C8E]">Start planning</p>
               <h2 className="mt-3 text-balance font-serif text-3xl leading-tight text-[#8D294D] sm:text-5xl">
-                Help shape A.I DO before public launch.
+                Create your wedding workspace in minutes.
               </h2>
               <p className="mt-3 max-w-2xl text-base leading-7 text-[#6F3E54] sm:text-lg">
-                Free beta access gives you a calm place to start planning while your feedback helps decide what should launch next.
+                Start with a calm place for your website, RSVPs, guests, checklist, vendors, budget, and planning support.
               </p>
             </div>
             <div className="flex flex-col gap-3 md:min-w-72">
               <Button asChild className="h-[52px] rounded-full bg-[#8D294D] px-7 text-base font-bold text-white hover:bg-[#6F1D3D]">
-                <Link href="/early-access">Reserve beta spot</Link>
+                <Link href="/sign-up" onClick={() => trackStartPlanning("final_cta")}>Start Planning</Link>
               </Button>
               <p className="text-center text-xs font-bold uppercase tracking-[0.16em] text-[#7A5062]">No credit card required</p>
             </div>
@@ -400,7 +380,6 @@ export default function Landing() {
             <span>&copy; {new Date().getFullYear()} A.IDO. {t("landing.footer_rights", { defaultValue: "All rights reserved." })}</span>
             <Link href="/terms" className="underline-offset-4 hover:underline">{t("landing.footer_terms", { defaultValue: "Terms of Service" })}</Link>
             <Link href="/privacy" className="underline-offset-4 hover:underline">Privacy Policy</Link>
-            <Link href="/beta" className="underline-offset-4 hover:underline">Beta Disclaimer</Link>
             <Link href="/security" className="underline-offset-4 hover:underline">Security</Link>
             <Link href="/data-handling" className="underline-offset-4 hover:underline">Data Handling</Link>
             <Link href="/for-vendors/apply" className="underline-offset-4 hover:underline">Vendors</Link>

@@ -3,12 +3,12 @@ import { Check, Clock, Users, UtensilsCrossed, X } from "lucide-react";
 import { burgundyGradientText, videoBadgeStyle, videoCardStyle } from "../videoPalette";
 
 const GUESTS = [
-  { name: "Emma & James Carter", side: "Bride", count: 2, rsvp: "yes", meal: "Vegetarian" },
-  { name: "David Chen +1", side: "Groom", count: 2, rsvp: "yes", meal: "Standard" },
-  { name: "Priya & Arjun Patel", side: "Bride", count: 2, rsvp: "pending", meal: "-" },
-  { name: "The Rodriguez Family", side: "Groom", count: 4, rsvp: "yes", meal: "2 kids meals" },
-  { name: "Olivia Bennett", side: "Bride", count: 1, rsvp: "no", meal: "-" },
-  { name: "Marcus & Lily Wong", side: "Groom", count: 2, rsvp: "yes", meal: "Gluten-free" },
+  { name: "Guest household 1", side: "Partner A", count: 2, rsvp: "yes", meal: "Vegetarian" },
+  { name: "Guest household 2", side: "Partner B", count: 2, rsvp: "yes", meal: "Standard" },
+  { name: "Guest household 3", side: "Partner A", count: 2, rsvp: "pending", meal: "-" },
+  { name: "Family group", side: "Partner B", count: 4, rsvp: "yes", meal: "2 kids meals" },
+  { name: "Guest household 4", side: "Partner A", count: 1, rsvp: "no", meal: "-" },
+  { name: "Guest household 5", side: "Partner B", count: 2, rsvp: "yes", meal: "Gluten-free" },
 ];
 
 const STATS = [

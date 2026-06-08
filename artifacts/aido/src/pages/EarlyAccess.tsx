@@ -1,26 +1,8 @@
 import { useEffect } from "react";
 import { Link } from "wouter";
-import { ArrowRight, CheckCircle2, Heart, MessageCircleHeart, Sparkles, UsersRound } from "lucide-react";
+import { ArrowRight, CheckCircle2, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { organizationSchema, setSeo, softwareSchema } from "@/lib/seo";
-
-const FOUNDING_CARDS = [
-  {
-    icon: UsersRound,
-    title: "A calm first 5 minutes",
-    body: "Start with your wedding profile, choose what matters now, and get one clear next step instead of a wall of tools.",
-  },
-  {
-    icon: Sparkles,
-    title: "Free beta access",
-    body: "Use the essentials first: website, RSVPs, guest list, checklist, budget, vendors, and mobile planning.",
-  },
-  {
-    icon: MessageCircleHeart,
-    title: "Help shape A.I DO",
-    body: "Tell us where the experience feels confusing so A.I DO gets simpler before public launch.",
-  },
-];
 
 const INCLUDED = [
   "Simple wedding profile setup",
@@ -39,14 +21,14 @@ const FIRST_STEPS = [
 export default function EarlyAccess() {
   useEffect(() => {
     setSeo({
-      title: "Join Founding Couples | A.I DO Early Access",
-      description: "Join A.I DO founding couples for free beta access to a simple AI wedding planner with wedding website, RSVPs, guests, checklist, budget, vendors, and mobile-friendly planning.",
+      title: "Start Planning | A.I DO Wedding Planner",
+      description: "Start planning with A.I DO, a simple AI wedding planner with wedding website, RSVPs, guests, checklist, budget, vendors, and mobile-friendly planning.",
       path: "/early-access",
       jsonLd: [
         organizationSchema(),
         softwareSchema(
-          "A.I DO Early Access",
-          "Free beta access for founding couples using A.I DO to plan their wedding website, RSVPs, guests, budget, vendors, and day-of details.",
+          "A.I DO Wedding Planner",
+          "Start planning with A.I DO to plan a wedding website, RSVPs, guests, budget, vendors, and day-of details.",
           "/early-access",
         ),
       ],
@@ -66,7 +48,7 @@ export default function EarlyAccess() {
             <Link href="/for-vendors" className="hover:text-[#8D294D]">Partner With Us</Link>
           </nav>
           <Button asChild className="h-10 shrink-0 rounded-full bg-[#8D294D] px-4 text-sm text-white hover:bg-[#6F1D3D] sm:px-5">
-            <Link href="/sign-up">Create account</Link>
+            <Link href="/sign-up">Start Planning</Link>
           </Button>
         </div>
       </header>
@@ -77,27 +59,24 @@ export default function EarlyAccess() {
           <div>
             <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-[#E6A6B7]/60 bg-white/65 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-[#B16C8E]">
               <Heart className="h-4 w-4 fill-[#E6A6B7] text-[#E6A6B7]" />
-              Free beta access
+              Start planning
             </div>
             <h1 className="mt-6 max-w-3xl text-balance font-serif text-[2.8rem] leading-[1.02] text-[#8D294D] sm:text-6xl">
-              Join the founding couples shaping A.I DO before launch.
+              Start your wedding plan with A.I DO.
             </h1>
             <p className="mt-5 max-w-2xl text-pretty text-base leading-7 text-[#6F3E54] sm:text-xl sm:leading-8">
-              Be one of the first couples to use a simpler A.I DO: start with your wedding website, RSVPs, guest list, checklist, budget, vendors, and mobile-friendly planning.
+              Create one calm workspace for your wedding website, RSVPs, guest list, checklist, budget, vendors, and mobile-friendly planning.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button asChild className="h-12 w-full rounded-full bg-[#8D294D] px-6 text-white hover:bg-[#6F1D3D] sm:w-auto">
                 <Link href="/sign-up">
-                  Join founding couples
+                  Start Planning
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
-              <Button asChild variant="outline" className="h-12 w-full rounded-full border-[#B16C8E]/50 bg-white/55 px-6 text-[#8D294D] sm:w-auto">
-                <Link href="/">See the planner</Link>
-              </Button>
             </div>
             <p className="mt-4 text-sm font-semibold text-[#6F3E54]">
-              No credit card required during beta.
+              No credit card required to start.
             </p>
             <div className="mt-5 rounded-[28px] border border-[#E6A6B7]/35 bg-white/65 p-4 shadow-[0_12px_30px_rgba(141,41,77,0.08)]">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-[#B16C8E]">What happens first</p>
@@ -113,7 +92,7 @@ export default function EarlyAccess() {
           </div>
 
           <div className="rounded-[32px] border border-[#E6A6B7]/45 bg-white/75 p-5 shadow-[0_28px_80px_rgba(141,41,77,0.14)] sm:p-7">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-[#B16C8E]">Founding access includes</p>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-[#B16C8E]">What you can do</p>
             <div className="mt-5 space-y-3">
               {INCLUDED.map((item) => (
                 <div key={item} className="flex gap-3 rounded-2xl bg-[#FFF7F2] p-4">
@@ -126,29 +105,6 @@ export default function EarlyAccess() {
         </div>
       </section>
 
-      <section className="px-4 py-12 sm:px-6 sm:py-16">
-        <div className="mx-auto max-w-6xl">
-          <div className="grid gap-4 md:grid-cols-3">
-            {FOUNDING_CARDS.map(({ icon: Icon, title, body }) => (
-              <article key={title} className="rounded-[28px] border border-[#E6A6B7]/35 bg-white/78 p-6 shadow-[0_18px_48px_rgba(141,41,77,0.08)]">
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F7DDE2] text-[#8D294D]">
-                  <Icon className="h-6 w-6" />
-                </span>
-                <h2 className="mt-5 font-serif text-2xl leading-tight text-[#8D294D]">{title}</h2>
-                <p className="mt-3 text-sm leading-7 text-[#6F3E54] sm:text-base">{body}</p>
-              </article>
-            ))}
-          </div>
-          <div className="mt-8 rounded-[28px] border border-[#E6A6B7]/35 bg-[linear-gradient(110deg,rgba(247,221,226,0.68),rgba(255,253,251,0.94),rgba(242,226,198,0.62))] px-5 py-6 text-center shadow-[0_16px_42px_rgba(141,41,77,0.08)]">
-            <p className="mx-auto max-w-3xl text-pretty font-serif text-2xl leading-tight text-[#8D294D] sm:text-3xl">
-              We are looking for engaged couples who want a calmer way to plan and are willing to share honest feedback.
-            </p>
-            <Button asChild className="mt-6 h-12 rounded-full bg-[#8D294D] px-6 text-white hover:bg-[#6F1D3D]">
-              <Link href="/sign-up">Get free beta access</Link>
-            </Button>
-          </div>
-        </div>
-      </section>
     </main>
   );
 }

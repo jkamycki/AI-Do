@@ -151,7 +151,7 @@ export default function Terms() {
             <p>
               The Service is provided for personal, non-commercial use unless
               otherwise agreed in writing. Features may be added, modified, or
-              removed during the beta period without notice.
+              removed as the Service evolves, with notice when required by law.
             </p>
             <p>
               Vendors may apply to be considered for the A.IDO Partner Network.
@@ -165,18 +165,17 @@ export default function Terms() {
 
           <section className="space-y-3">
             <h2 className="font-serif text-xl font-semibold">
-              3. Beta Status &amp; No-Cost Use
+              3. No-Cost Use &amp; Service Changes
             </h2>
             <p>
-              A.IDO is currently offered free of charge as a public beta. We
-              reserve the right to introduce paid features in the future, in
-              which case we will provide reasonable advance notice and an
-              opportunity to cancel or downgrade before any charge is incurred.
-              By using the beta you accept that the Service may have bugs,
-              partial features, downtime, or data loss; you should retain
+              A.IDO currently lets couples start free. We reserve the right to
+              introduce paid features in the future, in which case we will
+              provide reasonable advance notice and an opportunity to cancel or
+              downgrade before any charge is incurred. The Service may have
+              bugs, partial features, downtime, or data loss; you should retain
               independent backups of important wedding details, guest lists,
               vendor records, invitations, uploaded files, and any other content
-              you add to the Service. See also the Beta Disclaimer page.
+              you add to the Service.
             </p>
           </section>
 
@@ -387,7 +386,7 @@ export default function Terms() {
               revenues, data, or goodwill, arising out of or related to the
               Service or these Terms. Total aggregate liability for any claim
               shall not exceed the amount you paid us in the twelve months
-              preceding the claim — which during the beta period is $0.
+              preceding the claim.
             </p>
             <p className="uppercase text-[#3B1C2B]/80 text-xs tracking-wide">
               You are responsible for maintaining your own copies and backups of

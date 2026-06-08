@@ -1471,7 +1471,7 @@ function DashboardContent() {
                   <div className="w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-amber-400 flex-shrink-0 mt-2" />
                   <div className="flex-1">
                     <span className="text-sm text-amber-900 dark:text-amber-200 font-medium">
-                      {t("dashboard.nudge_create_website", { defaultValue: "Create your wedding website" })}
+                      {t("dashboard.nudge_create_website", { defaultValue: "Set up your wedding website" })}
                     </span>
                     <span className="text-xs text-amber-600 dark:text-amber-400 ml-2">
                       {t("dashboard.nudge_create_website_when", { defaultValue: "Final step" })}

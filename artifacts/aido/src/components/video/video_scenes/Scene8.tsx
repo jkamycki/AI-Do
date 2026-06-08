@@ -47,7 +47,7 @@ function MiniQrCode() {
     <div
       className="grid h-32 w-32 gap-[2px] rounded-2xl border border-[#E6A6B7]/45 bg-white p-3 shadow-[0_16px_34px_rgba(141,41,77,0.14)] sm:h-36 sm:w-36"
       style={{ gridTemplateColumns: `repeat(${QR_GRID_SIZE}, minmax(0, 1fr))` }}
-      aria-label="Sample guest photo QR code"
+      aria-label="Guest photo QR code"
     >
       {Array.from({ length: QR_GRID_SIZE * QR_GRID_SIZE }, (_, i) => (
         <span
@@ -138,7 +138,7 @@ export function Scene8() {
                 <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-[#D46F71] text-white">
                   <Camera className="h-5 w-5" />
                 </div>
-                <div className="font-serif text-xl font-bold text-[#5B0F2A]">Mia & Noah</div>
+                <div className="font-serif text-xl font-bold text-[#5B0F2A]">Wedding Guests</div>
                 <div className="mt-1 text-[10px] font-semibold uppercase tracking-widest text-[#8D294D]">Guest Photo Drop</div>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2">

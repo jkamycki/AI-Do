@@ -14,7 +14,6 @@ export const generalLimiter = rateLimit({
   legacyHeaders: false,
   validate: { xForwardedForHeader: false },
   message: { error: "Too many requests. Please try again in a few minutes." },
-  skip: (req) => req.path.startsWith("/api/analytics"),
 });
 
 // ─── AI endpoint limiter ──────────────────────────────────────────────────────
@@ -90,7 +89,7 @@ export const uploadUrlLimiter = rateLimit({
 // ─── Per-user daily AI message cap ───────────────────────────────────────────
 // Separate from the hourly limiter — caps total daily spend per user.
 // Resets at midnight UTC. Stored in-memory (resets on server restart, which
-// is acceptable for a beta where restarts are occasional).
+// is acceptable for small deployments where restarts are occasional).
 
 // Public forms can be reached without a signed-in session. Keep the limits
 // generous enough for real guests and support users, but low enough to stop

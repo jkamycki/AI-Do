@@ -239,7 +239,7 @@ export default function GuestCollect() {
                           Full Name <span className="text-[#8D294D]">*</span>
                         </FormLabel>
                         <FormControl>
-                          <Input placeholder="Jane Smith" className={inputClass} {...field} />
+                          <Input placeholder="Your full name" className={inputClass} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -323,7 +323,7 @@ export default function GuestCollect() {
                       <FormItem>
                         <FormLabel className="font-semibold text-[#6F3E54]">Email Address</FormLabel>
                         <FormControl>
-                          <Input type="email" placeholder="jane@example.com" className={inputClass} {...field} />
+                          <Input type="email" placeholder="you@example.com" className={inputClass} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -395,7 +395,7 @@ export default function GuestCollect() {
                             <FormItem>
                               <FormLabel className="font-semibold text-[#6F3E54]">First Name</FormLabel>
                               <FormControl>
-                                <Input placeholder="Alex" className={inputClass} {...field} />
+                                <Input placeholder="First name" className={inputClass} {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -408,7 +408,7 @@ export default function GuestCollect() {
                             <FormItem>
                               <FormLabel className="font-semibold text-[#6F3E54]">Last Name</FormLabel>
                               <FormControl>
-                                <Input placeholder="Smith" className={inputClass} {...field} />
+                                <Input placeholder="Last name" className={inputClass} {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>

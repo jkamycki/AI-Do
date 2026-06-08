@@ -5,7 +5,7 @@ import { burgundyGradientText, videoBadgeStyle, videoCardStyle, videoSmallCardSt
 const TIMELINE = [
   { title: "Finalize venue contract", due: "Done", done: true },
   { title: "Mail digital invitations", due: "In 5 days", done: false },
-  { title: "Confirm florist mockup", due: "In 10 days", done: false },
+  { title: "Confirm floral design", due: "In 10 days", done: false },
   { title: "Upload ceremony timeline", due: "In 2 weeks", done: false },
 ];
 

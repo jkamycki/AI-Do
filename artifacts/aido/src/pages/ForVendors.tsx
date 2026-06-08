@@ -89,7 +89,7 @@ const EMPTY_FORM: VendorPartnerForm = {
 const BENEFITS = [
   {
     icon: Store,
-    title: "Free Beta Listing",
+    title: "Free Founding Listing",
     body: "Get a polished A.I DO vendor profile at no cost while the founding program is open.",
   },
   {
@@ -133,14 +133,13 @@ const MAX_PHOTO_BYTES = MAX_PHOTO_MB * 1024 * 1024;
 const VENDOR_LOGO_MAX_DIMENSION = 700;
 const VENDOR_SERVICE_PHOTO_MAX_DIMENSION = 1200;
 const VENDOR_OPTIMIZED_IMAGE_QUALITY = 0.72;
-type VendorPartnerPage = "home" | "vendors" | "how-it-works" | "apply" | "sample-profile";
+type VendorPartnerPage = "home" | "vendors" | "how-it-works" | "apply";
 
 function getVendorPartnerPage(path: string): VendorPartnerPage {
   const cleanPath = path.replace(/\/+$/, "");
   if (cleanPath === "/for-vendors/vendors") return "vendors";
   if (cleanPath === "/for-vendors/how-it-works") return "how-it-works";
   if (cleanPath === "/for-vendors/apply") return "apply";
-  if (cleanPath === "/for-vendors/sample-profile") return "sample-profile";
   return "home";
 }
 
@@ -169,14 +168,12 @@ export default function ForVendors() {
       vendors: "Founding Wedding Vendor Program | A.I DO",
       "how-it-works": "How A.I DO Founding Vendor Partnerships Work",
       apply: "Apply to Join the A.I DO Founding Vendor Program",
-      "sample-profile": "Sample Founding Vendor Profile | A.I DO",
     };
     const descriptionByPage: Record<VendorPartnerPage, string> = {
-      home: "Apply for A.I DO's founding wedding vendor program: free beta listing, founding partner badge, priority early placement, and profile visibility as A.I DO grows.",
-      vendors: "Apply for A.I DO's founding wedding vendor program: free beta listing, founding partner badge, priority early placement, and profile visibility as A.I DO grows.",
+      home: "Apply for A.I DO's founding wedding vendor program: free founding listing, founding partner badge, priority placement, and profile visibility as A.I DO grows.",
+      vendors: "Apply for A.I DO's founding wedding vendor program: free founding listing, founding partner badge, priority placement, and profile visibility as A.I DO grows.",
       "how-it-works": "See how A.I DO founding vendors get listed early, share a polished vendor profile, and help shape the vendor network before paid partnerships launch.",
       apply: "Apply for a free founding vendor profile on A.I DO. Share your logo, photos, services, and feedback while the platform grows its first couple audience.",
-      "sample-profile": "Preview a sample A.I DO founding vendor profile with services, photos, contact links, QR code sharing, and founding partner badge placement.",
     };
     setSeo({
       title: titleByPage[page],
@@ -356,14 +353,6 @@ export default function ForVendors() {
       </header>
 
       <main>
-        {page === "sample-profile" && (
-          <section className="bg-[#FFF7F2] px-4 py-10 sm:px-8">
-            <div className="mx-auto max-w-6xl">
-              <MockDirectoryPreview compact showBackLink />
-            </div>
-          </section>
-        )}
-
         {page === "home" && (
         <section className="relative min-h-[520px] overflow-hidden sm:min-h-[560px]">
           <img
@@ -384,19 +373,19 @@ export default function ForVendors() {
                 Become a founding A.I DO vendor
               </h1>
               <p className="mt-4 max-w-lg text-base leading-7 text-[#3B1C2B] sm:mt-5 sm:text-lg sm:leading-8">
-                Join the beta vendor network for free, get a polished profile you can share, and help shape how couples discover vendors inside A.I DO.
+                Join the founding vendor network for free, get a polished profile you can share, and help shape how couples discover vendors inside A.I DO.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Button asChild className="h-12 w-full rounded-lg bg-[#8D294D] px-8 text-base font-bold text-white shadow-lg shadow-[#8D294D]/25 hover:bg-[#762140] sm:w-auto">
                   <Link href="/for-vendors/apply">Apply Free</Link>
                 </Button>
                 <Button asChild variant="outline" className="h-12 w-full rounded-lg border-[#E6A6B7] bg-white/80 px-8 text-base font-bold text-[#6F3E54] hover:bg-white sm:w-auto">
-                  <a href="#partner-profile-preview">See Profile Mock</a>
+                  <a href="#partner-profile-preview">See Profile Preview</a>
                 </Button>
               </div>
             </div>
             <div className="hidden lg:block">
-              <HeroProfileMock />
+              <HeroProfilePreview />
             </div>
           </div>
         </section>
@@ -404,8 +393,8 @@ export default function ForVendors() {
 
         {(page === "home" || page === "vendors") && (
         <section className="bg-[#FFFDFB] px-4 py-14 sm:px-8">
-          <div className="mx-auto max-w-6xl">
-            <MockDirectoryPreview />
+            <div className="mx-auto max-w-6xl">
+            <PartnerProfilePreview />
           </div>
         </section>
         )}
@@ -417,7 +406,7 @@ export default function ForVendors() {
               Founding Vendor Offer
             </h2>
             <p className="mx-auto mt-3 max-w-2xl text-center text-sm leading-6 text-[#6F3E54] sm:text-base sm:leading-7">
-              This is not a paid marketplace yet. Early approved vendors get free beta visibility while A.I DO builds its first couple audience.
+              This is not a paid marketplace yet. Approved founding vendors get free visibility while A.I DO builds its first couple audience.
             </p>
             <div className="mt-9 grid gap-5 md:grid-cols-4">
               {BENEFITS.map((benefit) => {
@@ -468,26 +457,15 @@ export default function ForVendors() {
               <div>
                 <h2 className="font-serif text-3xl font-bold leading-tight text-[#8D294D] sm:text-4xl">Apply as a Founding Vendor</h2>
                 <p className="mt-3 text-base leading-7 text-[#3B1C2B] sm:text-lg">
-                  Tell us about your business and we will review your fit for the free founding vendor beta.
+                  Tell us about your business and we will review your fit for the free founding vendor program.
                 </p>
               </div>
               <VendorBadge />
               <div className="rounded-lg border border-[#E8DDE8] bg-white p-5">
-                <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#B16C8E]">What founding vendors get</p>
-                <ul className="mt-4 space-y-3 text-sm leading-6 text-[#6F3E54]">
-                  <li className="flex gap-2"><CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#8D294D]" /> Free vendor profile/listing during beta.</li>
-                  <li className="flex gap-2"><CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#8D294D]" /> Founding Partner badge and priority early placement.</li>
-                  <li className="flex gap-2"><CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#8D294D]" /> SEO exposure as your profile grows with the platform.</li>
-                  <li className="flex gap-2"><CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#8D294D]" /> Optional testimonials or case studies once A.I DO has early users.</li>
-                </ul>
-              </div>
-              <div className="rounded-lg border border-[#E8DDE8] bg-white p-5">
-                <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#B16C8E]">What we ask from you</p>
-                <ul className="mt-4 space-y-3 text-sm leading-6 text-[#6F3E54]">
-                  <li className="flex gap-2"><CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#8D294D]" /> Complete the application with logo, photos, services, and contact details.</li>
-                  <li className="flex gap-2"><CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#8D294D]" /> Share your A.I DO listing once it is live.</li>
-                  <li className="flex gap-2"><CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#8D294D]" /> Give honest feedback on what would make a paid vendor plan valuable later.</li>
-                </ul>
+                <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#B16C8E]">Before you apply</p>
+                <p className="mt-3 text-sm leading-6 text-[#6F3E54]">
+                  Approved vendors get a free founding profile while the program is open. Share your business details, service area, logo, and a few photos so couples can understand what you offer.
+                </p>
               </div>
             </div>
 
@@ -511,7 +489,7 @@ export default function ForVendors() {
                 <form className="space-y-5" onSubmit={handleSubmit}>
                   <div>
                     <h3 className="font-serif text-3xl font-bold text-[#8D294D]">Apply Now</h3>
-                    <p className="mt-1 text-sm text-[#6F3E54]">Free beta listing. No contract. No vendor fee while the founding program is open.</p>
+                    <p className="mt-1 text-sm text-[#6F3E54]">Free founding listing. No contract. No vendor fee while the founding program is open.</p>
                   </div>
 
                   <div className="rounded-lg border border-[#E8DDE8] bg-[#FFF7F2] p-4">
@@ -778,7 +756,7 @@ function VendorBadge({ size = "default" }: { size?: "default" | "large" }) {
   );
 }
 
-function HeroProfileMock() {
+function HeroProfilePreview() {
   return (
     <div className="ml-auto max-w-[34rem] rounded-[2rem] border border-[#E6C7D0]/80 bg-white/82 p-4 shadow-[0_24px_70px_rgba(90,80,124,0.18)] backdrop-blur">
       <div className="overflow-hidden rounded-[1.4rem] border border-[#E8DDE8] bg-[#FFF7F2]">
@@ -787,19 +765,19 @@ function HeroProfileMock() {
             <div className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-sm">
               <div className="flex h-16 w-20 items-center justify-center rounded-xl border border-[#E6C7D0] bg-[#FFFDFB]">
                 <div className="text-center">
-                  <p className="font-serif text-lg leading-none text-[#8D294D]">Everly</p>
+                  <p className="font-serif text-lg leading-none text-[#8D294D]">Partner</p>
                   <p className="text-[8px] font-bold uppercase tracking-[0.22em] text-[#B16C8E]">Studio</p>
                 </div>
               </div>
               <div className="min-w-0">
-                <p className="font-serif text-2xl font-bold leading-tight text-[#24171D]">Everly Rose Photo</p>
+                <p className="font-serif text-2xl font-bold leading-tight text-[#24171D]">Featured Partner Profile</p>
                 <p className="mt-1 text-xs font-semibold text-[#6F3E54]">Photography | Florida</p>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <img src="/images/default-wedding-couple.jpg" alt="Mock vendor profile gallery" className="aspect-square rounded-xl object-cover" loading="lazy" decoding="async" />
-              <img src="/images/floral-bg-optimized.jpg" alt="Mock vendor details" className="aspect-square rounded-xl object-cover" loading="lazy" decoding="async" />
-              <img src="/images/bokeh-bg-optimized.jpg" alt="Mock vendor reception" className="aspect-square rounded-xl object-cover" loading="lazy" decoding="async" />
+              <img src="/images/default-wedding-couple.jpg" alt="Vendor profile gallery" className="aspect-square rounded-xl object-cover" loading="lazy" decoding="async" />
+              <img src="/images/floral-bg-optimized.jpg" alt="Vendor service details" className="aspect-square rounded-xl object-cover" loading="lazy" decoding="async" />
+              <img src="/images/bokeh-bg-optimized.jpg" alt="Vendor reception work" className="aspect-square rounded-xl object-cover" loading="lazy" decoding="async" />
             </div>
             <div className="rounded-2xl bg-white p-3 shadow-sm">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#B16C8E]">Services</p>
@@ -826,14 +804,14 @@ function HeroProfileMock() {
           </aside>
         </div>
       </div>
-      <p className="mt-3 text-center text-xs font-bold uppercase tracking-[0.2em] text-[#8D294D]">Mock profile preview</p>
+      <p className="mt-3 text-center text-xs font-bold uppercase tracking-[0.2em] text-[#8D294D]">Partner profile preview</p>
     </div>
   );
 }
 
-function MockDirectoryPreview({ compact = false, showBackLink = false }: { compact?: boolean; showBackLink?: boolean }) {
-  const demoProfileUrl = `${publicAppOrigin()}/for-vendors/sample-profile`;
-  const mockQrUrl = qrSvgDataUrl(demoProfileUrl, 7, 3);
+function PartnerProfilePreview({ compact = false, showBackLink = false }: { compact?: boolean; showBackLink?: boolean }) {
+  const previewProfileUrl = `${publicAppOrigin()}/for-vendors/how-it-works#partner-profile-preview`;
+  const previewQrUrl = qrSvgDataUrl(previewProfileUrl, 7, 3);
   const services = [
     "Full wedding day coverage",
     "Engagement session",
@@ -871,12 +849,12 @@ function MockDirectoryPreview({ compact = false, showBackLink = false }: { compa
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <div className="flex h-24 w-full items-center justify-center rounded-lg border border-[#E6C7D0] bg-white sm:w-32">
                   <div className="text-center">
-                    <p className="font-serif text-2xl leading-none text-[#8D294D]">Everly</p>
+                    <p className="font-serif text-2xl leading-none text-[#8D294D]">Partner</p>
                     <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-[#B16C8E]">Studio</p>
                   </div>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h4 className="font-serif text-3xl font-bold text-[#24171D]">Everly Rose Photo</h4>
+                  <h4 className="font-serif text-3xl font-bold text-[#24171D]">Featured Partner Profile</h4>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-[#3B1C2B]">
                     <span className="inline-flex text-[#F59E0B]" aria-label="Five star rating">
                       {Array.from({ length: 5 }).map((_, index) => (
@@ -896,14 +874,14 @@ function MockDirectoryPreview({ compact = false, showBackLink = false }: { compa
             </section>
 
             <div className="grid grid-cols-3 gap-3">
-              <img src="/images/default-wedding-couple.jpg" alt="Mock vendor ceremony example" className="aspect-[4/3] rounded-lg border border-[#E6C7D0] object-cover shadow-sm" loading="lazy" decoding="async" />
-              <img src="/images/floral-bg-optimized.jpg" alt="Mock vendor detail example" className="aspect-[4/3] rounded-lg border border-[#E6C7D0] object-cover shadow-sm" loading="lazy" decoding="async" />
-              <img src="/images/bokeh-bg-optimized.jpg" alt="Mock vendor reception example" className="aspect-[4/3] rounded-lg border border-[#E6C7D0] object-cover shadow-sm" loading="lazy" decoding="async" />
+              <img src="/images/default-wedding-couple.jpg" alt="Vendor ceremony example" className="aspect-[4/3] rounded-lg border border-[#E6C7D0] object-cover shadow-sm" loading="lazy" decoding="async" />
+              <img src="/images/floral-bg-optimized.jpg" alt="Vendor detail example" className="aspect-[4/3] rounded-lg border border-[#E6C7D0] object-cover shadow-sm" loading="lazy" decoding="async" />
+              <img src="/images/bokeh-bg-optimized.jpg" alt="Vendor reception example" className="aspect-[4/3] rounded-lg border border-[#E6C7D0] object-cover shadow-sm" loading="lazy" decoding="async" />
             </div>
 
             <PreviewPanel title="About Us">
               <p className="text-sm leading-7 text-[#3B1C2B]">
-                Everly Rose Photo creates warm, true-to-color wedding imagery with calm direction, documentary moments, and polished portraits that feel natural from getting ready through the final dance.
+                A partner profile can introduce your style, service area, pricing, gallery, contact options, and the experience couples can expect when they reach out.
               </p>
             </PreviewPanel>
 
@@ -930,9 +908,9 @@ function MockDirectoryPreview({ compact = false, showBackLink = false }: { compa
                 Couples can start a discovery message without adding the partner to their vendor list.
               </p>
               <div className="mt-5 space-y-4 text-sm text-[#3B1C2B]">
-                <ContactLine icon={Mail} label="Email" value="hello@everlyrose.example" />
-                <ContactLine icon={Instagram} label="Instagram" value="@everlyrosephoto" />
-                <ContactLine icon={Globe2} label="Website" value="everlyrose.example" />
+                <ContactLine icon={Mail} label="Email" value="Contact through A.I DO" />
+                <ContactLine icon={Instagram} label="Instagram" value="Social profile link" />
+                <ContactLine icon={Globe2} label="Website" value="Portfolio link" />
               </div>
             </section>
 
@@ -942,12 +920,12 @@ function MockDirectoryPreview({ compact = false, showBackLink = false }: { compa
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold text-[#8D294D]">Founding Partner of</p>
                   <p className="font-serif text-2xl leading-none text-[#8D294D]">A.I DO</p>
-                  <p className="text-[10px] text-[#6F3E54]">Free beta vendor profile</p>
+                  <p className="text-[10px] text-[#6F3E54]">Free founding vendor profile</p>
                 </div>
                 <img
-                  src={mockQrUrl}
-                  alt="Mock A.I DO partner profile QR code"
-                  title={demoProfileUrl}
+                  src={previewQrUrl}
+                  alt="A.I DO partner profile QR code"
+                  title={previewProfileUrl}
                   className="h-16 w-16 shrink-0 rounded bg-white p-1 shadow-sm"
                 />
               </div>

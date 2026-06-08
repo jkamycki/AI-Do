@@ -451,7 +451,7 @@ export default function GuestPhotoDrop() {
       <div className="mx-auto max-w-2xl px-4 py-12">
         <Card className="border-[#E6A6B7]/50 bg-white/90 shadow-[0_24px_70px_rgba(91,15,42,0.10)]">
           <CardHeader>
-            <CardTitle className="font-serif text-3xl text-[#5B0F2A]">Create your wedding website first</CardTitle>
+            <CardTitle className="font-serif text-3xl text-[#5B0F2A]">Set up your wedding website first</CardTitle>
             <CardDescription>{message}</CardDescription>
           </CardHeader>
           <CardContent>

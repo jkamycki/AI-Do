@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { CheckCircle2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/authFetch";
+import { trackPublicMarketingEvent } from "@/lib/publicAnalytics";
 
 type PricingVisibility = {
   enabled: boolean;
@@ -63,6 +64,15 @@ function FeatureList({ items }: { items: string[] }) {
   );
 }
 
+function trackPricingCta(plan: string) {
+  trackPublicMarketingEvent("marketing_cta_click", {
+    label: "Start Planning",
+    placement: "pricing",
+    plan,
+    surface: "pricing_section",
+  });
+}
+
 export function LaunchPricingSection({ compact = false, enabled: controlledEnabled }: { compact?: boolean; enabled?: boolean }) {
   const fetchedEnabled = useLaunchPricingEnabled();
   const enabled = controlledEnabled ?? fetchedEnabled;
@@ -74,7 +84,7 @@ export function LaunchPricingSection({ compact = false, enabled: controlledEnabl
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-sm font-bold uppercase tracking-[0.26em] text-[#B16C8E]">Launch Pricing</p>
           <h2 className="mt-3 text-balance font-serif text-3xl leading-tight text-[#8D294D] sm:text-5xl">
-            Start free, upgrade only when you want the full wedding suite.
+            Start planning, upgrade only when you want the full wedding suite.
           </h2>
           <p className="mt-4 text-pretty text-base leading-7 text-[#6F3E54] sm:text-lg sm:leading-8">
             Simple founding couple pricing for launch: use the basics free, pay monthly while you plan, or choose one payment for the full wedding.
@@ -93,7 +103,7 @@ export function LaunchPricingSection({ compact = false, enabled: controlledEnabl
             </p>
             <FeatureList items={freeFeatures} />
             <Button asChild variant="outline" className="mt-7 h-12 w-full rounded-full border-[#B16C8E]/55 bg-white/70 text-[#8D294D] hover:bg-white">
-              <Link href="/sign-up">Start free</Link>
+              <Link href="/sign-up" onClick={() => trackPricingCta("free")}>Start Planning</Link>
             </Button>
           </article>
 
@@ -111,9 +121,9 @@ export function LaunchPricingSection({ compact = false, enabled: controlledEnabl
             </p>
             <FeatureList items={completeFeatures} />
             <Button asChild className="mt-7 h-12 w-full rounded-full bg-[#8D294D] text-white hover:bg-[#6F1D3D]">
-              <Link href="/sign-up">
+              <Link href="/sign-up" onClick={() => trackPricingCta("complete_monthly")}>
                 <Sparkles className="h-4 w-4" />
-                Start monthly
+                Start Planning
               </Link>
             </Button>
           </article>
@@ -139,9 +149,9 @@ export function LaunchPricingSection({ compact = false, enabled: controlledEnabl
               ))}
             </ul>
             <Button asChild className="mt-7 h-12 w-full rounded-full bg-white text-[#8D294D] hover:bg-[#FFF7F2]">
-              <Link href="/sign-up">
+              <Link href="/sign-up" onClick={() => trackPricingCta("complete_one_time")}>
                 <Sparkles className="h-4 w-4" />
-                Pay once
+                Start Planning
               </Link>
             </Button>
           </article>

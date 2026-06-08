@@ -4182,7 +4182,7 @@ function GuestPhotoDropSection({
               maxLength={120}
               className="h-12 rounded-2xl border bg-white px-4 text-base outline-none focus:ring-2"
               style={{ borderColor: `${data.colorPalette.primary}30`, ["--tw-ring-color" as string]: data.colorPalette.secondary }}
-              placeholder="Jane Smith"
+              placeholder="Your name"
             />
           </label>
         </div>

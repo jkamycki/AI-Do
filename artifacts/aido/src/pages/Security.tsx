@@ -227,11 +227,7 @@ export default function Security() {
               <Link href="/terms" className="text-[#8D294D] underline underline-offset-4">
                 Terms of Service
               </Link>{" "}
-              and{" "}
-              <Link href="/beta" className="text-[#8D294D] underline underline-offset-4">
-                Beta Disclaimer
-              </Link>
-              . You are responsible for keeping your own credentials safe and
+              and the service limitations described there. You are responsible for keeping your own credentials safe and
               for retaining backups of important wedding data.
             </p>
             <p className="text-[#3B1C2B]/80 text-sm">

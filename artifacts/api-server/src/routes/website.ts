@@ -601,7 +601,6 @@ const RESERVED_WEBSITE_SLUGS = new Set([
   "ai-wedding-planner",
   "api",
   "aria",
-  "beta",
   "budget",
   "calendar",
   "checklist",

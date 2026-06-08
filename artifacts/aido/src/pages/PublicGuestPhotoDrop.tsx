@@ -471,7 +471,7 @@ export default function PublicGuestPhotoDrop() {
                 value={guestName}
                 onChange={(event) => setGuestName(event.target.value)}
                 maxLength={120}
-                placeholder="Jane Smith"
+                placeholder="Your name"
                 className="h-12 rounded-2xl border border-[#E6A6B7]/70 bg-white px-4 text-base font-normal outline-none focus:ring-2 focus:ring-[#F7DDE2]"
               />
             </label>
@@ -541,15 +541,15 @@ export default function PublicGuestPhotoDrop() {
               <img src="/logo-optimized.jpg" alt="A.I Do" className="mx-auto h-11 w-auto object-contain opacity-95" loading="lazy" decoding="async" />
               <p className="mt-3 text-xs font-bold uppercase tracking-[0.22em] text-[#8D294D]">Powered by A.I Do</p>
               <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-[#6F3E54]">
-                Create your wedding website, RSVP flow, and guest photo drop with A.I Do.
+                Plan your wedding website, RSVP flow, and guest photo drop with A.I Do.
               </p>
               <a
-                href="https://aidowedding.net?utm_source=guest_photo_drop&utm_medium=public_footer"
+                href="https://aidowedding.net/sign-up?utm_source=guest_photo_drop&utm_medium=public_footer"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-3 inline-flex max-w-full items-center justify-center rounded-full bg-white px-4 py-2 text-sm font-bold text-[#8D294D] shadow-sm ring-1 ring-[#E6A6B7]/70"
               >
-                aidowedding.net
+                Start Planning
               </a>
             </div>
           </footer>

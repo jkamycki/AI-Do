@@ -852,6 +852,8 @@ export default function OperationsCenterPage() {
     enabled: isAdmin && activeTab === "tracking",
     refetchInterval: isAdmin && activeTab === "tracking" ? 30000 : false,
   });
+  const conversionFunnel = metricsData?.growthTracking.funnel ?? [];
+  const funnelStep = (step: string) => conversionFunnel.find(item => item.step === step);
 
   const maintenanceMutation = useMutation({
     mutationFn: async ({
@@ -1621,13 +1623,25 @@ export default function OperationsCenterPage() {
             <>
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 {[
-                  { label: "Landing visits", value: metricsData?.pageViews.week ?? 0, detail: "Last 7 days" },
-                  { label: "Signups", value: metricsData?.userMetrics.newThisMonth ?? 0, detail: "Clerk accounts this month" },
-                  { label: "Profile setup", value: `${metricsData?.userMetrics.onboardingCompletionRate ?? 0}%`, detail: `${metricsData?.userMetrics.onboardedUsers ?? 0} completed` },
                   {
-                    label: "Feedback",
-                    value: (metricsData?.growthTracking.feedback.contactMessages.last30 ?? 0) + (metricsData?.growthTracking.feedback.feedbackMessages.last30 ?? 0),
+                    label: "Public visitors",
+                    value: funnelStep("Public page visitors")?.count ?? 0,
                     detail: "Last 30 days",
+                  },
+                  {
+                    label: "Start clicks",
+                    value: funnelStep("Clicked Start Planning")?.count ?? 0,
+                    detail: `${funnelStep("Clicked Start Planning")?.rate ?? 0}% of public visitors`,
+                  },
+                  {
+                    label: "Signup views",
+                    value: funnelStep("Reached signup page")?.count ?? 0,
+                    detail: `${funnelStep("Reached signup page")?.rate ?? 0}% after CTA click`,
+                  },
+                  {
+                    label: "Accounts",
+                    value: metricsData?.userMetrics.newThisMonth ?? 0,
+                    detail: "Clerk signups this month",
                   },
                 ].map(item => (
                   <Card key={item.label}>
@@ -1812,7 +1826,7 @@ export default function OperationsCenterPage() {
                       </div>
                       <p className="mt-2 max-w-2xl text-sm leading-6 text-[#6F3E54]">
                         When enabled, couples see launch pricing: Free, A.I DO Complete Monthly for $9/month, and A.I DO Complete One-Time for $99 per wedding.
-                        When disabled, pricing is hidden and the site keeps using the free beta messaging.
+                        When disabled, pricing is hidden and the site keeps using start-free messaging.
                       </p>
                       {pricingData?.updatedAt && (
                         <p className="mt-2 text-xs font-medium text-[#7A5062]">

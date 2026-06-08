@@ -279,7 +279,7 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
       countsByType, dauRow, wauRow, mauRow, deviceRows,
       clerkTotal, clerkToday, clerkThisWeek, clerkThisMonth, onboardedRow,
       pvTodayRow, pvWeekRow, pvTotalRow, onboardingGrowthRows, sourceRows,
-      landingPageRows, featureUsageRows, firstPlanningActionRow, contactSummaryRow,
+      landingPageRows, marketingFunnelRow, featureUsageRows, firstPlanningActionRow, contactSummaryRow,
       feedbackSummaryRow, recentFeedbackRows,
     ] = await Promise.all([
       db.select({
@@ -336,11 +336,11 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
 
       // Page views
       db.select({ count: sql<number>`count(*)::int` }).from(analyticsEvents)
-        .where(and(eq(analyticsEvents.eventType, "page_view"), gte(analyticsEvents.timestamp, dayAgo))),
+        .where(and(eq(analyticsEvents.eventType, "page_view"), gte(analyticsEvents.timestamp, dayAgo), sql`COALESCE(${analyticsEvents.metadata}->>'testMode', 'false') <> 'true'`)),
       db.select({ count: sql<number>`count(*)::int` }).from(analyticsEvents)
-        .where(and(eq(analyticsEvents.eventType, "page_view"), gte(analyticsEvents.timestamp, weekAgo))),
+        .where(and(eq(analyticsEvents.eventType, "page_view"), gte(analyticsEvents.timestamp, weekAgo), sql`COALESCE(${analyticsEvents.metadata}->>'testMode', 'false') <> 'true'`)),
       db.select({ count: sql<number>`count(*)::int` }).from(analyticsEvents)
-        .where(eq(analyticsEvents.eventType, "page_view")),
+        .where(and(eq(analyticsEvents.eventType, "page_view"), sql`COALESCE(${analyticsEvents.metadata}->>'testMode', 'false') <> 'true'`)),
 
       // Daily onboarding completions last 30 days
       db.execute(sql`
@@ -375,6 +375,7 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
         FROM analytics_events
         WHERE event_type = 'page_view'
           AND timestamp >= NOW() - INTERVAL '30 days'
+          AND COALESCE(metadata->>'testMode', 'false') <> 'true'
         GROUP BY 1
         ORDER BY visits DESC
         LIMIT 12
@@ -388,16 +389,40 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
         FROM analytics_events
         WHERE event_type = 'page_view'
           AND timestamp >= NOW() - INTERVAL '30 days'
+          AND COALESCE(metadata->>'testMode', 'false') <> 'true'
           AND (
             metadata->>'path' = '/'
-            OR metadata->>'path' = '/early-access'
+            OR metadata->>'path' = '/sign-up'
             OR metadata->>'path' ILIKE '/ai-wedding-planner%'
             OR metadata->>'path' ILIKE '/wedding-website-builder%'
-            OR metadata->>'path' ILIKE '/digital-wedding-invitations%'
+            OR metadata->>'path' ILIKE '/digital-invitations%'
+            OR metadata->>'path' ILIKE '/for-vendors%'
           )
         GROUP BY 1
         ORDER BY visits DESC
         LIMIT 12
+      `),
+
+      db.execute(sql`
+        SELECT
+          count(DISTINCT user_id) FILTER (
+            WHERE event_type = 'page_view'
+              AND (
+                metadata->>'path' = '/'
+                OR metadata->>'path' = '/sign-up'
+                OR metadata->>'path' ILIKE '/ai-wedding-planner%'
+                OR metadata->>'path' ILIKE '/wedding-website-builder%'
+                OR metadata->>'path' ILIKE '/digital-invitations%'
+                OR metadata->>'path' ILIKE '/for-vendors%'
+              )
+          )::int AS public_visitors,
+          count(*) FILTER (WHERE event_type IN ('marketing_cta_click', 'marketing_quick_start_submit'))::int AS cta_clicks,
+          count(DISTINCT user_id) FILTER (WHERE event_type IN ('marketing_cta_click', 'marketing_quick_start_submit'))::int AS cta_visitors,
+          count(*) FILTER (WHERE event_type = 'marketing_signup_view')::int AS signup_views,
+          count(DISTINCT user_id) FILTER (WHERE event_type = 'marketing_signup_view')::int AS signup_visitors
+        FROM analytics_events
+        WHERE timestamp >= NOW() - INTERVAL '30 days'
+          AND COALESCE(metadata->>'testMode', 'false') <> 'true'
       `),
 
       db.execute(sql`
@@ -463,13 +488,22 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
     const onboardingRate = totalUsers > 0 ? Math.round((onboardedCount / totalUsers) * 100) : 0;
     const signupCount = totalUsers;
     const userGrowth = await getClerkSignupGrowth(monthAgo);
-    const landingVisitors = Number(
-      (landingPageRows.rows as Array<{ visitors?: number }>).reduce((sum, row) => sum + Number(row.visitors ?? 0), 0),
-    );
+    const marketingFunnel = marketingFunnelRow.rows?.[0] as {
+      public_visitors?: number;
+      cta_clicks?: number;
+      cta_visitors?: number;
+      signup_views?: number;
+      signup_visitors?: number;
+    } | undefined;
+    const landingVisitors = Number(marketingFunnel?.public_visitors ?? 0);
+    const ctaClickVisitors = Number(marketingFunnel?.cta_visitors ?? 0);
+    const signupPageVisitors = Number(marketingFunnel?.signup_visitors ?? 0);
     const firstPlanningActionUsers = Number((firstPlanningActionRow.rows?.[0] as { count?: number } | undefined)?.count ?? 0);
     const signupToProfileRate = totalUsers > 0 ? Math.round((onboardedCount / totalUsers) * 100) : 0;
     const profileToActionRate = onboardedCount > 0 ? Math.round((firstPlanningActionUsers / onboardedCount) * 100) : 0;
-    const landingToSignupRate = landingVisitors > 0 ? Math.round((newThisMonth / landingVisitors) * 100) : 0;
+    const landingToCtaRate = landingVisitors > 0 ? Math.round((ctaClickVisitors / landingVisitors) * 100) : 0;
+    const ctaToSignupPageRate = ctaClickVisitors > 0 ? Math.round((signupPageVisitors / ctaClickVisitors) * 100) : 0;
+    const signupPageToAccountRate = signupPageVisitors > 0 ? Math.round((newThisMonth / signupPageVisitors) * 100) : 0;
     const contactSummary = contactSummaryRow.rows?.[0] as {
       total?: number;
       unread?: number;
@@ -562,8 +596,10 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
           visitors: Number(r.visitors ?? 0),
         })),
         funnel: [
-          { step: "Landing page visitors", count: landingVisitors, rate: 100 },
-          { step: "Signups this month", count: newThisMonth, rate: landingToSignupRate },
+          { step: "Public page visitors", count: landingVisitors, rate: 100 },
+          { step: "Clicked Start Planning", count: ctaClickVisitors, rate: landingToCtaRate },
+          { step: "Reached signup page", count: signupPageVisitors, rate: ctaToSignupPageRate },
+          { step: "Created account this month", count: newThisMonth, rate: signupPageToAccountRate },
           { step: "Profile setup complete", count: onboardedCount, rate: signupToProfileRate },
           { step: "Used a planning feature", count: firstPlanningActionUsers, rate: profileToActionRate },
         ],
@@ -574,9 +610,19 @@ router.get("/admin/metrics", requireAuth, requireAdmin, async (req, res) => {
         })),
         dropOffs: [
           {
-            stage: "Visited landing page but did not sign up",
-            count: Math.max(landingVisitors - newThisMonth, 0),
-            note: "Based on tracked landing visitors and this month's Clerk signups.",
+            stage: "Visited public page but did not click Start Planning",
+            count: Math.max(landingVisitors - ctaClickVisitors, 0),
+            note: "Use this to judge whether public-page copy and CTA placement are doing their job.",
+          },
+          {
+            stage: "Clicked Start Planning but did not reach signup",
+            count: Math.max(ctaClickVisitors - signupPageVisitors, 0),
+            note: "Watch this for broken links, slow loads, or confusing navigation between marketing pages and signup.",
+          },
+          {
+            stage: "Reached signup but did not create an account",
+            count: Math.max(signupPageVisitors - newThisMonth, 0),
+            note: "Based on signup-page visitors and this month's Clerk signups; useful for spotting signup friction.",
           },
           {
             stage: "Signed up but no profile setup",

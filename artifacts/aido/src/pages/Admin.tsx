@@ -2188,7 +2188,7 @@ I'm reaching out to share something I've been building that I think you'll find 
 
 You can use it to create timelines, manage vendors, track budgets, organize communication, and more — all in one simple place.
 
-If you'd like to try it out, here's the link to join the beta: https://www.aidowedding.net
+If you'd like to try it out, here's the link to start free: https://www.aidowedding.net
 
 Would love to hear your feedback.
 

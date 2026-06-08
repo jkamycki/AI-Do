@@ -25,13 +25,13 @@ const WELCOME_MESSAGE: Message = {
   content: "Hi! I'm **Aria**, your A.IDO planning assistant 💐\n\nI can help you use any feature in A.IDO or answer general wedding planning questions. What's on your mind?",
 };
 
-const BETA_FEEDBACK_MESSAGE_ID = "beta-feedback-checkin";
-const BETA_FEEDBACK_ACTIVE_MS = 5 * 60 * 1000;
-const BETA_FEEDBACK_ACTIVITY_WINDOW_MS = 60 * 1000;
-const BETA_FEEDBACK_DISMISS_MS = 3 * 24 * 60 * 60 * 1000;
-const BETA_FEEDBACK_SUBMITTED_KEY = "aido-beta-feedback-submitted";
-const BETA_FEEDBACK_DISMISSED_UNTIL_KEY = "aido-beta-feedback-dismissed-until";
-const BETA_FEEDBACK_ACTIVE_MS_KEY = "aido-beta-feedback-engaged-ms-v2";
+const CHECKIN_FEEDBACK_MESSAGE_ID = "checkin-feedback";
+const CHECKIN_FEEDBACK_ACTIVE_MS = 5 * 60 * 1000;
+const CHECKIN_FEEDBACK_ACTIVITY_WINDOW_MS = 60 * 1000;
+const CHECKIN_FEEDBACK_DISMISS_MS = 3 * 24 * 60 * 60 * 1000;
+const CHECKIN_FEEDBACK_SUBMITTED_KEY = "aido-checkin-feedback-submitted";
+const CHECKIN_FEEDBACK_DISMISSED_UNTIL_KEY = "aido-checkin-feedback-dismissed-until";
+const CHECKIN_FEEDBACK_ACTIVE_MS_KEY = "aido-checkin-feedback-engaged-ms-v2";
 
 function AriaRobotAvatar({ className = "" }: { className?: string }) {
   return (
@@ -49,12 +49,12 @@ export function SupportChat() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
-  const [betaFeedbackOpen, setBetaFeedbackOpen] = useState(false);
-  const [betaFeedbackSubmitting, setBetaFeedbackSubmitting] = useState(false);
-  const [betaFeedbackRating, setBetaFeedbackRating] = useState(0);
-  const [betaFeedbackCategory, setBetaFeedbackCategory] = useState("overall");
-  const [betaFeedbackOther, setBetaFeedbackOther] = useState("");
-  const [betaFeedbackText, setBetaFeedbackText] = useState("");
+  const [checkinFeedbackOpen, setCheckinFeedbackOpen] = useState(false);
+  const [checkinFeedbackSubmitting, setCheckinFeedbackSubmitting] = useState(false);
+  const [checkinFeedbackRating, setCheckinFeedbackRating] = useState(0);
+  const [checkinFeedbackCategory, setCheckinFeedbackCategory] = useState("overall");
+  const [checkinFeedbackOther, setCheckinFeedbackOther] = useState("");
+  const [checkinFeedbackText, setCheckinFeedbackText] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -72,28 +72,28 @@ export function SupportChat() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (window.localStorage.getItem(BETA_FEEDBACK_SUBMITTED_KEY) === "true") return;
-    const dismissedUntil = Number(window.localStorage.getItem(BETA_FEEDBACK_DISMISSED_UNTIL_KEY) ?? "0");
+    if (window.localStorage.getItem(CHECKIN_FEEDBACK_SUBMITTED_KEY) === "true") return;
+    const dismissedUntil = Number(window.localStorage.getItem(CHECKIN_FEEDBACK_DISMISSED_UNTIL_KEY) ?? "0");
     if (dismissedUntil > Date.now()) return;
 
-    let activeMs = Number(window.localStorage.getItem(BETA_FEEDBACK_ACTIVE_MS_KEY) ?? "0");
+    let activeMs = Number(window.localStorage.getItem(CHECKIN_FEEDBACK_ACTIVE_MS_KEY) ?? "0");
     let lastTick = Date.now();
     let lastActivityAt = document.visibilityState === "visible" ? Date.now() : 0;
     let hasActivityThisSession = document.visibilityState === "visible";
     let intervalId: number | undefined;
 
     const showPrompt = () => {
-      if (window.localStorage.getItem(BETA_FEEDBACK_SUBMITTED_KEY) === "true") return;
-      const currentDismissedUntil = Number(window.localStorage.getItem(BETA_FEEDBACK_DISMISSED_UNTIL_KEY) ?? "0");
+      if (window.localStorage.getItem(CHECKIN_FEEDBACK_SUBMITTED_KEY) === "true") return;
+      const currentDismissedUntil = Number(window.localStorage.getItem(CHECKIN_FEEDBACK_DISMISSED_UNTIL_KEY) ?? "0");
       if (currentDismissedUntil > Date.now()) return;
-      setMessages(prev => prev.some(m => m.id === BETA_FEEDBACK_MESSAGE_ID)
+      setMessages(prev => prev.some(m => m.id === CHECKIN_FEEDBACK_MESSAGE_ID)
         ? prev
         : [
             ...prev,
             {
-              id: BETA_FEEDBACK_MESSAGE_ID,
+              id: CHECKIN_FEEDBACK_MESSAGE_ID,
               role: "assistant",
-              content: "Quick beta check-in: how is A.IDO working for you so far? Your feedback helps us improve the planner.",
+              content: "Quick check-in: how is A.IDO working for you so far? Your feedback helps us improve the planner.",
             },
           ]);
       setOpen(true);
@@ -116,12 +116,12 @@ export function SupportChat() {
       const recentlyActive =
         hasActivityThisSession &&
         lastActivityAt > 0 &&
-        now - lastActivityAt <= BETA_FEEDBACK_ACTIVITY_WINDOW_MS;
+        now - lastActivityAt <= CHECKIN_FEEDBACK_ACTIVITY_WINDOW_MS;
 
       if (document.visibilityState === "visible" && recentlyActive) {
         activeMs += now - lastTick;
-        window.localStorage.setItem(BETA_FEEDBACK_ACTIVE_MS_KEY, String(activeMs));
-        if (activeMs >= BETA_FEEDBACK_ACTIVE_MS) {
+        window.localStorage.setItem(CHECKIN_FEEDBACK_ACTIVE_MS_KEY, String(activeMs));
+        if (activeMs >= CHECKIN_FEEDBACK_ACTIVE_MS) {
           showPrompt();
           if (intervalId !== undefined) window.clearInterval(intervalId);
         }
@@ -136,7 +136,7 @@ export function SupportChat() {
     document.addEventListener("visibilitychange", onVisibilityChange);
 
     intervalId = window.setInterval(tick, 5_000);
-    if (activeMs >= BETA_FEEDBACK_ACTIVE_MS && hasActivityThisSession) showPrompt();
+    if (activeMs >= CHECKIN_FEEDBACK_ACTIVE_MS && hasActivityThisSession) showPrompt();
     return () => {
       if (intervalId !== undefined) window.clearInterval(intervalId);
       activityEvents.forEach(eventName => {
@@ -271,79 +271,79 @@ export function SupportChat() {
     abortRef.current?.abort();
     setMessages([WELCOME_MESSAGE]);
     setLoading(false);
-    setBetaFeedbackOpen(false);
+    setCheckinFeedbackOpen(false);
   };
 
-  const dismissBetaFeedback = () => {
-    window.localStorage.setItem(BETA_FEEDBACK_DISMISSED_UNTIL_KEY, String(Date.now() + BETA_FEEDBACK_DISMISS_MS));
-    setBetaFeedbackOpen(false);
-    setMessages(prev => prev.filter(m => m.id !== BETA_FEEDBACK_MESSAGE_ID));
+  const dismissCheckinFeedback = () => {
+    window.localStorage.setItem(CHECKIN_FEEDBACK_DISMISSED_UNTIL_KEY, String(Date.now() + CHECKIN_FEEDBACK_DISMISS_MS));
+    setCheckinFeedbackOpen(false);
+    setMessages(prev => prev.filter(m => m.id !== CHECKIN_FEEDBACK_MESSAGE_ID));
   };
 
-  const submitBetaFeedback = async () => {
-    if (betaFeedbackSubmitting || !betaFeedbackText.trim()) return;
-    setBetaFeedbackSubmitting(true);
+  const submitCheckinFeedback = async () => {
+    if (checkinFeedbackSubmitting || !checkinFeedbackText.trim()) return;
+    setCheckinFeedbackSubmitting(true);
     try {
-      const categoryLabel = betaFeedbackCategory === "overall"
-        ? "Overall beta experience"
-        : betaFeedbackCategory === "love"
+      const categoryLabel = checkinFeedbackCategory === "overall"
+        ? "Overall experience"
+        : checkinFeedbackCategory === "love"
           ? "I love it!"
-        : betaFeedbackCategory === "confusing"
+        : checkinFeedbackCategory === "confusing"
           ? "Confusing or hard to use"
-          : betaFeedbackCategory === "broken"
+          : checkinFeedbackCategory === "broken"
             ? "Something broken"
-            : betaFeedbackCategory === "feature"
+            : checkinFeedbackCategory === "feature"
               ? "Feature request"
-              : `Other${betaFeedbackOther.trim() ? `: ${betaFeedbackOther.trim()}` : ""}`;
+              : `Other${checkinFeedbackOther.trim() ? `: ${checkinFeedbackOther.trim()}` : ""}`;
       const res = await authFetch("/api/help/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          rating: betaFeedbackRating || null,
-          category: `beta-${betaFeedbackCategory}`,
+          rating: checkinFeedbackRating || null,
+          category: `checkin-${checkinFeedbackCategory}`,
           message: [
-            "Beta check-in feedback from Support Assistant",
+            "Check-in feedback from Support Assistant",
             "Source: Website",
-            `Rating: ${betaFeedbackRating || "Not provided"}/5`,
+            `Rating: ${checkinFeedbackRating || "Not provided"}/5`,
             `Category: ${categoryLabel}`,
             "",
-            betaFeedbackText.trim(),
+            checkinFeedbackText.trim(),
           ].join("\n"),
         }),
       });
       if (!res.ok) throw new Error("Failed to submit feedback");
-      window.localStorage.setItem(BETA_FEEDBACK_SUBMITTED_KEY, "true");
-      setBetaFeedbackOpen(false);
+      window.localStorage.setItem(CHECKIN_FEEDBACK_SUBMITTED_KEY, "true");
+      setCheckinFeedbackOpen(false);
       setMessages(prev => [
-        ...prev.filter(m => m.id !== BETA_FEEDBACK_MESSAGE_ID),
+        ...prev.filter(m => m.id !== CHECKIN_FEEDBACK_MESSAGE_ID),
         {
-          id: `beta-feedback-thanks-${Date.now()}`,
+          id: `checkin-feedback-thanks-${Date.now()}`,
           role: "assistant",
           content: "Thank you. Your feedback was sent to the A.IDO team, and we truly appreciate you choosing A.IDO as your ultimate wedding planning tool.",
         },
       ]);
-      setBetaFeedbackText("");
-      setBetaFeedbackOther("");
-      setBetaFeedbackRating(0);
-      setBetaFeedbackCategory("overall");
+      setCheckinFeedbackText("");
+      setCheckinFeedbackOther("");
+      setCheckinFeedbackRating(0);
+      setCheckinFeedbackCategory("overall");
     } catch {
       setMessages(prev => [
         ...prev,
         {
-          id: `beta-feedback-error-${Date.now()}`,
+          id: `checkin-feedback-error-${Date.now()}`,
           role: "assistant",
           content: "Sorry, I couldn't send that feedback. Please try again in a moment.",
         },
       ]);
     } finally {
-      setBetaFeedbackSubmitting(false);
+      setCheckinFeedbackSubmitting(false);
     }
   };
 
   const handleHide = () => {
-    const hasBetaFeedbackPrompt =
-      betaFeedbackOpen || messages.some(message => message.id === BETA_FEEDBACK_MESSAGE_ID);
-    if (hasBetaFeedbackPrompt) dismissBetaFeedback();
+    const hasCheckinFeedbackPrompt =
+      checkinFeedbackOpen || messages.some(message => message.id === CHECKIN_FEEDBACK_MESSAGE_ID);
+    if (hasCheckinFeedbackPrompt) dismissCheckinFeedback();
     setOpen(false);
     setHidden(true);
   };
@@ -466,25 +466,25 @@ export function SupportChat() {
                 ) : (
                   msg.content
                 )}
-                {msg.id === BETA_FEEDBACK_MESSAGE_ID && !betaFeedbackOpen && (
+                {msg.id === CHECKIN_FEEDBACK_MESSAGE_ID && !checkinFeedbackOpen && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => setBetaFeedbackOpen(true)}
+                      onClick={() => setCheckinFeedbackOpen(true)}
                       className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90"
                     >
                       Give feedback
                     </button>
                     <button
                       type="button"
-                      onClick={dismissBetaFeedback}
+                      onClick={dismissCheckinFeedback}
                       className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
                     >
                       Not now
                     </button>
                   </div>
                 )}
-                {msg.id === BETA_FEEDBACK_MESSAGE_ID && betaFeedbackOpen && (
+                {msg.id === CHECKIN_FEEDBACK_MESSAGE_ID && checkinFeedbackOpen && (
                   <div className="mt-3 space-y-3 rounded-xl border border-border/70 bg-background/70 p-3">
                     <div>
                       <p className="mb-1.5 text-xs font-medium text-foreground">How is A.IDO so far?</p>
@@ -493,22 +493,22 @@ export function SupportChat() {
                           <button
                             key={n}
                             type="button"
-                            onClick={() => setBetaFeedbackRating(n)}
+                            onClick={() => setCheckinFeedbackRating(n)}
                             className="p-0.5 transition-transform hover:scale-110"
                             aria-label={`${n} star${n === 1 ? "" : "s"}`}
                           >
                             <Star
-                              className={`h-4 w-4 ${n <= betaFeedbackRating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/35"}`}
+                              className={`h-4 w-4 ${n <= checkinFeedbackRating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/35"}`}
                             />
                           </button>
                         ))}
                       </div>
                     </div>
                     <select
-                      value={betaFeedbackCategory}
+                      value={checkinFeedbackCategory}
                       onChange={e => {
-                        setBetaFeedbackCategory(e.target.value);
-                        if (e.target.value !== "other") setBetaFeedbackOther("");
+                        setCheckinFeedbackCategory(e.target.value);
+                        if (e.target.value !== "other") setCheckinFeedbackOther("");
                       }}
                       className="w-full rounded-lg border border-border bg-card px-2.5 py-2 text-xs text-foreground outline-none focus:border-primary"
                     >
@@ -519,18 +519,18 @@ export function SupportChat() {
                       <option value="feature">Feature request</option>
                       <option value="other">Other</option>
                     </select>
-                    {betaFeedbackCategory === "other" && (
+                    {checkinFeedbackCategory === "other" && (
                       <input
-                        value={betaFeedbackOther}
-                        onChange={e => setBetaFeedbackOther(e.target.value)}
+                        value={checkinFeedbackOther}
+                        onChange={e => setCheckinFeedbackOther(e.target.value)}
                         placeholder="What kind of feedback is this?"
                         className="w-full rounded-lg border border-border bg-card px-2.5 py-2 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                         autoFocus
                       />
                     )}
                     <textarea
-                      value={betaFeedbackText}
-                      onChange={e => setBetaFeedbackText(e.target.value)}
+                      value={checkinFeedbackText}
+                      onChange={e => setCheckinFeedbackText(e.target.value)}
                       rows={3}
                       placeholder="What should we improve, simplify, or fix?"
                       className="w-full resize-none rounded-lg border border-border bg-card px-2.5 py-2 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
@@ -538,15 +538,15 @@ export function SupportChat() {
                     <div className="flex gap-2">
                       <button
                         type="button"
-                        onClick={submitBetaFeedback}
-                        disabled={betaFeedbackSubmitting || !betaFeedbackText.trim() || (betaFeedbackCategory === "other" && !betaFeedbackOther.trim())}
+                        onClick={submitCheckinFeedback}
+                        disabled={checkinFeedbackSubmitting || !checkinFeedbackText.trim() || (checkinFeedbackCategory === "other" && !checkinFeedbackOther.trim())}
                         className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-45"
                       >
-                        {betaFeedbackSubmitting ? "Sending..." : "Send feedback"}
+                        {checkinFeedbackSubmitting ? "Sending..." : "Send feedback"}
                       </button>
                       <button
                         type="button"
-                        onClick={dismissBetaFeedback}
+                        onClick={dismissCheckinFeedback}
                         className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
                       >
                         Not now
