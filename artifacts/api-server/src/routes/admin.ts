@@ -1552,6 +1552,9 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
         deletedAt: null,
       };
     });
+    const recentSignups = [...users]
+      .sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime())
+      .slice(0, 12);
 
     const activeEmails = new Set(
       clerkUsers
@@ -1638,6 +1641,7 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res) => {
       users: filtered,
       activeUsers: filtered,
       deletedUsers: filteredDeletedUsers,
+      recentSignups,
       total: filtered.length + filteredDeletedUsers.length,
       summary: {
         signedUp: uniqueSignedUpCount,

@@ -120,6 +120,7 @@ type AdminUsersResponse = {
   users: SignedUpUser[];
   activeUsers?: SignedUpUser[];
   deletedUsers?: SignedUpUser[];
+  recentSignups?: SignedUpUser[];
   total: number;
   summary?: {
     signedUp: number;
@@ -793,13 +794,19 @@ export default function OperationsCenterPage() {
     },
   });
 
-  const { data: signedUpUsersData, isLoading: isLoadingSignedUpUsers } = useQuery<AdminUsersResponse>({
+  const { data: signedUpUsersData, isLoading: isLoadingSignedUpUsers, error: signedUpUsersError } = useQuery<AdminUsersResponse, Error>({
     queryKey: ["admin-signed-up-users", userSearch],
     queryFn: async () => {
       const params = userSearch.trim() ? `?search=${encodeURIComponent(userSearch.trim())}` : "";
       const r = await authedFetch(`/api/admin/users${params}`);
-      if (!r.ok) throw new Error("Failed to fetch signed-up users");
-      return r.json();
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        if (r.status === 401 || r.status === 403) {
+          throw new Error("Sign in with an admin account to view recent signup emails.");
+        }
+        throw new Error(body.error ?? "Failed to fetch signed-up users");
+      }
+      return body as AdminUsersResponse;
     },
     enabled: isAdmin && activeTab === "users",
     refetchInterval: isAdmin && activeTab === "users" ? 15000 : false,
@@ -912,6 +919,7 @@ export default function OperationsCenterPage() {
       return bTime - aTime;
     });
   })();
+  const recentSignupUsers = signedUpUsersData?.recentSignups ?? signedUpUsers.slice(0, 12);
 
   const { data: archiveData, isLoading: isLoadingArchive } = useQuery<{ archives: ArchiveEntry[] }>({
     queryKey: ["admin-archive"],
@@ -2623,10 +2631,57 @@ export default function OperationsCenterPage() {
             ))}
           </div>
 
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-serif text-lg text-[#24171D]">Recent Website Signups</CardTitle>
+              <p className="text-sm font-medium text-[#4A3941]">
+                Newest Clerk accounts first. These are real account signups, separate from profile setup.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {isLoadingSignedUpUsers ? (
+                [1, 2, 3].map(i => <Skeleton key={i} className="h-16 rounded-lg" />)
+              ) : signedUpUsersError ? (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-800">
+                  {signedUpUsersError.message}
+                </div>
+              ) : recentSignupUsers.length === 0 ? (
+                <p className="text-sm font-medium text-[#6F3E54]">No account signups found yet.</p>
+              ) : (
+                recentSignupUsers.slice(0, 8).map(user => {
+                  const displayName = getSignedUpUserDisplayName(user);
+                  return (
+                    <div key={`recent-${user.id}`} className="flex flex-col gap-3 rounded-lg border border-[#E6C7D2] bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate text-sm font-semibold text-[#24171D]">{displayName}</p>
+                          <Badge className={user.hasProfile ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-800"}>
+                            {user.hasProfile ? "Profile started" : "Account only"}
+                          </Badge>
+                        </div>
+                        <p className="mt-1 break-all text-sm font-medium text-[#4A3941]">{user.email || "No email on account"}</p>
+                      </div>
+                      <p className="shrink-0 text-xs font-bold uppercase tracking-wide text-[#7A5062]">
+                        {new Date(user.joinedAt).toLocaleString()}
+                      </p>
+                    </div>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
+
           {isLoadingSignedUpUsers ? (
             <div className="space-y-3">
               {[1, 2, 3].map(i => <Skeleton key={i} className="h-28 rounded-lg" />)}
             </div>
+          ) : signedUpUsersError ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <AlertCircle className="h-12 w-12 text-red-500/70 mx-auto mb-4" />
+                <p className="font-medium text-[#4A3941]">{signedUpUsersError.message}</p>
+              </CardContent>
+            </Card>
           ) : accountUsers.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
