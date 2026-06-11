@@ -15,6 +15,7 @@ import {
   type RegistryLink,
   type WebsiteRendererPayload,
 } from "@/components/website/WebsiteRenderer";
+import { stripEditableHiddenMarkers } from "@/components/website/hiddenMarker";
 
 type WebsiteRecord = WebsiteRendererPayload & {
   id: number;
@@ -76,9 +77,9 @@ export default function Registry() {
   });
 
   const links = draftLinks ?? parseRegistryLinks(data?.customText?._registryLinks);
-  const title = draftTitle ?? data?.customText?.registry_title ?? DEFAULT_TITLE;
-  const subtitle = draftSubtitle ?? data?.customText?.registry_subtitle ?? DEFAULT_SUBTITLE;
-  const note = draftNote ?? data?.customText?.registry ?? DEFAULT_NOTE;
+  const title = stripEditableHiddenMarkers(draftTitle ?? data?.customText?.registry_title) || DEFAULT_TITLE;
+  const subtitle = stripEditableHiddenMarkers(draftSubtitle ?? data?.customText?.registry_subtitle) || DEFAULT_SUBTITLE;
+  const note = stripEditableHiddenMarkers(draftNote ?? data?.customText?.registry) || DEFAULT_NOTE;
   const enabled = draftEnabled ?? data?.sectionsEnabled?.registry ?? true;
 
   const publicUrl = useMemo(() => {
@@ -114,9 +115,9 @@ export default function Registry() {
           },
           customText: {
             ...data.customText,
-            registry_title: title.trim() || DEFAULT_TITLE,
-            registry_subtitle: subtitle.trim() || DEFAULT_SUBTITLE,
-            registry: note.trim() || DEFAULT_NOTE,
+            registry_title: stripEditableHiddenMarkers(title) || DEFAULT_TITLE,
+            registry_subtitle: stripEditableHiddenMarkers(subtitle) || DEFAULT_SUBTITLE,
+            registry: stripEditableHiddenMarkers(note) || DEFAULT_NOTE,
             _registryLinks: JSON.stringify(cleanedLinks),
           },
         }),

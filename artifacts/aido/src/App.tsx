@@ -446,9 +446,17 @@ function ActiveAccountNotice({
   );
 }
 
+type SignInLike = {
+  create?: (params: { identifier: string }) => Promise<unknown>;
+  prepareFirstFactor?: (params: { strategy: "email_code"; emailAddressId: string }) => Promise<unknown>;
+  attemptFirstFactor?: (params: { strategy: "email_code"; code: string }) => Promise<{ status?: string; createdSessionId?: string | null }>;
+  authenticateWithRedirect?: (params: Record<string, unknown>) => Promise<unknown>;
+};
+
 function CustomSignInForm() {
   const clerk = useClerk();
   const { isLoaded, isSignedIn } = useAuth();
+  const { signIn } = useSignIn();
   const { user } = useUser();
   const [, setLocation] = useLocation();
   const [mode, setMode] = useState<"code_request" | "code_verify">(
@@ -456,11 +464,13 @@ function CustomSignInForm() {
   );
   const [email, setEmail] = useState("");
   const [loginCode, setLoginCode] = useState("");
+  const [loginEmailAddressId, setLoginEmailAddressId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [oauthLoading, setOauthLoading] = useState<"oauth_google" | null>(null);
   const [switchingAccount, setSwitchingAccount] = useState(false);
+  const signInAttemptRef = useRef<SignInLike | null>(null);
   const activeEmail =
     user?.primaryEmailAddress?.emailAddress ??
     user?.emailAddresses?.[0]?.emailAddress ??
@@ -489,6 +499,17 @@ function CustomSignInForm() {
     return !!activeEmail && activeEmail.toLowerCase() === candidate.trim().toLowerCase();
   }
 
+  function asSignInLike(value: unknown): SignInLike | null {
+    if (!value || typeof value !== "object") return null;
+    const candidate = value as SignInLike;
+    return candidate.create ||
+      candidate.prepareFirstFactor ||
+      candidate.attemptFirstFactor ||
+      candidate.authenticateWithRedirect
+      ? candidate
+      : null;
+  }
+
   async function handleSendLoginCode(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -512,8 +533,15 @@ function CustomSignInForm() {
         setSubmitting(false);
         return;
       }
+      if (!signInClient.create) {
+        setError("Email sign-in is still loading. Please refresh and try again.");
+        setSubmitting(false);
+        return;
+      }
       // Step 1: create the sign-in attempt by identifier alone (no password).
       const attempt = await signInClient.create({ identifier: email.trim() });
+      const activeAttempt = asSignInLike(attempt) ?? signInClient;
+      signInAttemptRef.current = activeAttempt;
       // Step 2: locate the email_code first-factor on this account.
       const factors =
         (attempt as unknown as {
@@ -522,6 +550,11 @@ function CustomSignInForm() {
             emailAddressId?: string;
           }>;
         }).supportedFirstFactors ?? [];
+      if (factors.length === 0) {
+        setError("We couldn't find an account with that email. If you previously deleted your account, please sign up again.");
+        setSubmitting(false);
+        return;
+      }
       const emailFactor = factors.find((f) => f.strategy === "email_code");
       if (!emailFactor?.emailAddressId) {
         setError(
@@ -530,8 +563,14 @@ function CustomSignInForm() {
         setSubmitting(false);
         return;
       }
+      setLoginEmailAddressId(emailFactor.emailAddressId);
       // Step 3: ask Clerk to email the 6-digit code.
-      await signInClient.prepareFirstFactor({
+      if (!activeAttempt.prepareFirstFactor) {
+        setError("Email code sign-in is not available for this account. Try signing in with Google instead.");
+        setSubmitting(false);
+        return;
+      }
+      await activeAttempt.prepareFirstFactor({
         strategy: "email_code",
         emailAddressId: emailFactor.emailAddressId,
       });
@@ -557,8 +596,8 @@ function CustomSignInForm() {
     }
     setSubmitting(true);
     try {
-      const signInClient = await waitForSignInClient();
-      if (!signInClient || !clerk.setActive) {
+      const signInClient = signInAttemptRef.current ?? await waitForSignInClient();
+      if (!signInClient || !signInClient.attemptFirstFactor || !clerk.setActive) {
         setError("Auth is still loading. Please try again in a moment.");
         setSubmitting(false);
         return;
@@ -581,12 +620,61 @@ function CustomSignInForm() {
   }
 
   async function waitForSignInClient() {
+    const signInFromHook = asSignInLike(signIn);
+    if (signInFromHook) return signInFromHook;
     const start = Date.now();
     while (Date.now() - start < 8000) {
-      if (clerk.loaded && clerk.client?.signIn) return clerk.client.signIn;
+      if (clerk.loaded && clerk.client?.signIn) return clerk.client.signIn as SignInLike;
       await new Promise((res) => setTimeout(res, 80));
     }
-    return clerk.client?.signIn ?? null;
+    return (clerk.client?.signIn as SignInLike | undefined) ?? null;
+  }
+
+  async function handleResendLoginCode() {
+    setError(null);
+    setInfo(null);
+    if (!email.trim()) {
+      setError("Please enter your email address first.");
+      setMode("code_request");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      let activeAttempt = signInAttemptRef.current;
+      let emailAddressId = loginEmailAddressId;
+      if (!activeAttempt || !emailAddressId) {
+        const signInClient = await waitForSignInClient();
+        if (!signInClient?.create) {
+          setError("Auth is still loading. Please try again in a moment.");
+          return;
+        }
+        const attempt = await signInClient.create({ identifier: email.trim() });
+        activeAttempt = asSignInLike(attempt) ?? signInClient;
+        signInAttemptRef.current = activeAttempt;
+        const factors =
+          (attempt as unknown as {
+            supportedFirstFactors?: Array<{
+              strategy?: string;
+              emailAddressId?: string;
+            }>;
+          }).supportedFirstFactors ?? [];
+        emailAddressId = factors.find((f) => f.strategy === "email_code")?.emailAddressId ?? "";
+        setLoginEmailAddressId(emailAddressId);
+      }
+      if (!activeAttempt?.prepareFirstFactor || !emailAddressId) {
+        setError("Email code sign-in is not available for this account. Try signing in with Google instead.");
+        return;
+      }
+      await activeAttempt.prepareFirstFactor({
+        strategy: "email_code",
+        emailAddressId,
+      });
+      setInfo(`We sent a new 6-digit sign-in code to ${email.trim()}.`);
+    } catch (err) {
+      setError(extractError(err, "Could not resend sign-in code. Please try again."));
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function handleSwitchAccount() {
@@ -596,6 +684,8 @@ function CustomSignInForm() {
     try {
       setEmail("");
       setLoginCode("");
+      setLoginEmailAddressId("");
+      signInAttemptRef.current = null;
       setMode("code_request");
       await clerk.signOut({ redirectUrl: `${basePath}/sign-in` });
     } catch (err) {
@@ -615,6 +705,11 @@ function CustomSignInForm() {
       if (!signInClient) {
         setOauthLoading(null);
         setError("Auth is still loading. Please try again in a moment.");
+        return;
+      }
+      if (!signInClient.authenticateWithRedirect) {
+        setOauthLoading(null);
+        setError("Google sign-in is still loading. Please refresh and try again.");
         return;
       }
       // Mark this OAuth flow as a sign-IN attempt (not a sign-up). After the
@@ -845,6 +940,8 @@ function CustomSignInForm() {
               setError(null);
               setInfo(null);
               setLoginCode("");
+              setLoginEmailAddressId("");
+              signInAttemptRef.current = null;
               setMode("code_request");
             }}
             style={{
@@ -857,6 +954,23 @@ function CustomSignInForm() {
             }}
           >
             ← Use a different email
+          </button>
+          <button
+            type="button"
+            onClick={handleResendLoginCode}
+            disabled={submitting}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "#8D294D",
+              fontSize: "0.82rem",
+              cursor: submitting ? "not-allowed" : "pointer",
+              opacity: submitting ? 0.65 : 1,
+              textAlign: "center",
+              fontWeight: 500,
+            }}
+          >
+            Resend code
           </button>
         </form>
       )}

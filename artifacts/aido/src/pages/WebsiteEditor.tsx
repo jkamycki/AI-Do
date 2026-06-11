@@ -32,7 +32,7 @@ import {
   type RegistryLink,
 } from "@/components/website/WebsiteRenderer";
 import { flushPendingEditableCommits, subscribeEditableDrag } from "@/components/website/EditableText";
-import { EDITABLE_HIDDEN_MARKER, isEditableHiddenMarker } from "@/components/website/hiddenMarker";
+import { EDITABLE_HIDDEN_MARKER, isEditableHiddenMarker, stripEditableHiddenMarkers } from "@/components/website/hiddenMarker";
 import { HeroPhotoPositionDialog } from "@/components/HeroPhotoPositionDialog";
 import { ImageCropDialog, type CropQueueItem } from "@/components/ImageCropDialog";
 import { qrSvgDataUrl } from "@/lib/localQr";
@@ -226,7 +226,7 @@ function safeWebsiteCustomText(value: unknown): Record<string, string> {
 }
 
 function editableTextFieldValue(value: unknown): string {
-  return typeof value === "string" && isEditableHiddenMarker(value) ? "" : typeof value === "string" ? value : "";
+  return stripEditableHiddenMarkers(value);
 }
 
 const WEBSITE_TRANSLATABLE_DEFAULTS: Record<string, string> = {
@@ -330,24 +330,23 @@ function websiteTranslationCacheKey({
 
 function isLikelyReadableWebsiteCopy(key: string, value: unknown): boolean {
   if (typeof value !== "string") return false;
-  if (!value.trim() || isEditableHiddenMarker(value)) return false;
+  if (!stripEditableHiddenMarkers(value)) return false;
   if (WEBSITE_TRANSLATION_BLOCKED_KEYS.has(key)) return false;
   if (WEBSITE_TRANSLATABLE_DEFAULTS[key] || WEBSITE_TRANSLATABLE_KEYS.has(key) || key.startsWith("_custom_")) return true;
   if (key.startsWith("_")) return false;
-  return /[A-Za-z]/.test(value);
+  return /[A-Za-z]/.test(stripEditableHiddenMarkers(value));
 }
 
 function collectWebsiteTranslationText(customText: unknown): Record<string, string> {
   const safeCustomText = safeWebsiteCustomText(customText);
   const out: Record<string, string> = {};
   for (const [key, fallback] of Object.entries(WEBSITE_TRANSLATABLE_DEFAULTS)) {
-    const value = safeCustomText[key];
-    if (value && isEditableHiddenMarker(value)) continue;
-    out[key] = value?.trim() || fallback;
+    const value = stripEditableHiddenMarkers(safeCustomText[key]);
+    out[key] = value || fallback;
   }
   for (const [key, value] of Object.entries(safeCustomText)) {
     if (!isLikelyReadableWebsiteCopy(key, value)) continue;
-    out[key] = value;
+    out[key] = stripEditableHiddenMarkers(value);
   }
   return out;
 }

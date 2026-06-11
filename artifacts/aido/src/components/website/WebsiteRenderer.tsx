@@ -39,7 +39,7 @@ import {
   emitEditableDrag,
   type TextPosition,
 } from "./EditableText";
-import { isEditableHiddenMarker } from "./hiddenMarker";
+import { isEditableHiddenMarker, stripEditableHiddenMarkers } from "./hiddenMarker";
 import { RsvpFlow } from "./RsvpFlow";
 import { apiFetch, authFetch } from "@/lib/authFetch";
 import { resolveMediaUrl, isMediaAuthRequired } from "@/lib/mediaUrl";
@@ -3308,7 +3308,7 @@ function Registry({
   ctx: EditCtx;
 }) {
   const labelColor = sectionTextColor(data, "registry");
-  const text = data.customText.registry ?? "";
+  const text = stripEditableHiddenMarkers(data.customText.registry);
   const links = parseRegistryLinks(data.customText._registryLinks);
   if (!text && links.length === 0 && !ctx.editable) return null;
   return (

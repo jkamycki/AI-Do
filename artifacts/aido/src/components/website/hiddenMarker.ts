@@ -9,3 +9,12 @@ const LEGACY_HIDDEN_MARKERS = new Set<string>([
 export function isEditableHiddenMarker(value: unknown): boolean {
   return typeof value === "string" && LEGACY_HIDDEN_MARKERS.has(value);
 }
+
+export function stripEditableHiddenMarkers(value: unknown): string {
+  if (typeof value !== "string") return "";
+  let next = value;
+  for (const marker of LEGACY_HIDDEN_MARKERS) {
+    next = next.split(marker).join("");
+  }
+  return next.replace(/\n{3,}/g, "\n\n").trim();
+}
