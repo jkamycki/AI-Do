@@ -37,20 +37,20 @@ export default function VideoTemplate({ embedded = false }: { embedded?: boolean
   const currentScene = useTimerPlayer();
   const rootClass = `relative ${embedded ? "h-full" : "h-screen"} w-full overflow-hidden bg-[#FFF7F2] text-[#3B1C2B]`;
   const sceneClass = embedded
-    ? "absolute inset-0 origin-center scale-[0.6] sm:scale-[0.72] lg:scale-[0.78]"
+    ? "absolute inset-0 origin-center scale-[0.56] sm:scale-[0.62] lg:scale-[0.68] xl:scale-[0.72]"
     : "absolute inset-0";
 
   return (
-    <div className={rootClass}>
+    <div className={rootClass} data-video-template={embedded ? "embedded" : "full"}>
       <div className="absolute inset-0 z-0">
         <motion.div
-          className="absolute inset-0 bg-[url('/images/bokeh-bg-optimized.jpg')] bg-cover bg-center opacity-35"
+          className={`absolute inset-0 bg-[url('/images/bokeh-bg-optimized.jpg')] bg-cover bg-center ${embedded ? "opacity-20" : "opacity-35"}`}
           animate={{ scale: [1.02, 1.06, 1.02] }}
           transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
         />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,247,242,0.84)_0%,rgba(255,247,242,0.72)_48%,rgba(242,226,198,0.48)_100%)]" />
-        <div className="absolute inset-x-0 top-0 h-[46%] bg-[url('/images/floral-bg-optimized.jpg')] bg-cover bg-center opacity-20 mix-blend-multiply" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_62%_at_50%_43%,rgba(255,255,255,0.74)_0%,rgba(255,247,242,0.32)_48%,rgba(230,166,183,0.18)_100%)]" />
+        <div className={embedded ? "absolute inset-0 bg-[linear-gradient(180deg,rgba(255,247,242,0.68)_0%,rgba(255,247,242,0.5)_48%,rgba(242,226,198,0.32)_100%)]" : "absolute inset-0 bg-[linear-gradient(180deg,rgba(255,247,242,0.84)_0%,rgba(255,247,242,0.72)_48%,rgba(242,226,198,0.48)_100%)]"} />
+        <div className={`absolute inset-x-0 top-0 h-[46%] bg-[url('/images/floral-bg-optimized.jpg')] bg-cover bg-center mix-blend-multiply ${embedded ? "opacity-[0.12]" : "opacity-20"}`} />
+        <div className={embedded ? "absolute inset-0 bg-[radial-gradient(ellipse_80%_62%_at_50%_43%,rgba(255,255,255,0.5)_0%,rgba(255,247,242,0.2)_48%,rgba(230,166,183,0.1)_100%)]" : "absolute inset-0 bg-[radial-gradient(ellipse_80%_62%_at_50%_43%,rgba(255,255,255,0.74)_0%,rgba(255,247,242,0.32)_48%,rgba(230,166,183,0.18)_100%)]"} />
       </div>
 
       <div className="absolute inset-0 z-0 pointer-events-none">
@@ -70,10 +70,11 @@ export default function VideoTemplate({ embedded = false }: { embedded?: boolean
           <motion.div
             key={currentScene}
             className={sceneClass}
-            initial={{ opacity: 0, y: 18, filter: "blur(10px)" }}
+            data-video-scene={currentScene + 1}
+            initial={embedded ? { opacity: 1, y: 0, filter: "blur(0px)" } : { opacity: 0, y: 18, filter: "blur(10px)" }}
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            exit={{ opacity: 0, y: -16, filter: "blur(8px)" }}
-            transition={{ duration: 0.82, ease: [0.16, 1, 0.3, 1] }}
+            exit={embedded ? { opacity: 1, y: 0, filter: "blur(0px)" } : { opacity: 0, y: -16, filter: "blur(8px)" }}
+            transition={{ duration: embedded ? 0.12 : 0.82, ease: [0.16, 1, 0.3, 1] }}
           >
             {currentScene === 0 && <Scene1 />}
             {currentScene === 1 && <Scene2 />}
@@ -87,7 +88,7 @@ export default function VideoTemplate({ embedded = false }: { embedded?: boolean
         </AnimatePresence>
       </div>
 
-      <AnimatePresence>
+      {!embedded && <AnimatePresence>
         <motion.div
           key={`sweep-${currentScene}`}
           className="pointer-events-none absolute inset-0 z-20"
@@ -108,7 +109,7 @@ export default function VideoTemplate({ embedded = false }: { embedded?: boolean
             transition={{ duration: 1, ease: [0.65, 0, 0.35, 1] }}
           />
         </motion.div>
-      </AnimatePresence>
+      </AnimatePresence>}
     </div>
   );
 }

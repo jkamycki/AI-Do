@@ -1,6 +1,6 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "wouter";
-import { BadgeDollarSign, CheckSquare, Clock3, Globe2, MailCheck, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, BadgeDollarSign, Calculator, CheckSquare, Clock3, Globe2, Home, MailCheck, MapPin, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { LanguagePicker } from "@/components/LanguagePicker";
@@ -65,6 +65,54 @@ const CONVERSION_REASONS = [
   "Start with the essentials, then use AI when you need wording, next steps, or decisions.",
 ];
 
+const VENUE_STYLE_OPTIONS = [
+  { value: "ballroom", label: "Ballroom or hotel", multiplier: 1.06 },
+  { value: "garden", label: "Garden or estate", multiplier: 1.12 },
+  { value: "restaurant", label: "Restaurant", multiplier: 0.9 },
+  { value: "blank", label: "Blank space", multiplier: 1.18 },
+];
+
+const PLANNING_PACE_OPTIONS = [
+  { value: "early", label: "Still exploring", note: "Start with budget guardrails and must-haves." },
+  { value: "touring", label: "Touring venues", note: "Compare fees, food minimums, rentals, and room blocks." },
+  { value: "ready", label: "Ready to book", note: "Save your estimate, questions, and vendor notes together." },
+];
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function calculateVenueFit(guestCount: number, totalBudget: number, style: string) {
+  const selectedStyle = VENUE_STYLE_OPTIONS.find((option) => option.value === style) ?? VENUE_STYLE_OPTIONS[0];
+  const safeGuests = Math.max(25, Math.min(350, Math.round(guestCount || 0)));
+  const safeBudget = Math.max(5000, Math.min(250000, Math.round(totalBudget || 0)));
+  const venueShare = Math.round(safeBudget * 0.42 * selectedStyle.multiplier);
+  const perGuestTarget = Math.round(venueShare / safeGuests);
+  const low = Math.round(venueShare * 0.86);
+  const high = Math.round(venueShare * 1.08);
+  const guestPressure =
+    perGuestTarget < 135
+      ? "Tight"
+      : perGuestTarget < 210
+        ? "Workable"
+        : "Comfortable";
+
+  return {
+    guestPressure,
+    high,
+    low,
+    perGuestTarget,
+    safeBudget,
+    safeGuests,
+    selectedStyle,
+    venueShare,
+  };
+}
+
 function LandingLanguagePicker() {
   const { i18n: activeI18n } = useTranslation();
   const currentName = LANG_CODE_TO_NAME[activeI18n.resolvedLanguage || activeI18n.language] ?? "English";
@@ -88,8 +136,21 @@ function LandingLanguagePicker() {
 }
 
 function DeferredProductPreview() {
-  const [shouldLoad, setShouldLoad] = useState(false);
+  const [shouldLoad, setShouldLoad] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.location.hash === "#preview";
+  });
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function loadFromHash() {
+      if (window.location.hash === "#preview") setShouldLoad(true);
+    }
+
+    loadFromHash();
+    window.addEventListener("hashchange", loadFromHash);
+    return () => window.removeEventListener("hashchange", loadFromHash);
+  }, []);
 
   useEffect(() => {
     if (shouldLoad) return;
@@ -111,7 +172,7 @@ function DeferredProductPreview() {
   }, [shouldLoad]);
 
   return (
-    <div ref={containerRef} className="relative aspect-[4/3] overflow-hidden rounded-[22px] bg-[#FFF7F2] sm:aspect-[16/10] lg:aspect-[16/9] xl:aspect-[16/10]">
+    <div ref={containerRef} data-preview-frame className="relative aspect-[4/3] overflow-hidden rounded-[22px] bg-[#FFF7F2] sm:aspect-[4/3] lg:aspect-[16/11] xl:aspect-[16/10]">
       {shouldLoad ? (
         <Suspense fallback={<ProductPreviewSkeleton />}>
           <VideoTemplate embedded />
@@ -137,6 +198,16 @@ function ProductPreviewSkeleton() {
 export default function Landing() {
   const { t } = useTranslation();
   const launchPricingEnabled = useLaunchPricingEnabled();
+  const [venueCity, setVenueCity] = useState("");
+  const [guestCount, setGuestCount] = useState(120);
+  const [totalBudget, setTotalBudget] = useState(45000);
+  const [venueStyle, setVenueStyle] = useState("ballroom");
+  const [planningPace, setPlanningPace] = useState("touring");
+  const [showFitResult, setShowFitResult] = useState(false);
+  const venueFit = calculateVenueFit(guestCount, totalBudget, venueStyle);
+  const selectedPace = PLANNING_PACE_OPTIONS.find((option) => option.value === planningPace) ?? PLANNING_PACE_OPTIONS[1];
+  const venueFitSource = `landing_venue_fit_${showFitResult ? "result" : "start"}`;
+  const venueFitSignupHref = `/sign-up?source=${encodeURIComponent(venueFitSource)}&guests=${venueFit.safeGuests}&budget=${venueFit.safeBudget}&venueStyle=${encodeURIComponent(venueFit.selectedStyle.value)}`;
 
   useEffect(() => {
     setSeo({
@@ -166,6 +237,37 @@ export default function Landing() {
     });
   }
 
+  function handleVenueFitSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setShowFitResult(true);
+    trackPublicMarketingEvent("marketing_tool_complete", {
+      guestCount: venueFit.safeGuests,
+      placement: "hero_venue_fit",
+      planningPace,
+      surface: "landing",
+      tool: "venue_budget_fit",
+      venueStyle,
+    });
+  }
+
+  function trackVenueFitSignup() {
+    trackPublicMarketingEvent("marketing_cta_click", {
+      label: "Save My Venue Plan",
+      placement: "hero_venue_fit_result",
+      surface: "landing",
+      tool: "venue_budget_fit",
+    });
+  }
+
+  function focusVenueFitTool() {
+    document.getElementById("venue-fit")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    trackPublicMarketingEvent("marketing_tool_focus", {
+      placement: "mobile_sticky",
+      surface: "landing",
+      tool: "venue_budget_fit",
+    });
+  }
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#FFF7F2] pb-[calc(5.75rem+env(safe-area-inset-bottom))] text-[#8D294D] md:pb-0">
       <header className="sticky top-0 z-40 border-b border-[#E6A6B7]/70 bg-[#FFF7F2]/[0.94] px-3 py-2 shadow-[0_1px_0_rgba(141,41,77,0.06)] backdrop-blur-md sm:px-8 sm:py-3">
@@ -185,6 +287,11 @@ export default function Landing() {
             <a href="#essentials">
               <Button variant="ghost" className="h-9 rounded-full px-3 text-sm font-semibold text-[#8D294D] hover:bg-[#FFF7F2] hover:text-[#B16C8E] lg:text-base">
                 What You Get
+              </Button>
+            </a>
+            <a href="#venue-fit">
+              <Button variant="ghost" className="h-9 rounded-full px-3 text-sm font-semibold text-[#8D294D] hover:bg-[#FFF7F2] hover:text-[#B16C8E] lg:text-base">
+                Estimate Tool
               </Button>
             </a>
             <a href="#preview">
@@ -222,6 +329,7 @@ export default function Landing() {
         <nav className="mx-auto mt-2 flex max-w-7xl gap-2 overflow-x-auto pb-1 text-xs font-bold text-[#6F3E54] [scrollbar-width:none] md:hidden [&::-webkit-scrollbar]:hidden" aria-label="A.I DO sections">
           <a href="#start" className="shrink-0 rounded-full border border-[#E6A6B7]/45 bg-white/70 px-3 py-2">How It Starts</a>
           <a href="#essentials" className="shrink-0 rounded-full border border-[#E6A6B7]/45 bg-white/70 px-3 py-2">What You Get</a>
+          <a href="#venue-fit" className="shrink-0 rounded-full border border-[#E6A6B7]/45 bg-white/70 px-3 py-2">Estimate Tool</a>
           <a href="#preview" className="shrink-0 rounded-full border border-[#E6A6B7]/45 bg-white/70 px-3 py-2">Product Preview</a>
           <Link href="/for-vendors" className="shrink-0 rounded-full border border-[#E6A6B7]/45 bg-white/70 px-3 py-2">Partner With Us</Link>
           {launchPricingEnabled && <a href="#pricing" className="shrink-0 rounded-full border border-[#E6A6B7]/45 bg-white/70 px-3 py-2">Pricing</a>}
@@ -239,7 +347,7 @@ export default function Landing() {
           />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,247,242,0.98)_0%,rgba(255,247,242,0.92)_44%,rgba(255,247,242,0.74)_100%)] md:bg-[linear-gradient(90deg,rgba(255,247,242,0.98)_0%,rgba(255,247,242,0.92)_47%,rgba(255,247,242,0.38)_100%)]" />
           <div className="absolute inset-x-0 top-0 h-1.5 bg-[linear-gradient(90deg,#8D294D,#E6A6B7,#F2E2C6,#B16C8E)]" />
-          <div className="relative z-10 mx-auto flex min-h-[calc(100svh-112px)] max-w-7xl items-center px-4 py-10 sm:px-8 lg:py-16">
+          <div className="relative z-10 mx-auto grid min-h-[calc(100svh-112px)] max-w-7xl items-center gap-8 px-4 py-8 sm:px-8 lg:grid-cols-[1fr_0.82fr] lg:py-12 xl:gap-12">
             <div className="max-w-2xl text-left">
               <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-[#E6A6B7]/70 bg-white/72 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-[#B16C8E] shadow-sm">
                 <Sparkles className="h-4 w-4" />
@@ -274,6 +382,140 @@ export default function Landing() {
                 </div>
               ))}
               </div>
+            </div>
+            <div id="venue-fit" className="scroll-mt-28 rounded-[28px] border border-[#D4A373]/45 bg-[#FFFDFB]/92 p-4 text-[#4A2635] shadow-[0_24px_70px_rgba(61,64,47,0.16)] backdrop-blur-md sm:p-5 lg:justify-self-end">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="inline-flex items-center gap-2 rounded-full bg-[#EEF4E8] px-3 py-1.5 text-xs font-bold text-[#3D5530]">
+                    <Calculator className="h-4 w-4" />
+                    Free venue fit check
+                  </div>
+                  <h2 className="mt-3 font-serif text-2xl leading-tight text-[#5B2035] sm:text-3xl">
+                    See if your venue budget fits before you tour.
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-[#6F3E54]">
+                    Get a quick target, then save it with your guest list, vendors, checklist, and website.
+                  </p>
+                </div>
+                <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#F2E2C6] text-[#6F4A1B] sm:flex">
+                  <Home className="h-6 w-6" />
+                </div>
+              </div>
+
+              <form className="mt-5 grid gap-3" onSubmit={handleVenueFitSubmit}>
+                <label className="grid gap-1.5 text-sm font-bold text-[#5B2035]">
+                  Preferred area
+                  <span className="relative">
+                    <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A7A42]" />
+                    <input
+                      value={venueCity}
+                      onChange={(event) => setVenueCity(event.target.value)}
+                      placeholder="City or region"
+                      className="h-11 w-full rounded-2xl border border-[#D4A373]/45 bg-white px-9 text-sm font-semibold text-[#4A2635] outline-none transition focus:border-[#8D294D] focus:ring-4 focus:ring-[#E6A6B7]/30"
+                    />
+                  </span>
+                </label>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="grid gap-1.5 text-sm font-bold text-[#5B2035]">
+                    Guest count
+                    <span className="relative">
+                      <Users className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A7A42]" />
+                      <input
+                        type="number"
+                        min={25}
+                        max={350}
+                        value={guestCount}
+                        onChange={(event) => setGuestCount(Number(event.target.value))}
+                        className="h-11 w-full rounded-2xl border border-[#D4A373]/45 bg-white px-9 text-sm font-semibold text-[#4A2635] outline-none transition focus:border-[#8D294D] focus:ring-4 focus:ring-[#E6A6B7]/30"
+                      />
+                    </span>
+                  </label>
+                  <label className="grid gap-1.5 text-sm font-bold text-[#5B2035]">
+                    Total budget
+                    <span className="relative">
+                      <BadgeDollarSign className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A7A42]" />
+                      <input
+                        type="number"
+                        min={5000}
+                        max={250000}
+                        step={1000}
+                        value={totalBudget}
+                        onChange={(event) => setTotalBudget(Number(event.target.value))}
+                        className="h-11 w-full rounded-2xl border border-[#D4A373]/45 bg-white px-9 text-sm font-semibold text-[#4A2635] outline-none transition focus:border-[#8D294D] focus:ring-4 focus:ring-[#E6A6B7]/30"
+                      />
+                    </span>
+                  </label>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="grid gap-1.5 text-sm font-bold text-[#5B2035]">
+                    Venue type
+                    <select
+                      value={venueStyle}
+                      onChange={(event) => setVenueStyle(event.target.value)}
+                      className="h-11 w-full rounded-2xl border border-[#D4A373]/45 bg-white px-3 text-sm font-semibold text-[#4A2635] outline-none transition focus:border-[#8D294D] focus:ring-4 focus:ring-[#E6A6B7]/30"
+                    >
+                      {VENUE_STYLE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid gap-1.5 text-sm font-bold text-[#5B2035]">
+                    Planning stage
+                    <select
+                      value={planningPace}
+                      onChange={(event) => setPlanningPace(event.target.value)}
+                      className="h-11 w-full rounded-2xl border border-[#D4A373]/45 bg-white px-3 text-sm font-semibold text-[#4A2635] outline-none transition focus:border-[#8D294D] focus:ring-4 focus:ring-[#E6A6B7]/30"
+                    >
+                      {PLANNING_PACE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <Button type="submit" className="mt-1 h-12 rounded-full bg-[#3D5530] text-base font-bold text-white shadow-[0_14px_28px_rgba(61,85,48,0.22)] hover:bg-[#2F4325]">
+                  Show my venue fit
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </form>
+
+              <div className={`mt-4 overflow-hidden rounded-[22px] border transition-all duration-300 ${showFitResult ? "border-[#D4A373]/55 bg-[#F8F4EA] p-4 opacity-100" : "max-h-0 border-transparent p-0 opacity-0"}`} aria-live="polite">
+                {showFitResult && (
+                  <div>
+                    <p className="text-xs font-bold text-[#3D5530]">
+                      {venueCity.trim() ? `${venueCity.trim()} estimate` : "Your quick estimate"}
+                    </p>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                      <div>
+                        <p className="text-xs font-semibold text-[#6F3E54]">Venue target</p>
+                        <p className="text-lg font-black text-[#5B2035]">{formatCurrency(venueFit.low)}-{formatCurrency(venueFit.high)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-[#6F3E54]">Per guest</p>
+                        <p className="text-lg font-black text-[#5B2035]">{formatCurrency(venueFit.perGuestTarget)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-[#6F3E54]">Fit</p>
+                        <p className="text-lg font-black text-[#5B2035]">{venueFit.guestPressure}</p>
+                      </div>
+                    </div>
+                    <p className="mt-3 text-sm leading-6 text-[#4A2635]">
+                      {selectedPace.note} A.I DO can turn this into a saved checklist, venue questions, RSVP plan, and budget tracker.
+                    </p>
+                    <Button asChild className="mt-4 h-11 w-full rounded-full bg-[#8D294D] text-sm font-bold text-white hover:bg-[#6F1D3D]">
+                      <Link href={venueFitSignupHref} onClick={trackVenueFitSignup}>
+                        Save my venue plan
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <p className="mt-3 text-center text-xs font-semibold text-[#7A5062]">
+                See the estimate first. Sign up only when you want to save it.
+              </p>
             </div>
           </div>
         </section>
@@ -388,8 +630,10 @@ export default function Landing() {
         </div>
       </footer>
       <MobileStickyCta
-        href="/sign-up?source=landing_sticky"
-        onClick={() => trackStartPlanning("mobile_sticky")}
+        buttonLabel="Estimate"
+        detail="Then save your plan"
+        label="Check your venue budget fit"
+        onClick={focusVenueFitTool}
       />
     </div>
   );

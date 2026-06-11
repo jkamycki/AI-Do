@@ -730,6 +730,7 @@ async function mockGuestPhotoDropApis(page: Page) {
     uploadedAt: string;
   }> = [];
   const uploadedObjects: string[] = [];
+  const fallbackUploads: string[] = [];
   const settings = {
     enabled: true,
     galleryEnabled: true,
@@ -757,6 +758,38 @@ async function mockGuestPhotoDropApis(page: Page) {
         couple: publicWebsitePayload.couple,
         guestPhotoDrop: settings,
       });
+    }
+    if (route.request().method() === 'POST') {
+      const bodyText = route.request().postDataBuffer()?.toString('utf8') || '';
+      const guestName = bodyText.match(/name="guestName"\r?\n\r?\n([^\r\n]+)/)?.[1]?.trim() || 'Guest';
+      const caption = bodyText.match(/name="caption"\r?\n\r?\n([^\r\n]+)/)?.[1]?.trim() || null;
+      const fileName = bodyText.match(/filename="([^"]+)"/)?.[1] || 'guest-photo.png';
+      fallbackUploads.push(fileName);
+      const upload = {
+        id: 9100 + uploads.length,
+        guestName,
+        guestEmail: null,
+        note: caption,
+        caption,
+        imageUrl: '/images/floral-bg-optimized.jpg',
+        publicImageUrl: '/images/floral-bg-optimized.jpg',
+        originalName: fileName,
+        fileSize: 0,
+        status: 'pending' as const,
+        uploadedAt: now,
+      };
+      uploads.unshift(upload);
+      return fulfillJson(route, {
+        success: true,
+        message: 'Thanks! Your photos were uploaded.',
+        upload,
+        usage: {
+          limit: settings.maxUploads,
+          uploadedCount: uploads.length,
+          remaining: Math.max(0, settings.maxUploads - uploads.length),
+          maxPerUpload: settings.uploadLimitMb,
+        },
+      }, 201);
     }
     return route.fallback();
   });
@@ -850,7 +883,7 @@ async function mockGuestPhotoDropApis(page: Page) {
     return route.fallback();
   });
 
-  return { uploads, uploadedObjects };
+  return { uploads, uploadedObjects, fallbackUploads };
 }
 
 async function mockRegistryWebsiteApis(page: Page) {
@@ -1479,6 +1512,39 @@ test.describe('A.IDO website and app feature parity', () => {
         .toBe('approved');
       await expect(page.locator('body')).toContainText(/Reviewed Photos|approved/i);
       await expectNoPageHorizontalOverflow(page, 'Guest Photo Drop approval');
+    });
+
+    test('public photo drop falls back when direct storage upload fails', async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      const photoDrop = await mockGuestPhotoDropApis(page);
+      await page.route('**/mock-photo-upload/**', (route) => {
+        if (route.request().method() !== 'PUT') return route.fallback();
+        return route.fulfill({ status: 403, body: 'Storage upload blocked' });
+      });
+
+      const publicResponse = await page.goto('/photo-drop/parity-wedding', { waitUntil: 'domcontentloaded' });
+      expect(publicResponse?.ok(), 'Public photo drop response').toBeTruthy();
+
+      await page.locator('input[type="file"][multiple]').setInputFiles({
+        name: 'fallback-dance-floor.png',
+        mimeType: 'image/png',
+        buffer: Buffer.from('fake image data'),
+      });
+      await page.getByLabel(/your name/i).fill('Jordan Guest');
+      await page.getByLabel(/add a caption/i).fill('Fallback worked');
+      await page.getByRole('button', { name: /upload photos/i }).click();
+
+      await expect(page.locator('body')).toContainText(/photos were sent|thank you/i, { timeout: 10_000 });
+      await expect
+        .poll(() => photoDrop.uploads.length, { message: 'Fallback guest photo upload completed', timeout: 10_000 })
+        .toBe(1);
+      expect(photoDrop.uploadedObjects.length).toBe(0);
+      expect(photoDrop.fallbackUploads).toEqual(['fallback-dance-floor.png']);
+      expect(photoDrop.uploads[0]).toMatchObject({
+        guestName: 'Jordan Guest',
+        caption: 'Fallback worked',
+        status: 'pending',
+      });
     });
 
     test('registry app page syncs gift links to the public phone site', async ({ page }) => {

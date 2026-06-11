@@ -204,6 +204,18 @@ function groupColorClasses(group: string | null | undefined): string {
   }
 }
 
+function displayTableAssignment(value: string | null | undefined): string {
+  const trimmed = value?.trim().replace(/\s+/g, " ") ?? "";
+  return trimmed.replace(/^(?:table\s+)+/i, "");
+}
+
+function normalizeTableAssignmentInput(value: string): string {
+  const trimmed = value.trim().replace(/\s+/g, " ");
+  if (!trimmed) return "";
+  if (/^\d+[a-z]?$/i.test(trimmed)) return `Table ${trimmed.toUpperCase()}`;
+  return trimmed.replace(/^table\s+table\s+/i, "Table ");
+}
+
 function bookedHotelClasses(guest: Guest): string {
   if ((guest as any).bookedHotelBlockId) {
     return "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-800/50";
@@ -2538,8 +2550,8 @@ export default function Guests({
   }
 
   function handleTableAssignmentChange(guest: Guest, raw: string) {
-    const next = raw.trim();
-    const current = guest.tableAssignment?.trim() ?? "";
+    const next = normalizeTableAssignmentInput(raw);
+    const current = normalizeTableAssignmentInput(guest.tableAssignment ?? "");
     if (next === current) return;
 
     optimisticUpdate(guest.id, { tableAssignment: next || null });
@@ -3969,7 +3981,7 @@ export default function Guests({
                         <p className="font-semibold uppercase tracking-wide text-muted-foreground">Table</p>
                         <Input
                           key={`mobile-table-${g.id}-${g.tableAssignment ?? ""}`}
-                          defaultValue={g.tableAssignment ?? ""}
+                          defaultValue={displayTableAssignment(g.tableAssignment)}
                           placeholder="—"
                           aria-label={`Mobile card table for ${g.name}`}
                           title="Edit table assignment"
@@ -3978,13 +3990,13 @@ export default function Guests({
                           onKeyDown={(event) => {
                             if (event.key === "Enter") event.currentTarget.blur();
                             if (event.key === "Escape") {
-                              event.currentTarget.value = g.tableAssignment ?? "";
+                              event.currentTarget.value = displayTableAssignment(g.tableAssignment);
                               event.currentTarget.blur();
                             }
                           }}
                         />
                         <p className="hidden">
-                          {g.tableAssignment || "—"}
+                          {displayTableAssignment(g.tableAssignment) || "—"}
                         </p>
                       </div>
                       <div className="rounded-lg border border-border/50 bg-muted/20 px-2.5 py-2">
@@ -4424,7 +4436,7 @@ export default function Guests({
                         <TableCell className="hidden md:table-cell align-top text-xs lg:text-sm text-[0px]">
                           <Input
                             key={`table-${g.id}-${g.tableAssignment ?? ""}`}
-                            defaultValue={g.tableAssignment ?? ""}
+                            defaultValue={displayTableAssignment(g.tableAssignment)}
                             placeholder="—"
                             aria-label={`Table assignment for ${g.name}`}
                             title="Edit table assignment"
@@ -4433,12 +4445,12 @@ export default function Guests({
                             onKeyDown={(event) => {
                               if (event.key === "Enter") event.currentTarget.blur();
                               if (event.key === "Escape") {
-                                event.currentTarget.value = g.tableAssignment ?? "";
+                                event.currentTarget.value = displayTableAssignment(g.tableAssignment);
                                 event.currentTarget.blur();
                               }
                             }}
                           />
-                          {g.tableAssignment || "—"}
+                          {displayTableAssignment(g.tableAssignment) || "—"}
                         </TableCell>
                         <TableCell className="hidden md:table-cell align-top text-xs lg:text-sm">
                           <Select

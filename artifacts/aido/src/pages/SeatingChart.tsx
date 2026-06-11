@@ -87,6 +87,17 @@ function safeText(value: unknown, fallback = ""): string {
   return fallback;
 }
 
+function defaultSeatingTableName(tableNumber: number): string {
+  return `Table ${tableNumber}`;
+}
+
+function displaySeatingTableName(tableName: unknown, tableNumber: number): string {
+  const name = safeText(tableName);
+  const defaultName = defaultSeatingTableName(tableNumber);
+
+  return name && name.toLowerCase() !== defaultName.toLowerCase() ? name : "";
+}
+
 function normalizeSeatingTables(tables: unknown): SeatingTable[] {
   if (!Array.isArray(tables)) return [];
   return tables.map((raw, index) => {
@@ -488,10 +499,8 @@ function SeatingPreviewTable({
   const seatTotal = Math.max(2, Math.min(20, Math.round(seatsPerTable)));
   const { seats, overflow, assignedCount } = seatingPreviewSeats(table.guests, seatingGuests, seatTotal);
   const tableLabel = String(table.tableNumber);
-  const defaultTableName = `Table ${table.tableNumber}`;
-  const customTableName = table.tableName?.trim() && table.tableName.trim() !== defaultTableName
-    ? table.tableName.trim()
-    : "";
+  const fallbackTableName = defaultSeatingTableName(table.tableNumber);
+  const customTableName = displaySeatingTableName(table.tableName, table.tableNumber);
   const [nameDraft, setNameDraft] = useState(customTableName);
   const [descriptionDraft, setDescriptionDraft] = useState(table.theme ?? "");
   const tableSize = seatTotal > 14 ? 124 : seatTotal > 10 ? 116 : 104;
@@ -505,7 +514,7 @@ function SeatingPreviewTable({
   }, [customTableName, table.theme]);
 
   const commitName = () => {
-    const nextName = nameDraft.trim() || defaultTableName;
+    const nextName = nameDraft.trim() || fallbackTableName;
     if (nextName !== table.tableName) {
       onUpdateTable(table.tableNumber, { tableName: nextName });
     }
@@ -565,7 +574,7 @@ function SeatingPreviewTable({
                 onChange={(e) => setNameDraft(e.target.value)}
                 onBlur={commitName}
                 onKeyDown={(e) => handleFieldKeyDown(e, commitName, () => setNameDraft(customTableName))}
-                placeholder={`Name ${defaultTableName}`}
+                placeholder={`Name ${fallbackTableName}`}
                 className="h-9 rounded-xl border-primary/15 bg-white/80 pr-8 text-sm font-semibold shadow-sm placeholder:text-muted-foreground/55 focus-visible:ring-primary/25"
                 data-testid={`input-preview-table-name-${table.tableNumber}`}
               />
@@ -1527,7 +1536,7 @@ export default function SeatingChartPage() {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(13);
         doc.setTextColor(...GOLD);
-        const tableName = safeText(table.tableName);
+        const tableName = displaySeatingTableName(table.tableName, table.tableNumber);
         const tableTitle = tableName
           ? `Table ${table.tableNumber} - ${tableName}`
           : `Table ${table.tableNumber}`;
