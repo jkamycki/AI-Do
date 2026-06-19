@@ -48,9 +48,9 @@ const HERO_FEATURES = [
 ];
 
 const FIRST_FIVE_MINUTES = [
-  "Add your wedding date, location, and guest estimate",
-  "Choose your first priority: website, RSVPs, guests, budget, or vendors",
-  "Continue from the dashboard with one clear next step",
+  "Add your wedding details",
+  "Set up guests, RSVPs, and website",
+  "Plan from one dashboard",
 ];
 
 const HERO_REASSURANCE = [
@@ -60,9 +60,21 @@ const HERO_REASSURANCE = [
 ];
 
 const CONVERSION_REASONS = [
-  "Create your wedding website, RSVPs, guests, checklist, budget, and vendor plan together.",
-  "Give guests one place for details while your private planning stays organized.",
-  "Start with the essentials, then use AI when you need wording, next steps, or decisions.",
+  "Wedding website and RSVPs",
+  "Guest list, checklist, budget, and vendors",
+  "AI help for wording and next steps",
+];
+
+const TRUST_STATS = [
+  { value: "$0", label: "start free" },
+  { value: "No card", label: "required" },
+  { value: "Private", label: "until published" },
+];
+
+const SIGNUP_PROMISES = [
+  "No credit card",
+  "Email code sign up",
+  "Private workspace",
 ];
 
 const VENUE_STYLE_OPTIONS = [
@@ -84,6 +96,10 @@ function formatCurrency(value: number): string {
     currency: "USD",
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+function signupHref(source: string) {
+  return `/sign-up?source=${encodeURIComponent(source)}`;
 }
 
 function calculateVenueFit(guestCount: number, totalBudget: number, style: string) {
@@ -213,8 +229,8 @@ function ProductPreviewSkeleton() {
   return (
     <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#FFF7F2,#FFFDFB,#F7DDE2)] p-6 text-center">
       <div>
-        <p className="text-sm font-bold uppercase tracking-[0.22em] text-[#B16C8E]">Preview loading</p>
-        <p className="mt-3 font-serif text-3xl font-semibold text-[#8D294D]">A calm preview, without slowing the first page.</p>
+        <p className="text-sm font-bold uppercase tracking-[0.22em] text-[#B16C8E]">Loading preview</p>
+        <p className="mt-3 font-serif text-3xl font-semibold text-[#8D294D]">Dashboard, guests, website, budget, vendors.</p>
       </div>
     </div>
   );
@@ -237,7 +253,7 @@ export default function Landing() {
   useEffect(() => {
     setSeo({
       title: "A.I DO | Simple AI Wedding Planner, Website, RSVP & Guest Tools",
-      description: "A.I DO helps couples start wedding planning with one calm AI workspace for a wedding website, RSVPs, guests, checklist, budget, vendors, and mobile planning.",
+      description: "A.I DO is a wedding planning workspace for websites, RSVPs, guests, checklist, budget, vendors, and AI planning help.",
       path: "/",
       jsonLd: [
         organizationSchema(),
@@ -279,15 +295,6 @@ export default function Landing() {
     trackPublicMarketingEvent("marketing_cta_click", {
       label: "Save My Venue Plan",
       placement: "hero_venue_fit_result",
-      surface: "landing",
-      tool: "venue_budget_fit",
-    });
-  }
-
-  function focusVenueFitTool() {
-    document.getElementById("venue-fit")?.scrollIntoView({ behavior: "smooth", block: "center" });
-    trackPublicMarketingEvent("marketing_tool_focus", {
-      placement: "mobile_sticky",
       surface: "landing",
       tool: "venue_budget_fit",
     });
@@ -338,10 +345,10 @@ export default function Landing() {
             )}
           </nav>
           <nav className="flex min-w-0 items-center justify-end gap-1.5 justify-self-end sm:gap-3" aria-label="Account navigation">
-            <Link href="/sign-up">
+            <Link href={signupHref("header")}>
               <Button onClick={() => trackStartPlanning("header")} className="h-10 rounded-full border border-[#8D294D]/70 bg-[#F3B6C3] px-3 text-sm font-bold leading-tight text-[#8D294D] shadow-[0_10px_18px_rgba(141,41,77,0.14)] hover:bg-[#E6A6B7] sm:h-11 sm:px-6 sm:text-base">
-                <span className="sm:hidden">Start</span>
-                <span className="hidden sm:inline">{t("landing.get_started", { defaultValue: "Start Planning" })}</span>
+                <span className="sm:hidden">Free</span>
+                <span className="hidden sm:inline">Start Free</span>
               </Button>
             </Link>
             <Link href="/sign-in">
@@ -376,13 +383,13 @@ export default function Landing() {
             <div className="max-w-2xl text-left">
               <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-[#E6A6B7]/70 bg-white/72 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-[#B16C8E] shadow-sm">
                 <Sparkles className="h-4 w-4" />
-                Free wedding planning workspace
+                Free to start
               </div>
               <h1 className="mt-5 text-balance font-serif text-[2.75rem] leading-[0.98] tracking-normal text-[#8D294D] min-[390px]:text-[3.15rem] sm:text-6xl lg:text-7xl">
-                Plan your wedding, website, guests, and RSVPs in one calm place.
+                Wedding website, RSVPs, and planning in one place.
               </h1>
               <p className="mt-5 max-w-xl text-pretty text-base leading-7 text-[#4A2635] sm:text-xl sm:leading-8">
-                A.I DO helps couples start with the pieces that matter first: a guest-friendly wedding website, connected RSVPs, organized guests, budget, vendors, and AI help when planning gets messy.
+                Create a free workspace for your guest list, website, checklist, budget, vendors, and AI planning help.
               </p>
               <div className="mt-5 grid gap-2 text-sm font-semibold text-[#5B2035] sm:max-w-xl">
                 {CONVERSION_REASONS.map((reason) => (
@@ -392,12 +399,23 @@ export default function Landing() {
                   </div>
                 ))}
               </div>
-              <div className="mt-7 flex w-full sm:max-w-xl">
-                <Link href="/sign-up">
-                  <Button onClick={() => trackStartPlanning("hero")} className="h-[54px] w-full rounded-full bg-[#8D294D] px-6 text-base font-bold leading-tight text-white shadow-[0_20px_36px_rgba(141,41,77,0.26)] hover:bg-[#6F1D3D] sm:h-14 sm:min-w-56">
-                    Start Planning
+              <div className="mt-7 grid w-full gap-3 sm:max-w-xl sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                <Link href={signupHref("hero_primary")}>
+                  <Button onClick={() => trackStartPlanning("hero")} className="h-[54px] w-full rounded-full bg-[#8D294D] px-6 text-base font-bold leading-tight text-white shadow-[0_20px_36px_rgba(141,41,77,0.26)] hover:bg-[#6F1D3D] sm:h-14">
+                    Start free
+                    <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
+                <a href="#preview" className="inline-flex h-12 items-center justify-center rounded-full border border-[#8D294D]/20 bg-white/70 px-5 text-sm font-bold text-[#8D294D] shadow-sm transition hover:bg-white sm:h-14">
+                  See preview
+                </a>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2 text-xs font-black uppercase tracking-[0.13em] text-[#6F3E54]">
+                {SIGNUP_PROMISES.map((promise) => (
+                  <span key={promise} className="rounded-full border border-[#E6A6B7]/55 bg-white/68 px-3 py-1.5">
+                    {promise}
+                  </span>
+                ))}
               </div>
               <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm font-bold text-[#6F3E54]">
               {HERO_REASSURANCE.map(({ icon: Icon, labelKey, fallback }) => (
@@ -406,6 +424,14 @@ export default function Landing() {
                   <span>{t(labelKey, { defaultValue: fallback })}</span>
                 </div>
               ))}
+              </div>
+              <div className="mt-7 grid max-w-xl grid-cols-3 overflow-hidden rounded-[24px] border border-[#E6A6B7]/45 bg-white/70 shadow-[0_14px_34px_rgba(141,41,77,0.08)]">
+                {TRUST_STATS.map((stat) => (
+                  <div key={stat.label} className="border-r border-[#E6A6B7]/35 p-3 last:border-r-0 sm:p-4">
+                    <p className="font-serif text-2xl font-bold leading-none text-[#8D294D] sm:text-3xl">{stat.value}</p>
+                    <p className="mt-1 text-[11px] font-bold leading-4 text-[#6F3E54] sm:text-xs">{stat.label}</p>
+                  </div>
+                ))}
               </div>
             </div>
             <div id="venue-fit" className="scroll-mt-28 rounded-[28px] border border-[#E6A6B7]/60 bg-[#FFFDFB]/94 p-4 text-[#4A2635] shadow-[0_24px_70px_rgba(141,41,77,0.14)] backdrop-blur-md sm:p-5 lg:justify-self-end">
@@ -564,10 +590,10 @@ export default function Landing() {
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#B16C8E]">First 5 minutes</p>
               <h2 className="mt-3 text-balance font-serif text-3xl leading-tight text-[#8D294D] sm:text-5xl">
-                Sign up, then get one clear next step.
+                What happens after signup
               </h2>
               <p className="mt-4 text-base leading-7 text-[#6F3E54] sm:text-lg sm:leading-8">
-                Couples should not land inside a giant app and wonder what to do. A.I DO helps you set up the basics first, then keeps the rest organized as the wedding grows.
+                Start with the basics, then use the dashboard to keep planning.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
@@ -586,10 +612,10 @@ export default function Landing() {
             <div className="mx-auto mb-8 max-w-3xl text-center">
               <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#B16C8E]">What you get first</p>
               <h2 className="mt-3 font-serif text-3xl leading-tight text-[#8D294D] sm:text-5xl">
-                The wedding tools couples actually need to start.
+                What you get
               </h2>
               <p className="mt-3 text-base leading-7 text-[#6F3E54] sm:text-lg">
-                Start with the essentials. The advanced tools stay available when your planning gets more detailed.
+                The core tools are ready on day one.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
@@ -619,10 +645,10 @@ export default function Landing() {
             <div className="mx-auto max-w-3xl text-center xl:mx-0 xl:max-w-md xl:text-left">
               <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#B16C8E]">Product preview</p>
               <h2 className="mt-3 text-balance font-serif text-3xl leading-tight text-[#8D294D] sm:text-5xl">
-                See how the planning pieces come together.
+                Preview the app
               </h2>
               <p className="mt-4 text-base leading-7 text-[#6F3E54] sm:text-lg sm:leading-8">
-                Preview the flow before signing up: profile, guests, RSVPs, website, budget, vendors, and photo QR in one connected workspace.
+                See the dashboard, guest list, RSVPs, website, budget, vendors, and photo QR.
               </p>
             </div>
             <div className="relative mx-auto w-full max-w-5xl overflow-hidden rounded-[30px] border border-[#E6A6B7]/45 bg-white/78 p-2 shadow-[0_24px_70px_rgba(141,41,77,0.16)] sm:p-3">
@@ -636,15 +662,15 @@ export default function Landing() {
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#B16C8E]">Start planning</p>
               <h2 className="mt-3 text-balance font-serif text-3xl leading-tight text-[#8D294D] sm:text-5xl">
-                Create your wedding workspace in minutes.
+                Start your workspace
               </h2>
               <p className="mt-3 max-w-2xl text-base leading-7 text-[#6F3E54] sm:text-lg">
-                Start with a calm place for your website, RSVPs, guests, checklist, vendors, budget, and planning support.
+                Free to start. No credit card required.
               </p>
             </div>
             <div className="flex flex-col gap-3 md:min-w-72">
               <Button asChild className="h-[52px] rounded-full bg-[#8D294D] px-7 text-base font-bold text-white hover:bg-[#6F1D3D]">
-                <Link href="/sign-up" onClick={() => trackStartPlanning("final_cta")}>Start Planning</Link>
+                <Link href={signupHref("final_cta")} onClick={() => trackStartPlanning("final_cta")}>Start free</Link>
               </Button>
               <p className="text-center text-xs font-bold uppercase tracking-[0.16em] text-[#7A5062]">No credit card required</p>
             </div>
@@ -669,10 +695,11 @@ export default function Landing() {
         </div>
       </footer>
       <MobileStickyCta
-        buttonLabel="Estimate"
-        detail="Then save your plan"
-        label="Check your venue budget fit"
-        onClick={focusVenueFitTool}
+        buttonLabel="Start free"
+        detail="No credit card"
+        href={signupHref("mobile_sticky")}
+        label="Create your wedding workspace"
+        onClick={() => trackStartPlanning("mobile_sticky")}
       />
     </div>
   );

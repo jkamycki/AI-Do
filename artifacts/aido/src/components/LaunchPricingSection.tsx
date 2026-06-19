@@ -66,11 +66,15 @@ function FeatureList({ items }: { items: string[] }) {
 
 function trackPricingCta(plan: string) {
   trackPublicMarketingEvent("marketing_cta_click", {
-    label: "Start Planning",
+    label: "Start Free",
     placement: "pricing",
     plan,
     surface: "pricing_section",
   });
+}
+
+function pricingSignupHref(plan: string) {
+  return `/sign-up?source=${encodeURIComponent(`pricing_${plan}`)}`;
 }
 
 export function LaunchPricingSection({ compact = false, enabled: controlledEnabled }: { compact?: boolean; enabled?: boolean }) {
@@ -87,7 +91,7 @@ export function LaunchPricingSection({ compact = false, enabled: controlledEnabl
             Start planning, upgrade only when you want the full wedding suite.
           </h2>
           <p className="mt-4 text-pretty text-base leading-7 text-[#6F3E54] sm:text-lg sm:leading-8">
-            Simple founding couple pricing for launch: use the basics free, pay monthly while you plan, or choose one payment for the full wedding.
+            Use the basics free. Upgrade monthly or pay once for the full toolkit.
           </p>
         </div>
 
@@ -99,17 +103,17 @@ export function LaunchPricingSection({ compact = false, enabled: controlledEnabl
               <span className="pb-2 text-sm font-semibold text-[#6F3E54]">to start</span>
             </div>
             <p className="mt-4 text-sm leading-6 text-[#6F3E54] sm:text-base">
-              For couples who want a beautiful wedding website and the planning basics without a credit card.
+              Website, RSVPs, guest list, checklist, budget, and basic photo QR.
             </p>
             <FeatureList items={freeFeatures} />
             <Button asChild variant="outline" className="mt-7 h-12 w-full rounded-full border-[#B16C8E]/55 bg-white/70 text-[#8D294D] hover:bg-white">
-              <Link href="/sign-up" onClick={() => trackPricingCta("free")}>Start Planning</Link>
+              <Link href={pricingSignupHref("free")} onClick={() => trackPricingCta("free")}>Start free</Link>
             </Button>
           </article>
 
           <article className="relative overflow-hidden rounded-[28px] border border-[#8D294D]/45 bg-white/88 p-6 shadow-[0_18px_48px_rgba(141,41,77,0.11)] sm:p-8">
             <div className="absolute right-5 top-5 rounded-full bg-[#F7DDE2] px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-[#8D294D]">
-              Softer start
+              Monthly
             </div>
             <p className="text-sm font-black uppercase tracking-[0.2em] text-[#B16C8E]">A.I DO Complete Monthly</p>
             <div className="mt-3 flex flex-wrap items-end gap-2">
@@ -117,20 +121,20 @@ export function LaunchPricingSection({ compact = false, enabled: controlledEnabl
               <span className="pb-2 text-sm font-semibold text-[#6F3E54]">per month</span>
             </div>
             <p className="mt-4 text-sm leading-6 text-[#6F3E54] sm:text-base">
-              For couples who want the complete toolkit but prefer a smaller monthly payment while planning.
+              Full toolkit with a monthly payment.
             </p>
             <FeatureList items={completeFeatures} />
             <Button asChild className="mt-7 h-12 w-full rounded-full bg-[#8D294D] text-white hover:bg-[#6F1D3D]">
-              <Link href="/sign-up" onClick={() => trackPricingCta("complete_monthly")}>
+              <Link href={pricingSignupHref("complete_monthly")} onClick={() => trackPricingCta("complete_monthly")}>
                 <Sparkles className="h-4 w-4" />
-                Start Planning
+                Start free
               </Link>
             </Button>
           </article>
 
           <article className="relative overflow-hidden rounded-[28px] border border-[#8D294D]/45 bg-[linear-gradient(140deg,#8D294D_0%,#B16C8E_52%,#D88A96_100%)] p-6 text-white shadow-[0_28px_72px_rgba(141,41,77,0.24)] sm:p-8">
             <div className="absolute right-5 top-5 rounded-full bg-white/18 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-white">
-              Best value
+              One-time
             </div>
             <p className="text-sm font-black uppercase tracking-[0.2em] text-white/82">A.I DO Complete One-Time</p>
             <div className="mt-3 flex flex-wrap items-end gap-2">
@@ -138,7 +142,7 @@ export function LaunchPricingSection({ compact = false, enabled: controlledEnabl
               <span className="pb-2 text-sm font-semibold text-white/82">one-time per wedding</span>
             </div>
             <p className="mt-4 text-sm leading-6 text-white/88 sm:text-base">
-              For couples who want the complete app and website experience from planning through the wedding day.
+              Full toolkit for one wedding.
             </p>
             <ul className="mt-5 space-y-3 text-left">
               {completeFeatures.map((item) => (
@@ -149,9 +153,9 @@ export function LaunchPricingSection({ compact = false, enabled: controlledEnabl
               ))}
             </ul>
             <Button asChild className="mt-7 h-12 w-full rounded-full bg-white text-[#8D294D] hover:bg-[#FFF7F2]">
-              <Link href="/sign-up" onClick={() => trackPricingCta("complete_one_time")}>
+              <Link href={pricingSignupHref("complete_one_time")} onClick={() => trackPricingCta("complete_one_time")}>
                 <Sparkles className="h-4 w-4" />
-                Start Planning
+                Start free
               </Link>
             </Button>
           </article>

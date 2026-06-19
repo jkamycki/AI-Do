@@ -453,6 +453,10 @@ type SignInLike = {
   authenticateWithRedirect?: (params: Record<string, unknown>) => Promise<unknown>;
 };
 
+type GoogleSignInLike = SignInLike & {
+  authenticateWithRedirect: (params: Record<string, unknown>) => Promise<unknown>;
+};
+
 function CustomSignInForm() {
   const clerk = useClerk();
   const { isLoaded, isSignedIn } = useAuth();
@@ -630,6 +634,26 @@ function CustomSignInForm() {
     return (clerk.client?.signIn as SignInLike | undefined) ?? null;
   }
 
+  async function waitForGoogleSignInClient(): Promise<GoogleSignInLike | null> {
+    const start = Date.now();
+    while (Date.now() - start < 8000) {
+      const candidates = [
+        asSignInLike(signIn),
+        clerk.client?.signIn as SignInLike | undefined,
+      ];
+      const oauthClient = candidates.find(
+        (candidate): candidate is GoogleSignInLike =>
+          typeof candidate?.authenticateWithRedirect === "function",
+      );
+      if (oauthClient) return oauthClient;
+      await new Promise((res) => setTimeout(res, 80));
+    }
+    const fallback = asSignInLike(signIn) ?? (clerk.client?.signIn as SignInLike | undefined);
+    return typeof fallback?.authenticateWithRedirect === "function"
+      ? fallback as GoogleSignInLike
+      : null;
+  }
+
   async function handleResendLoginCode() {
     setError(null);
     setInfo(null);
@@ -701,13 +725,8 @@ function CustomSignInForm() {
       if (isLoaded && isSignedIn) {
         await clerk.signOut();
       }
-      const signInClient = await waitForSignInClient();
+      const signInClient = await waitForGoogleSignInClient();
       if (!signInClient) {
-        setOauthLoading(null);
-        setError("Auth is still loading. Please try again in a moment.");
-        return;
-      }
-      if (!signInClient.authenticateWithRedirect) {
         setOauthLoading(null);
         setError("Google sign-in is still loading. Please refresh and try again.");
         return;
